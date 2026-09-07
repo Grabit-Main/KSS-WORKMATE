@@ -50,14 +50,13 @@ def update_me(req: UserUpdate, db: Session = Depends(get_db), user: User = Depen
 def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
     if not user:
-        # Don't leak whether email exists
-        return {"message": "If that email is registered, an OTP has been sent."}
+        raise HTTPException(status_code=404, detail="Email not found")
     otp = "".join(random.choices(string.digits, k=6))
     user.otp_code = otp
     user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
     db.commit()
     send_otp_email(req.email, otp)
-    return {"message": "If that email is registered, an OTP has been sent."}
+    return {"message": "OTP has been sent to your email."}
 
 
 @router.post("/verify-otp")
