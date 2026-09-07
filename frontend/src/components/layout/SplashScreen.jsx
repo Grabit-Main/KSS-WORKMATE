@@ -19,7 +19,7 @@ export const SplashScreen = ({ onFinish }) => {
       <img 
         src="/logo.webp" 
         alt="Logo" 
-        style={{ height: '180px', animation: 'pulse 1s infinite' }} 
+        style={{ height: '260px', margin: '-40px 0', objectFit: 'contain', animation: 'pulse 1s infinite' }} 
       />
       
       <style>{`

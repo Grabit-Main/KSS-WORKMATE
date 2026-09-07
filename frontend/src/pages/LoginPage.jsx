@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, X } from 'lucide-react';
 import api from '../api/axios';
@@ -20,6 +20,17 @@ const LoginPage = () => {
   const [fpConfirmPass, setFpConfirmPass] = useState('');
   const [fpError, setFpError] = useState('');
   const [fpMessage, setFpMessage] = useState('');
+  const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +46,7 @@ const LoginPage = () => {
   };
 
   const handleForgotSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setFpError('');
     setFpMessage('');
     setFpLoading(true);
@@ -43,6 +54,7 @@ const LoginPage = () => {
     try {
       if (forgotStep === 1) {
         await api.post('/auth/forgot-password', { email: fpEmail });
+        setResendTimer(60);
         setForgotStep(2);
       } else if (forgotStep === 2) {
         await api.post('/auth/verify-otp', { email: fpEmail, otp: fpOtp });
@@ -61,6 +73,23 @@ const LoginPage = () => {
     }
   };
 
+  const handleResend = async () => {
+    if (resendTimer > 0) return;
+    setFpError('');
+    setFpMessage('');
+    setFpLoading(true);
+    try {
+      await api.post('/auth/forgot-password', { email: fpEmail });
+      setResendTimer(60);
+      setFpMessage('OTP sent again successfully!');
+      setTimeout(() => setFpMessage(''), 3000);
+    } catch (err) {
+      setFpError(err.response?.data?.detail || 'Failed to resend OTP');
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
   const closeForgot = () => {
     setShowForgot(false);
     setForgotStep(1);
@@ -70,6 +99,7 @@ const LoginPage = () => {
     setFpConfirmPass('');
     setFpError('');
     setFpMessage('');
+    setResendTimer(0);
   };
 
   return (
@@ -82,8 +112,8 @@ const LoginPage = () => {
       padding: '24px'
     }}>
       <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '32px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <img src="/logo.webp" alt="Logo" style={{ height: '120px', marginBottom: '16px' }} />
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <img src="/logo.webp" alt="Logo" style={{ height: '180px', margin: '-40px 0 -30px 0', objectFit: 'contain' }} />
           <h2 className="font-bold text-2xl">Welcome back</h2>
           <p className="text-secondary mt-1">Sign in to your account</p>
         </div>
@@ -110,12 +140,7 @@ const LoginPage = () => {
           </div>
           
           <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="font-medium text-sm">Password</label>
-              <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-secondary btn-outline" style={{ border: 'none', padding: 0 }}>
-                Forgot password?
-              </button>
-            </div>
+            <label className="font-medium text-sm mb-1" style={{ display: 'block' }}>Password</label>
             <input 
               type="password" 
               className="input" 
@@ -123,11 +148,16 @@ const LoginPage = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-secondary btn-outline" style={{ border: 'none', padding: 0 }}>
+                Forgot password?
+              </button>
+            </div>
           </div>
           
           <button 
             type="submit" 
-            className="btn btn-primary w-full mt-4" 
+            className="btn btn-primary w-full mt-2" 
             style={{ padding: '12px', gap: '8px' }}
             disabled={loading}
           >
@@ -181,6 +211,21 @@ const LoginPage = () => {
                     <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
                       {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Verify OTP'}
                     </button>
+                    <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                      <button 
+                        type="button" 
+                        onClick={handleResend}
+                        disabled={fpLoading || resendTimer > 0}
+                        style={{ 
+                          background: 'none', border: 'none', 
+                          color: (fpLoading || resendTimer > 0) ? 'var(--text-disabled)' : 'var(--brand-600)',
+                          fontSize: '14px', cursor: (fpLoading || resendTimer > 0) ? 'not-allowed' : 'pointer',
+                          fontWeight: 500
+                        }}
+                      >
+                        {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+                      </button>
+                    </div>
                   </div>
                 )}
 
