@@ -67,7 +67,38 @@ const UsersPage = () => {
     }
   };
 
-  if (loading) return <div>Loading users...</div>;
+  if (loading) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">Manage Users</h2>
+          <button className="btn btn-primary" disabled><UserPlus size={16} /> Add User</button>
+        </div>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--subtle)', textAlign: 'left' }}>
+                <th style={{ padding: '12px 24px' }}>Name</th>
+                <th style={{ padding: '12px 24px' }}>Email</th>
+                <th style={{ padding: '12px 24px' }}>Role</th>
+                <th style={{ padding: '12px 24px' }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[1, 2, 3].map(i => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '120px' }}></div></td>
+                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '180px' }}></div></td>
+                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '60px' }}></div></td>
+                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '80px' }}></div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

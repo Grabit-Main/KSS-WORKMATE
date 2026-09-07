@@ -1,7 +1,7 @@
 import random
 import string
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
@@ -47,7 +47,7 @@ def update_me(req: UserUpdate, db: Session = Depends(get_db), user: User = Depen
 
 
 @router.post("/forgot-password")
-def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(req: ForgotPasswordRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Email not found")
@@ -55,7 +55,7 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user.otp_code = otp
     user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
     db.commit()
-    send_otp_email(req.email, otp)
+    background_tasks.add_task(send_otp_email, req.email, otp)
     return {"message": "OTP has been sent to your email."}
 
 

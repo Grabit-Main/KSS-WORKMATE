@@ -13,6 +13,7 @@ const LoginPage = () => {
   // Forgot Password State
   const [showForgot, setShowForgot] = useState(false);
   const [forgotStep, setForgotStep] = useState(1); // 1: email, 2: otp, 3: new pass
+  const [fpLoading, setFpLoading] = useState(false);
   const [fpEmail, setFpEmail] = useState('');
   const [fpOtp, setFpOtp] = useState('');
   const [fpNewPass, setFpNewPass] = useState('');
@@ -37,6 +38,7 @@ const LoginPage = () => {
     e.preventDefault();
     setFpError('');
     setFpMessage('');
+    setFpLoading(true);
     
     try {
       if (forgotStep === 1) {
@@ -54,6 +56,8 @@ const LoginPage = () => {
       }
     } catch (err) {
       setFpError(err.response?.data?.detail || 'An error occurred');
+    } finally {
+      setFpLoading(false);
     }
   };
 
@@ -79,7 +83,7 @@ const LoginPage = () => {
     }}>
       <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '32px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <img src="/logo.webp" alt="Logo" style={{ height: '80px', marginBottom: '16px' }} />
+          <img src="/logo.webp" alt="Logo" style={{ height: '120px', marginBottom: '16px' }} />
           <h2 className="font-bold text-2xl">Welcome back</h2>
           <p className="text-secondary mt-1">Sign in to your account</p>
         </div>
@@ -127,8 +131,11 @@ const LoginPage = () => {
             style={{ padding: '12px', gap: '8px' }}
             disabled={loading}
           >
-            <LogIn size={20} />
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? (
+              <div className="dots-loader"><span></span><span></span><span></span></div>
+            ) : (
+              <><LogIn size={20} /> Sign in</>
+            )}
           </button>
         </form>
       </div>
@@ -160,16 +167,20 @@ const LoginPage = () => {
                 {forgotStep === 1 && (
                   <div>
                     <label className="text-sm font-medium mb-1 block">Enter your email</label>
-                    <input required type="email" className="input" value={fpEmail} onChange={e => setFpEmail(e.target.value)} />
-                    <button type="submit" className="btn btn-primary w-full mt-4">Send OTP</button>
+                    <input required type="email" className="input" value={fpEmail} onChange={e => setFpEmail(e.target.value)} disabled={fpLoading} />
+                    <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
+                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Send OTP'}
+                    </button>
                   </div>
                 )}
                 
                 {forgotStep === 2 && (
                   <div>
                     <label className="text-sm font-medium mb-1 block">Enter 6-digit OTP from your email</label>
-                    <input required className="input" value={fpOtp} onChange={e => setFpOtp(e.target.value)} maxLength={6} />
-                    <button type="submit" className="btn btn-primary w-full mt-4">Verify OTP</button>
+                    <input required className="input" value={fpOtp} onChange={e => setFpOtp(e.target.value)} maxLength={6} disabled={fpLoading} />
+                    <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
+                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Verify OTP'}
+                    </button>
                   </div>
                 )}
 
@@ -177,13 +188,15 @@ const LoginPage = () => {
                   <>
                     <div>
                       <label className="text-sm font-medium mb-1 block">New Password</label>
-                      <input required type="password" className="input" value={fpNewPass} onChange={e => setFpNewPass(e.target.value)} />
+                      <input required type="password" className="input" value={fpNewPass} onChange={e => setFpNewPass(e.target.value)} disabled={fpLoading} />
                     </div>
                     <div>
                       <label className="text-sm font-medium mb-1 block">Confirm Password</label>
-                      <input required type="password" className="input" value={fpConfirmPass} onChange={e => setFpConfirmPass(e.target.value)} />
+                      <input required type="password" className="input" value={fpConfirmPass} onChange={e => setFpConfirmPass(e.target.value)} disabled={fpLoading} />
                     </div>
-                    <button type="submit" className="btn btn-primary w-full mt-4">Reset Password</button>
+                    <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
+                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Reset Password'}
+                    </button>
                   </>
                 )}
               </form>
