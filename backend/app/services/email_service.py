@@ -9,7 +9,9 @@ OTP_TEMPLATE = """
 <html>
 <body style="font-family: Inter, sans-serif; background: #f8f9fc; padding: 40px;">
   <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-    <img src="https://kss-workmate.vercel.app/email-logo.png" alt="Logo" style="height:160px;margin:-30px 0 -10px 0;" />
+    <a href="https://kss-workmate.vercel.app" style="text-decoration:none;display:inline-block;">
+      <img src="https://kss-workmate.vercel.app/email-logo.png" alt="Logo" style="height:160px;margin:-30px 0 -10px 0;border:none;outline:none;text-decoration:none;" />
+    </a>
     <h2 style="color:#18181B;margin:0 0 8px;">Password Reset OTP</h2>
     <p style="color:#52525B;margin:0 0 24px;">Use the code below to reset your password. It expires in <strong>10 minutes</strong>.</p>
     <div style="background:#F1EEFF;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
