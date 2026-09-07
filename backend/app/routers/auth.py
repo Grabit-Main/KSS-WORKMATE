@@ -16,6 +16,16 @@ from app.dependencies import get_current_user
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+@router.get("/warmup")
+def warmup(db: Session = Depends(get_db)):
+    try:
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
+    except Exception:
+        pass
+    return {"status": "ok"}
+
+
 @router.post("/login", response_model=TokenResponse)
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email, User.is_active == True).first()

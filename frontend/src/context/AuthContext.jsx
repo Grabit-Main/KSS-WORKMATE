@@ -8,7 +8,12 @@ export const AuthProvider = ({ children }) => {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
-  const [loading, setLoading] = useState(() => !localStorage.getItem('user'));
+  const [loading, setLoading] = useState(() => {
+    const token = localStorage.getItem('access_token');
+    const savedUser = localStorage.getItem('user');
+    if (savedUser || !token) return false;
+    return true;
+  });
 
   useEffect(() => {
     const checkAuth = async () => {

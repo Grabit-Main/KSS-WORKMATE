@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import api from '../api/axios';
+import { SplashScreen } from '../components/layout/SplashScreen';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const { login } = useAuth();
 
   // Forgot Password State
@@ -21,6 +23,16 @@ const LoginPage = () => {
   const [fpError, setFpError] = useState('');
   const [fpMessage, setFpMessage] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+    // Warm up backend container & database connection instantly on mount
+    api.get('/auth/warmup').catch(() => {});
+
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     let interval;
@@ -102,6 +114,10 @@ const LoginPage = () => {
     setResendTimer(0);
   };
 
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -135,6 +151,7 @@ const LoginPage = () => {
               className="input" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onFocus={() => api.get('/auth/warmup').catch(() => {})}
               required
             />
           </div>
@@ -146,6 +163,7 @@ const LoginPage = () => {
               className="input" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => api.get('/auth/warmup').catch(() => {})}
               required
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
@@ -164,7 +182,7 @@ const LoginPage = () => {
             {loading ? (
               <div className="dots-loader"><span></span><span></span><span></span></div>
             ) : (
-              <><LogIn size={20} /> Sign in</>
+              'Sign in'
             )}
           </button>
         </form>

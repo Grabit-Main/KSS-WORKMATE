@@ -4,7 +4,7 @@ import { Bell, LogOut, Check } from 'lucide-react';
 import { getNotifications, markRead, markAllRead } from '../../api/notifications';
 
 export const Header = ({ title }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
@@ -127,16 +127,52 @@ export const Header = ({ title }) => {
           )}
         </div>
         
-        <button 
-          onClick={logout}
-          style={{
-            background: 'transparent', border: 'none', color: 'var(--text-secondary)',
-            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
-          }}
-        >
-          <LogOut size={20} />
-          <span className="font-medium text-sm">Logout</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {user && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: 'var(--brand-100)', color: 'var(--brand-600)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                {user.first_name?.[0]}{user.last_name?.[0]}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span className="font-semibold text-sm" style={{ lineHeight: '1.2' }}>{user.first_name} {user.last_name}</span>
+                <span className="text-xs text-secondary" style={{ lineHeight: '1.2' }}>{user.role}</span>
+              </div>
+            </div>
+          )}
+
+          <button 
+            onClick={logout}
+            title="Logout"
+            aria-label="Logout"
+            style={{
+              background: 'transparent', 
+              border: 'none', 
+              color: 'var(--text-secondary)',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: 'var(--radius-md)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--status-blocked-bg)';
+              e.currentTarget.style.color = 'var(--status-blocked)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
       </div>
     </header>
   );

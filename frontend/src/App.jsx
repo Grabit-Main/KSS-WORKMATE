@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WebSocketProvider } from './context/WebSocketContext';
 import { MainLayout } from './components/layout/MainLayout';
-import { SplashScreen } from './components/layout/SplashScreen';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -16,8 +15,8 @@ import UsersPage from './pages/UsersPage';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user) return <Navigate to="/login" />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
   return children;
 };
 
@@ -26,7 +25,7 @@ const AppRoutes = () => {
   
   return (
     <Routes>
-      <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
+      <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" replace />} />
       
       <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route index element={<DashboardPage />} />
@@ -35,25 +34,12 @@ const AppRoutes = () => {
         <Route path="reviews" element={<ReviewsPage />} />
         <Route path="users" element={<ProtectedRoute allowedRoles={['CEO', 'CTO']}><UsersPage /></ProtectedRoute>} />
       </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
 
 const AppContent = () => {
-  const { loading } = useAuth();
-  const [minSplashTimeDone, setMinSplashTimeDone] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMinSplashTimeDone(true);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-  
-  if (loading || !minSplashTimeDone) {
-    return <SplashScreen />;
-  }
-  
   return (
     <WebSocketProvider>
       <AppRoutes />
