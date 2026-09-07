@@ -129,7 +129,7 @@ const LoginPage = () => {
     }}>
       <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '32px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img src="/logo.webp" alt="Logo" style={{ height: '180px', margin: '-40px 0 -30px 0', objectFit: 'contain' }} />
+          <img src="/logo.webp" alt="Logo" style={{ maxWidth: '240px', width: '100%', maxHeight: '65px', objectFit: 'contain', margin: '0 auto 16px', display: 'block' }} />
           <h2 className="font-bold text-2xl">Welcome back</h2>
           <p className="text-secondary mt-1">Sign in to your account</p>
         </div>
