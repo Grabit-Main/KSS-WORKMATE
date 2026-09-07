@@ -54,10 +54,10 @@ def update_user(user_id: UUID, req: UserUpdate, db: Session = Depends(get_db), _
 
 
 @router.delete("/{user_id}")
-def deactivate_user(user_id: UUID, db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
+def delete_user(user_id: UUID, db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
-    user.is_active = False
+    db.delete(user)
     db.commit()
-    return {"message": "User deactivated"}
+    return {"message": "User deleted"}

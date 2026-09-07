@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogIn } from 'lucide-react';
+import { LogIn, X } from 'lucide-react';
+import api from '../api/axios';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -8,6 +9,16 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+
+  // Forgot Password State
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1); // 1: email, 2: otp, 3: new pass
+  const [fpEmail, setFpEmail] = useState('');
+  const [fpOtp, setFpOtp] = useState('');
+  const [fpNewPass, setFpNewPass] = useState('');
+  const [fpConfirmPass, setFpConfirmPass] = useState('');
+  const [fpError, setFpError] = useState('');
+  const [fpMessage, setFpMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,6 +31,41 @@ const LoginPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setFpError('');
+    setFpMessage('');
+    
+    try {
+      if (forgotStep === 1) {
+        await api.post('/auth/forgot-password', { email: fpEmail });
+        setForgotStep(2);
+      } else if (forgotStep === 2) {
+        await api.post('/auth/verify-otp', { email: fpEmail, otp: fpOtp });
+        setForgotStep(3);
+      } else if (forgotStep === 3) {
+        await api.post('/auth/reset-password', { 
+          email: fpEmail, otp: fpOtp, new_password: fpNewPass, confirm_password: fpConfirmPass 
+        });
+        setFpMessage('Password reset successfully! You can now log in.');
+        setTimeout(() => setShowForgot(false), 3000);
+      }
+    } catch (err) {
+      setFpError(err.response?.data?.detail || 'An error occurred');
+    }
+  };
+
+  const closeForgot = () => {
+    setShowForgot(false);
+    setForgotStep(1);
+    setFpEmail('');
+    setFpOtp('');
+    setFpNewPass('');
+    setFpConfirmPass('');
+    setFpError('');
+    setFpMessage('');
   };
 
   return (
@@ -62,7 +108,7 @@ const LoginPage = () => {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="font-medium text-sm">Password</label>
-              <button type="button" className="text-xs text-secondary btn-outline" style={{ border: 'none', padding: 0 }}>
+              <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-secondary btn-outline" style={{ border: 'none', padding: 0 }}>
                 Forgot password?
               </button>
             </div>
@@ -86,6 +132,65 @@ const LoginPage = () => {
           </button>
         </form>
       </div>
+
+      {showForgot && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '24px' }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">Reset Password</h3>
+              <button onClick={closeForgot} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={20}/></button>
+            </div>
+
+            {fpError && (
+              <div style={{ padding: '12px', background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)', borderRadius: 'var(--radius-md)', marginBottom: '16px', fontSize: '14px' }}>
+                {fpError}
+              </div>
+            )}
+            {fpMessage && (
+              <div style={{ padding: '12px', background: 'var(--status-completed-bg)', color: 'var(--status-completed)', borderRadius: 'var(--radius-md)', marginBottom: '16px', fontSize: '14px' }}>
+                {fpMessage}
+              </div>
+            )}
+
+            {!fpMessage && (
+              <form onSubmit={handleForgotSubmit} className="flex-col gap-4">
+                {forgotStep === 1 && (
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Enter your email</label>
+                    <input required type="email" className="input" value={fpEmail} onChange={e => setFpEmail(e.target.value)} />
+                    <button type="submit" className="btn btn-primary w-full mt-4">Send OTP</button>
+                  </div>
+                )}
+                
+                {forgotStep === 2 && (
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Enter 6-digit OTP from your email</label>
+                    <input required className="input" value={fpOtp} onChange={e => setFpOtp(e.target.value)} maxLength={6} />
+                    <button type="submit" className="btn btn-primary w-full mt-4">Verify OTP</button>
+                  </div>
+                )}
+
+                {forgotStep === 3 && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">New Password</label>
+                      <input required type="password" className="input" value={fpNewPass} onChange={e => setFpNewPass(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Confirm Password</label>
+                      <input required type="password" className="input" value={fpConfirmPass} onChange={e => setFpConfirmPass(e.target.value)} />
+                    </div>
+                    <button type="submit" className="btn btn-primary w-full mt-4">Reset Password</button>
+                  </>
+                )}
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
