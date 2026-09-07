@@ -5,14 +5,18 @@ import { useAuth } from '../context/AuthContext';
 import { Plus } from 'lucide-react';
 
 const ProjectsPage = () => {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState(() => {
+    const cached = localStorage.getItem('cache_projects');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(() => !localStorage.getItem('cache_projects'));
   const { user } = useAuth();
 
   const loadProjects = async () => {
     try {
       const data = await getProjects();
       setProjects(data);
+      localStorage.setItem('cache_projects', JSON.stringify(data));
     } catch (err) {
       console.error(err);
     } finally {
@@ -31,7 +35,18 @@ const ProjectsPage = () => {
   useRealtime('project.created', handleUpdate);
   useRealtime('project.updated', handleUpdate);
 
-  if (loading) return <div>Loading projects...</div>;
+  if (loading) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">Projects</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
+          {[1,2,3,4,5,6].map(i => <div key={i} className="card skeleton" style={{ height: '140px' }}></div>)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

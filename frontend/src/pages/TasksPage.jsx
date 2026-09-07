@@ -6,8 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { Plus } from 'lucide-react';
 
 const TasksPage = () => {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState(() => {
+    const cached = localStorage.getItem('cache_tasks');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(() => !localStorage.getItem('cache_tasks'));
   const { joinRoom } = useWebSocket();
   const { user } = useAuth();
 
@@ -15,6 +18,7 @@ const TasksPage = () => {
     try {
       const data = await getTasks();
       setTasks(data);
+      localStorage.setItem('cache_tasks', JSON.stringify(data));
       // Join team rooms for real-time updates
       const teamIds = [...new Set(data.map(t => t.team_id))];
       teamIds.forEach(id => joinRoom(`team:${id}`));
@@ -41,7 +45,18 @@ const TasksPage = () => {
   useRealtime('task.reassigned', handleTaskUpdate);
   useRealtime('task.locked', handleTaskUpdate);
 
-  if (loading) return <div>Loading tasks...</div>;
+  if (loading) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">Tasks</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
+          {[1,2,3,4,5,6].map(i => <div key={i} className="card skeleton" style={{ height: '160px' }}></div>)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

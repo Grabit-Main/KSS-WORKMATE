@@ -4,14 +4,18 @@ import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
 
 const DashboardPage = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => {
+    const cached = localStorage.getItem('cache_dashboard');
+    return cached ? JSON.parse(cached) : null;
+  });
+  const [loading, setLoading] = useState(() => !localStorage.getItem('cache_dashboard'));
   const { user } = useAuth();
 
   const loadData = async () => {
     try {
       const res = await getDailyAnalytics();
       setData(res);
+      localStorage.setItem('cache_dashboard', JSON.stringify(res));
     } catch (err) {
       console.error(err);
     } finally {
@@ -29,7 +33,17 @@ const DashboardPage = () => {
 
   useRealtime('analytics.refresh', handleRefresh);
 
-  if (loading) return <div>Loading dashboard...</div>;
+  if (loading) {
+    return (
+      <div>
+        <div className="skeleton skeleton-text" style={{ width: '250px', height: '28px', marginBottom: '24px' }}></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+          {[1,2,3,4].map(i => <div key={i} className="card skeleton" style={{ height: '100px' }}></div>)}
+        </div>
+        <div className="card skeleton" style={{ height: '120px' }}></div>
+      </div>
+    );
+  }
 
   const kpi = data?.kpi || { total_tasks: 0, completed: 0, in_progress: 0, blocked: 0 };
 
