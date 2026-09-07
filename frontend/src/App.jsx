@@ -39,19 +39,25 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => {
-  const [showSplash, setShowSplash] = useState(true);
+const AppContent = () => {
+  const { loading } = useAuth();
+  
+  if (loading) {
+    return <SplashScreen />;
+  }
+  
+  return (
+    <WebSocketProvider>
+      <AppRoutes />
+    </WebSocketProvider>
+  );
+};
 
+const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <WebSocketProvider>
-          {showSplash ? (
-            <SplashScreen onFinish={() => setShowSplash(false)} />
-          ) : (
-            <AppRoutes />
-          )}
-        </WebSocketProvider>
+        <AppContent />
       </AuthProvider>
     </BrowserRouter>
   );

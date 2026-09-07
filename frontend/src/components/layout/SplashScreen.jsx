@@ -1,20 +1,11 @@
 import React, { useEffect, useState } from 'react';
 
-export const SplashScreen = ({ onFinish }) => {
-  const [fade, setFade] = useState(false);
-
-  useEffect(() => {
-    // Show for 300ms, then fade out for 200ms
-    const t1 = setTimeout(() => setFade(true), 300);
-    const t2 = setTimeout(onFinish, 500);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [onFinish]);
-
+export const SplashScreen = () => {
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'var(--bg)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      zIndex: 9999, transition: 'opacity 0.5s', opacity: fade ? 0 : 1
+      zIndex: 9999
     }}>
       <img 
         src="/logo.webp" 
