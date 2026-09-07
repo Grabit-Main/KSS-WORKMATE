@@ -185,23 +185,7 @@ const LoginPage = () => {
           </div>
 
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label className="text-xs font-semibold text-secondary" style={{ display: 'block' }}>Password</label>
-              <button
-                type="button"
-                onClick={() => setShowForgot(true)}
-                className="text-xs font-medium"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--brand-600)',
-                  cursor: 'pointer',
-                  padding: 0
-                }}
-              >
-                Forgot password?
-              </button>
-            </div>
+            <label className="text-xs font-semibold text-secondary mb-1.5" style={{ display: 'block' }}>Password</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -236,6 +220,22 @@ const LoginPage = () => {
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="text-xs font-medium"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--brand-600)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+              >
+                Forgot password?
               </button>
             </div>
           </div>
