@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WebSocketProvider } from './context/WebSocketContext';
@@ -41,8 +41,16 @@ const AppRoutes = () => {
 
 const AppContent = () => {
   const { loading } = useAuth();
+  const [minSplashTimeDone, setMinSplashTimeDone] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinSplashTimeDone(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
   
-  if (loading) {
+  if (loading || !minSplashTimeDone) {
     return <SplashScreen />;
   }
   
