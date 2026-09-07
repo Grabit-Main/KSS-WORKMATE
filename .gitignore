@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+env/
+venv/
+.venv/
+
+# Env files
+.env
+*.env
+credentials.json
+token.json
+
+# Node
+node_modules/
+dist/
+build/
+
+# Vercel
+.vercel/
+
+# DB
+*.sqlite3
+
+# OS
+.DS_Store
+
+# Alembic (keep versions)
+backend/alembic/versions/*.pyc
+
+# IDE
+.idea/
+.vscode/
