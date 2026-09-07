@@ -46,6 +46,11 @@ def update_user(user_id: UUID, req: UserUpdate, db: Session = Depends(get_db), _
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
+    if user.role in ("CEO", "CTO") and req.is_active is False:
+        raise HTTPException(400, "CEO and CTO accounts cannot be disabled")
+    if req.email and req.email != user.email:
+        if db.query(User).filter(User.email == req.email, User.id != user_id).first():
+            raise HTTPException(400, "Email already registered")
     for field, val in req.model_dump(exclude_none=True).items():
         setattr(user, field, val)
     db.commit()
@@ -58,6 +63,8 @@ def delete_user(user_id: UUID, db: Session = Depends(get_db), _=Depends(require_
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
+    if user.role in ("CEO", "CTO"):
+        raise HTTPException(400, "CEO and CTO accounts cannot be deleted")
     db.delete(user)
     db.commit()
     return {"message": "User deleted"}

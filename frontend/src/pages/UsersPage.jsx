@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getUsers, createUser, updateUser, deactivateUser } from '../api/users';
-import { UserPlus, X, Trash2, Power } from 'lucide-react';
+import { UserPlus, X, Trash2, Power, Pencil } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const UsersPage = () => {
@@ -13,6 +13,14 @@ const UsersPage = () => {
   const [formData, setFormData] = useState({
     first_name: '', last_name: '', email: '', role: 'TM', password: ''
   });
+  
+  // Edit State
+  const [editingUser, setEditingUser] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    first_name: '', last_name: '', email: '', role: 'TM'
+  });
+  const [editLoading, setEditLoading] = useState(false);
+
   const { user: currentUser } = useAuth();
 
   const loadUsers = async () => {
@@ -43,7 +51,36 @@ const UsersPage = () => {
     }
   };
 
+  const handleOpenEdit = (u) => {
+    setEditingUser(u);
+    setEditFormData({
+      first_name: u.first_name,
+      last_name: u.last_name,
+      email: u.email,
+      role: u.role,
+    });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setEditLoading(true);
+    try {
+      await updateUser(editingUser.id, editFormData);
+      setEditingUser(null);
+      loadUsers();
+    } catch (err) {
+      alert('Failed to update user: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const handleToggleActive = async (u) => {
+    if (['CEO', 'CTO'].includes(u.role)) {
+      alert("CEO and CTO accounts cannot be disabled.");
+      return;
+    }
     if (u.id === currentUser?.id) {
       alert("You cannot disable your own account.");
       return;
@@ -57,13 +94,17 @@ const UsersPage = () => {
   };
 
   const handleDelete = async (u) => {
+    if (['CEO', 'CTO'].includes(u.role)) {
+      alert("CEO and CTO accounts cannot be deleted.");
+      return;
+    }
     if (u.id === currentUser?.id) {
       alert("You cannot delete your own account.");
       return;
     }
     if (window.confirm(`Are you sure you want to permanently delete ${u.first_name}?`)) {
       try {
-        await deactivateUser(u.id); // This now hits the hard delete backend endpoint
+        await deactivateUser(u.id);
         loadUsers();
       } catch (err) {
         alert('Failed to delete user: ' + (err.response?.data?.detail || err.message));
@@ -86,6 +127,7 @@ const UsersPage = () => {
                 <th style={{ padding: '12px 24px' }}>Email</th>
                 <th style={{ padding: '12px 24px' }}>Role</th>
                 <th style={{ padding: '12px 24px' }}>Status</th>
+                <th style={{ padding: '12px 24px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -95,6 +137,7 @@ const UsersPage = () => {
                   <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '180px' }}></div></td>
                   <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '60px' }}></div></td>
                   <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '80px' }}></div></td>
+                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '100px', marginLeft: 'auto' }}></div></td>
                 </tr>
               ))}
             </tbody>
@@ -121,7 +164,7 @@ const UsersPage = () => {
               <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>Email</th>
               <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>Role</th>
               <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>Status</th>
-              <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>Actions</th>
+              <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)', textAlign: 'right', minWidth: '220px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -146,20 +189,49 @@ const UsersPage = () => {
                   </span>
                 </td>
                 <td style={{ padding: '12px 24px', textAlign: 'right' }}>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    {/* Pencil Edit button for CEO, CTO, and other users */}
                     <button 
-                      onClick={() => handleToggleActive(u)}
+                      onClick={() => handleOpenEdit(u)}
                       className="btn-outline"
+                      title="Edit User"
                       style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
-                      <Power size={14} /> {u.is_active ? 'Disable' : 'Enable'}
+                      <Pencil size={14} /> Edit
                     </button>
-                    <button 
-                      onClick={() => handleDelete(u)}
-                      style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 500 }}
-                    >
-                      <Trash2 size={14} /> Delete
-                    </button>
+
+                    {/* Disable and Delete options MUST NOT be shown for CEO and CTO */}
+                    {!['CEO', 'CTO'].includes(u.role) && (
+                      <>
+                        <button 
+                          onClick={() => handleToggleActive(u)}
+                          className="btn-outline"
+                          title={u.is_active ? 'Disable' : 'Enable'}
+                          style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Power size={14} /> {u.is_active ? 'Disable' : 'Enable'}
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(u)}
+                          title="Delete"
+                          style={{ 
+                            padding: '6px 12px', 
+                            fontSize: '12px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '4px', 
+                            background: 'var(--status-blocked-bg)', 
+                            color: 'var(--status-blocked)', 
+                            border: 'none', 
+                            borderRadius: 'var(--radius-md)', 
+                            cursor: 'pointer', 
+                            fontWeight: 500 
+                          }}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -171,6 +243,7 @@ const UsersPage = () => {
         </table>
       </div>
 
+      {/* Add New User Modal */}
       {showModal && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100,
@@ -210,6 +283,55 @@ const UsersPage = () => {
                 <input required type="password" className="input" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
               </div>
               <button type="submit" className="btn btn-primary mt-2">Create User</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '24px' }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">Edit User</h3>
+              <button onClick={() => setEditingUser(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={20}/></button>
+            </div>
+            <form onSubmit={handleEditSubmit} className="flex-col gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">First Name</label>
+                  <input required className="input" value={editFormData.first_name} onChange={e => setEditFormData({...editFormData, first_name: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Last Name</label>
+                  <input required className="input" value={editFormData.last_name} onChange={e => setEditFormData({...editFormData, last_name: e.target.value})} />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Email</label>
+                <input required type="email" className="input" value={editFormData.email} onChange={e => setEditFormData({...editFormData, email: e.target.value})} />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Role</label>
+                <select 
+                  className="input" 
+                  value={editFormData.role} 
+                  onChange={e => setEditFormData({...editFormData, role: e.target.value})}
+                  disabled={editingUser.role === 'CEO'}
+                >
+                  <option value="CEO">CEO</option>
+                  <option value="CTO">CTO</option>
+                  <option value="PM">PM</option>
+                  <option value="TL">TL</option>
+                  <option value="TM">TM</option>
+                </select>
+              </div>
+              <button type="submit" className="btn btn-primary mt-2" disabled={editLoading}>
+                {editLoading ? 'Saving...' : 'Save Changes'}
+              </button>
             </form>
           </div>
         </div>
