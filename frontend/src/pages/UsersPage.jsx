@@ -3,7 +3,7 @@ import { getUsers, createUser, updateUser, deactivateUser } from '../api/users';
 import { UserPlus, X, Trash2, Power, Pencil } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const ROLE_ORDER = { CTO: 0, CEO: 1, PM: 2, TL: 3, TM: 4 };
+const ROLE_ORDER = { CTO: 0, CEO: 1, PM: 2, HR: 3, TL: 4, TM: 5 };
 
 const DEPARTMENTS = [
   'Frontend Developer',
@@ -12,6 +12,8 @@ const DEPARTMENTS = [
   'UI/UX Designer',
   'DevOPS Engineer',
   'QA Tester',
+  'Management',
+  'Talent Acquisition',
 ];
 
 const UsersPage = () => {
@@ -132,8 +134,8 @@ const UsersPage = () => {
     }
   };
 
-  // Roles available for new user creation: CTO, CEO, PM, TM (TL is assigned only by PM in project assignment)
-  const availableCreateRoles = ['CTO', 'CEO', 'PM', 'TM'].filter(
+  // Roles available for new user creation: CTO, CEO, PM, HR, TM (TL is assigned only by PM in project assignment)
+  const availableCreateRoles = ['CTO', 'CEO', 'PM', 'HR', 'TM'].filter(
     r => !['CEO', 'CTO'].includes(r) || !isSingletonRoleTaken(r)
   );
 
@@ -362,6 +364,7 @@ const UsersPage = () => {
                     CEO{isSingletonRoleTaken('CEO') && editingUser.role !== 'CEO' ? ' (Already exists)' : ''}
                   </option>
                   <option value="PM">PM</option>
+                  <option value="HR">HR</option>
                   <option value="TL" disabled={editingUser.role !== 'TL'}>
                     TL{editingUser.role !== 'TL' ? ' (Assigned by PM in Projects)' : ''}
                   </option>

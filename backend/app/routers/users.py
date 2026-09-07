@@ -10,8 +10,8 @@ from app.dependencies import get_current_user, require_ceo_cto
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
-# Hierarchy order for sorting: CTO, CEO, PM, TL, TM
-ROLE_ORDER = {"CTO": 0, "CEO": 1, "PM": 2, "TL": 3, "TM": 4}
+# Hierarchy order for sorting: CTO, CEO, PM, HR, TL, TM
+ROLE_ORDER = {"CTO": 0, "CEO": 1, "PM": 2, "HR": 3, "TL": 4, "TM": 5}
 
 # Roles where only one instance is allowed system-wide
 SINGLETON_ROLES = {"CEO", "CTO"}
@@ -20,7 +20,7 @@ SINGLETON_ROLES = {"CEO", "CTO"}
 @router.get("", response_model=List[UserResponse])
 def list_users(db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
     users = db.query(User).all()
-    # Sort by role hierarchy: CTO, CEO, PM, TL, TM
+    # Sort by role hierarchy: CTO, CEO, PM, HR, TL, TM
     users.sort(key=lambda u: ROLE_ORDER.get(u.role, 99))
     return users
 

@@ -11,9 +11,11 @@ DEPARTMENTS = [
     "UI/UX Designer",
     "DevOPS Engineer",
     "QA Tester",
+    "Management",
+    "Talent Acquisition",
 ]
 
-ROLES_ORDER = ["CTO", "CEO", "PM", "TL", "TM"]
+ROLES_ORDER = ["CTO", "CEO", "PM", "HR", "TL", "TM"]
 
 
 class UserCreate(BaseModel):
@@ -21,7 +23,7 @@ class UserCreate(BaseModel):
     password: str
     first_name: str
     last_name: str
-    role: str  # CEO, CTO, PM, TL, TM
+    role: str  # CEO, CTO, PM, HR, TL, TM
     department: Optional[str] = None
 
 

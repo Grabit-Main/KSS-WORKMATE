@@ -43,6 +43,6 @@ async def submit_review(req: ReviewCreate, db: Session = Depends(get_db), user: 
 
 @router.get("/user/{user_id}", response_model=List[ReviewResponse])
 def get_user_reviews(user_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    if user.role not in ("CEO", "CTO", "PM", "TL") and str(user.id) != str(user_id):
+    if user.role not in ("CEO", "CTO", "HR", "PM", "TL") and str(user.id) != str(user_id):
         raise HTTPException(403, "Access denied")
     return db.query(Review).filter(Review.reviewee_id == user_id).order_by(Review.created_at.desc()).all()

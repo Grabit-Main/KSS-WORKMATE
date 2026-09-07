@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models.task import Task
+from app.models.user import User
 from app.schemas.analytics import KPIData, UserAnalytics, AnalyticsResponse
 
 
@@ -39,6 +40,30 @@ def get_user_analytics(db: Session, user_id: str, period: str) -> AnalyticsRespo
     since = _since(period)
     tasks = db.query(Task).filter(Task.assigned_to == user_id, Task.created_at >= since).all()
     return AnalyticsResponse(period=period, kpi=_task_kpi(tasks))
+
+
+def get_organization_analytics(db: Session, period: str) -> AnalyticsResponse:
+    since = _since(period)
+    tasks = db.query(Task).filter(Task.created_at >= since).all()
+    overall_kpi = _task_kpi(tasks)
+
+    # Per-member performance breakdown
+    users = db.query(User).filter(User.is_active == True).all()
+    members_analytics = []
+    for u in users:
+        # Include all operational members (TM, TL, PM, etc.) who have tasks or are active developers
+        if u.role in ("TM", "TL", "PM"):
+            u_tasks = [t for t in tasks if str(t.assigned_to) == str(u.id)]
+            members_analytics.append(
+                UserAnalytics(
+                    user_id=str(u.id),
+                    user_name=f"{u.first_name} {u.last_name}",
+                    role=u.role,
+                    kpi=_task_kpi(u_tasks),
+                )
+            )
+
+    return AnalyticsResponse(period=period, kpi=overall_kpi, members=members_analytics)
 
 
 def _since(period: str) -> datetime:
