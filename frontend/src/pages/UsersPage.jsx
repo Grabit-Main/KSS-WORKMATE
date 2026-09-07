@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { getUsers, createUser, updateUser, deactivateUser } from '../api/users';
-import { UserPlus, X, Trash2, Power, Pencil } from 'lucide-react';
+import { UserPlus, X, Trash2, Power, Pencil, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const ROLE_ORDER = { CTO: 0, CEO: 1, PM: 2, HR: 3, TL: 4, TM: 5 };
 
-const DEPARTMENTS = [
+const DEFAULT_DEPARTMENTS = [
   'Frontend Developer',
   'Backend Developer',
   'Full Stack Developer',
@@ -14,6 +14,7 @@ const DEPARTMENTS = [
   'QA Tester',
   'Management',
   'Talent Acquisition',
+  'Generative AI',
 ];
 
 const UsersPage = () => {
@@ -27,6 +28,16 @@ const UsersPage = () => {
     first_name: '', last_name: '', email: '', role: 'TM', department: '', password: ''
   });
 
+  // Department State with custom departments support
+  const [departments, setDepartments] = useState(() => {
+    const saved = localStorage.getItem('custom_departments');
+    const custom = saved ? JSON.parse(saved) : [];
+    return Array.from(new Set([...DEFAULT_DEPARTMENTS, ...custom]));
+  });
+  const [showAddDeptCreate, setShowAddDeptCreate] = useState(false);
+  const [showAddDeptEdit, setShowAddDeptEdit] = useState(false);
+  const [newDeptName, setNewDeptName] = useState('');
+
   // Edit State
   const [editingUser, setEditingUser] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -39,10 +50,16 @@ const UsersPage = () => {
   const loadUsers = async () => {
     try {
       const data = await getUsers();
-      // Sort by hierarchy: CTO, CEO, PM, TL, TM
+      // Sort by hierarchy: CTO, CEO, PM, HR, TL, TM
       const sorted = [...data].sort((a, b) => (ROLE_ORDER[a.role] ?? 99) - (ROLE_ORDER[b.role] ?? 99));
       setUsers(sorted);
       localStorage.setItem('cache_users', JSON.stringify(sorted));
+
+      // Merge any existing user departments into the dropdown list
+      const userDepts = data.map(u => u.department).filter(Boolean);
+      if (userDepts.length > 0) {
+        setDepartments(prev => Array.from(new Set([...prev, ...userDepts])));
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -60,12 +77,32 @@ const UsersPage = () => {
     return users.some(u => u.role === role);
   };
 
+  const handleAddNewDept = (mode) => {
+    const trimmed = newDeptName.trim();
+    if (!trimmed) return;
+    if (!departments.includes(trimmed)) {
+      const updated = [...departments, trimmed];
+      setDepartments(updated);
+      const custom = updated.filter(d => !DEFAULT_DEPARTMENTS.includes(d));
+      localStorage.setItem('custom_departments', JSON.stringify(custom));
+    }
+    if (mode === 'create') {
+      setFormData(prev => ({ ...prev, department: trimmed }));
+      setShowAddDeptCreate(false);
+    } else if (mode === 'edit') {
+      setEditFormData(prev => ({ ...prev, department: trimmed }));
+      setShowAddDeptEdit(false);
+    }
+    setNewDeptName('');
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
       await createUser(formData);
       setShowModal(false);
       setFormData({ first_name: '', last_name: '', email: '', role: 'TM', department: '', password: '' });
+      setShowAddDeptCreate(false);
       loadUsers();
     } catch (err) {
       alert('Failed to create user: ' + (err.response?.data?.detail || err.message));
@@ -307,11 +344,87 @@ const UsersPage = () => {
                 )}
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">Department</label>
-                <select className="input" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})}>
-                  <option value="">— Select Department —</option>
-                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-sm font-medium">Department</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDeptCreate(!showAddDeptCreate)}
+                    style={{
+                      background: 'var(--brand-50)', color: 'var(--brand-700)',
+                      border: '1px solid var(--brand-200)', borderRadius: '4px',
+                      padding: '2px 8px', fontSize: '11px', fontWeight: 600,
+                      display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer'
+                    }}
+                    title="Add new department"
+                  >
+                    <Plus size={12} /> New Option
+                  </button>
+                </div>
+
+                {showAddDeptCreate && (
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                    <input
+                      type="text"
+                      className="input"
+                      style={{ fontSize: '13px', padding: '6px 10px' }}
+                      placeholder="Enter new department..."
+                      value={newDeptName}
+                      onChange={e => setNewDeptName(e.target.value)}
+                      autoFocus
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddNewDept('create');
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                      onClick={() => handleAddNewDept('create')}
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ padding: '6px 8px', fontSize: '12px' }}
+                      onClick={() => { setShowAddDeptCreate(false); setNewDeptName(''); }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select
+                    className="input"
+                    value={formData.department}
+                    onChange={e => {
+                      if (e.target.value === '__add_new__') {
+                        setShowAddDeptCreate(true);
+                      } else {
+                        setFormData({...formData, department: e.target.value});
+                      }
+                    }}
+                  >
+                    <option value="">— Select Department —</option>
+                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                    <option value="__add_new__" style={{ color: 'var(--brand-600)', fontWeight: 600 }}>
+                      + Add New Department...
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDeptCreate(true)}
+                    className="btn-outline"
+                    style={{ padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Add new department"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Password</label>
@@ -377,11 +490,87 @@ const UsersPage = () => {
                 )}
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">Department</label>
-                <select className="input" value={editFormData.department || ''} onChange={e => setEditFormData({...editFormData, department: e.target.value})}>
-                  <option value="">— Select Department —</option>
-                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-sm font-medium">Department</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDeptEdit(!showAddDeptEdit)}
+                    style={{
+                      background: 'var(--brand-50)', color: 'var(--brand-700)',
+                      border: '1px solid var(--brand-200)', borderRadius: '4px',
+                      padding: '2px 8px', fontSize: '11px', fontWeight: 600,
+                      display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer'
+                    }}
+                    title="Add new department"
+                  >
+                    <Plus size={12} /> New Option
+                  </button>
+                </div>
+
+                {showAddDeptEdit && (
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                    <input
+                      type="text"
+                      className="input"
+                      style={{ fontSize: '13px', padding: '6px 10px' }}
+                      placeholder="Enter new department..."
+                      value={newDeptName}
+                      onChange={e => setNewDeptName(e.target.value)}
+                      autoFocus
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddNewDept('edit');
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                      onClick={() => handleAddNewDept('edit')}
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ padding: '6px 8px', fontSize: '12px' }}
+                      onClick={() => { setShowAddDeptEdit(false); setNewDeptName(''); }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select
+                    className="input"
+                    value={editFormData.department || ''}
+                    onChange={e => {
+                      if (e.target.value === '__add_new__') {
+                        setShowAddDeptEdit(true);
+                      } else {
+                        setEditFormData({...editFormData, department: e.target.value});
+                      }
+                    }}
+                  >
+                    <option value="">— Select Department —</option>
+                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                    <option value="__add_new__" style={{ color: 'var(--brand-600)', fontWeight: 600 }}>
+                      + Add New Department...
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDeptEdit(true)}
+                    className="btn-outline"
+                    style={{ padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Add new department"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
               </div>
               <button type="submit" className="btn btn-primary mt-2" disabled={editLoading}>
                 {editLoading ? 'Saving...' : 'Save Changes'}

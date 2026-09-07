@@ -13,6 +13,7 @@ DEPARTMENTS = [
     "QA Tester",
     "Management",
     "Talent Acquisition",
+    "Generative AI",
 ]
 
 ROLES_ORDER = ["CTO", "CEO", "PM", "HR", "TL", "TM"]

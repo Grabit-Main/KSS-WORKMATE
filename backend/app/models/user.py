@@ -15,7 +15,7 @@ class User(Base):
     last_name = Column(String, nullable=False)
     # CEO, CTO, PM, HR, TL, TM
     role = Column(String, nullable=False)
-    # Frontend Developer, Backend Developer, Full Stack Developer, UI/UX Designer, DevOPS Engineer, QA Tester, Management, Talent Acquisition
+    # Frontend Developer, Backend Developer, Full Stack Developer, UI/UX Designer, DevOPS Engineer, QA Tester, Management, Talent Acquisition, Generative AI
     department = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
