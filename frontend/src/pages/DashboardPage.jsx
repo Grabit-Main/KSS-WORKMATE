@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { getDailyAnalytics, getWeeklyAnalytics, getMonthlyAnalytics } from '../api/analytics';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
-import { TrendingUp, Users } from 'lucide-react';
+import { TrendingUp, Users, CheckCircle2, Clock, AlertCircle, CheckSquare } from 'lucide-react';
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -57,12 +57,12 @@ const DashboardPage = () => {
 
   if (loading && !data) {
     return (
-      <div>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         <div className="skeleton skeleton-text" style={{ width: '250px', height: '28px', marginBottom: '24px' }}></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-          {[1, 2, 3, 4].map(i => <div key={i} className="card skeleton" style={{ height: '100px' }}></div>)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+          {[1, 2, 3, 4].map(i => <div key={i} className="card skeleton" style={{ height: '110px' }}></div>)}
         </div>
-        <div className="card skeleton" style={{ height: '120px' }}></div>
+        <div className="card skeleton" style={{ height: '140px' }}></div>
       </div>
     );
   }
@@ -119,7 +119,7 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Apple-grade KPI Widgets */}
+      {/* KPI Widgets */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
         <div className="card" style={{
           position: 'relative',
@@ -137,8 +137,8 @@ const DashboardPage = () => {
               </div>
             </div>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '38px',
+              height: '38px',
               borderRadius: 'var(--radius-sm)',
               background: 'var(--brand-100)',
               color: 'var(--brand-600)',
@@ -146,7 +146,7 @@ const DashboardPage = () => {
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <TrendingUp size={20} />
+              <CheckSquare size={19} strokeWidth={2} />
             </div>
           </div>
           <div className="text-xs text-secondary mt-2">Active workload volume</div>
@@ -168,17 +168,16 @@ const DashboardPage = () => {
               </div>
             </div>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '38px',
+              height: '38px',
               borderRadius: 'var(--radius-sm)',
               background: 'var(--status-completed-bg)',
               color: 'var(--status-completed)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold'
+              justifyContent: 'center'
             }}>
-              ✓
+              <CheckCircle2 size={19} strokeWidth={2} />
             </div>
           </div>
           <div className="text-xs text-secondary mt-2">Successfully closed</div>
@@ -200,17 +199,16 @@ const DashboardPage = () => {
               </div>
             </div>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '38px',
+              height: '38px',
               borderRadius: 'var(--radius-sm)',
               background: 'var(--status-in-progress-bg)',
               color: 'var(--status-in-progress)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold'
+              justifyContent: 'center'
             }}>
-              ⏳
+              <Clock size={19} strokeWidth={2} />
             </div>
           </div>
           <div className="text-xs text-secondary mt-2">Currently being executed</div>
@@ -232,17 +230,16 @@ const DashboardPage = () => {
               </div>
             </div>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '38px',
+              height: '38px',
               borderRadius: 'var(--radius-sm)',
               background: 'var(--status-blocked-bg)',
               color: 'var(--status-blocked)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold'
+              justifyContent: 'center'
             }}>
-              !
+              <AlertCircle size={19} strokeWidth={2} />
             </div>
           </div>
           <div className="text-xs text-secondary mt-2">Action required / impediment</div>

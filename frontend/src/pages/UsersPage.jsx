@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getUsers, createUser, updateUser, deactivateUser } from '../api/users';
-import { UserPlus, X, Trash2, Power, Pencil } from 'lucide-react';
+import { UserPlus, X, Trash2, Power, Pencil, AlertCircle, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const ROLE_ORDER = { CTO: 0, CEO: 1, PM: 2, HR: 3, TL: 4, TM: 5 };
@@ -333,14 +333,14 @@ const UsersPage = () => {
                     </span>
                   </td>
                   <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
                       <button
                         onClick={() => handleOpenEdit(u)}
-                        className="btn-outline"
+                        className="btn-ghost"
                         title="Edit User"
-                        style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', borderRadius: 'var(--radius-sm)' }}
+                        style={{ padding: '6px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', borderRadius: 'var(--radius-sm)' }}
                       >
-                        <Pencil size={13} /> Edit
+                        <Pencil size={13} strokeWidth={1.8} /> Edit
                       </button>
 
                       {/* Disable and Delete not shown for CEO and CTO */}
@@ -348,10 +348,10 @@ const UsersPage = () => {
                         <>
                           <button
                             onClick={() => handleToggleActive(u)}
-                            className="btn-outline"
+                            className="btn-ghost"
                             title={u.is_active ? 'Disable Account' : 'Enable Account'}
                             style={{
-                              padding: '6px 12px',
+                              padding: '6px 10px',
                               fontSize: '12px',
                               display: 'flex',
                               alignItems: 'center',
@@ -360,27 +360,23 @@ const UsersPage = () => {
                               color: u.is_active ? 'var(--text-secondary)' : 'var(--status-completed)'
                             }}
                           >
-                            <Power size={13} /> {u.is_active ? 'Disable' : 'Enable'}
+                            <Power size={13} strokeWidth={1.8} /> {u.is_active ? 'Disable' : 'Enable'}
                           </button>
                           <button
                             onClick={() => handleDelete(u)}
                             title="Delete User"
+                            className="btn-ghost"
                             style={{
-                              padding: '6px 12px',
+                              padding: '6px 10px',
                               fontSize: '12px',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '5px',
-                              background: 'var(--status-blocked-bg)',
                               color: 'var(--status-blocked)',
-                              border: '1px solid rgba(239, 68, 68, 0.2)',
-                              borderRadius: 'var(--radius-sm)',
-                              cursor: 'pointer',
-                              fontWeight: 600,
-                              transition: 'all var(--transition-fast)'
+                              borderRadius: 'var(--radius-sm)'
                             }}
                           >
-                            <Trash2 size={13} /> Delete
+                            <Trash2 size={13} strokeWidth={1.8} /> Delete
                           </button>
                         </>
                       )}
@@ -473,8 +469,8 @@ const UsersPage = () => {
                   ))}
                 </select>
                 {['CEO', 'CTO'].includes(formData.role) && isSingletonRoleTaken(formData.role) && (
-                  <p style={{ color: 'var(--status-blocked)', fontSize: '12px', marginTop: '5px' }}>
-                    ⚠️ A {formData.role} already exists in the organization.
+                  <p style={{ color: 'var(--status-blocked)', fontSize: '12px', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <AlertCircle size={14} strokeWidth={2} /> A {formData.role} already exists in the organization.
                   </p>
                 )}
               </div>
@@ -642,8 +638,8 @@ const UsersPage = () => {
                   <option value="TM">TM</option>
                 </select>
                 {['CEO', 'CTO'].includes(editingUser.role) && (
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '5px' }}>
-                    ℹ️ {editingUser.role} role cannot be altered.
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Info size={14} strokeWidth={2} /> {editingUser.role} role cannot be altered.
                   </p>
                 )}
               </div>

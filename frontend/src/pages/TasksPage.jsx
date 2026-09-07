@@ -3,7 +3,7 @@ import { getTasks } from '../api/tasks';
 import { useRealtime } from '../realtime/useRealtime';
 import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
-import { Plus } from 'lucide-react';
+import { Plus, Clock, ArrowRight, CheckSquare } from 'lucide-react';
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState(() => {
@@ -35,8 +35,6 @@ const TasksPage = () => {
 
   // Real-time handlers
   const handleTaskUpdate = useCallback((eventData) => {
-    // Ponytail: instead of complex state merging, just refetch on any event to ensure consistency.
-    // It's lazier and less error-prone for a small-medium app.
     loadTasks();
   }, []);
 
@@ -101,8 +99,9 @@ const TasksPage = () => {
                 }}>
                   {task.status.replace('_', ' ').toUpperCase()}
                 </span>
-                <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span>⏳</span> {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Clock size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
+                  {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 </span>
               </div>
               <h3 className="font-bold text-base mb-1.5" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
@@ -146,13 +145,15 @@ const TasksPage = () => {
                   {task.assignee?.first_name} {task.assignee?.last_name}
                 </span>
               </div>
-              <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600 }}>Details →</span>
+              <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                Details <ArrowRight size={12} strokeWidth={2} />
+              </span>
             </div>
           </div>
         ))}
         {tasks.length === 0 && (
           <div className="card" style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>📋</div>
+            <CheckSquare size={32} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
             <h4 className="font-bold text-base mb-1">No Tasks Found</h4>
             <p className="text-secondary text-sm">You have no tasks assigned in this workspace.</p>
           </div>

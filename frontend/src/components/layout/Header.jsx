@@ -68,52 +68,49 @@ export const Header = ({ title }) => {
         {title || 'Dashboard'}
       </h1>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div ref={menuRef} style={{ position: 'relative' }}>
           <button 
             onClick={() => setShowMenu(!showMenu)}
             style={{ 
-              background: showMenu ? 'var(--brand-50)' : 'var(--subtle)',
-              border: '1px solid var(--border)',
+              background: showMenu ? 'var(--brand-50)' : 'transparent',
+              border: 'none',
               color: showMenu ? 'var(--brand-600)' : 'var(--text-secondary)',
               position: 'relative',
               cursor: 'pointer',
-              padding: '10px',
-              borderRadius: 'var(--radius-sm)',
+              padding: '8px',
+              borderRadius: 'var(--radius-full)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'all var(--transition-fast)'
             }}
             onMouseEnter={(e) => {
-              if (!showMenu) e.currentTarget.style.background = 'var(--hover)';
+              if (!showMenu) {
+                e.currentTarget.style.background = 'var(--subtle)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }
             }}
             onMouseLeave={(e) => {
-              if (!showMenu) e.currentTarget.style.background = 'var(--subtle)';
+              if (!showMenu) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }
             }}
             aria-label="Notifications"
           >
-            <Bell size={19} />
+            <Bell size={20} strokeWidth={1.8} />
             {unreadCount > 0 && (
               <span style={{
                 position: 'absolute',
-                top: '-4px',
-                right: '-4px',
-                minWidth: '18px',
-                height: '18px',
-                background: 'var(--status-blocked)',
+                top: '6px',
+                right: '6px',
+                width: '8px',
+                height: '8px',
+                background: 'var(--brand-500)',
                 borderRadius: 'var(--radius-full)',
-                color: 'white',
-                fontSize: '11px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 700,
-                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4)',
-                padding: '0 4px'
-              }}>
-                {unreadCount}
-              </span>
+                boxShadow: '0 0 0 2px var(--surface)'
+              }} />
             )}
           </button>
 
@@ -166,8 +163,8 @@ export const Header = ({ title }) => {
               </div>
               <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
                 {notifications.length === 0 ? (
-                  <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '14px' }}>
-                    <div style={{ marginBottom: '8px', fontSize: '24px' }}>🔔</div>
+                  <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    <Bell size={24} strokeWidth={1.5} style={{ margin: '0 auto 8px', display: 'block', color: 'var(--text-tertiary)' }} />
                     No notifications yet
                   </div>
                 ) : (
@@ -213,16 +210,14 @@ export const Header = ({ title }) => {
           )}
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {user && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              padding: '6px 14px 6px 8px',
-              background: 'var(--subtle)',
-              borderRadius: 'var(--radius-full)',
-              border: '1px solid var(--border)'
+              padding: '4px 10px 4px 4px',
+              borderRadius: 'var(--radius-full)'
             }}>
               <div style={{
                 width: '32px',
@@ -234,7 +229,7 @@ export const Header = ({ title }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 700,
-                fontSize: '13px',
+                fontSize: '12px',
                 boxShadow: '0 2px 6px rgba(99, 102, 241, 0.25)'
               }}>
                 {user.first_name?.[0]}{user.last_name?.[0]}
@@ -255,29 +250,27 @@ export const Header = ({ title }) => {
             title="Sign out"
             aria-label="Logout"
             style={{
-              background: 'var(--subtle)', 
-              border: '1px solid var(--border)', 
+              background: 'transparent', 
+              border: 'none', 
               color: 'var(--text-secondary)',
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
               cursor: 'pointer',
-              padding: '9px',
-              borderRadius: 'var(--radius-sm)',
+              padding: '8px',
+              borderRadius: 'var(--radius-full)',
               transition: 'all var(--transition-fast)'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--status-blocked-bg)';
               e.currentTarget.style.color = 'var(--status-blocked)';
-              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'var(--subtle)';
+              e.currentTarget.style.background = 'transparent';
               e.currentTarget.style.color = 'var(--text-secondary)';
-              e.currentTarget.style.borderColor = 'var(--border)';
             }}
           >
-            <LogOut size={18} />
+            <LogOut size={19} strokeWidth={1.8} />
           </button>
         </div>
       </div>

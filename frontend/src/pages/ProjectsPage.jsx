@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { getProjects } from '../api/projects';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
-import { Plus } from 'lucide-react';
+import { Plus, Calendar, ArrowRight, FolderKanban } from 'lucide-react';
 
 const ProjectsPage = () => {
   const [projects, setProjects] = useState(() => {
@@ -92,8 +92,9 @@ const ProjectsPage = () => {
                 }}>
                   {p.status?.toUpperCase() || 'ACTIVE'}
                 </span>
-                <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span>📅</span> {new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
+                  {new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               </div>
               <h3 className="font-bold text-base mb-2" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
@@ -111,13 +112,13 @@ const ProjectsPage = () => {
             </div>
             <div style={{ paddingTop: '16px', marginTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="text-xs text-secondary font-medium">Click to view overview</span>
-              <span style={{ fontSize: '13px', color: 'var(--brand-600)', fontWeight: 600 }}>→</span>
+              <ArrowRight size={14} strokeWidth={2} style={{ color: 'var(--brand-600)' }} />
             </div>
           </div>
         ))}
         {projects.length === 0 && (
           <div className="card" style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>📁</div>
+            <FolderKanban size={32} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
             <h4 className="font-bold text-base mb-1">No Projects Yet</h4>
             <p className="text-secondary text-sm">Create a new project to get started with task planning.</p>
           </div>

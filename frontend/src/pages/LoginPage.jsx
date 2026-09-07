@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { X } from 'lucide-react';
+import { X, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
 import { SplashScreen } from '../components/layout/SplashScreen';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showFpPass, setShowFpPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -145,15 +147,12 @@ const LoginPage = () => {
               width: '100%',
               maxHeight: '60px',
               objectFit: 'contain',
-              margin: '0 auto 16px',
+              margin: '0 auto 12px',
               display: 'block',
               filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.04))'
             }}
           />
-          <h2 className="text-xl font-bold" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-            Welcome to Workmate
-          </h2>
-          <p className="text-secondary text-sm mt-1">Sign in with your organization credentials</p>
+          <p className="text-secondary text-sm">Sign in with your organization credentials</p>
         </div>
 
         {error && (
@@ -173,11 +172,11 @@ const LoginPage = () => {
 
         <form onSubmit={handleSubmit} className="flex-col gap-4">
           <div>
-            <label className="text-xs font-semibold text-secondary mb-1.5" style={{ display: 'block' }}>Email Address</label>
+            <label className="text-xs font-semibold text-secondary mb-1.5" style={{ display: 'block' }}>Email</label>
             <input
               type="email"
               className="input"
-              placeholder="name@kalpanaaasoftwaresolutions.in"
+              placeholder="Enter Your Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onFocus={() => api.get('/auth/warmup').catch(() => { })}
@@ -203,15 +202,42 @@ const LoginPage = () => {
                 Forgot password?
               </button>
             </div>
-            <input
-              type="password"
-              className="input"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onFocus={() => api.get('/auth/warmup').catch(() => { })}
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="input"
+                placeholder="Enter Your Password"
+                style={{ paddingRight: '42px' }}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => api.get('/auth/warmup').catch(() => { })}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '4px',
+                  cursor: 'pointer',
+                  color: 'var(--text-tertiary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'color var(--transition-fast)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <button
@@ -223,7 +249,7 @@ const LoginPage = () => {
             {loading ? (
               <div className="dots-loader"><span></span><span></span><span></span></div>
             ) : (
-              'Sign in to Workspace'
+              'Sign in'
             )}
           </button>
         </form>
@@ -328,11 +354,51 @@ const LoginPage = () => {
                   <>
                     <div>
                       <label className="text-xs font-semibold text-secondary mb-1.5 block">New Password</label>
-                      <input required type="password" className="input" placeholder="••••••••" value={fpNewPass} onChange={e => setFpNewPass(e.target.value)} disabled={fpLoading} />
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          required
+                          type={showFpPass ? 'text' : 'password'}
+                          className="input"
+                          placeholder="Enter New Password"
+                          style={{ paddingRight: '42px' }}
+                          value={fpNewPass}
+                          onChange={e => setFpNewPass(e.target.value)}
+                          disabled={fpLoading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowFpPass(!showFpPass)}
+                          style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'transparent',
+                            border: 'none',
+                            padding: '4px',
+                            cursor: 'pointer',
+                            color: 'var(--text-tertiary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          aria-label={showFpPass ? "Hide password" : "Show password"}
+                        >
+                          {showFpPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-secondary mb-1.5 block">Confirm New Password</label>
-                      <input required type="password" className="input" placeholder="••••••••" value={fpConfirmPass} onChange={e => setFpConfirmPass(e.target.value)} disabled={fpLoading} />
+                      <input
+                        required
+                        type={showFpPass ? 'text' : 'password'}
+                        className="input"
+                        placeholder="Confirm New Password"
+                        value={fpConfirmPass}
+                        onChange={e => setFpConfirmPass(e.target.value)}
+                        disabled={fpLoading}
+                      />
                     </div>
                     <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
                       {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Update Password'}

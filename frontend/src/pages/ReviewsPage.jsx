@@ -112,7 +112,7 @@ const ReviewsPage = () => {
         ))}
         {reviews.length === 0 && (
           <div className="card" style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>⭐</div>
+            <Star size={32} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
             <h4 className="font-bold text-base mb-1">No Reviews Yet</h4>
             <p className="text-secondary text-sm">Performance feedback records will be listed here after task evaluations.</p>
           </div>
