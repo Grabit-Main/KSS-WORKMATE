@@ -4,9 +4,9 @@ export const SplashScreen = ({ onFinish }) => {
   const [fade, setFade] = useState(false);
 
   useEffect(() => {
-    // Show for 1.5s, then fade out for 0.5s
-    const t1 = setTimeout(() => setFade(true), 1500);
-    const t2 = setTimeout(onFinish, 2000);
+    // Show for 300ms, then fade out for 200ms
+    const t1 = setTimeout(() => setFade(true), 300);
+    const t2 = setTimeout(onFinish, 500);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [onFinish]);
 
@@ -18,11 +18,9 @@ export const SplashScreen = ({ onFinish }) => {
     }}>
       <img 
         src="/logo.webp" 
-        alt="Workmate" 
-        style={{ height: '80px', marginBottom: '24px', animation: 'pulse 2s infinite' }} 
+        alt="Logo" 
+        style={{ height: '140px', animation: 'pulse 1s infinite' }} 
       />
-      <h1 className="font-bold text-2xl" style={{ color: 'var(--brand-600)' }}>Workmate</h1>
-      <p className="text-secondary mt-2">Work Together. Grow Further.</p>
       
       <style>{`
         @keyframes pulse {

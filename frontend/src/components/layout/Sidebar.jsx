@@ -29,9 +29,8 @@ export const Sidebar = () => {
       position: 'sticky',
       top: 0
     }}>
-      <div style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <img src="/logo.webp" alt="Workmate" style={{ height: '32px' }} />
-        <span className="font-bold text-lg" style={{ color: 'var(--brand-600)' }}>Workmate</span>
+      <div style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src="/logo.webp" alt="Logo" style={{ height: '64px' }} />
       </div>
       
       <nav style={{ flex: 1, padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
