@@ -124,20 +124,48 @@ const LoginPage = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'var(--bg)',
+      background: 'var(--bg-gradient)',
       padding: '24px'
     }}>
-      <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '32px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img src="/logo.webp" alt="Logo" style={{ maxWidth: '240px', width: '100%', maxHeight: '65px', objectFit: 'contain', margin: '0 auto 16px', display: 'block' }} />
-
-          <p className="text-secondary mt-1">Sign in to your account</p>
+      <div className="card modal-animate" style={{
+        maxWidth: '420px',
+        width: '100%',
+        padding: '36px',
+        borderRadius: 'var(--radius-xl)',
+        boxShadow: 'var(--shadow-float)',
+        border: '1px solid var(--border)',
+        background: 'var(--surface)'
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <img
+            src="/logo.webp"
+            alt="Logo"
+            style={{
+              maxWidth: '220px',
+              width: '100%',
+              maxHeight: '60px',
+              objectFit: 'contain',
+              margin: '0 auto 16px',
+              display: 'block',
+              filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.04))'
+            }}
+          />
+          <h2 className="text-xl font-bold" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            Welcome to Workmate
+          </h2>
+          <p className="text-secondary text-sm mt-1">Sign in with your organization credentials</p>
         </div>
 
         {error && (
           <div style={{
-            padding: '12px', background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)',
-            borderRadius: 'var(--radius-md)', marginBottom: '24px', fontSize: '14px'
+            padding: '12px 16px',
+            background: 'var(--status-blocked-bg)',
+            color: 'var(--status-blocked)',
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: '24px',
+            fontSize: '13px',
+            fontWeight: 500,
+            border: '1px solid rgba(239, 68, 68, 0.2)'
           }}>
             {error}
           </div>
@@ -145,10 +173,11 @@ const LoginPage = () => {
 
         <form onSubmit={handleSubmit} className="flex-col gap-4">
           <div>
-            <label className="font-medium text-sm mb-1" style={{ display: 'block' }}>Email</label>
+            <label className="text-xs font-semibold text-secondary mb-1.5" style={{ display: 'block' }}>Email Address</label>
             <input
               type="email"
               className="input"
+              placeholder="name@kalpanaaasoftwaresolutions.in"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onFocus={() => api.get('/auth/warmup').catch(() => { })}
@@ -157,32 +186,44 @@ const LoginPage = () => {
           </div>
 
           <div>
-            <label className="font-medium text-sm mb-1" style={{ display: 'block' }}>Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label className="text-xs font-semibold text-secondary" style={{ display: 'block' }}>Password</label>
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="text-xs font-medium"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--brand-600)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+              >
+                Forgot password?
+              </button>
+            </div>
             <input
               type="password"
               className="input"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onFocus={() => api.get('/auth/warmup').catch(() => { })}
               required
             />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-              <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-secondary btn-outline" style={{ border: 'none', padding: 0 }}>
-                Forgot password?
-              </button>
-            </div>
           </div>
 
           <button
             type="submit"
             className="btn btn-primary w-full mt-2"
-            style={{ padding: '12px', gap: '8px' }}
+            style={{ padding: '12px', borderRadius: 'var(--radius-sm)' }}
             disabled={loading}
           >
             {loading ? (
               <div className="dots-loader"><span></span><span></span><span></span></div>
             ) : (
-              'Sign in'
+              'Sign in to Workspace'
             )}
           </button>
         </form>
@@ -190,22 +231,56 @@ const LoginPage = () => {
 
       {showForgot && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(12px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '24px' }}>
+          <div className="card modal-animate" style={{
+            width: '100%',
+            maxWidth: '420px',
+            padding: '28px',
+            borderRadius: 'var(--radius-xl)',
+            boxShadow: 'var(--shadow-float)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)'
+          }}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">Reset Password</h3>
-              <button onClick={closeForgot} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
+              <div>
+                <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em' }}>Reset Password</h3>
+                <p className="text-xs text-secondary mt-0.5">We'll help you regain account access</p>
+              </div>
+              <button
+                onClick={closeForgot}
+                style={{
+                  background: 'var(--subtle)',
+                  border: '1px solid var(--border)',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: 'var(--radius-full)',
+                  color: 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
             </div>
 
             {fpError && (
-              <div style={{ padding: '12px', background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)', borderRadius: 'var(--radius-md)', marginBottom: '16px', fontSize: '14px' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)', borderRadius: 'var(--radius-sm)', marginBottom: '16px', fontSize: '13px' }}>
                 {fpError}
               </div>
             )}
             {fpMessage && (
-              <div style={{ padding: '12px', background: 'var(--status-completed-bg)', color: 'var(--status-completed)', borderRadius: 'var(--radius-md)', marginBottom: '16px', fontSize: '14px' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--status-completed-bg)', color: 'var(--status-completed)', borderRadius: 'var(--radius-sm)', marginBottom: '16px', fontSize: '13px' }}>
                 {fpMessage}
               </div>
             )}
@@ -214,20 +289,20 @@ const LoginPage = () => {
               <form onSubmit={handleForgotSubmit} className="flex-col gap-4">
                 {forgotStep === 1 && (
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Enter your email</label>
-                    <input required type="email" className="input" value={fpEmail} onChange={e => setFpEmail(e.target.value)} disabled={fpLoading} />
+                    <label className="text-xs font-semibold text-secondary mb-1.5 block">Enter your registered email</label>
+                    <input required type="email" className="input" placeholder="name@kalpanaaasoftwaresolutions.in" value={fpEmail} onChange={e => setFpEmail(e.target.value)} disabled={fpLoading} />
                     <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
-                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Send OTP'}
+                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Send Reset Code'}
                     </button>
                   </div>
                 )}
 
                 {forgotStep === 2 && (
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Enter 6-digit OTP from your email</label>
-                    <input required className="input" value={fpOtp} onChange={e => setFpOtp(e.target.value)} maxLength={6} disabled={fpLoading} />
+                    <label className="text-xs font-semibold text-secondary mb-1.5 block">Enter 6-digit OTP code sent to your email</label>
+                    <input required className="input" placeholder="123456" style={{ letterSpacing: '4px', textAlign: 'center', fontSize: '18px', fontWeight: 700 }} value={fpOtp} onChange={e => setFpOtp(e.target.value)} maxLength={6} disabled={fpLoading} />
                     <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
-                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Verify OTP'}
+                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Verify Code'}
                     </button>
                     <div style={{ textAlign: 'center', marginTop: '16px' }}>
                       <button
@@ -235,13 +310,15 @@ const LoginPage = () => {
                         onClick={handleResend}
                         disabled={fpLoading || resendTimer > 0}
                         style={{
-                          background: 'none', border: 'none',
+                          background: 'none',
+                          border: 'none',
                           color: (fpLoading || resendTimer > 0) ? 'var(--text-disabled)' : 'var(--brand-600)',
-                          fontSize: '14px', cursor: (fpLoading || resendTimer > 0) ? 'not-allowed' : 'pointer',
+                          fontSize: '13px',
+                          cursor: (fpLoading || resendTimer > 0) ? 'not-allowed' : 'pointer',
                           fontWeight: 500
                         }}
                       >
-                        {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+                        {resendTimer > 0 ? `Resend code in ${resendTimer}s` : 'Resend code'}
                       </button>
                     </div>
                   </div>
@@ -250,15 +327,15 @@ const LoginPage = () => {
                 {forgotStep === 3 && (
                   <>
                     <div>
-                      <label className="text-sm font-medium mb-1 block">New Password</label>
-                      <input required type="password" className="input" value={fpNewPass} onChange={e => setFpNewPass(e.target.value)} disabled={fpLoading} />
+                      <label className="text-xs font-semibold text-secondary mb-1.5 block">New Password</label>
+                      <input required type="password" className="input" placeholder="••••••••" value={fpNewPass} onChange={e => setFpNewPass(e.target.value)} disabled={fpLoading} />
                     </div>
                     <div>
-                      <label className="text-sm font-medium mb-1 block">Confirm Password</label>
-                      <input required type="password" className="input" value={fpConfirmPass} onChange={e => setFpConfirmPass(e.target.value)} disabled={fpLoading} />
+                      <label className="text-xs font-semibold text-secondary mb-1.5 block">Confirm New Password</label>
+                      <input required type="password" className="input" placeholder="••••••••" value={fpConfirmPass} onChange={e => setFpConfirmPass(e.target.value)} disabled={fpLoading} />
                     </div>
                     <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
-                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Reset Password'}
+                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Update Password'}
                     </button>
                   </>
                 )}

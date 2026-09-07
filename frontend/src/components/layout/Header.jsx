@@ -51,7 +51,9 @@ export const Header = ({ title }) => {
   return (
     <header style={{
       height: '72px',
-      background: 'var(--surface)',
+      background: 'var(--surface-glass)',
+      backdropFilter: 'blur(24px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(24px) saturate(180%)',
       borderBottom: '1px solid var(--border)',
       display: 'flex',
       alignItems: 'center',
@@ -59,25 +61,56 @@ export const Header = ({ title }) => {
       padding: '0 32px',
       position: 'sticky',
       top: 0,
-      zIndex: 10
+      zIndex: 15,
+      transition: 'all var(--transition-smooth)'
     }}>
-      <h1 className="font-bold text-xl">{title || 'Dashboard'}</h1>
+      <h1 className="font-bold text-xl" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+        {title || 'Dashboard'}
+      </h1>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
         <div ref={menuRef} style={{ position: 'relative' }}>
           <button 
             onClick={() => setShowMenu(!showMenu)}
             style={{ 
-              background: 'transparent', border: 'none', color: 'var(--text-secondary)',
-              position: 'relative', cursor: 'pointer', padding: '4px'
+              background: showMenu ? 'var(--brand-50)' : 'var(--subtle)',
+              border: '1px solid var(--border)',
+              color: showMenu ? 'var(--brand-600)' : 'var(--text-secondary)',
+              position: 'relative',
+              cursor: 'pointer',
+              padding: '10px',
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all var(--transition-fast)'
             }}
+            onMouseEnter={(e) => {
+              if (!showMenu) e.currentTarget.style.background = 'var(--hover)';
+            }}
+            onMouseLeave={(e) => {
+              if (!showMenu) e.currentTarget.style.background = 'var(--subtle)';
+            }}
+            aria-label="Notifications"
           >
-            <Bell size={20} />
+            <Bell size={19} />
             {unreadCount > 0 && (
               <span style={{
-                position: 'absolute', top: 0, right: 0, width: '16px', height: '16px',
-                background: 'var(--brand-500)', borderRadius: '50%', color: 'white',
-                fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                minWidth: '18px',
+                height: '18px',
+                background: 'var(--status-blocked)',
+                borderRadius: 'var(--radius-full)',
+                color: 'white',
+                fontSize: '11px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4)',
+                padding: '0 4px'
               }}>
                 {unreadCount}
               </span>
@@ -85,38 +118,91 @@ export const Header = ({ title }) => {
           </button>
 
           {showMenu && (
-            <div className="card" style={{
-              position: 'absolute', top: '100%', right: 0, width: '320px', 
-              marginTop: '12px', padding: 0, overflow: 'hidden',
-              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+            <div className="card modal-animate" style={{
+              position: 'absolute',
+              top: 'calc(100% + 10px)',
+              right: 0,
+              width: '340px',
+              padding: 0,
+              overflow: 'hidden',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-float)',
+              border: '1px solid var(--border)',
+              zIndex: 100,
+              background: 'var(--surface)'
             }}>
-              <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 className="font-bold text-sm">Notifications</h3>
+              <div style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'var(--subtle-glass)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 className="font-bold text-sm">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <span style={{
+                      fontSize: '11px',
+                      background: 'var(--brand-100)',
+                      color: 'var(--brand-700)',
+                      padding: '1px 8px',
+                      borderRadius: 'var(--radius-full)',
+                      fontWeight: 600
+                    }}>
+                      {unreadCount} new
+                    </span>
+                  )}
+                </div>
                 {unreadCount > 0 && (
-                  <button onClick={handleMarkAllRead} className="text-xs font-medium text-brand-600" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                    Mark all as read
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="text-xs font-semibold text-brand-600"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand-600)' }}
+                  >
+                    Mark all read
                   </button>
                 )}
               </div>
-              <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+              <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
                 {notifications.length === 0 ? (
-                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '14px' }}>
-                    No notifications
+                  <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    <div style={{ marginBottom: '8px', fontSize: '24px' }}>🔔</div>
+                    No notifications yet
                   </div>
                 ) : (
                   notifications.map(n => (
                     <div key={n.id} style={{ 
-                      padding: '16px', borderBottom: '1px solid var(--border)',
+                      padding: '14px 18px',
+                      borderBottom: '1px solid var(--border)',
                       background: n.is_read ? 'transparent' : 'var(--brand-50)',
-                      display: 'flex', gap: '12px', alignItems: 'flex-start'
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'flex-start',
+                      transition: 'background var(--transition-fast)'
                     }}>
                       <div style={{ flex: 1 }}>
-                        <div className="font-medium text-sm mb-1">{n.title}</div>
-                        <div className="text-xs text-secondary">{n.content}</div>
+                        <div className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>{n.title}</div>
+                        <div className="text-xs text-secondary" style={{ lineHeight: 1.4 }}>{n.content}</div>
                       </div>
                       {!n.is_read && (
-                        <button onClick={() => handleMarkRead(n.id)} style={{ background: 'none', border: 'none', color: 'var(--brand-600)', cursor: 'pointer', padding: 4 }}>
-                          <Check size={14} />
+                        <button
+                          onClick={() => handleMarkRead(n.id)}
+                          style={{
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            color: 'var(--brand-600)',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRadius: 'var(--radius-xs)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: 'var(--shadow-subtle)'
+                          }}
+                          title="Mark as read"
+                        >
+                          <Check size={13} />
                         </button>
                       )}
                     </div>
@@ -127,50 +213,71 @@ export const Header = ({ title }) => {
           )}
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           {user && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '6px 14px 6px 8px',
+              background: 'var(--subtle)',
+              borderRadius: 'var(--radius-full)',
+              border: '1px solid var(--border)'
+            }}>
               <div style={{
-                width: '36px', height: '36px', borderRadius: '50%',
-                background: 'var(--brand-100)', color: 'var(--brand-600)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold',
-                fontSize: '14px'
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--brand-gradient)',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '13px',
+                boxShadow: '0 2px 6px rgba(99, 102, 241, 0.25)'
               }}>
                 {user.first_name?.[0]}{user.last_name?.[0]}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span className="font-semibold text-sm" style={{ lineHeight: '1.2' }}>{user.first_name} {user.last_name}</span>
-                <span className="text-xs text-secondary" style={{ lineHeight: '1.2' }}>{user.role}</span>
+                <span className="font-semibold text-xs" style={{ lineHeight: '1.2', color: 'var(--text-primary)' }}>
+                  {user.first_name} {user.last_name}
+                </span>
+                <span className="text-xs text-secondary" style={{ lineHeight: '1.2', fontSize: '10px' }}>
+                  {user.role}
+                </span>
               </div>
             </div>
           )}
 
           <button 
             onClick={logout}
-            title="Logout"
+            title="Sign out"
             aria-label="Logout"
             style={{
-              background: 'transparent', 
-              border: 'none', 
+              background: 'var(--subtle)', 
+              border: '1px solid var(--border)', 
               color: 'var(--text-secondary)',
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
               cursor: 'pointer',
-              padding: '8px',
-              borderRadius: 'var(--radius-md)',
-              transition: 'all 0.15s ease'
+              padding: '9px',
+              borderRadius: 'var(--radius-sm)',
+              transition: 'all var(--transition-fast)'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--status-blocked-bg)';
               e.currentTarget.style.color = 'var(--status-blocked)';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.background = 'var(--subtle)';
               e.currentTarget.style.color = 'var(--text-secondary)';
+              e.currentTarget.style.borderColor = 'var(--border)';
             }}
           >
-            <LogOut size={20} />
+            <LogOut size={18} />
           </button>
         </div>
       </div>

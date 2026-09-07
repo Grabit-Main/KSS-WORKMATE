@@ -180,32 +180,37 @@ const UsersPage = () => {
 
   if (loading) {
     return (
-      <div>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Manage Users</h2>
-          <button className="btn btn-primary" disabled><UserPlus size={16} /> Add User</button>
+          <div>
+            <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>User Directory</h2>
+            <p className="text-sm text-secondary mt-1">Manage team members, roles, and department allocations</p>
+          </div>
+          <button className="btn btn-primary" disabled style={{ opacity: 0.6 }}>
+            <UserPlus size={16} /> Add User
+          </button>
         </div>
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: 'var(--subtle)', textAlign: 'left' }}>
-                <th style={{ padding: '12px 24px' }}>Name</th>
-                <th style={{ padding: '12px 24px' }}>Email</th>
-                <th style={{ padding: '12px 24px' }}>Role</th>
-                <th style={{ padding: '12px 24px' }}>Department</th>
-                <th style={{ padding: '12px 24px' }}>Status</th>
-                <th style={{ padding: '12px 24px', textAlign: 'right' }}>Actions</th>
+              <tr style={{ background: 'var(--subtle-glass)', textAlign: 'left', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Name</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Email</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Role</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Department</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Status</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {[1, 2, 3].map(i => (
+              {[1, 2, 3, 4].map(i => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '120px' }}></div></td>
-                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '180px' }}></div></td>
-                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '60px' }}></div></td>
-                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '120px' }}></div></td>
-                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '80px' }}></div></td>
-                  <td style={{ padding: '12px 24px' }}><div className="skeleton skeleton-text" style={{ width: '100px', marginLeft: 'auto' }}></div></td>
+                  <td style={{ padding: '16px 24px' }}><div className="skeleton skeleton-text" style={{ width: '120px' }}></div></td>
+                  <td style={{ padding: '16px 24px' }}><div className="skeleton skeleton-text" style={{ width: '180px' }}></div></td>
+                  <td style={{ padding: '16px 24px' }}><div className="skeleton skeleton-text" style={{ width: '60px' }}></div></td>
+                  <td style={{ padding: '16px 24px' }}><div className="skeleton skeleton-text" style={{ width: '120px' }}></div></td>
+                  <td style={{ padding: '16px 24px' }}><div className="skeleton skeleton-text" style={{ width: '80px' }}></div></td>
+                  <td style={{ padding: '16px 24px' }}><div className="skeleton skeleton-text" style={{ width: '100px', marginLeft: 'auto' }}></div></td>
                 </tr>
               ))}
             </tbody>
@@ -216,145 +221,274 @@ const UsersPage = () => {
   }
 
   return (
-    <div>
+    <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Manage Users</h2>
+        <div>
+          <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>User Directory</h2>
+          <p className="text-sm text-secondary mt-1">Manage team members, roles, and department allocations</p>
+        </div>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <UserPlus size={16} /> Add User
         </button>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'var(--subtle)', textAlign: 'left' }}>
-              <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>Name</th>
-              <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>Email</th>
-              <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>Role</th>
-              <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>Department</th>
-              <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>Status</th>
-              <th style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)', textAlign: 'right', minWidth: '220px' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '12px 24px' }}>
-                  <div className="font-medium">{u.first_name} {u.last_name}</div>
-                </td>
-                <td style={{ padding: '12px 24px', color: 'var(--text-secondary)' }}>{u.email}</td>
-                <td style={{ padding: '12px 24px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 8px', borderRadius: '12px', background: 'var(--brand-100)', color: 'var(--brand-700)' }}>
-                    {u.role}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 24px', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                  {u.department || <span style={{ color: 'var(--text-disabled)', fontStyle: 'italic' }}>—</span>}
-                </td>
-                <td style={{ padding: '12px 24px' }}>
-                  <span style={{
-                    fontSize: '12px', fontWeight: 600, padding: '4px 8px', borderRadius: '12px',
-                    background: u.is_active ? 'var(--status-completed-bg)' : 'var(--status-blocked-bg)',
-                    color: u.is_active ? 'var(--status-completed)' : 'var(--status-blocked)'
-                  }}>
-                    {u.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 24px', textAlign: 'right' }}>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                    <button
-                      onClick={() => handleOpenEdit(u)}
-                      className="btn-outline"
-                      title="Edit User"
-                      style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <Pencil size={14} /> Edit
-                    </button>
-
-                    {/* Disable and Delete not shown for CEO and CTO */}
-                    {!['CEO', 'CTO'].includes(u.role) && (
-                      <>
-                        <button
-                          onClick={() => handleToggleActive(u)}
-                          className="btn-outline"
-                          title={u.is_active ? 'Disable' : 'Enable'}
-                          style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        >
-                          <Power size={14} /> {u.is_active ? 'Disable' : 'Enable'}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(u)}
-                          title="Delete"
-                          style={{
-                            padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px',
-                            background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)',
-                            border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 500
-                          }}
-                        >
-                          <Trash2 size={14} /> Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ background: 'var(--subtle-glass)', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Team Member</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Email Address</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Role</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Department</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Status</th>
+                <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)', textAlign: 'right', minWidth: '220px' }}>Actions</th>
               </tr>
-            ))}
-            {users.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: '24px', textAlign: 'center' }}>No users found.</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map(u => (
+                <tr
+                  key={u.id}
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                    transition: 'background var(--transition-fast)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--subtle-glass)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <td style={{ padding: '16px 24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--brand-gradient)',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        flexShrink: 0
+                      }}>
+                        {u.first_name?.[0]}{u.last_name?.[0]}
+                      </div>
+                      <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+                        {u.first_name} {u.last_name}
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    {u.email}
+                  </td>
+                  <td style={{ padding: '16px 24px' }}>
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-full)',
+                      background: ['CEO', 'CTO'].includes(u.role) ? 'var(--brand-100)' : 'var(--subtle)',
+                      color: ['CEO', 'CTO'].includes(u.role) ? 'var(--brand-700)' : 'var(--text-secondary)',
+                      letterSpacing: '0.02em',
+                      border: '1px solid var(--border)'
+                    }}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    {u.department ? (
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        padding: '3px 9px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--subtle)',
+                        color: 'var(--text-secondary)'
+                      }}>
+                        {u.department}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-disabled)', fontStyle: 'italic' }}>—</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '16px 24px' }}>
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '3px 9px',
+                      borderRadius: 'var(--radius-full)',
+                      background: u.is_active ? 'var(--status-completed-bg)' : 'var(--status-blocked-bg)',
+                      color: u.is_active ? 'var(--status-completed)' : 'var(--status-blocked)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <span style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: u.is_active ? 'var(--status-completed)' : 'var(--status-blocked)'
+                      }} />
+                      {u.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button
+                        onClick={() => handleOpenEdit(u)}
+                        className="btn-outline"
+                        title="Edit User"
+                        style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', borderRadius: 'var(--radius-sm)' }}
+                      >
+                        <Pencil size={13} /> Edit
+                      </button>
+
+                      {/* Disable and Delete not shown for CEO and CTO */}
+                      {!['CEO', 'CTO'].includes(u.role) && (
+                        <>
+                          <button
+                            onClick={() => handleToggleActive(u)}
+                            className="btn-outline"
+                            title={u.is_active ? 'Disable Account' : 'Enable Account'}
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              borderRadius: 'var(--radius-sm)',
+                              color: u.is_active ? 'var(--text-secondary)' : 'var(--status-completed)'
+                            }}
+                          >
+                            <Power size={13} /> {u.is_active ? 'Disable' : 'Enable'}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(u)}
+                            title="Delete User"
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              background: 'var(--status-blocked-bg)',
+                              color: 'var(--status-blocked)',
+                              border: '1px solid rgba(239, 68, 68, 0.2)',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              transition: 'all var(--transition-fast)'
+                            }}
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    No users found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Add New User Modal */}
       {showModal && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(12px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '420px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">Add New User</h3>
-              <button onClick={() => setShowModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={20}/></button>
+          <div className="card modal-animate" style={{
+            width: '100%',
+            maxWidth: '460px',
+            padding: '28px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            borderRadius: 'var(--radius-xl)',
+            boxShadow: 'var(--shadow-float)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)'
+          }}>
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em' }}>Add New User</h3>
+                <p className="text-xs text-secondary mt-0.5">Provision an account for a team member</p>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  background: 'var(--subtle)',
+                  border: '1px solid var(--border)',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: 'var(--radius-full)',
+                  color: 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18}/>
+              </button>
             </div>
+
             <form onSubmit={handleCreate} className="flex-col gap-4">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">First Name</label>
-                  <input required className="input" value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">First Name</label>
+                  <input required className="input" placeholder="e.g. Sarah" value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Last Name</label>
-                  <input required className="input" value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Last Name</label>
+                  <input required className="input" placeholder="e.g. Connor" value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
                 </div>
               </div>
+
               <div>
-                <label className="text-sm font-medium mb-1 block">Email</label>
-                <input required type="email" className="input" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Work Email</label>
+                <input required type="email" className="input" placeholder="name@company.in" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
               </div>
+
               <div>
-                <label className="text-sm font-medium mb-1 block">Role</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Assigned Role</label>
                 <select className="input" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
                   {availableCreateRoles.map(r => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
                 {['CEO', 'CTO'].includes(formData.role) && isSingletonRoleTaken(formData.role) && (
-                  <p style={{ color: 'var(--status-blocked)', fontSize: '12px', marginTop: '4px' }}>
-                    A {formData.role} already exists.
+                  <p style={{ color: 'var(--status-blocked)', fontSize: '12px', marginTop: '5px' }}>
+                    ⚠️ A {formData.role} already exists in the organization.
                   </p>
                 )}
               </div>
+
               <div>
-                <label className="text-sm font-medium mb-1 block">Department</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Department</label>
 
                 {showAddDeptCreate && (
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                     <input
                       type="text"
                       className="input"
-                      style={{ fontSize: '13px', padding: '6px 10px' }}
-                      placeholder="Enter new department..."
+                      style={{ fontSize: '13px', padding: '8px 12px' }}
+                      placeholder="Enter new department name..."
                       value={newDeptName}
                       onChange={e => setNewDeptName(e.target.value)}
                       autoFocus
@@ -368,7 +502,7 @@ const UsersPage = () => {
                     <button
                       type="button"
                       className="btn btn-primary"
-                      style={{ padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                      style={{ padding: '8px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}
                       onClick={() => handleAddNewDept('create')}
                     >
                       Add
@@ -376,10 +510,10 @@ const UsersPage = () => {
                     <button
                       type="button"
                       className="btn-outline"
-                      style={{ padding: '6px 8px', fontSize: '12px' }}
+                      style={{ padding: '8px 10px', fontSize: '12px' }}
                       onClick={() => { setShowAddDeptCreate(false); setNewDeptName(''); }}
                     >
-                      <X size={14} />
+                      <X size={15} />
                     </button>
                   </div>
                 )}
@@ -402,11 +536,20 @@ const UsersPage = () => {
                   </option>
                 </select>
               </div>
+
               <div>
-                <label className="text-sm font-medium mb-1 block">Password</label>
-                <input required type="password" className="input" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Password</label>
+                <input required type="password" placeholder="Create temporary password" className="input" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
               </div>
-              <button type="submit" className="btn btn-primary mt-2">Create User</button>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>
+                  Create User
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -415,31 +558,70 @@ const UsersPage = () => {
       {/* Edit User Modal */}
       {editingUser && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(12px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '420px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">Edit User</h3>
-              <button onClick={() => setEditingUser(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={20}/></button>
+          <div className="card modal-animate" style={{
+            width: '100%',
+            maxWidth: '460px',
+            padding: '28px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            borderRadius: 'var(--radius-xl)',
+            boxShadow: 'var(--shadow-float)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)'
+          }}>
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em' }}>Edit Member Profile</h3>
+                <p className="text-xs text-secondary mt-0.5">Modify profile, role, or department details</p>
+              </div>
+              <button
+                onClick={() => setEditingUser(null)}
+                style={{
+                  background: 'var(--subtle)',
+                  border: '1px solid var(--border)',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: 'var(--radius-full)',
+                  color: 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18}/>
+              </button>
             </div>
+
             <form onSubmit={handleEditSubmit} className="flex-col gap-4">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">First Name</label>
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">First Name</label>
                   <input required className="input" value={editFormData.first_name} onChange={e => setEditFormData({...editFormData, first_name: e.target.value})} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Last Name</label>
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Last Name</label>
                   <input required className="input" value={editFormData.last_name} onChange={e => setEditFormData({...editFormData, last_name: e.target.value})} />
                 </div>
               </div>
+
               <div>
-                <label className="text-sm font-medium mb-1 block">Email</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Email</label>
                 <input required type="email" className="input" value={editFormData.email} onChange={e => setEditFormData({...editFormData, email: e.target.value})} />
               </div>
+
               <div>
-                <label className="text-sm font-medium mb-1 block">Role</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Role</label>
                 <select
                   className="input"
                   value={editFormData.role}
@@ -460,21 +642,22 @@ const UsersPage = () => {
                   <option value="TM">TM</option>
                 </select>
                 {['CEO', 'CTO'].includes(editingUser.role) && (
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '4px' }}>
-                    {editingUser.role} accounts cannot change role.
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '5px' }}>
+                    ℹ️ {editingUser.role} role cannot be altered.
                   </p>
                 )}
               </div>
+
               <div>
-                <label className="text-sm font-medium mb-1 block">Department</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Department</label>
 
                 {showAddDeptEdit && (
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                     <input
                       type="text"
                       className="input"
-                      style={{ fontSize: '13px', padding: '6px 10px' }}
-                      placeholder="Enter new department..."
+                      style={{ fontSize: '13px', padding: '8px 12px' }}
+                      placeholder="Enter new department name..."
                       value={newDeptName}
                       onChange={e => setNewDeptName(e.target.value)}
                       autoFocus
@@ -488,7 +671,7 @@ const UsersPage = () => {
                     <button
                       type="button"
                       className="btn btn-primary"
-                      style={{ padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                      style={{ padding: '8px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}
                       onClick={() => handleAddNewDept('edit')}
                     >
                       Add
@@ -496,10 +679,10 @@ const UsersPage = () => {
                     <button
                       type="button"
                       className="btn-outline"
-                      style={{ padding: '6px 8px', fontSize: '12px' }}
+                      style={{ padding: '8px 10px', fontSize: '12px' }}
                       onClick={() => { setShowAddDeptEdit(false); setNewDeptName(''); }}
                     >
-                      <X size={14} />
+                      <X size={15} />
                     </button>
                   </div>
                 )}
@@ -522,9 +705,15 @@ const UsersPage = () => {
                   </option>
                 </select>
               </div>
-              <button type="submit" className="btn btn-primary mt-2" disabled={editLoading}>
-                {editLoading ? 'Saving...' : 'Save Changes'}
-              </button>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setEditingUser(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={editLoading}>
+                  {editLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
             </form>
           </div>
         </div>

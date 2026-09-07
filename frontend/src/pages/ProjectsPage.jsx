@@ -37,21 +37,27 @@ const ProjectsPage = () => {
 
   if (loading) {
     return (
-      <div>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Projects</h2>
+          <div>
+            <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>Projects</h2>
+            <p className="text-sm text-secondary mt-1">Active company deliverables and project timelines</p>
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
-          {[1,2,3,4,5,6].map(i => <div key={i} className="card skeleton" style={{ height: '140px' }}></div>)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+          {[1,2,3,4,5,6].map(i => <div key={i} className="card skeleton" style={{ height: '160px' }}></div>)}
         </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Projects</h2>
+    <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>Projects</h2>
+          <p className="text-sm text-secondary mt-1">Active company deliverables and project timelines</p>
+        </div>
         {['CEO', 'CTO', 'PM'].includes(user.role) && (
           <button className="btn btn-primary">
             <Plus size={16} /> New Project
@@ -59,22 +65,63 @@ const ProjectsPage = () => {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
         {projects.map(p => (
-          <div key={p.id} className="card">
-            <div className="flex justify-between items-center mb-2">
-              <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 8px', borderRadius: '12px', background: 'var(--brand-100)', color: 'var(--brand-700)' }}>
-                {p.status.toUpperCase()}
-              </span>
-              <span className="text-xs text-secondary">{new Date(p.deadline).toLocaleDateString()}</span>
+          <div
+            key={p.id}
+            className="card"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              transition: 'all var(--transition-smooth)'
+            }}
+          >
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '3px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  background: 'var(--brand-50)',
+                  color: 'var(--brand-700)',
+                  border: '1px solid rgba(99, 102, 241, 0.15)',
+                  letterSpacing: '0.03em'
+                }}>
+                  {p.status?.toUpperCase() || 'ACTIVE'}
+                </span>
+                <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>📅</span> {new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+              <h3 className="font-bold text-base mb-2" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
+                {p.name}
+              </h3>
+              <p className="text-sm text-secondary" style={{
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                lineHeight: '1.5'
+              }}>
+                {p.aim}
+              </p>
             </div>
-            <h3 className="font-semibold mb-2">{p.name}</h3>
-            <p className="text-sm text-secondary" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-              {p.aim}
-            </p>
+            <div style={{ paddingTop: '16px', marginTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="text-xs text-secondary font-medium">Click to view overview</span>
+              <span style={{ fontSize: '13px', color: 'var(--brand-600)', fontWeight: 600 }}>→</span>
+            </div>
           </div>
         ))}
-        {projects.length === 0 && <p className="text-secondary">No projects found.</p>}
+        {projects.length === 0 && (
+          <div className="card" style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', marginBottom: '12px' }}>📁</div>
+            <h4 className="font-bold text-base mb-1">No Projects Yet</h4>
+            <p className="text-secondary text-sm">Create a new project to get started with task planning.</p>
+          </div>
+        )}
       </div>
     </div>
   );
