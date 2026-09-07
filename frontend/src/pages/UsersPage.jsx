@@ -4,8 +4,11 @@ import { UserPlus, X, Trash2, Power } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const UsersPage = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState(() => {
+    const cached = localStorage.getItem('cache_users');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(() => !localStorage.getItem('cache_users'));
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '', last_name: '', email: '', role: 'TM', password: ''
@@ -16,6 +19,7 @@ const UsersPage = () => {
     try {
       const data = await getUsers();
       setUsers(data);
+      localStorage.setItem('cache_users', JSON.stringify(data));
     } catch (err) {
       console.error(err);
     } finally {
