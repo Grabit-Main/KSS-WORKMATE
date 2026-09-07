@@ -232,8 +232,11 @@ const LoginPage = () => {
                   border: 'none',
                   color: 'var(--brand-600)',
                   cursor: 'pointer',
-                  padding: 0
+                  padding: 0,
+                  transition: 'color var(--transition-fast)'
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--brand-700)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--brand-600)'}
               >
                 Forgot password?
               </button>
