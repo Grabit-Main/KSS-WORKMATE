@@ -15,6 +15,8 @@ class User(Base):
     last_name = Column(String, nullable=False)
     # CEO, CTO, PM, TL, TM
     role = Column(String, nullable=False)
+    # Frontend Developer, Backend Developer, Full Stack Developer, UI/UX Designer, DevOPS Engineer, QA Tester
+    department = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     otp_code = Column(String(6), nullable=True)

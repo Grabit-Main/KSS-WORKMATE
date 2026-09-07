@@ -26,7 +26,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     // Warm up backend container & database connection instantly on mount
-    api.get('/auth/warmup').catch(() => {});
+    api.get('/auth/warmup').catch(() => { });
 
     const timer = setTimeout(() => {
       setShowSplash(false);
@@ -62,7 +62,7 @@ const LoginPage = () => {
     setFpError('');
     setFpMessage('');
     setFpLoading(true);
-    
+
     try {
       if (forgotStep === 1) {
         await api.post('/auth/forgot-password', { email: fpEmail });
@@ -72,8 +72,8 @@ const LoginPage = () => {
         await api.post('/auth/verify-otp', { email: fpEmail, otp: fpOtp });
         setForgotStep(3);
       } else if (forgotStep === 3) {
-        await api.post('/auth/reset-password', { 
-          email: fpEmail, otp: fpOtp, new_password: fpNewPass, confirm_password: fpConfirmPass 
+        await api.post('/auth/reset-password', {
+          email: fpEmail, otp: fpOtp, new_password: fpNewPass, confirm_password: fpConfirmPass
         });
         setFpMessage('Password reset successfully! You can now log in.');
         setTimeout(() => setShowForgot(false), 3000);
@@ -130,10 +130,10 @@ const LoginPage = () => {
       <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '32px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <img src="/logo.webp" alt="Logo" style={{ maxWidth: '240px', width: '100%', maxHeight: '65px', objectFit: 'contain', margin: '0 auto 16px', display: 'block' }} />
-          <h2 className="font-bold text-2xl">Welcome back</h2>
+
           <p className="text-secondary mt-1">Sign in to your account</p>
         </div>
-        
+
         {error && (
           <div style={{
             padding: '12px', background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)',
@@ -142,28 +142,28 @@ const LoginPage = () => {
             {error}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="flex-col gap-4">
           <div>
             <label className="font-medium text-sm mb-1" style={{ display: 'block' }}>Email</label>
-            <input 
-              type="email" 
-              className="input" 
+            <input
+              type="email"
+              className="input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onFocus={() => api.get('/auth/warmup').catch(() => {})}
+              onFocus={() => api.get('/auth/warmup').catch(() => { })}
               required
             />
           </div>
-          
+
           <div>
             <label className="font-medium text-sm mb-1" style={{ display: 'block' }}>Password</label>
-            <input 
-              type="password" 
-              className="input" 
+            <input
+              type="password"
+              className="input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              onFocus={() => api.get('/auth/warmup').catch(() => {})}
+              onFocus={() => api.get('/auth/warmup').catch(() => { })}
               required
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
@@ -172,10 +172,10 @@ const LoginPage = () => {
               </button>
             </div>
           </div>
-          
-          <button 
-            type="submit" 
-            className="btn btn-primary w-full mt-2" 
+
+          <button
+            type="submit"
+            className="btn btn-primary w-full mt-2"
             style={{ padding: '12px', gap: '8px' }}
             disabled={loading}
           >
@@ -196,7 +196,7 @@ const LoginPage = () => {
           <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '24px' }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-lg">Reset Password</h3>
-              <button onClick={closeForgot} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={20}/></button>
+              <button onClick={closeForgot} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
             </div>
 
             {fpError && (
@@ -221,7 +221,7 @@ const LoginPage = () => {
                     </button>
                   </div>
                 )}
-                
+
                 {forgotStep === 2 && (
                   <div>
                     <label className="text-sm font-medium mb-1 block">Enter 6-digit OTP from your email</label>
@@ -230,12 +230,12 @@ const LoginPage = () => {
                       {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Verify OTP'}
                     </button>
                     <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={handleResend}
                         disabled={fpLoading || resendTimer > 0}
-                        style={{ 
-                          background: 'none', border: 'none', 
+                        style={{
+                          background: 'none', border: 'none',
                           color: (fpLoading || resendTimer > 0) ? 'var(--text-disabled)' : 'var(--brand-600)',
                           fontSize: '14px', cursor: (fpLoading || resendTimer > 0) ? 'not-allowed' : 'pointer',
                           fontWeight: 500

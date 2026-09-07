@@ -4,12 +4,25 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
+DEPARTMENTS = [
+    "Frontend Developer",
+    "Backend Developer",
+    "Full Stack Developer",
+    "UI/UX Designer",
+    "DevOPS Engineer",
+    "QA Tester",
+]
+
+ROLES_ORDER = ["CTO", "CEO", "PM", "TL", "TM"]
+
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
     first_name: str
     last_name: str
     role: str  # CEO, CTO, PM, TL, TM
+    department: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
@@ -17,6 +30,7 @@ class UserUpdate(BaseModel):
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
     role: Optional[str] = None
+    department: Optional[str] = None
     avatar_url: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -27,6 +41,7 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
+    department: Optional[str] = None
     avatar_url: Optional[str]
     is_active: bool
     created_at: datetime
