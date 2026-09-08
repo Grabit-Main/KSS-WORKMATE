@@ -15,6 +15,7 @@ export const MainLayout = () => {
     if (path.startsWith('/users')) return 'Users';
     if (path.startsWith('/feedback') || path.startsWith('/reviews')) return 'Feedback';
     if (path.startsWith('/history')) return 'History';
+    if (path.startsWith('/profile')) return 'My Profile';
     return 'Workmate';
   };
 

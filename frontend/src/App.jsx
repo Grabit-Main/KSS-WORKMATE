@@ -13,6 +13,7 @@ import TasksPage from './pages/TasksPage';
 import FeedbackPage from './pages/FeedbackPage';
 import HistoryPage from './pages/HistoryPage';
 import UsersPage from './pages/UsersPage';
+import ProfilePage from './pages/ProfilePage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -37,6 +38,7 @@ const AppRoutes = () => {
         <Route path="feedback" element={<FeedbackPage />} />
         <Route path="reviews" element={<Navigate to="/feedback" replace />} />
         <Route path="history" element={<HistoryPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="users" element={<ProtectedRoute allowedRoles={['CEO', 'CTO']}><UsersPage /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.user import (
     LoginRequest, TokenResponse, UserResponse,
-    ForgotPasswordRequest, VerifyOTPRequest, ResetPasswordRequest, UserUpdate,
+    ForgotPasswordRequest, VerifyOTPRequest, ResetPasswordRequest, ChangePasswordRequest, UserUpdate,
 )
 from app.utils.security import verify_password, hash_password, create_access_token, create_refresh_token
 from app.services.email_service import send_otp_email
@@ -93,3 +93,29 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     user.otp_expires_at = None
     db.commit()
     return {"message": "Password updated successfully"}
+
+
+@router.post("/send-password-otp")
+def send_password_otp(background_tasks: BackgroundTasks, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    otp = "".join(random.choices(string.digits, k=6))
+    user.otp_code = otp
+    user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    db.commit()
+    background_tasks.add_task(send_otp_email, user.email, otp)
+    return {"message": f"OTP has been sent to {user.email}"}
+
+
+@router.post("/change-password")
+def change_password(req: ChangePasswordRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if req.new_password != req.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    if not user.otp_code or user.otp_code != req.otp or not user.otp_expires_at:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    if datetime.utcnow() > user.otp_expires_at:
+        raise HTTPException(status_code=400, detail="OTP has expired")
+    user.hashed_password = hash_password(req.new_password)
+    user.otp_code = None
+    user.otp_expires_at = None
+    db.commit()
+    return {"message": "Password updated successfully"}
+

@@ -28,9 +28,16 @@ OTP_TEMPLATE = """
 
 
 def send_otp_email(to_email: str, otp: str):
-    resend.Emails.send({
-        "from": settings.RESEND_FROM_EMAIL,
-        "to": [to_email],
-        "subject": "Your OTP Code",
-        "html": OTP_TEMPLATE.format(otp=otp, timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")),
-    })
+    print(f"[AUTH-OTP] Generated OTP for {to_email}: {otp}")
+    try:
+        if settings.RESEND_API_KEY:
+            resend.Emails.send({
+                "from": settings.RESEND_FROM_EMAIL,
+                "to": [to_email],
+                "subject": "Your OTP Code",
+                "html": OTP_TEMPLATE.format(otp=otp, timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")),
+            })
+            print(f"[AUTH-OTP] Sent email to {to_email} successfully.")
+    except Exception as e:
+        print(f"[AUTH-OTP] Failed to send email via Resend: {e}")
+

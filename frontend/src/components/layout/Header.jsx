@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Bell, LogOut, Check } from 'lucide-react';
+import { Bell, LogOut, Check, User, ChevronRight } from 'lucide-react';
 import { getNotifications, markRead, markAllRead } from '../../api/notifications';
 
 export const Header = ({ title }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const menuRef = useRef(null);
+  const profileRef = useRef(null);
+  const profileTimeoutRef = useRef(null);
 
   const loadNotifications = async () => {
     try {
@@ -26,6 +31,9 @@ export const Header = ({ title }) => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setShowMenu(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -210,69 +218,286 @@ export const Header = ({ title }) => {
           )}
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {user && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '4px 10px 4px 4px',
-              borderRadius: 'var(--radius-full)'
-            }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
+        {/* Profile Circle Icon & Interactive Dropdown Menu */}
+        {user && (
+          <div
+            ref={profileRef}
+            style={{ position: 'relative' }}
+            onMouseEnter={() => {
+              if (profileTimeoutRef.current) clearTimeout(profileTimeoutRef.current);
+              setShowProfileMenu(true);
+            }}
+            onMouseLeave={() => {
+              profileTimeoutRef.current = setTimeout(() => {
+                setShowProfileMenu(false);
+              }, 250);
+            }}
+          >
+            {/* Circle Trigger Button */}
+            <button
+              onClick={() => setShowProfileMenu(prev => !prev)}
+              aria-label="User Profile"
+              title={`${user.first_name} ${user.last_name} (${user.role})`}
+              style={{
+                width: '40px',
+                height: '40px',
                 borderRadius: 'var(--radius-full)',
-                background: 'var(--brand-gradient)',
-                color: 'white',
+                padding: 0,
+                border: showProfileMenu ? '2px solid var(--brand-500)' : '2px solid transparent',
+                background: 'transparent',
+                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: '12px',
-                boxShadow: '0 2px 6px rgba(99, 102, 241, 0.25)'
-              }}>
-                {user.first_name?.[0]}{user.last_name?.[0]}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span className="font-semibold text-xs" style={{ lineHeight: '1.2', color: 'var(--text-primary)' }}>
-                  {user.first_name} {user.last_name}
-                </span>
-                <span className="text-xs text-secondary" style={{ lineHeight: '1.2', fontSize: '10px' }}>
-                  {user.role}
-                </span>
-              </div>
-            </div>
-          )}
+                position: 'relative',
+                transition: 'all var(--transition-fast)',
+                boxShadow: showProfileMenu ? '0 0 0 3px rgba(99, 102, 241, 0.2)' : 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (!showProfileMenu) e.currentTarget.style.transform = 'scale(1.04)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={`${user.first_name} ${user.last_name}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: 'var(--radius-full)',
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'var(--brand-gradient)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    letterSpacing: '0.02em',
+                    boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+                  }}
+                >
+                  {user.first_name?.[0]}{user.last_name?.[0]}
+                </div>
+              )}
 
-          <button 
-            onClick={logout}
-            title="Sign out"
-            aria-label="Logout"
-            style={{
-              background: 'transparent', 
-              border: 'none', 
-              color: 'var(--text-secondary)',
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: '8px',
-              borderRadius: 'var(--radius-full)',
-              transition: 'all var(--transition-fast)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--status-blocked-bg)';
-              e.currentTarget.style.color = 'var(--status-blocked)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--text-secondary)';
-            }}
-          >
-            <LogOut size={19} strokeWidth={1.8} />
-          </button>
-        </div>
+              {/* Online status indicator badge */}
+              <span
+                style={{
+                  position: 'absolute',
+                  bottom: '1px',
+                  right: '1px',
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: 'var(--radius-full)',
+                  background: 'var(--status-completed)',
+                  border: '2px solid var(--surface)',
+                }}
+              />
+            </button>
+
+            {/* Dropdown Menu Box */}
+            {showProfileMenu && (
+              <div
+                className="card modal-animate"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 10px)',
+                  right: 0,
+                  width: '300px',
+                  padding: '12px',
+                  borderRadius: 'var(--radius-lg)',
+                  boxShadow: 'var(--shadow-float)',
+                  border: '1px solid var(--border)',
+                  zIndex: 100,
+                  background: 'var(--surface)',
+                }}
+                onMouseEnter={() => {
+                  if (profileTimeoutRef.current) clearTimeout(profileTimeoutRef.current);
+                }}
+                onMouseLeave={() => {
+                  profileTimeoutRef.current = setTimeout(() => {
+                    setShowProfileMenu(false);
+                  }, 250);
+                }}
+              >
+                {/* Clickable Identity Section: (full name, role, designation) */}
+                <div
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    navigate('/profile');
+                  }}
+                  title="Click to edit profile, photo & change password"
+                  style={{
+                    padding: '12px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--subtle-glass)',
+                    border: '1px solid var(--border)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--selected)';
+                    e.currentTarget.style.borderColor = 'var(--brand-200)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--subtle-glass)';
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: 'var(--radius-full)',
+                      background: 'var(--brand-gradient)',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: '15px',
+                      flexShrink: 0,
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+                    }}
+                  >
+                    {user.avatar_url ? (
+                      <img
+                        src={user.avatar_url}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`
+                    )}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span
+                        className="font-bold text-sm text-truncate"
+                        style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}
+                      >
+                        {user.first_name} {user.last_name}
+                      </span>
+                      <ChevronRight size={14} style={{ color: 'var(--text-tertiary)' }} />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '1px 7px',
+                          borderRadius: 'var(--radius-full)',
+                          background: 'var(--brand-100)',
+                          color: 'var(--brand-700)',
+                          letterSpacing: '0.02em',
+                        }}
+                      >
+                        {user.role}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--text-secondary)',
+                        marginTop: '3px',
+                      }}
+                      className="text-truncate"
+                    >
+                      {user.department || 'Workmate Member'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subtext info */}
+                <div style={{ padding: '6px 4px 4px 4px' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
+                    Click above to edit profile & change password
+                  </p>
+                </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '6px 0' }} />
+
+                {/* Dropdown Options */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate('/profile');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'background var(--transition-fast)',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <User size={15} style={{ color: 'var(--text-secondary)' }} />
+                    <span>Edit Profile Settings</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      logout();
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'var(--status-blocked)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--status-blocked-bg)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <LogOut size={15} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

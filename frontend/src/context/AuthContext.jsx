@@ -40,6 +40,15 @@ export const AuthProvider = ({ children }) => {
     setUser(res.data.user);
   };
 
+  const updateCurrentUser = (updatedUser) => {
+    setUser(updatedUser);
+    try {
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    } catch (e) {
+      console.warn('Failed to save user to localStorage:', e);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -48,7 +57,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, updateCurrentUser, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

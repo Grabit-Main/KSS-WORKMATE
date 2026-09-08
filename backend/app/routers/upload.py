@@ -120,3 +120,33 @@ async def upload_file(
         db.commit()
         db.refresh(attachment)
         return {"url": attachment.file_url, "file_type": attachment.file_type, "storage_provider": attachment.storage_provider}
+
+
+@router.post("/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    mime = file.content_type or ""
+    if not mime.startswith("image/"):
+        raise HTTPException(400, "Only image files (JPEG, PNG, WEBP, GIF) are allowed for profile pictures")
+
+    content = await file.read()
+    avatar_url = None
+    try:
+        result = cloudinary_service.upload_file(content, file.filename, folder=f"workmate/avatars/{user.id}")
+        avatar_url = result.get("url")
+    except Exception as e:
+        print(f"[AVATAR] Cloudinary upload exception: {e}, using base64 fallback")
+
+    if not avatar_url:
+        import base64
+        b64 = base64.b64encode(content).decode("utf-8")
+        avatar_url = f"data:{mime};base64,{b64}"
+
+    user.avatar_url = avatar_url
+    db.commit()
+    db.refresh(user)
+    return {"url": avatar_url, "message": "Avatar uploaded successfully"}
+

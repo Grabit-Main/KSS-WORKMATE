@@ -84,3 +84,10 @@ class ResetPasswordRequest(BaseModel):
     otp: str
     new_password: str
     confirm_password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    otp: str
+    new_password: str
+    confirm_password: str
+
