@@ -370,7 +370,7 @@ const TasksPage = () => {
                   {task.deadline && (
                     <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <Clock size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
-                      {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   )}
                 </div>
@@ -702,7 +702,7 @@ const TasksPage = () => {
                       onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--subtle)'; }}
                     >
                       <Paperclip size={14} color="var(--brand-600)" />
-                      <span>Attach files (Images, Videos, Documents)</span>
+                      <span>Attach Images, videos and Docs</span>
                     </button>
                     <span className="text-xs text-secondary">
                       {attachedFiles.length > 0 ? `${attachedFiles.length} file${attachedFiles.length > 1 ? 's' : ''} attached` : 'Supports images, videos & documents'}
@@ -773,9 +773,9 @@ const TasksPage = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Target Deadline</label>
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Target Deadline & Time</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={deadline}
                     onChange={(e) => setDeadline(e.target.value)}
                     className="input"

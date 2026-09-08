@@ -462,7 +462,7 @@ const HistoryPage = () => {
                     </div>
                     {proj.deadline && (
                       <div className="text-xs font-medium" style={{ color: 'var(--brand-700)' }}>
-                        Deadline: {new Date(proj.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        Deadline: {new Date(proj.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(proj.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     )}
                   </div>
@@ -721,7 +721,7 @@ const HistoryPage = () => {
 
                     {t.deadline && (
                       <span className="text-xs text-secondary">
-                        Due: {new Date(t.deadline).toLocaleDateString()}
+                        Due: {new Date(t.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(t.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
                   </div>

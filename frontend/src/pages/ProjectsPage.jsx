@@ -44,8 +44,10 @@ const ProjectsPage = () => {
   const [editAim, setEditAim] = useState('');
   const [editStatus, setEditStatus] = useState('active');
   const [editDeadline, setEditDeadline] = useState('');
+  const [editAttachedFiles, setEditAttachedFiles] = useState([]);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editFormError, setEditFormError] = useState('');
+  const editFileInputRef = useRef(null);
 
   // Project Overview Modal state
   const [selectedProject, setSelectedProject] = useState(null);
@@ -117,6 +119,25 @@ const ProjectsPage = () => {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleEditFileSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setEditAttachedFiles(prev => [...prev, ...files]);
+    }
+  };
+
+  const removeEditAttachedFile = (index) => {
+    setEditAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatForDateTimeInput = (isoStr) => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '';
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+  };
+
   const formatFileSize = (bytes) => {
     if (!bytes) return '0 B';
     if (bytes < 1024) return `${bytes} B`;
@@ -146,6 +167,10 @@ const ProjectsPage = () => {
       setFormError('Please provide both a project name and project aim/objective.');
       return;
     }
+    if (!selectedTeamId) {
+      setFormError('Please allocate this project to a team.');
+      return;
+    }
     setSubmitting(true);
     setSubmitStatusText('Creating project...');
     setFormError('');
@@ -154,10 +179,8 @@ const ProjectsPage = () => {
         name: name.trim(),
         aim: aim.trim(),
         deadline: deadline ? new Date(deadline).toISOString() : null,
+        team_id: selectedTeamId,
       };
-      if (selectedTeamId) {
-        payload.team_id = selectedTeamId;
-      }
 
       const createdProject = await createProject(payload);
 
@@ -196,7 +219,8 @@ const ProjectsPage = () => {
     setEditName(project.name || '');
     setEditAim(project.aim || '');
     setEditStatus(project.status || 'active');
-    setEditDeadline(project.deadline ? project.deadline.split('T')[0] : '');
+    setEditDeadline(formatForDateTimeInput(project.deadline));
+    setEditAttachedFiles([]);
     setEditFormError('');
     setShowEditModal(true);
   };
@@ -218,6 +242,18 @@ const ProjectsPage = () => {
         deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
       });
 
+      // Upload newly attached files if any
+      if (editAttachedFiles.length > 0) {
+        for (let i = 0; i < editAttachedFiles.length; i++) {
+          const file = editAttachedFiles[i];
+          try {
+            await uploadFile(file, null, editingProject.id);
+          } catch (uploadErr) {
+            console.error(`Failed to upload file ${file.name}:`, uploadErr);
+          }
+        }
+      }
+
       // Update in active modal if open
       if (selectedProject && String(selectedProject.id) === String(editingProject.id)) {
         setSelectedProject(prev => ({ ...prev, ...updated }));
@@ -225,6 +261,7 @@ const ProjectsPage = () => {
 
       setShowEditModal(false);
       setEditingProject(null);
+      setEditAttachedFiles([]);
       loadData();
     } catch (err) {
       setEditFormError(err.response?.data?.detail || 'Failed to update project.');
@@ -617,7 +654,7 @@ const ProjectsPage = () => {
                     {p.deadline && (
                       <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
-                        {new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(p.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
                   </div>
@@ -891,31 +928,9 @@ const ProjectsPage = () => {
                 />
               </div>
 
-              {/* Aim / Description with Attach Files Icon */}
+              {/* Aim / Description */}
               <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="text-xs font-semibold text-secondary">Aim & Scope Description *</label>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '11px',
-                      color: 'var(--brand-600)',
-                      fontWeight: 600
-                    }}
-                  >
-                    <Paperclip size={13} />
-                    Attach files
-                  </button>
-                </div>
-
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Aim & Scope Description *</label>
                 <textarea
                   rows={4}
                   placeholder="Describe the main goal, scope, architectural requirements, and key deliverables..."
@@ -950,7 +965,7 @@ const ProjectsPage = () => {
                       onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--subtle)'; }}
                     >
                       <Paperclip size={14} color="var(--brand-600)" />
-                      <span>Attach Images, Videos & Docs</span>
+                      <span>Attach Images, videos and Docs</span>
                     </button>
                     <span className="text-xs text-secondary">
                       {attachedFiles.length > 0 ? `${attachedFiles.length} file${attachedFiles.length > 1 ? 's' : ''} attached` : 'Supports images, videos & documents'}
@@ -1005,15 +1020,16 @@ const ProjectsPage = () => {
                 </div>
               </div>
 
-              {/* Allocate to Team Dropdown */}
+              {/* Allocate to Team Dropdown (Required) */}
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Allocate to Team (Optional)</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Allocate to Team *</label>
                 <select
                   value={selectedTeamId}
                   onChange={(e) => setSelectedTeamId(e.target.value)}
                   className="input"
+                  required
                 >
-                  <option value="">-- None / Allocate Later --</option>
+                  <option value="">-- Select Team * --</option>
                   {teams.map(t => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.memberships?.length || 0} members)
@@ -1021,14 +1037,14 @@ const ProjectsPage = () => {
                   ))}
                 </select>
                 <p className="text-xs text-secondary mt-1">
-                  You can allocate this project immediately to an existing squad, or leave it unassigned and allocate later.
+                  Select an active squad to allocate and take ownership of this project deliverable.
                 </p>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Target Deadline</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Target Deadline & Time</label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
                   className="input"
@@ -1135,6 +1151,84 @@ const ProjectsPage = () => {
                   style={{ resize: 'vertical' }}
                   required
                 />
+
+                {/* Attach Images, videos and Docs in Edit Modal */}
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => editFileInputRef.current?.click()}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--subtle)',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-primary)',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--brand-500)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--subtle)'; }}
+                    >
+                      <Paperclip size={14} color="var(--brand-600)" />
+                      <span>Attach Images, videos and Docs</span>
+                    </button>
+                    <span className="text-xs text-secondary">
+                      {editAttachedFiles.length > 0 ? `${editAttachedFiles.length} new file${editAttachedFiles.length > 1 ? 's' : ''} attached` : 'Supports images, videos & documents'}
+                    </span>
+                  </div>
+
+                  <input
+                    type="file"
+                    ref={editFileInputRef}
+                    onChange={handleEditFileSelect}
+                    multiple
+                    accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                    style={{ display: 'none' }}
+                  />
+
+                  {editAttachedFiles.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                      {editAttachedFiles.map((file, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--surface-hover)',
+                            border: '1px solid var(--border)',
+                            fontSize: '11px',
+                            color: 'var(--text-primary)'
+                          }}
+                        >
+                          {getFileIcon(file.type)}
+                          <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {file.name}
+                          </span>
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: '10px' }}>
+                            ({formatFileSize(file.size)})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeEditAttachedFile(idx)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px', display: 'flex', alignItems: 'center', color: 'var(--text-tertiary)' }}
+                            title="Remove attachment"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -1154,9 +1248,9 @@ const ProjectsPage = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Target Deadline</label>
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Target Deadline & Time</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={editDeadline}
                     onChange={(e) => setEditDeadline(e.target.value)}
                     className="input"
@@ -1237,7 +1331,7 @@ const ProjectsPage = () => {
                   {selectedProject.deadline && (
                     <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
-                      Target: {new Date(selectedProject.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      Target: {new Date(selectedProject.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(selectedProject.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   )}
                 </div>
