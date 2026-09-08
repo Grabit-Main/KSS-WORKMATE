@@ -22,7 +22,8 @@ const ProjectsPage = () => {
   const [tasks, setTasks] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(() => !localStorage.getItem('cache_projects'));
-  const { user } = useAuth();
+  // Filter and Analytics state
+  const [filterStatus, setFilterStatus] = useState('all');
 
   // Create Project Modal state (For PM only)
   const [showModal, setShowModal] = useState(false);
@@ -257,6 +258,27 @@ const ProjectsPage = () => {
     return { projectTasks, total, completed, inReview, inProgress, blocked, percent, allocatedTeams };
   };
 
+  // Analytics & Filtering Calculations
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter(p => (p.status || 'active').toLowerCase() === 'active').length;
+  const inReviewProjects = projects.filter(p => (p.status || '').toLowerCase() === 'in_review').length;
+  const completedProjects = projects.filter(p => (p.status || '').toLowerCase() === 'completed').length;
+  const onHoldProjects = projects.filter(p => ['blocked', 'on_hold', 'hold'].includes((p.status || '').toLowerCase())).length;
+
+  const overallCompletionRate = totalProjects > 0
+    ? Math.round((completedProjects / totalProjects) * 100)
+    : 0;
+
+  const filteredProjects = projects.filter(p => {
+    const st = (p.status || 'active').toLowerCase();
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'active') return st === 'active';
+    if (filterStatus === 'in_review') return st === 'in_review';
+    if (filterStatus === 'completed') return st === 'completed';
+    if (filterStatus === 'on_hold' || filterStatus === 'blocked') return ['blocked', 'on_hold', 'hold'].includes(st);
+    return true;
+  });
+
   if (loading) {
     return (
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
@@ -297,8 +319,267 @@ const ProjectsPage = () => {
         )}
       </div>
 
+      {/* Interactive Analytics Metric Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        {/* Total Projects */}
+        <div
+          className="card"
+          onClick={() => setFilterStatus('all')}
+          style={{
+            padding: '18px 20px',
+            cursor: 'pointer',
+            border: filterStatus === 'all' ? '2px solid var(--brand-500)' : '1px solid var(--border)',
+            background: filterStatus === 'all' ? 'var(--brand-50)' : 'var(--surface)',
+            transition: 'all var(--transition-fast)',
+            boxShadow: filterStatus === 'all' ? '0 4px 12px rgba(99, 102, 241, 0.12)' : 'none'
+          }}
+        >
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-semibold text-secondary uppercase tracking-wider" style={{ fontSize: '11px' }}>
+              Total Projects
+            </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'rgba(99, 102, 241, 0.1)',
+              color: 'var(--brand-600)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <FolderKanban size={16} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+              {totalProjects}
+            </h3>
+            <span className="text-xs text-secondary">All initiatives</span>
+          </div>
+        </div>
+
+        {/* Active Projects */}
+        <div
+          className="card"
+          onClick={() => setFilterStatus('active')}
+          style={{
+            padding: '18px 20px',
+            cursor: 'pointer',
+            border: filterStatus === 'active' ? '2px solid #3b82f6' : '1px solid var(--border)',
+            background: filterStatus === 'active' ? 'rgba(59, 130, 246, 0.08)' : 'var(--surface)',
+            transition: 'all var(--transition-fast)',
+            boxShadow: filterStatus === 'active' ? '0 4px 12px rgba(59, 130, 246, 0.12)' : 'none'
+          }}
+        >
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ fontSize: '11px', color: '#2563eb' }}>
+              Active
+            </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'rgba(59, 130, 246, 0.12)',
+              color: '#2563eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Clock size={16} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-bold" style={{ color: '#1d4ed8', letterSpacing: '-0.02em' }}>
+              {activeProjects}
+            </h3>
+            <span className="text-xs text-secondary">In progress</span>
+          </div>
+        </div>
+
+        {/* In Review */}
+        <div
+          className="card"
+          onClick={() => setFilterStatus('in_review')}
+          style={{
+            padding: '18px 20px',
+            cursor: 'pointer',
+            border: filterStatus === 'in_review' ? '2px solid #f59e0b' : '1px solid var(--border)',
+            background: filterStatus === 'in_review' ? 'rgba(245, 158, 11, 0.08)' : 'var(--surface)',
+            transition: 'all var(--transition-fast)',
+            boxShadow: filterStatus === 'in_review' ? '0 4px 12px rgba(245, 158, 11, 0.12)' : 'none'
+          }}
+        >
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ fontSize: '11px', color: '#d97706' }}>
+              In Review
+            </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'rgba(245, 158, 11, 0.12)',
+              color: '#d97706',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <AlertCircle size={16} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-bold" style={{ color: '#b45309', letterSpacing: '-0.02em' }}>
+              {inReviewProjects}
+            </h3>
+            <span className="text-xs text-secondary">Awaiting verification</span>
+          </div>
+        </div>
+
+        {/* Completed Projects */}
+        <div
+          className="card"
+          onClick={() => setFilterStatus('completed')}
+          style={{
+            padding: '18px 20px',
+            cursor: 'pointer',
+            border: filterStatus === 'completed' ? '2px solid #10b981' : '1px solid var(--border)',
+            background: filterStatus === 'completed' ? 'rgba(16, 185, 129, 0.08)' : 'var(--surface)',
+            transition: 'all var(--transition-fast)',
+            boxShadow: filterStatus === 'completed' ? '0 4px 12px rgba(16, 185, 129, 0.12)' : 'none'
+          }}
+        >
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ fontSize: '11px', color: '#059669' }}>
+              Completed
+            </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'rgba(16, 185, 129, 0.12)',
+              color: '#059669',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <CheckCircle2 size={16} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-bold" style={{ color: '#047857', letterSpacing: '-0.02em' }}>
+              {completedProjects}
+            </h3>
+            <span className="text-xs text-secondary">Shipped & delivered</span>
+          </div>
+        </div>
+
+        {/* Overall Completion Rate */}
+        <div
+          className="card"
+          style={{
+            padding: '18px 20px',
+            background: 'var(--surface)'
+          }}
+        >
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-semibold text-secondary uppercase tracking-wider" style={{ fontSize: '11px' }}>
+              Completion Rate
+            </span>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              color: 'var(--brand-600)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-full)',
+              background: 'var(--brand-50)'
+            }}>
+              {completedProjects}/{totalProjects} Done
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2 mb-2">
+            <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+              {overallCompletionRate}%
+            </h3>
+            <span className="text-xs text-secondary">delivered</span>
+          </div>
+          <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+            <div style={{
+              width: `${overallCompletionRate}%`,
+              height: '100%',
+              background: 'var(--brand-gradient)',
+              borderRadius: 'var(--radius-full)',
+              transition: 'width 0.4s ease'
+            }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Tabs / Quick Filter Pill Row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
+        flexWrap: 'wrap',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {[
+            { id: 'all', label: 'All Projects', count: totalProjects },
+            { id: 'active', label: 'Active', count: activeProjects },
+            { id: 'in_review', label: 'In Review', count: inReviewProjects },
+            { id: 'completed', label: 'Completed', count: completedProjects },
+            { id: 'on_hold', label: 'On Hold / Blocked', count: onHoldProjects },
+          ].map(tab => {
+            const isSelected = filterStatus === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFilterStatus(tab.id)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-full)',
+                  border: isSelected ? '1px solid var(--brand-500)' : '1px solid var(--border)',
+                  background: isSelected ? 'var(--brand-600)' : 'var(--surface)',
+                  color: isSelected ? '#fff' : 'var(--text-secondary)',
+                  fontSize: '12px',
+                  fontWeight: isSelected ? 600 : 500,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all var(--transition-fast)'
+                }}
+              >
+                <span>{tab.label}</span>
+                <span style={{
+                  fontSize: '11px',
+                  padding: '1px 6px',
+                  borderRadius: 'var(--radius-full)',
+                  background: isSelected ? 'rgba(255,255,255,0.2)' : 'var(--subtle)',
+                  color: isSelected ? '#fff' : 'var(--text-tertiary)',
+                  fontWeight: 700
+                }}>
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <span className="text-xs text-secondary">
+          Showing <strong>{filteredProjects.length}</strong> of {totalProjects} project{totalProjects === 1 ? '' : 's'}
+        </span>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-        {projects.map(p => {
+        {filteredProjects.map(p => {
           const stats = getProjectTaskStats(p.id);
           const allocatedTeams = stats.allocatedTeams.length > 0 ? stats.allocatedTeams : (p.teams || []);
           const attachments = p.attachments || [];
@@ -516,13 +797,27 @@ const ProjectsPage = () => {
           );
         })}
 
-        {projects.length === 0 && (
+        {filteredProjects.length === 0 && (
           <div className="card" style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center' }}>
             <FolderKanban size={32} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
-            <h4 className="font-bold text-base mb-1">No Projects Yet</h4>
-            <p className="text-secondary text-sm">
-              {user.role === 'PM' ? 'Click "+ New Project" to create deliverables and allocate teams.' : 'Projects assigned by Project Managers will be listed here.'}
+            <h4 className="font-bold text-base mb-1">
+              {totalProjects === 0 ? 'No Projects Yet' : `No ${filterStatus.replace('_', ' ')} projects found`}
+            </h4>
+            <p className="text-secondary text-sm mb-3">
+              {totalProjects === 0
+                ? (user.role === 'PM' ? 'Click "+ New Project" to create deliverables and allocate teams.' : 'Projects assigned by Project Managers will be listed here.')
+                : 'There are currently no projects matching this filter criteria.'}
             </p>
+            {totalProjects > 0 && filterStatus !== 'all' && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setFilterStatus('all')}
+                style={{ fontSize: '12px', padding: '6px 14px' }}
+              >
+                Clear filter and view all
+              </button>
+            )}
           </div>
         )}
       </div>

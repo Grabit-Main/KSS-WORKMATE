@@ -100,10 +100,26 @@ const TeamsPage = () => {
     );
   };
 
+  // Helper to retrieve all teams a user is currently enrolled in
+  const getUserTeamsList = (userId) => {
+    const userTeamNames = teams
+      .filter(t => (t.memberships || []).some(m => String(m.user_id || m.user?.id) === String(userId)))
+      .map(t => t.name);
+    return userTeamNames.length > 0 ? userTeamNames.join(', ') : 'None';
+  };
+
   // Team Leads and Team Members cannot be CEO, CTO, or PM
   const eligibleTeamCandidates = usersList.filter(
     u => u.role !== 'CEO' && u.role !== 'CTO' && u.role !== 'PM'
   );
+
+  const handleLeadChange = (newLeadId) => {
+    setTeamLeadId(newLeadId);
+    // When a team lead is designated, ensure they are not selected as member
+    if (newLeadId) {
+      setTeamMemberIds(prev => prev.filter(id => String(id) !== String(newLeadId)));
+    }
+  };
 
   const handleCreateTeam = async (e) => {
     e.preventDefault();
@@ -111,12 +127,16 @@ const TeamsPage = () => {
       setFormError('Please provide a team name.');
       return;
     }
+    if (!teamLeadId) {
+      setFormError('Please designate a Team Lead.');
+      return;
+    }
     setSubmitting(true);
     setFormError('');
     try {
       await createTeam({
         name: teamName.trim(),
-        lead_user_id: teamLeadId || null,
+        lead_user_id: teamLeadId,
         member_user_ids: teamMemberIds.length > 0 ? teamMemberIds : null,
       });
 
@@ -546,19 +566,44 @@ const TeamsPage = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Designate Team Lead (Optional)</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Designate Team Lead *</label>
                 <select
                   value={teamLeadId}
-                  onChange={(e) => setTeamLeadId(e.target.value)}
+                  onChange={(e) => handleLeadChange(e.target.value)}
                   className="input"
+                  required
                 >
-                  <option value="">-- No Lead Assigned Yet --</option>
+                  <option value="">-- Select Team Lead * --</option>
                   {eligibleTeamCandidates.map(u => (
                     <option key={u.id} value={u.id}>
-                      {getUserFullName(u)} ({u.role})
+                      {getUserFullName(u)} ({u.role}) — Team: {getUserTeamsList(u.id)}
                     </option>
                   ))}
                 </select>
+
+                {teamLeadId && (() => {
+                  const selectedLeadUser = usersList.find(u => String(u.id) === String(teamLeadId));
+                  return selectedLeadUser ? (
+                    <div style={{
+                      marginTop: '6px',
+                      padding: '6px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--brand-50)',
+                      border: '1px solid rgba(99, 102, 241, 0.2)',
+                      fontSize: '11px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{ color: 'var(--brand-700)', fontWeight: 600 }}>
+                        Lead: {getUserFullName(selectedLeadUser)} ({selectedLeadUser.role})
+                      </span>
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        Team: <strong style={{ color: 'var(--brand-600)' }}>{getUserTeamsList(selectedLeadUser.id)}</strong>
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               <div>
@@ -566,61 +611,59 @@ const TeamsPage = () => {
                   Select Team Members ({teamMemberIds.length} selected)
                 </label>
                 <div style={{
-                  maxHeight: '160px',
+                  maxHeight: '180px',
                   overflowY: 'auto',
                   border: '1px solid var(--border)',
                   borderRadius: 'var(--radius-sm)',
                   padding: '8px',
                   background: 'var(--surface-hover)'
                 }}>
-                  {eligibleTeamCandidates.map(u => {
-                    const isSelected = teamMemberIds.includes(u.id);
-                    const isLead = String(teamLeadId) === String(u.id);
-                    return (
-                      <div
-                        key={u.id}
-                        onClick={() => toggleMemberSelection(u.id)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '6px 8px',
-                          borderRadius: 'var(--radius-sm)',
-                          cursor: 'pointer',
-                          background: isSelected ? 'var(--brand-50)' : 'transparent',
-                          marginBottom: '4px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}}
-                            style={{ cursor: 'pointer' }}
-                          />
-                          <span style={{ fontSize: '12px', fontWeight: isSelected ? 600 : 400, color: 'var(--text-primary)' }}>
-                            {getUserFullName(u)}
-                          </span>
-                          {isLead && (
-                            <span style={{
-                              fontSize: '10px',
-                              padding: '1px 6px',
-                              borderRadius: 'var(--radius-full)',
-                              background: 'var(--brand-600)',
-                              color: '#fff',
-                              fontWeight: 600
-                            }}>
-                              Lead
-                            </span>
-                          )}
+                  {eligibleTeamCandidates
+                    .filter(u => String(u.id) !== String(teamLeadId))
+                    .map(u => {
+                      const isSelected = teamMemberIds.includes(u.id);
+                      return (
+                        <div
+                          key={u.id}
+                          onClick={() => toggleMemberSelection(u.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '6px 8px',
+                            borderRadius: 'var(--radius-sm)',
+                            cursor: 'pointer',
+                            background: isSelected ? 'var(--brand-50)' : 'transparent',
+                            marginBottom: '4px',
+                            border: isSelected ? '1px solid rgba(99, 102, 241, 0.15)' : '1px solid transparent'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              style={{ cursor: 'pointer', marginTop: '3px' }}
+                            />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '12px', fontWeight: isSelected ? 600 : 500, color: 'var(--text-primary)' }}>
+                                  {getUserFullName(u)}
+                                </span>
+                                <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>({u.role})</span>
+                              </div>
+                              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '1px' }}>
+                                Team: <span style={{ color: getUserTeamsList(u.id) === 'None' ? 'var(--text-tertiary)' : 'var(--brand-600)', fontWeight: 500 }}>{getUserTeamsList(u.id)}</span>
+                              </span>
+                            </div>
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{u.role}</span>
                         </div>
-                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{u.role}</span>
-                      </div>
-                    );
-                  })}
-                  {eligibleTeamCandidates.length === 0 && (
+                      );
+                    })}
+                  {eligibleTeamCandidates.filter(u => String(u.id) !== String(teamLeadId)).length === 0 && (
                     <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', padding: '8px', textAlign: 'center' }}>
-                      No eligible candidates available (TL/TM only).
+                      No available candidates.
                     </p>
                   )}
                 </div>
@@ -713,7 +756,7 @@ const TeamsPage = () => {
                     .filter(u => !memberModalTeam.memberships?.some(m => String(m.user_id) === String(u.id)))
                     .map(u => (
                       <option key={u.id} value={u.id}>
-                        {getUserFullName(u)} ({u.role})
+                        {getUserFullName(u)} ({u.role}) — Team: {getUserTeamsList(u.id)}
                       </option>
                     ))}
                 </select>
