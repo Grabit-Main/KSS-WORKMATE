@@ -40,6 +40,7 @@ const HistoryPage = () => {
   // Grouped Activity State & Dialog Modal
   const [selectedActivityGroup, setSelectedActivityGroup] = useState(null);
   const [activitySearchQuery, setActivitySearchQuery] = useState('');
+  const [activityFeedFilter, setActivityFeedFilter] = useState('all'); // 'all', 'projects', 'tasks'
 
   // Escape key handler to close pop up dialog box
   useEffect(() => {
@@ -115,67 +116,132 @@ const HistoryPage = () => {
     return { bg: 'var(--subtle)', color: 'var(--text-secondary)', border: 'var(--border)' };
   };
 
-  // Group activities by Project / Top-level Deliverable
-  const groupedActivities = React.useMemo(() => {
-    const map = new Map();
+  // Separate activities into Project Tasks and Normally Assigned Tasks
+  const { projectActivities, normalTaskActivities } = React.useMemo(() => {
+    const projectMap = new Map();
+    const normalTaskMap = new Map();
 
     activity.forEach(evt => {
-      // Group by project if available, otherwise by task title or general
-      const key = evt.project_id || evt.project_name || (evt.type === 'project' ? evt.title : `task-${evt.task_id || evt.title}`);
-      const title = evt.project_name || evt.title || 'General Activity';
-      const isProject = Boolean(evt.project_id || evt.project_name || evt.type === 'project');
+      // Determine whether this activity is linked to a project or is a normally assigned task
+      const isProjectLinked = Boolean(
+        evt.project_id ||
+        evt.is_project_task === true ||
+        evt.category === 'project_task' ||
+        evt.type === 'project' ||
+        (evt.project_name && !evt.project_name.startsWith('Team:') && evt.project_name !== 'General Tasks')
+      );
 
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          title,
-          type: isProject ? 'project' : 'task',
-          project_id: evt.project_id,
-          project_name: evt.project_name,
-          aim: evt.project_aim,
-          deadline: evt.project_deadline,
-          team_name: evt.team_name,
-          latest_status: evt.status,
-          latest_created_at: evt.created_at,
-          latest_timestamp: evt.timestamp || 0,
-          latest_action: evt.action,
-          latest_actor: evt.actor,
-          events: []
-        });
+      if (isProjectLinked) {
+        // Group by Project
+        const key = evt.project_id ? `proj-${evt.project_id}` : (evt.project_name ? `proj-name-${evt.project_name}` : `proj-title-${evt.title}`);
+        const title = evt.project_name || evt.title || 'Project Activity';
+
+        if (!projectMap.has(key)) {
+          projectMap.set(key, {
+            key,
+            title,
+            type: 'project',
+            category: 'project_task',
+            project_id: evt.project_id,
+            project_name: evt.project_name || evt.title,
+            aim: evt.project_aim,
+            deadline: evt.project_deadline,
+            team_name: evt.team_name,
+            latest_status: evt.status,
+            latest_created_at: evt.created_at,
+            latest_timestamp: evt.timestamp || 0,
+            latest_action: evt.action,
+            latest_actor: evt.actor,
+            events: []
+          });
+        }
+
+        const grp = projectMap.get(key);
+        if ((evt.timestamp || 0) > grp.latest_timestamp) {
+          grp.latest_timestamp = evt.timestamp || 0;
+          grp.latest_created_at = evt.created_at;
+          grp.latest_status = evt.status;
+          grp.latest_action = evt.action;
+          grp.latest_actor = evt.actor;
+        }
+        if (evt.project_aim && !grp.aim) grp.aim = evt.project_aim;
+        if (evt.project_deadline && !grp.deadline) grp.deadline = evt.project_deadline;
+        if (evt.team_name && !grp.team_name) grp.team_name = evt.team_name;
+        grp.events.push(evt);
+      } else {
+        // Normally Assigned Task (standalone / operational / non-project tasks)
+        const key = evt.task_id ? `task-${evt.task_id}` : `task-title-${evt.task_title || evt.title || evt.action}`;
+        const title = evt.task_title || evt.title || 'Normally Assigned Task';
+
+        if (!normalTaskMap.has(key)) {
+          normalTaskMap.set(key, {
+            key,
+            title,
+            type: 'normal_task',
+            category: 'normal_task',
+            task_id: evt.task_id,
+            task_title: evt.task_title || evt.title,
+            deadline: evt.task_deadline,
+            priority: evt.task_priority,
+            assignee: evt.assignee,
+            team_name: evt.team_name,
+            latest_status: evt.status,
+            latest_created_at: evt.created_at,
+            latest_timestamp: evt.timestamp || 0,
+            latest_action: evt.action,
+            latest_actor: evt.actor,
+            events: []
+          });
+        }
+
+        const grp = normalTaskMap.get(key);
+        if ((evt.timestamp || 0) > grp.latest_timestamp) {
+          grp.latest_timestamp = evt.timestamp || 0;
+          grp.latest_created_at = evt.created_at;
+          grp.latest_status = evt.status;
+          grp.latest_action = evt.action;
+          grp.latest_actor = evt.actor;
+        }
+        if (evt.team_name && !grp.team_name) grp.team_name = evt.team_name;
+        if (evt.task_deadline && !grp.deadline) grp.deadline = evt.task_deadline;
+        if (evt.task_priority && !grp.priority) grp.priority = evt.task_priority;
+        if (evt.assignee && !grp.assignee) grp.assignee = evt.assignee;
+        grp.events.push(evt);
       }
-
-      const grp = map.get(key);
-      if ((evt.timestamp || 0) > grp.latest_timestamp) {
-        grp.latest_timestamp = evt.timestamp || 0;
-        grp.latest_created_at = evt.created_at;
-        grp.latest_status = evt.status;
-        grp.latest_action = evt.action;
-        grp.latest_actor = evt.actor;
-      }
-      if (evt.project_aim && !grp.aim) grp.aim = evt.project_aim;
-      if (evt.project_deadline && !grp.deadline) grp.deadline = evt.project_deadline;
-      if (evt.team_name && !grp.team_name) grp.team_name = evt.team_name;
-
-      grp.events.push(evt);
     });
 
-    const groups = Array.from(map.values());
-    // Sort events within each group by timestamp descending
-    groups.forEach(g => {
-      g.events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    });
-    // Sort groups by latest activity
-    return groups.sort((a, b) => b.latest_timestamp - a.latest_timestamp);
+    const projectGroups = Array.from(projectMap.values());
+    projectGroups.forEach(g => g.events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
+    projectGroups.sort((a, b) => b.latest_timestamp - a.latest_timestamp);
+
+    const normalTaskGroups = Array.from(normalTaskMap.values());
+    normalTaskGroups.forEach(g => g.events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
+    normalTaskGroups.sort((a, b) => b.latest_timestamp - a.latest_timestamp);
+
+    return { projectActivities: projectGroups, normalTaskActivities: normalTaskGroups };
   }, [activity]);
 
-  const filteredGroupedActivities = React.useMemo(() => {
-    if (!activitySearchQuery.trim()) return groupedActivities;
+  const filteredProjectActivities = React.useMemo(() => {
+    if (!activitySearchQuery.trim()) return projectActivities;
     const q = activitySearchQuery.toLowerCase();
-    return groupedActivities.filter(g =>
+    return projectActivities.filter(g =>
       g.title.toLowerCase().includes(q) ||
+      (g.team_name && g.team_name.toLowerCase().includes(q)) ||
+      (g.aim && g.aim.toLowerCase().includes(q)) ||
       g.events.some(e => e.action?.toLowerCase().includes(q) || (e.notes && e.notes.toLowerCase().includes(q)))
     );
-  }, [groupedActivities, activitySearchQuery]);
+  }, [projectActivities, activitySearchQuery]);
+
+  const filteredNormalTaskActivities = React.useMemo(() => {
+    if (!activitySearchQuery.trim()) return normalTaskActivities;
+    const q = activitySearchQuery.toLowerCase();
+    return normalTaskActivities.filter(g =>
+      g.title.toLowerCase().includes(q) ||
+      (g.team_name && g.team_name.toLowerCase().includes(q)) ||
+      (g.assignee && `${g.assignee.first_name || ''} ${g.assignee.last_name || ''}`.toLowerCase().includes(q)) ||
+      g.events.some(e => e.action?.toLowerCase().includes(q) || (e.notes && e.notes.toLowerCase().includes(q)))
+    );
+  }, [normalTaskActivities, activitySearchQuery]);
 
   if (loading && !summary && projects.length === 0) {
     return (
@@ -397,17 +463,17 @@ const HistoryPage = () => {
         </div>
       </div>
 
-      {/* TAB 1: ALL ACTIVITY TIMELINE (GROUPED BY PROJECT / ENTITY WITH POPUP DIALOG) */}
+      {/* TAB 1: ALL ACTIVITY TIMELINE (SEPARATED INTO PROJECT TASKS & NORMALLY ASSIGNED TASKS) */}
       {activeTab === 'activity' && (
         <div>
-          {/* Header Bar with Search & Quick Filter */}
+          {/* Header Bar with Search & Category Segmented Control */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '12px',
+            gap: '16px',
             flexWrap: 'wrap',
-            marginBottom: '18px'
+            marginBottom: '24px'
           }}>
             <div>
               <h3 className="font-bold text-lg flex items-center gap-2" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
@@ -415,12 +481,85 @@ const HistoryPage = () => {
                 Unified Audit Activity Feed
               </h3>
               <p className="text-xs text-secondary mt-0.5">
-                Consolidated audit activity cards — click any card to inspect the full popup audit trail
+                Separated audit activity streams for project tasks and normally assigned operational tasks
               </p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ position: 'relative', width: '260px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              {/* Category Segmented Control */}
+              <div style={{
+                display: 'inline-flex',
+                background: 'var(--subtle)',
+                padding: '3px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border)'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setActivityFeedFilter('all')}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: activityFeedFilter === 'all' ? 'var(--surface)' : 'transparent',
+                    color: activityFeedFilter === 'all' ? 'var(--brand-600)' : 'var(--text-secondary)',
+                    boxShadow: activityFeedFilter === 'all' ? 'var(--shadow-subtle)' : 'none',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                >
+                  All ({filteredProjectActivities.length + filteredNormalTaskActivities.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivityFeedFilter('projects')}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    background: activityFeedFilter === 'projects' ? 'var(--surface)' : 'transparent',
+                    color: activityFeedFilter === 'projects' ? 'var(--brand-600)' : 'var(--text-secondary)',
+                    boxShadow: activityFeedFilter === 'projects' ? 'var(--shadow-subtle)' : 'none',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                >
+                  <Folders size={13} />
+                  Project Tasks ({filteredProjectActivities.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivityFeedFilter('tasks')}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    background: activityFeedFilter === 'tasks' ? 'var(--surface)' : 'transparent',
+                    color: activityFeedFilter === 'tasks' ? 'var(--brand-600)' : 'var(--text-secondary)',
+                    boxShadow: activityFeedFilter === 'tasks' ? 'var(--shadow-subtle)' : 'none',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                >
+                  <CheckSquare size={13} />
+                  Normally Assigned Tasks ({filteredNormalTaskActivities.length})
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div style={{ position: 'relative', width: '230px' }}>
                 <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
                 <input
                   type="text"
@@ -428,175 +567,447 @@ const HistoryPage = () => {
                   value={activitySearchQuery}
                   onChange={(e) => setActivitySearchQuery(e.target.value)}
                   className="input"
-                  style={{ paddingLeft: '32px', fontSize: '12px', height: '36px' }}
+                  style={{ paddingLeft: '32px', fontSize: '12px', height: '34px' }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Cards Grid */}
-          {filteredGroupedActivities.length === 0 ? (
+          {/* Cards Content */}
+          {filteredProjectActivities.length === 0 && filteredNormalTaskActivities.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-secondary)' }}>
               <History size={36} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
               <h4 className="font-bold text-base mb-1">No Activity Records Found</h4>
               <p className="text-secondary text-sm">Historical events will appear here as projects and tasks advance.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
-              {filteredGroupedActivities.map(group => {
-                const badge = getStatusBadgeStyle(group.latest_status);
-                return (
-                  <div
-                    key={group.key}
-                    className="card"
-                    onClick={() => setSelectedActivityGroup(group)}
-                    style={{
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      padding: '22px',
-                      transition: 'all var(--transition-fast)',
-                      position: 'relative'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--brand-400)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = 'var(--shadow-float)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border)';
-                      e.currentTarget.style.transform = 'none';
-                      e.currentTarget.style.boxShadow = 'var(--shadow-card)';
-                    }}
-                  >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              {/* SECTION 1: PROJECT TASKS */}
+              {(activityFeedFilter === 'all' || activityFeedFilter === 'projects') && (
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '16px',
+                    paddingBottom: '10px',
+                    borderBottom: '1px solid var(--border)'
+                  }}>
                     <div>
-                      {/* Top Header of Card */}
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div style={{
-                            width: '38px',
-                            height: '38px',
-                            borderRadius: '10px',
-                            background: group.type === 'project' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                            color: group.type === 'project' ? 'var(--brand-600)' : '#059669',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            {group.type === 'project' ? <Folders size={18} /> : <CheckSquare size={18} />}
-                          </div>
-                          <div>
-                            <span style={{
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.05em',
-                              color: 'var(--text-tertiary)'
-                            }}>
-                              {group.type === 'project' ? 'Project Feed' : 'Task Feed'}
-                            </span>
-                            <h4 className="font-bold text-base" style={{ color: 'var(--text-primary)', letterSpacing: '-0.015em', marginTop: '1px' }}>
-                              {group.title}
-                            </h4>
-                          </div>
-                        </div>
-
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Folders size={18} color="var(--brand-600)" />
+                        <h4 className="font-bold text-base" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                          Project Tasks & Deliverables
+                        </h4>
                         <span style={{
-                          padding: '3px 10px',
-                          borderRadius: 'var(--radius-full)',
-                          fontSize: '10px',
+                          fontSize: '11px',
                           fontWeight: 700,
-                          background: badge.bg,
-                          color: badge.color,
-                          border: `1px solid ${badge.border}`,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.02em'
+                          background: 'var(--brand-100)',
+                          color: 'var(--brand-700)',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)'
                         }}>
-                          {group.latest_status?.replace('_', ' ') || 'ACTIVE'}
+                          {filteredProjectActivities.length}
                         </span>
                       </div>
-
-                      {/* Aim / Scope Description if present */}
-                      {group.aim && (
-                        <p className="text-xs text-secondary" style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          lineHeight: '1.5',
-                          marginBottom: '12px'
-                        }}>
-                          {group.aim}
-                        </p>
-                      )}
-
-                      {/* Latest Activity Preview Box */}
-                      <div style={{
-                        background: 'var(--subtle)',
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '10px 12px',
-                        border: '1px solid var(--border)',
-                        marginBottom: '14px'
-                      }}>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs font-semibold text-secondary" style={{ fontSize: '11px' }}>
-                            Recent Activity
-                          </span>
-                          <span className="text-xs text-secondary flex items-center gap-1 font-medium" style={{ fontSize: '11px' }}>
-                            <Clock size={11} />
-                            {group.latest_created_at ? new Date(group.latest_created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + new Date(group.latest_created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
-                          </span>
-                        </div>
-                        <p style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
-                          {group.latest_action}
-                        </p>
-                        {group.latest_actor && (
-                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
-                            Actor: {group.latest_actor.first_name} {group.latest_actor.last_name} ({group.latest_actor.role})
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Card Bottom Action */}
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      paddingTop: '12px',
-                      borderTop: '1px solid var(--border)',
-                      fontSize: '12px'
-                    }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        fontWeight: 600,
-                        color: 'var(--brand-600)',
-                        background: 'var(--brand-50)',
-                        padding: '2px 8px',
-                        borderRadius: 'var(--radius-full)'
-                      }}>
-                        <Activity size={12} />
-                        {group.events.length} event{group.events.length === 1 ? '' : 's'} recorded
-                      </span>
-
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        color: 'var(--brand-600)',
-                        fontWeight: 600
-                      }}>
-                        <span>View Audit Dialogue</span>
-                        <ArrowRight size={13} strokeWidth={2.2} />
-                      </span>
+                      <p className="text-xs text-secondary mt-0.5">
+                        Audit trails for project milestones, sprints, and deliverables tied to projects
+                      </p>
                     </div>
                   </div>
-                );
-              })}
+
+                  {filteredProjectActivities.length === 0 ? (
+                    <div className="card" style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-secondary)', background: 'var(--subtle)' }}>
+                      <p className="text-sm">No project task activities found matching your criteria.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+                      {filteredProjectActivities.map(group => {
+                        const badge = getStatusBadgeStyle(group.latest_status);
+                        return (
+                          <div
+                            key={group.key}
+                            className="card"
+                            onClick={() => setSelectedActivityGroup(group)}
+                            style={{
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              padding: '22px',
+                              transition: 'all var(--transition-fast)',
+                              position: 'relative',
+                              border: '1px solid var(--border)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--brand-400)';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = 'var(--shadow-float)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--border)';
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.boxShadow = 'var(--shadow-card)';
+                            }}
+                          >
+                            <div>
+                              <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div style={{
+                                    width: '38px',
+                                    height: '38px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(99, 102, 241, 0.1)',
+                                    color: 'var(--brand-600)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                  }}>
+                                    <Folders size={18} />
+                                  </div>
+                                  <div>
+                                    <span style={{
+                                      fontSize: '10px',
+                                      fontWeight: 700,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em',
+                                      color: 'var(--brand-600)'
+                                    }}>
+                                      Project Deliverables Feed
+                                    </span>
+                                    <h4 className="font-bold text-base" style={{ color: 'var(--text-primary)', letterSpacing: '-0.015em', marginTop: '1px' }}>
+                                      {group.title}
+                                    </h4>
+                                  </div>
+                                </div>
+
+                                <span style={{
+                                  padding: '3px 10px',
+                                  borderRadius: 'var(--radius-full)',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  background: badge.bg,
+                                  color: badge.color,
+                                  border: `1px solid ${badge.border}`,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.02em',
+                                  flexShrink: 0
+                                }}>
+                                  {group.latest_status?.replace('_', ' ') || 'ACTIVE'}
+                                </span>
+                              </div>
+
+                              {group.aim && (
+                                <p className="text-xs text-secondary" style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  lineHeight: '1.5',
+                                  marginBottom: '12px'
+                                }}>
+                                  {group.aim}
+                                </p>
+                              )}
+
+                              {group.team_name && (
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                                  <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Squad: </span>
+                                  <span>{group.team_name}</span>
+                                </div>
+                              )}
+
+                              <div style={{
+                                background: 'var(--subtle)',
+                                borderRadius: 'var(--radius-sm)',
+                                padding: '10px 12px',
+                                border: '1px solid var(--border)',
+                                marginBottom: '14px'
+                              }}>
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-xs font-semibold text-secondary" style={{ fontSize: '11px' }}>
+                                    Recent Activity
+                                  </span>
+                                  <span className="text-xs text-secondary flex items-center gap-1 font-medium" style={{ fontSize: '11px' }}>
+                                    <Clock size={11} />
+                                    {group.latest_created_at ? new Date(group.latest_created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + new Date(group.latest_created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                                  </span>
+                                </div>
+                                <p style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
+                                  {group.latest_action}
+                                </p>
+                                {group.latest_actor && (
+                                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
+                                    Actor: {group.latest_actor.first_name} {group.latest_actor.last_name} ({group.latest_actor.role})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              paddingTop: '12px',
+                              borderTop: '1px solid var(--border)',
+                              fontSize: '12px'
+                            }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                fontWeight: 600,
+                                color: 'var(--brand-600)',
+                                background: 'var(--brand-50)',
+                                padding: '2px 8px',
+                                borderRadius: 'var(--radius-full)'
+                              }}>
+                                <Activity size={12} />
+                                {group.events.length} event{group.events.length === 1 ? '' : 's'} recorded
+                              </span>
+
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                color: 'var(--brand-600)',
+                                fontWeight: 600
+                              }}>
+                                <span>View Audit Dialogue</span>
+                                <ArrowRight size={13} strokeWidth={2.2} />
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SECTION 2: NORMALLY ASSIGNED TASKS */}
+              {(activityFeedFilter === 'all' || activityFeedFilter === 'tasks') && (
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '16px',
+                    paddingBottom: '10px',
+                    borderBottom: '1px solid var(--border)'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <CheckSquare size={18} color="#059669" />
+                        <h4 className="font-bold text-base" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                          Normally Assigned Tasks
+                        </h4>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          background: 'rgba(16, 185, 129, 0.12)',
+                          color: '#059669',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)'
+                        }}>
+                          {filteredNormalTaskActivities.length}
+                        </span>
+                      </div>
+                      <p className="text-xs text-secondary mt-0.5">
+                        Audit trails for direct, operational, and standalone tasks assigned across teams
+                      </p>
+                    </div>
+                  </div>
+
+                  {filteredNormalTaskActivities.length === 0 ? (
+                    <div className="card" style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-secondary)', background: 'var(--subtle)' }}>
+                      <p className="text-sm">No normally assigned task activities found matching your criteria.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+                      {filteredNormalTaskActivities.map(group => {
+                        const badge = getStatusBadgeStyle(group.latest_status);
+                        return (
+                          <div
+                            key={group.key}
+                            className="card"
+                            onClick={() => setSelectedActivityGroup(group)}
+                            style={{
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              padding: '22px',
+                              transition: 'all var(--transition-fast)',
+                              position: 'relative',
+                              border: '1px solid var(--border)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = '#10B981';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = 'var(--shadow-float)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--border)';
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.boxShadow = 'var(--shadow-card)';
+                            }}
+                          >
+                            <div>
+                              <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div style={{
+                                    width: '38px',
+                                    height: '38px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(16, 185, 129, 0.1)',
+                                    color: '#059669',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                  }}>
+                                    <CheckSquare size={18} />
+                                  </div>
+                                  <div>
+                                    <span style={{
+                                      fontSize: '10px',
+                                      fontWeight: 700,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em',
+                                      color: '#059669'
+                                    }}>
+                                      Normally Assigned Task
+                                    </span>
+                                    <h4 className="font-bold text-base" style={{ color: 'var(--text-primary)', letterSpacing: '-0.015em', marginTop: '1px' }}>
+                                      {group.title}
+                                    </h4>
+                                  </div>
+                                </div>
+
+                                <span style={{
+                                  padding: '3px 10px',
+                                  borderRadius: 'var(--radius-full)',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  background: badge.bg,
+                                  color: badge.color,
+                                  border: `1px solid ${badge.border}`,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.02em',
+                                  flexShrink: 0
+                                }}>
+                                  {group.latest_status?.replace('_', ' ') || 'ACTIVE'}
+                                </span>
+                              </div>
+
+                              {/* Task Metadata Row */}
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                flexWrap: 'wrap',
+                                marginBottom: '12px',
+                                fontSize: '11px',
+                                color: 'var(--text-secondary)'
+                              }}>
+                                {group.assignee && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Assignee:</span>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                      {group.assignee.first_name} {group.assignee.last_name}
+                                    </span>
+                                  </div>
+                                )}
+                                {group.priority && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Priority:</span>
+                                    <span style={{
+                                      fontWeight: 700,
+                                      textTransform: 'capitalize',
+                                      color: group.priority === 'urgent' ? 'var(--priority-urgent)' :
+                                             group.priority === 'high' ? 'var(--priority-high)' : 'var(--text-secondary)'
+                                    }}>
+                                      {group.priority}
+                                    </span>
+                                  </div>
+                                )}
+                                {group.team_name && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Team:</span>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{group.team_name}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div style={{
+                                background: 'var(--subtle)',
+                                borderRadius: 'var(--radius-sm)',
+                                padding: '10px 12px',
+                                border: '1px solid var(--border)',
+                                marginBottom: '14px'
+                              }}>
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-xs font-semibold text-secondary" style={{ fontSize: '11px' }}>
+                                    Recent Activity
+                                  </span>
+                                  <span className="text-xs text-secondary flex items-center gap-1 font-medium" style={{ fontSize: '11px' }}>
+                                    <Clock size={11} />
+                                    {group.latest_created_at ? new Date(group.latest_created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + new Date(group.latest_created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                                  </span>
+                                </div>
+                                <p style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
+                                  {group.latest_action}
+                                </p>
+                                {group.latest_actor && (
+                                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
+                                    Actor: {group.latest_actor.first_name} {group.latest_actor.last_name} ({group.latest_actor.role})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              paddingTop: '12px',
+                              borderTop: '1px solid var(--border)',
+                              fontSize: '12px'
+                            }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                fontWeight: 600,
+                                color: '#059669',
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                padding: '2px 8px',
+                                borderRadius: 'var(--radius-full)'
+                              }}>
+                                <Activity size={12} />
+                                {group.events.length} event{group.events.length === 1 ? '' : 's'} recorded
+                              </span>
+
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                color: '#059669',
+                                fontWeight: 600
+                              }}>
+                                <span>View Audit Dialogue</span>
+                                <ArrowRight size={13} strokeWidth={2.2} />
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -651,10 +1062,10 @@ const HistoryPage = () => {
                     fontSize: '11px',
                     fontWeight: 700,
                     textTransform: 'uppercase',
-                    color: 'var(--text-tertiary)',
+                    color: selectedActivityGroup.type === 'project' ? 'var(--brand-600)' : '#059669',
                     letterSpacing: '0.04em'
                   }}>
-                    {selectedActivityGroup.type === 'project' ? 'Project Audit Activity Trail' : 'Task Audit Activity Trail'}
+                    {selectedActivityGroup.type === 'project' ? 'Project Audit Activity Trail' : 'Normally Assigned Task Audit Trail'}
                   </span>
                   <h3 className="font-bold text-xl" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em', marginTop: '1px' }}>
                     {selectedActivityGroup.title}
@@ -699,13 +1110,41 @@ const HistoryPage = () => {
                     border: `1px solid ${getStatusBadgeStyle(selectedActivityGroup.latest_status).border}`,
                     textTransform: 'uppercase'
                   }}>
-                    Current Status: {selectedActivityGroup.latest_status?.replace('_', ' ') || 'ACTIVE'}
+                    Status: {selectedActivityGroup.latest_status?.replace('_', ' ') || 'ACTIVE'}
                   </span>
 
                   {selectedActivityGroup.deadline && (
                     <span className="text-xs text-secondary font-medium flex items-center gap-1">
                       <Calendar size={12} />
-                      Deadline: {new Date(selectedActivityGroup.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(selectedActivityGroup.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      Deadline: {new Date(selectedActivityGroup.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  )}
+
+                  {selectedActivityGroup.assignee && (
+                    <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)', background: 'var(--surface)', padding: '2px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                      Assignee: {selectedActivityGroup.assignee.first_name} {selectedActivityGroup.assignee.last_name}
+                    </span>
+                  )}
+
+                  {selectedActivityGroup.priority && (
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      textTransform: 'capitalize',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      color: selectedActivityGroup.priority === 'urgent' ? 'var(--priority-urgent)' :
+                             selectedActivityGroup.priority === 'high' ? 'var(--priority-high)' : 'var(--text-secondary)'
+                    }}>
+                      Priority: {selectedActivityGroup.priority}
+                    </span>
+                  )}
+
+                  {selectedActivityGroup.team_name && (
+                    <span className="text-xs text-secondary font-medium">
+                      Squad: {selectedActivityGroup.team_name}
                     </span>
                   )}
                 </div>

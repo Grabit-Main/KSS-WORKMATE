@@ -100,7 +100,7 @@ async def upload_file(
         db.add(attachment)
         db.commit()
         db.refresh(attachment)
-        return {"url": attachment.file_url, "file_type": attachment.file_type, "storage_provider": attachment.storage_provider}
+        return {"url": attachment.file_url, "file_name": attachment.file_name, "file_type": attachment.file_type, "storage_provider": attachment.storage_provider}
 
     elif task_id:
         task = db.query(Task).filter(Task.id == task_id).first()
@@ -177,7 +177,7 @@ async def upload_file(
         db.add(attachment)
         db.commit()
         db.refresh(attachment)
-        return {"url": attachment.file_url, "file_type": attachment.file_type, "storage_provider": attachment.storage_provider}
+        return {"url": attachment.file_url, "file_name": attachment.file_name, "file_type": attachment.file_type, "storage_provider": attachment.storage_provider}
 
 
 @router.post("/avatar")

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useRealtime } from '../../realtime/useRealtime';
-import { Bell, LogOut, Check, User, ChevronRight } from 'lucide-react';
+import { Bell, LogOut, Check, User, ChevronRight, X } from 'lucide-react';
 import { getNotifications, markRead, markAllRead } from '../../api/notifications';
 
 export const Header = ({ title }) => {
@@ -11,6 +11,7 @@ export const Header = ({ title }) => {
   const [notifications, setNotifications] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [liveToast, setLiveToast] = useState(null);
   const menuRef = useRef(null);
   const profileRef = useRef(null);
   const profileTimeoutRef = useRef(null);
@@ -28,14 +29,61 @@ export const Header = ({ title }) => {
     loadNotifications();
   }, []);
 
-  const handleLiveNotification = useCallback(() => {
+  const handleLiveNotification = useCallback((payload) => {
     loadNotifications();
+    if (payload && (payload.title || payload.message)) {
+      const taskId = payload.ref_id || payload.task_id;
+      setLiveToast({
+        id: payload.id || Date.now(),
+        title: payload.title || 'New Notification',
+        message: payload.message || payload.content || 'You have a new update.',
+        taskId: taskId,
+      });
+    }
   }, []);
 
+  const handleTaskCreated = useCallback((payload) => {
+    loadNotifications();
+    if (payload) {
+      const taskId = payload.id || payload.task_id;
+      if (!user || String(payload.assigned_to) === String(user.id)) {
+        setLiveToast({
+          id: Date.now(),
+          title: '🎯 Task Assigned to You',
+          message: payload.title ? `"${payload.title}"` : 'A new task has been assigned to you.',
+          taskId: taskId,
+        });
+      }
+    }
+  }, [user]);
+
   useRealtime('notification.new', handleLiveNotification);
-  useRealtime('task.created', handleLiveNotification);
+  useRealtime('task.created', handleTaskCreated);
   useRealtime('task.status_changed', handleLiveNotification);
   useRealtime('review.submitted', handleLiveNotification);
+
+  // Auto-dismiss live toast after 7 seconds
+  useEffect(() => {
+    if (!liveToast) return;
+    const timer = setTimeout(() => {
+      setLiveToast(null);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [liveToast]);
+
+  const handleNotificationClick = async (n) => {
+    if (!n.is_read) {
+      try {
+        await markRead(n.id);
+        loadNotifications();
+      } catch (err) {}
+    }
+    setShowMenu(false);
+    const taskId = n.ref_id || n.task_id;
+    if (taskId) {
+      navigate(`/tasks?taskId=${taskId}`);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -186,42 +234,68 @@ export const Header = ({ title }) => {
                     No notifications yet
                   </div>
                 ) : (
-                  notifications.map(n => (
-                    <div key={n.id} style={{ 
-                      padding: '14px 18px',
-                      borderBottom: '1px solid var(--border)',
-                      background: n.is_read ? 'transparent' : 'var(--brand-50)',
-                      display: 'flex',
-                      gap: '12px',
-                      alignItems: 'flex-start',
-                      transition: 'background var(--transition-fast)'
-                    }}>
-                      <div style={{ flex: 1 }}>
-                        <div className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>{n.title}</div>
-                        <div className="text-xs text-secondary" style={{ lineHeight: 1.4 }}>{n.message || n.content}</div>
+                  notifications.map(n => {
+                    const taskId = n.ref_id || n.task_id;
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n)}
+                        style={{ 
+                          padding: '14px 18px',
+                          borderBottom: '1px solid var(--border)',
+                          background: n.is_read ? 'transparent' : 'var(--brand-50)',
+                          display: 'flex',
+                          gap: '12px',
+                          alignItems: 'flex-start',
+                          transition: 'background var(--transition-fast)',
+                          cursor: taskId ? 'pointer' : 'default'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (taskId) e.currentTarget.style.background = n.is_read ? 'var(--subtle)' : 'var(--brand-100)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = n.is_read ? 'transparent' : 'var(--brand-50)';
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span>{n.title}</span>
+                            {taskId && <ChevronRight size={14} color="var(--text-tertiary)" />}
+                          </div>
+                          <div className="text-xs text-secondary" style={{ lineHeight: 1.4 }}>{n.message || n.content}</div>
+                          {taskId && (
+                            <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600, marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              Open task →
+                            </span>
+                          )}
+                        </div>
+                        {!n.is_read && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkRead(n.id);
+                            }}
+                            style={{
+                              background: 'var(--surface)',
+                              border: '1px solid var(--border)',
+                              color: 'var(--brand-600)',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              borderRadius: 'var(--radius-xs)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: 'var(--shadow-subtle)',
+                              flexShrink: 0
+                            }}
+                            title="Mark as read"
+                          >
+                            <Check size={13} />
+                          </button>
+                        )}
                       </div>
-                      {!n.is_read && (
-                        <button
-                          onClick={() => handleMarkRead(n.id)}
-                          style={{
-                            background: 'var(--surface)',
-                            border: '1px solid var(--border)',
-                            color: 'var(--brand-600)',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            borderRadius: 'var(--radius-xs)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: 'var(--shadow-subtle)'
-                          }}
-                          title="Mark as read"
-                        >
-                          <Check size={13} />
-                        </button>
-                      )}
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -481,6 +555,87 @@ export const Header = ({ title }) => {
           </div>
         )}
       </div>
+
+      {/* Real-time Floating Notification Toast */}
+      {liveToast && (
+        <div
+          onClick={() => {
+            if (liveToast.taskId) {
+              navigate(`/tasks?taskId=${liveToast.taskId}`);
+            }
+            setLiveToast(null);
+          }}
+          className="modal-animate"
+          style={{
+            position: 'fixed',
+            top: '84px',
+            right: '24px',
+            zIndex: 99999,
+            width: '360px',
+            maxWidth: 'calc(100vw - 48px)',
+            background: 'var(--surface)',
+            border: '1.5px solid var(--brand-500)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.22)',
+            padding: '16px 18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            cursor: liveToast.taskId ? 'pointer' : 'default',
+            animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                width: '9px',
+                height: '9px',
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--brand-500)',
+                boxShadow: '0 0 8px var(--brand-500)'
+              }} />
+              <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                {liveToast.title}
+              </strong>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLiveToast(null);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-tertiary)',
+                padding: '3px',
+                borderRadius: 'var(--radius-full)',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <X size={15} />
+            </button>
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+            {liveToast.message}
+          </div>
+          {liveToast.taskId && (
+            <div style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              color: 'var(--brand-600)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              marginTop: '4px'
+            }}>
+              <span>Click to open task</span>
+              <ChevronRight size={13} />
+            </div>
+          )}
+        </div>
+      )}
     </header>
   );
 };
