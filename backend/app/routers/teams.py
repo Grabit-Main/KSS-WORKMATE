@@ -5,7 +5,7 @@ from uuid import UUID
 from app.database import get_db
 from app.models.project import Team, TeamMembership, Project
 from app.models.user import User
-from app.schemas.project import TeamCreate, TeamResponse, AddMemberRequest, SetLeadRequest
+from app.schemas.project import TeamCreate, TeamUpdate, TeamResponse, AddMemberRequest, SetLeadRequest
 from app.dependencies import get_current_user, require_pm_up
 from app.websocket.manager import manager
 from app.websocket.events import TEAM_CREATED, TEAM_MEMBER_ADDED, TEAM_MEMBER_REMOVED, TEAM_LEAD_ASSIGNED
@@ -58,6 +58,22 @@ def get_team(team_id: UUID, db: Session = Depends(get_db), _=Depends(get_current
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(404, "Team not found")
+    return team
+
+
+@router.put("/{team_id}", response_model=TeamResponse)
+async def update_team(team_id: UUID, req: TeamUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role != "PM":
+        raise HTTPException(403, "Only Project Managers (PM) can manage and reallocate teams")
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(404, "Team not found")
+    if req.name is not None:
+        team.name = req.name
+    if req.project_id is not None:
+        team.project_id = req.project_id
+    db.commit()
+    db.refresh(team)
     return team
 
 

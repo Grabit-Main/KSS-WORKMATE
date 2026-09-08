@@ -1,14 +1,15 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { getProjects, createProject } from '../api/projects';
-import { getTeams, createTeam } from '../api/teams';
+import { getTeams, createTeam, updateTeam } from '../api/teams';
 import { getUsers } from '../api/users';
+import { getTasks } from '../api/tasks';
 import { uploadFile } from '../api/upload';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
 import {
   Plus, Calendar, ArrowRight, FolderKanban, X, Check, Users,
   Paperclip, Image as ImageIcon, Film, FileText, ExternalLink,
-  Briefcase, UserCheck, ChevronDown
+  Briefcase, UserCheck, ChevronRight, CheckCircle2, Clock, AlertCircle
 } from 'lucide-react';
 
 const ProjectsPage = () => {
@@ -17,6 +18,7 @@ const ProjectsPage = () => {
     return cached ? JSON.parse(cached) : [];
   });
   const [teams, setTeams] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(() => !localStorage.getItem('cache_projects'));
   const { user } = useAuth();
@@ -44,18 +46,29 @@ const ProjectsPage = () => {
 
   // Project Overview Modal state
   const [selectedProject, setSelectedProject] = useState(null);
+  const [overviewTeamToAllocate, setOverviewTeamToAllocate] = useState('');
+  const [overviewUploading, setOverviewUploading] = useState(false);
+  const overviewFileInputRef = useRef(null);
 
   const loadData = async () => {
     try {
-      const [projectsData, teamsData, usersData] = await Promise.all([
+      const [projectsData, teamsData, usersData, tasksData] = await Promise.all([
         getProjects().catch(() => []),
         getTeams().catch(() => []),
-        getUsers().catch(() => [])
+        getUsers().catch(() => []),
+        getTasks().catch(() => [])
       ]);
       setProjects(projectsData);
       setTeams(teamsData);
       setUsersList(usersData);
+      setTasks(tasksData);
       localStorage.setItem('cache_projects', JSON.stringify(projectsData));
+
+      // If a project is currently open in overview modal, refresh its data
+      setSelectedProject(prev => {
+        if (!prev) return null;
+        return projectsData.find(p => String(p.id) === String(prev.id)) || prev;
+      });
     } catch (err) {
       console.error('Failed to load project data:', err);
     } finally {
@@ -74,6 +87,36 @@ const ProjectsPage = () => {
   useRealtime('project.created', handleUpdate);
   useRealtime('project.updated', handleUpdate);
   useRealtime('team.created', handleUpdate);
+  useRealtime('task.created', handleUpdate);
+  useRealtime('task.updated', handleUpdate);
+  useRealtime('task.completed', handleUpdate);
+
+  // Listen for sidebar "+ Create Team" event
+  useEffect(() => {
+    const handleOpenCreateTeamEvent = () => {
+      if (user?.role === 'PM') {
+        setTeamFormError('');
+        setShowTeamModal(true);
+      }
+    };
+    window.addEventListener('workmate:open-create-team', handleOpenCreateTeamEvent);
+    return () => {
+      window.removeEventListener('workmate:open-create-team', handleOpenCreateTeamEvent);
+    };
+  }, [user?.role]);
+
+  // Escape key handler to close modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedProject(null);
+        setShowModal(false);
+        setShowTeamModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // File handling helpers
   const handleFileSelect = (e) => {
@@ -182,10 +225,54 @@ const ProjectsPage = () => {
     }
   };
 
+  const handleAllocateTeamFromOverview = async () => {
+    if (!overviewTeamToAllocate || !selectedProject) return;
+    try {
+      await updateTeam(overviewTeamToAllocate, { project_id: selectedProject.id });
+      setOverviewTeamToAllocate('');
+      loadData();
+    } catch (err) {
+      console.error('Failed to allocate team to project:', err);
+    }
+  };
+
+  const handleOverviewFileSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !selectedProject) return;
+    setOverviewUploading(true);
+    try {
+      for (const file of files) {
+        await uploadFile(file, null, selectedProject.id);
+      }
+      loadData();
+    } catch (err) {
+      console.error('Failed to upload project attachment:', err);
+    } finally {
+      setOverviewUploading(false);
+      if (overviewFileInputRef.current) {
+        overviewFileInputRef.current.value = '';
+      }
+    }
+  };
+
   const toggleMemberSelection = (userId) => {
     setTeamMemberIds(prev =>
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
+  };
+
+  // Helper to compute tasks and progress for a project
+  const getProjectTaskStats = (projectId) => {
+    const allocatedTeams = teams.filter(t => String(t.project_id) === String(projectId));
+    const teamIds = new Set(allocatedTeams.map(t => String(t.id)));
+    const projectTasks = tasks.filter(t => teamIds.has(String(t.team_id)));
+    const total = projectTasks.length;
+    const completed = projectTasks.filter(t => t.status === 'completed').length;
+    const inReview = projectTasks.filter(t => t.status === 'in_review').length;
+    const inProgress = projectTasks.filter(t => t.status === 'in_progress').length;
+    const blocked = projectTasks.filter(t => t.status === 'blocked').length;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { projectTasks, total, completed, inReview, inProgress, blocked, percent, allocatedTeams };
   };
 
   if (loading) {
@@ -198,7 +285,7 @@ const ProjectsPage = () => {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-          {[1,2,3,4,5,6].map(i => <div key={i} className="card skeleton" style={{ height: '160px' }}></div>)}
+          {[1,2,3,4,5,6].map(i => <div key={i} className="card skeleton" style={{ height: '180px' }}></div>)}
         </div>
       </div>
     );
@@ -209,7 +296,7 @@ const ProjectsPage = () => {
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>Projects</h2>
-          <p className="text-sm text-secondary mt-1">Active company deliverables, team allocations, and timelines</p>
+          <p className="text-sm text-secondary mt-1">Active company deliverables, squad allocations, and milestone timelines</p>
         </div>
 
         {/* PM has exclusive ability to create teams and assign deliverables */}
@@ -243,7 +330,8 @@ const ProjectsPage = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
         {projects.map(p => {
-          const allocatedTeams = p.teams || teams.filter(t => String(t.project_id) === String(p.id));
+          const stats = getProjectTaskStats(p.id);
+          const allocatedTeams = stats.allocatedTeams.length > 0 ? stats.allocatedTeams : (p.teams || []);
           const attachments = p.attachments || [];
 
           return (
@@ -257,7 +345,8 @@ const ProjectsPage = () => {
                 justifyContent: 'space-between',
                 cursor: 'pointer',
                 transition: 'all var(--transition-smooth)',
-                position: 'relative'
+                position: 'relative',
+                padding: '22px'
               }}
             >
               <div>
@@ -297,7 +386,30 @@ const ProjectsPage = () => {
                   {p.aim}
                 </p>
 
-                {/* Allocated Teams Pill */}
+                {/* Progress bar if tasks exist */}
+                {stats.total > 0 && (
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                        Progress ({stats.completed}/{stats.total} Tasks)
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 700 }}>
+                        {stats.percent}%
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${stats.percent}%`,
+                        height: '100%',
+                        background: 'var(--brand-gradient)',
+                        borderRadius: 'var(--radius-full)',
+                        transition: 'width 0.4s ease'
+                      }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Allocated Squads Pill */}
                 <div style={{ marginBottom: '10px' }}>
                   {allocatedTeams.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
@@ -330,7 +442,7 @@ const ProjectsPage = () => {
                       alignItems: 'center',
                       gap: '4px'
                     }}>
-                      <Users size={11} /> Unallocated
+                      <Users size={11} /> Unallocated Squad
                     </span>
                   )}
                 </div>
@@ -374,10 +486,38 @@ const ProjectsPage = () => {
                 )}
               </div>
 
-              <div style={{ paddingTop: '14px', marginTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="text-xs text-secondary font-medium">Click to view overview</span>
-                <ArrowRight size={14} strokeWidth={2} style={{ color: 'var(--brand-600)' }} />
-              </div>
+              {/* Functional & Prominent Overview Action Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedProject(p);
+                }}
+                style={{
+                  width: '100%',
+                  marginTop: '16px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid var(--border)',
+                  background: 'transparent',
+                  border: 'none',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  color: 'var(--brand-600)',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  transition: 'all var(--transition-fast)'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--brand-700)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--brand-600)'; }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <FolderKanban size={14} />
+                  <span>Click to view overview</span>
+                </span>
+                <ArrowRight size={14} strokeWidth={2.2} />
+              </button>
             </div>
           );
         })}
@@ -395,20 +535,23 @@ const ProjectsPage = () => {
 
       {/* New Project Modal (Exclusive to PM) */}
       {showModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.45)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999,
-          padding: '20px'
-        }}>
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            padding: '20px'
+          }}
+        >
           <div className="card modal-animate" style={{
             width: '100%',
             maxWidth: '560px',
@@ -627,20 +770,23 @@ const ProjectsPage = () => {
 
       {/* Create Team Modal (Exclusive to PM) */}
       {showTeamModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.45)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999,
-          padding: '20px'
-        }}>
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowTeamModal(false); }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            padding: '20px'
+          }}
+        >
           <div className="card modal-animate" style={{
             width: '100%',
             maxWidth: '560px',
@@ -757,7 +903,7 @@ const ProjectsPage = () => {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => {}} // Handled by container
+                            onChange={() => {}}
                             style={{ cursor: 'pointer' }}
                           />
                           <span style={{ fontSize: '12px', fontWeight: isSelected ? 600 : 400, color: 'var(--text-primary)' }}>
@@ -805,177 +951,348 @@ const ProjectsPage = () => {
         </div>
       )}
 
-      {/* Project Overview Modal */}
-      {selectedProject && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.45)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999,
-          padding: '20px'
-        }}>
-          <div className="card modal-animate" style={{
-            width: '100%',
-            maxWidth: '640px',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            padding: '28px',
-            background: 'var(--surface)',
-            boxShadow: 'var(--shadow-float)'
-          }}>
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  padding: '3px 10px',
-                  borderRadius: 'var(--radius-full)',
-                  background: 'var(--brand-50)',
-                  color: 'var(--brand-700)',
-                  border: '1px solid rgba(99, 102, 241, 0.15)',
-                  letterSpacing: '0.03em'
-                }}>
-                  {selectedProject.status?.toUpperCase() || 'ACTIVE'}
-                </span>
-                {selectedProject.deadline && (
-                  <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
-                    {new Date(selectedProject.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+      {/* Comprehensive Project Overview Modal */}
+      {selectedProject && (() => {
+        const stats = getProjectTaskStats(selectedProject.id);
+        const allocatedTeams = stats.allocatedTeams.length > 0 ? stats.allocatedTeams : (selectedProject.teams || []);
+        const unallocatedTeams = teams.filter(t => !t.project_id);
+
+        return (
+          <div
+            onClick={(e) => { if (e.target === e.currentTarget) setSelectedProject(null); }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.45)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 999,
+              padding: '20px'
+            }}
+          >
+            <div className="card modal-animate" style={{
+              width: '100%',
+              maxWidth: '680px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '28px',
+              background: 'var(--surface)',
+              boxShadow: 'var(--shadow-float)'
+            }}>
+              {/* Modal Top Bar */}
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'var(--brand-50)',
+                    color: 'var(--brand-700)',
+                    border: '1px solid rgba(99, 102, 241, 0.15)',
+                    letterSpacing: '0.03em'
+                  }}>
+                    {selectedProject.status?.toUpperCase() || 'ACTIVE'}
                   </span>
+                  {selectedProject.deadline && (
+                    <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
+                      Target: {new Date(selectedProject.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setSelectedProject(null)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <h3 className="font-bold text-xl mb-3" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                {selectedProject.name}
+              </h3>
+
+              {/* Aim & Objective Scope Box */}
+              <div style={{ marginBottom: '20px' }}>
+                <h4 className="text-xs font-semibold text-secondary uppercase mb-1.5" style={{ letterSpacing: '0.05em' }}>
+                  Aim & Objectives
+                </h4>
+                <div style={{
+                  background: 'var(--subtle)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '14px',
+                  fontSize: '13px',
+                  lineHeight: '1.6',
+                  color: 'var(--text-primary)',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {selectedProject.aim}
+                </div>
+              </div>
+
+              {/* Project Deliverables Progress */}
+              <div style={{
+                marginBottom: '20px',
+                padding: '14px 16px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--surface-hover)',
+                border: '1px solid var(--border)'
+              }}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-semibold text-secondary uppercase" style={{ letterSpacing: '0.05em' }}>
+                    Deliverables Progress
+                  </span>
+                  <span className="text-xs font-bold" style={{ color: 'var(--brand-600)' }}>
+                    {stats.percent}% Completed ({stats.completed}/{stats.total} Tasks)
+                  </span>
+                </div>
+
+                <div style={{ width: '100%', height: '8px', background: 'var(--border)', borderRadius: 'var(--radius-full)', overflow: 'hidden', marginBottom: '12px' }}>
+                  <div style={{
+                    width: `${stats.percent}%`,
+                    height: '100%',
+                    background: 'var(--brand-gradient)',
+                    borderRadius: 'var(--radius-full)',
+                    transition: 'width 0.4s ease'
+                  }} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', textAlign: 'center' }}>
+                  <div style={{ padding: '6px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                    <span className="text-xs text-secondary block">Completed</span>
+                    <span className="font-bold text-sm" style={{ color: 'var(--status-completed)' }}>{stats.completed}</span>
+                  </div>
+                  <div style={{ padding: '6px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                    <span className="text-xs text-secondary block">In Review</span>
+                    <span className="font-bold text-sm" style={{ color: 'var(--brand-600)' }}>{stats.inReview}</span>
+                  </div>
+                  <div style={{ padding: '6px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                    <span className="text-xs text-secondary block">In Progress</span>
+                    <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{stats.inProgress}</span>
+                  </div>
+                  <div style={{ padding: '6px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                    <span className="text-xs text-secondary block">Blocked</span>
+                    <span className="font-bold text-sm" style={{ color: 'var(--status-blocked)' }}>{stats.blocked}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tasks List for this Project */}
+              {stats.projectTasks.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <h4 className="text-xs font-semibold text-secondary uppercase mb-2" style={{ letterSpacing: '0.05em' }}>
+                    Project Deliverable Tasks ({stats.projectTasks.length})
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+                    {stats.projectTasks.map(t => (
+                      <div
+                        key={t.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'var(--subtle)',
+                          border: '1px solid var(--border)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: 'var(--radius-full)',
+                            background: t.status === 'completed' ? 'var(--status-completed-bg)' : 'var(--brand-50)',
+                            color: t.status === 'completed' ? 'var(--status-completed)' : 'var(--brand-700)',
+                            textTransform: 'uppercase'
+                          }}>
+                            {t.status.replace('_', ' ')}
+                          </span>
+                          <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {t.title}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          {t.assignee?.full_name || 'Unassigned'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Allocated Squads */}
+              <div style={{ marginBottom: '20px' }}>
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-xs font-semibold text-secondary uppercase" style={{ letterSpacing: '0.05em' }}>
+                    Allocated Teams ({allocatedTeams.length})
+                  </h4>
+                </div>
+
+                {allocatedTeams.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {allocatedTeams.map(team => {
+                      const lead = (team.memberships || []).find(m => m.is_lead);
+                      return (
+                        <div
+                          key={team.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--surface-hover)',
+                            border: '1px solid var(--border)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Users size={16} color="var(--brand-600)" />
+                            <div>
+                              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{team.name}</p>
+                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                {team.memberships?.length || 0} members {lead ? `• Lead: ${lead.user?.full_name}` : '• No lead assigned'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-secondary italic">No teams currently allocated to this project.</p>
+                )}
+
+                {/* PM Quick Team Allocation */}
+                {user.role === 'PM' && unallocatedTeams.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                    <select
+                      value={overviewTeamToAllocate}
+                      onChange={(e) => setOverviewTeamToAllocate(e.target.value)}
+                      className="input"
+                      style={{ padding: '6px 10px', fontSize: '12px', flex: 1 }}
+                    >
+                      <option value="">-- Allocate an Existing Squad --</option>
+                      {unallocatedTeams.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.memberships?.length || 0} members)
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAllocateTeamFromOverview}
+                      disabled={!overviewTeamToAllocate}
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                    >
+                      Allocate
+                    </button>
+                  </div>
                 )}
               </div>
-              <button
-                onClick={() => setSelectedProject(null)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
 
-            <h3 className="font-bold text-xl mb-3" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-              {selectedProject.name}
-            </h3>
+              {/* Attached Images, Videos & Documents */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-xs font-semibold text-secondary uppercase" style={{ letterSpacing: '0.05em' }}>
+                    Attachments ({selectedProject.attachments?.length || 0})
+                  </h4>
+                  {user.role === 'PM' && (
+                    <>
+                      <input
+                        type="file"
+                        ref={overviewFileInputRef}
+                        onChange={handleOverviewFileSelect}
+                        multiple
+                        accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                        style={{ display: 'none' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => overviewFileInputRef.current?.click()}
+                        disabled={overviewUploading}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--brand-600)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Paperclip size={12} />
+                        {overviewUploading ? 'Uploading...' : 'Attach More'}
+                      </button>
+                    </>
+                  )}
+                </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <h4 className="text-xs font-semibold text-secondary uppercase mb-1.5" style={{ letterSpacing: '0.05em' }}>
-                Aim & Objectives
-              </h4>
-              <div style={{
-                background: 'var(--subtle)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '14px',
-                fontSize: '13px',
-                lineHeight: '1.6',
-                color: 'var(--text-primary)',
-                whiteSpace: 'pre-wrap'
-              }}>
-                {selectedProject.aim}
+                {(selectedProject.attachments && selectedProject.attachments.length > 0) ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {selectedProject.attachments.map(att => (
+                      <a
+                        key={att.id}
+                        href={att.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'var(--subtle)',
+                          border: '1px solid var(--border)',
+                          textDecoration: 'none',
+                          color: 'inherit',
+                          transition: 'all var(--transition-fast)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {getFileIcon(att.file_type)}
+                          <div>
+                            <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {att.file_name}
+                            </p>
+                            <p style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
+                              Storage: {att.storage_provider}
+                            </p>
+                          </div>
+                        </div>
+                        <ExternalLink size={14} color="var(--text-secondary)" />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-secondary italic">No attachments provided for this project.</p>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProject(null)}
+                  className="btn btn-secondary"
+                >
+                  Close Overview
+                </button>
               </div>
             </div>
-
-            {/* Allocated Squads */}
-            <div style={{ marginBottom: '20px' }}>
-              <h4 className="text-xs font-semibold text-secondary uppercase mb-2" style={{ letterSpacing: '0.05em' }}>
-                Allocated Teams
-              </h4>
-              {((selectedProject.teams && selectedProject.teams.length > 0) || teams.filter(t => String(t.project_id) === String(selectedProject.id)).length > 0) ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(selectedProject.teams || teams.filter(t => String(t.project_id) === String(selectedProject.id))).map(team => (
-                    <div
-                      key={team.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        borderRadius: 'var(--radius-sm)',
-                        background: 'var(--surface-hover)',
-                        border: '1px solid var(--border)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Users size={16} color="var(--brand-600)" />
-                        <div>
-                          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{team.name}</p>
-                          <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                            {team.memberships?.length || 0} members
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-secondary italic">No teams currently allocated to this project.</p>
-              )}
-            </div>
-
-            {/* Attached Images, Videos & Documents */}
-            <div>
-              <h4 className="text-xs font-semibold text-secondary uppercase mb-2" style={{ letterSpacing: '0.05em' }}>
-                Attachments ({selectedProject.attachments?.length || 0})
-              </h4>
-              {(selectedProject.attachments && selectedProject.attachments.length > 0) ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {selectedProject.attachments.map(att => (
-                    <a
-                      key={att.id}
-                      href={att.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        borderRadius: 'var(--radius-sm)',
-                        background: 'var(--subtle)',
-                        border: '1px solid var(--border)',
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        transition: 'all var(--transition-fast)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {getFileIcon(att.file_type)}
-                        <div>
-                          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {att.file_name}
-                          </p>
-                          <p style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
-                            Provider: {att.storage_provider}
-                          </p>
-                        </div>
-                      </div>
-                      <ExternalLink size={14} color="var(--text-secondary)" />
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-secondary italic">No attachments provided for this project.</p>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
-              <button
-                type="button"
-                onClick={() => setSelectedProject(null)}
-                className="btn btn-secondary"
-              >
-                Close Overview
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

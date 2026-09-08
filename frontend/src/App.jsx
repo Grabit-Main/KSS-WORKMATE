@@ -8,6 +8,7 @@ import { MainLayout } from './components/layout/MainLayout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ProjectsPage from './pages/ProjectsPage';
+import TeamsPage from './pages/TeamsPage';
 import TasksPage from './pages/TasksPage';
 import FeedbackPage from './pages/FeedbackPage';
 import HistoryPage from './pages/HistoryPage';
@@ -31,6 +32,7 @@ const AppRoutes = () => {
       <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route index element={<DashboardPage />} />
         <Route path="projects" element={<ProjectsPage />} />
+        <Route path="teams" element={<TeamsPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="feedback" element={<FeedbackPage />} />
         <Route path="reviews" element={<Navigate to="/feedback" replace />} />
