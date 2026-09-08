@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useRealtime } from '../../realtime/useRealtime';
 import { Bell, LogOut, Check, User, ChevronRight } from 'lucide-react';
 import { getNotifications, markRead, markAllRead } from '../../api/notifications';
 
@@ -26,6 +27,15 @@ export const Header = ({ title }) => {
   useEffect(() => {
     loadNotifications();
   }, []);
+
+  const handleLiveNotification = useCallback(() => {
+    loadNotifications();
+  }, []);
+
+  useRealtime('notification.new', handleLiveNotification);
+  useRealtime('task.created', handleLiveNotification);
+  useRealtime('task.status_changed', handleLiveNotification);
+  useRealtime('review.submitted', handleLiveNotification);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -188,7 +198,7 @@ export const Header = ({ title }) => {
                     }}>
                       <div style={{ flex: 1 }}>
                         <div className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>{n.title}</div>
-                        <div className="text-xs text-secondary" style={{ lineHeight: 1.4 }}>{n.content}</div>
+                        <div className="text-xs text-secondary" style={{ lineHeight: 1.4 }}>{n.message || n.content}</div>
                       </div>
                       {!n.is_read && (
                         <button

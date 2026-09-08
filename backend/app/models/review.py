@@ -12,7 +12,7 @@ class Review(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     reviewer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     reviewee_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
     rating = Column(Integer, nullable=False)  # 1-5
     comment = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

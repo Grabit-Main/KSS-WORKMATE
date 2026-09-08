@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     RESEND_FROM_EMAIL: str
 
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 525600  # 1 year - no auto logout
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 365
 
     @property
     def origins(self) -> list[str]:

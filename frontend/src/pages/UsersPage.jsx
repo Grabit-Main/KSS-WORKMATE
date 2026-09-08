@@ -258,13 +258,32 @@ const UsersPage = () => {
                 >
                   <td style={{ padding: '16px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {u.avatar_url ? (
+                        <img
+                          src={u.avatar_url}
+                          alt={`${u.first_name} ${u.last_name}`}
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: 'var(--radius-sm)',
+                            objectFit: 'cover',
+                            flexShrink: 0,
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.nextElementSibling;
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
                       <div style={{
                         width: '36px',
                         height: '36px',
                         borderRadius: 'var(--radius-sm)',
                         background: 'var(--brand-gradient)',
                         color: 'white',
-                        display: 'flex',
+                        display: u.avatar_url ? 'none' : 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 700,

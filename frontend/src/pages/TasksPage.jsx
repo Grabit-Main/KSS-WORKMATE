@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { getTasks, createTask, acceptTask, completeTask, confirmTask } from '../api/tasks';
+import { getTasks, createTask, startTask, acceptTask, completeTask, confirmTask } from '../api/tasks';
 import { getTeams } from '../api/teams';
 import { getUsers } from '../api/users';
 import { uploadFile } from '../api/upload';
@@ -7,6 +7,7 @@ import { getStoredGoogleToken, requestGoogleAccessToken, isGoogleDriveConnected 
 import { useRealtime } from '../realtime/useRealtime';
 import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
+import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
   Paperclip, Image as ImageIcon, Film, FileText
@@ -19,6 +20,7 @@ const TasksPage = () => {
   });
   const [loading, setLoading] = useState(() => !localStorage.getItem('cache_tasks'));
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'mine', 'review'
+  const [selectedTask, setSelectedTask] = useState(null);
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const { joinRoom } = useWebSocket();
   const { user } = useAuth();
@@ -228,15 +230,20 @@ const TasksPage = () => {
     }
   };
 
-  const handleAcceptTask = async (taskId, e) => {
-    e.stopPropagation();
+  const handleStartTask = async (taskId, e) => {
+    if (e) e.stopPropagation();
     try {
-      await acceptTask(taskId);
+      await startTask(taskId);
       loadTasks();
+      if (selectedTask && selectedTask.id === taskId) {
+        setSelectedTask(prev => ({ ...prev, status: 'in_progress' }));
+      }
     } catch (err) {
-      console.error('Failed to accept task:', err);
+      console.error('Failed to start task:', err);
     }
   };
+
+  const handleAcceptTask = handleStartTask;
 
   const handleCompleteTask = async (taskId, e) => {
     e.stopPropagation();
@@ -348,6 +355,7 @@ const TasksPage = () => {
             <div
               key={task.id}
               className="card"
+              onClick={() => setSelectedTask(task)}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -453,11 +461,11 @@ const TasksPage = () => {
               {isAssignedToMe && task.status === 'not_started' && (
                 <div style={{ marginBottom: '12px' }}>
                   <button
-                    onClick={(e) => handleAcceptTask(task.id, e)}
+                    onClick={(e) => handleStartTask(task.id, e)}
                     className="btn btn-primary"
-                    style={{ width: '100%', height: '32px', fontSize: '12px', padding: '0 12px' }}
+                    style={{ width: '100%', height: '32px', fontSize: '12px', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   >
-                    Accept & Start Working
+                    <span>▶</span> Start Task
                   </button>
                 </div>
               )}
@@ -529,7 +537,7 @@ const TasksPage = () => {
                   </span>
                 </div>
                 <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  Details <ArrowRight size={12} strokeWidth={2} />
+                  Details & Chat <ArrowRight size={12} strokeWidth={2} />
                 </span>
               </div>
             </div>
@@ -846,6 +854,19 @@ const TasksPage = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Task Details Modal with Right-Side Direct Chat */}
+      {selectedTask && (
+        <TaskDetailsModal
+          task={selectedTask}
+          currentUser={user}
+          onClose={() => setSelectedTask(null)}
+          onTaskUpdated={(updated) => {
+            setSelectedTask(updated);
+            loadTasks();
+          }}
+        />
       )}
     </div>
   );

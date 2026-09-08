@@ -27,6 +27,7 @@ class TeamCreate(BaseModel):
 class TeamUpdate(BaseModel):
     name: Optional[str] = None
     project_id: Optional[UUID] = None
+    lead_user_id: Optional[UUID] = None
 
 
 class TeamResponse(BaseModel):

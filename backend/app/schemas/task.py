@@ -7,11 +7,13 @@ from app.schemas.user import UserResponse
 
 class TaskCreate(BaseModel):
     team_id: Optional[UUID] = None
+    project_id: Optional[UUID] = None
     title: str
     description: str
     assigned_to: UUID
     priority: str = "normal"
     deadline: Optional[datetime] = None
+    scheduled_date: Optional[str] = None
 
 
 class TaskUpdate(BaseModel):
@@ -19,6 +21,8 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     priority: Optional[str] = None
     deadline: Optional[datetime] = None
+    scheduled_date: Optional[str] = None
+    project_id: Optional[UUID] = None
 
 
 class StatusUpdate(BaseModel):
@@ -55,17 +59,19 @@ class StatusLogResponse(BaseModel):
 
 class TaskResponse(BaseModel):
     id: UUID
-    team_id: UUID
+    team_id: Optional[UUID] = None
+    project_id: Optional[UUID] = None
     title: str
     description: str
     assigned_to: UUID
     assigned_by: UUID
     status: str
     priority: str
-    deadline: Optional[datetime]
+    deadline: Optional[datetime] = None
+    scheduled_date: Optional[str] = None
     is_locked: bool
-    decline_reason: Optional[str]
-    reject_reason: Optional[str]
+    decline_reason: Optional[str] = None
+    reject_reason: Optional[str] = None
     deadline_exceeded: bool
     created_at: datetime
     updated_at: datetime

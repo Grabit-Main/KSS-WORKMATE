@@ -13,9 +13,11 @@ import {
   Briefcase, UserCheck, ChevronRight, CheckCircle2, Clock, AlertCircle,
   Pencil
 } from 'lucide-react';
+import { DayWiseTaskPlanner } from '../components/projects/DayWiseTaskPlanner';
 
 const ProjectsPage = () => {
   const { user } = useAuth();
+  const [plannerProject, setPlannerProject] = useState(null);
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const [projects, setProjects] = useState(() => {
     try {
@@ -691,7 +693,13 @@ const ProjectsPage = () => {
             <div
               key={p.id}
               className="card"
-              onClick={() => setSelectedProject(p)}
+              onClick={() => {
+                if (user?.role === 'TL') {
+                  setPlannerProject(p);
+                } else {
+                  setSelectedProject(p);
+                }
+              }}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -865,37 +873,68 @@ const ProjectsPage = () => {
               </div>
 
               {/* Functional Overview Action Button */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedProject(p);
-                }}
-                style={{
-                  width: '100%',
-                  marginTop: '16px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid var(--border)',
-                  background: 'transparent',
-                  border: 'none',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  color: 'var(--brand-600)',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  transition: 'all var(--transition-fast)'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--brand-700)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--brand-600)'; }}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <FolderKanban size={14} />
-                  <span>Click to view overview</span>
-                </span>
-                <ArrowRight size={14} strokeWidth={2.2} />
-              </button>
+              {/* Project Card Footer Actions */}
+              <div style={{
+                width: '100%',
+                marginTop: '16px',
+                paddingTop: '12px',
+                borderTop: '1px solid var(--border)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPlannerProject(p);
+                  }}
+                  style={{
+                    background: 'var(--brand-50)',
+                    border: '1px solid rgba(99, 102, 241, 0.2)',
+                    borderRadius: 'var(--radius-full)',
+                    padding: '4px 10px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    cursor: 'pointer',
+                    color: 'var(--brand-700)',
+                    fontWeight: 600,
+                    fontSize: '11px',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                  title="Open day-wise deliverables planner"
+                >
+                  <Calendar size={12} />
+                  <span>Day-Wise Tasks</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedProject(p);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 600,
+                    fontSize: '11px',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                >
+                  <span>Overview</span>
+                  <ArrowRight size={12} strokeWidth={2} />
+                </button>
+              </div>
             </div>
           );
         })}
@@ -1503,6 +1542,19 @@ const ProjectsPage = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const proj = selectedProject;
+                      setSelectedProject(null);
+                      setPlannerProject(proj);
+                    }}
+                    className="btn btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', fontSize: '12px' }}
+                  >
+                    <Calendar size={13} />
+                    <span>Day-Wise Planner</span>
+                  </button>
                   {user?.role === 'PM' && (
                     <button
                       type="button"
@@ -1782,6 +1834,17 @@ const ProjectsPage = () => {
           </div>
         );
       })()}
+
+      {plannerProject && (
+        <DayWiseTaskPlanner
+          project={plannerProject}
+          currentUser={user}
+          onClose={() => {
+            setPlannerProject(null);
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 };

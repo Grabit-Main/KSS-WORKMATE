@@ -10,7 +10,8 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False)
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
@@ -20,6 +21,7 @@ class Task(Base):
     # low, normal, high, urgent
     priority = Column(String, default="normal")
     deadline = Column(DateTime, nullable=True)
+    scheduled_date = Column(String, nullable=True)
     is_locked = Column(Boolean, default=False)
     decline_reason = Column(Text, nullable=True)
     reject_reason = Column(Text, nullable=True)
@@ -28,6 +30,7 @@ class Task(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     team = relationship("Team")
+    project = relationship("Project")
     assignee = relationship("User", foreign_keys=[assigned_to])
     assigner = relationship("User", foreign_keys=[assigned_by])
     attachments = relationship("TaskAttachment", back_populates="task", cascade="all, delete-orphan")

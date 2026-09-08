@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getTeams, createTeam, updateTeam, addMember, removeMember } from '../api/teams';
+import { getTeams, createTeam, updateTeam, addMember, removeMember, deleteTeam, setTeamLead } from '../api/teams';
 import { getProjects } from '../api/projects';
 import { getUsers } from '../api/users';
 import { useAuth } from '../context/AuthContext';
 import { useRealtime } from '../realtime/useRealtime';
 import {
   Users, Plus, FolderKanban, UserCheck, Shield, X, Check,
-  UserPlus, Calendar, ChevronRight, Briefcase
+  UserPlus, Calendar, ChevronRight, Briefcase, Trash2
 } from 'lucide-react';
 
 const TeamsPage = () => {
@@ -64,6 +64,7 @@ const TeamsPage = () => {
   }, []);
 
   useRealtime('team.created', handleUpdate);
+  useRealtime('team.deleted', handleUpdate);
   useRealtime('team.member_added', handleUpdate);
   useRealtime('team.member_removed', handleUpdate);
   useRealtime('team.lead_assigned', handleUpdate);
@@ -192,6 +193,26 @@ const TeamsPage = () => {
     }
   };
 
+  const handleDeleteTeam = async (teamId, name) => {
+    if (!window.confirm(`Are you sure you want to delete team "${name}"? All assignments will be removed.`)) return;
+    try {
+      await deleteTeam(teamId);
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to delete team.');
+    }
+  };
+
+  const handleAssignLead = async (teamId, newLeadId) => {
+    if (!newLeadId) return;
+    try {
+      await setTeamLead(teamId, newLeadId);
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to update team lead.');
+    }
+  };
+
   const toggleMemberSelection = (userId) => {
     setTeamMemberIds(prev =>
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
@@ -291,34 +312,61 @@ const TeamsPage = () => {
                     </span>
                   </div>
 
-                  {/* Project Allocation Pill */}
-                  {allocatedProject ? (
-                    <span style={{
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      padding: '3px 10px',
-                      borderRadius: 'var(--radius-full)',
-                      background: 'rgba(99, 102, 241, 0.08)',
-                      color: 'var(--brand-700)',
-                      border: '1px solid rgba(99, 102, 241, 0.2)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px'
-                    }}>
-                      <FolderKanban size={11} /> {allocatedProject.name}
-                    </span>
-                  ) : (
-                    <span style={{
-                      fontSize: '11px',
-                      color: 'var(--text-tertiary)',
-                      background: 'var(--subtle)',
-                      padding: '3px 8px',
-                      borderRadius: 'var(--radius-full)',
-                      border: '1px solid var(--border)'
-                    }}>
-                      Standalone
-                    </span>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {/* Project Allocation Pill */}
+                    {allocatedProject ? (
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '3px 10px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'rgba(99, 102, 241, 0.08)',
+                        color: 'var(--brand-700)',
+                        border: '1px solid rgba(99, 102, 241, 0.2)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}>
+                        <FolderKanban size={11} /> {allocatedProject.name}
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: '11px',
+                        color: 'var(--text-tertiary)',
+                        background: 'var(--subtle)',
+                        padding: '3px 8px',
+                        borderRadius: 'var(--radius-full)',
+                        border: '1px solid var(--border)'
+                      }}>
+                        Standalone
+                      </span>
+                    )}
+
+                    {/* Delete Team Button */}
+                    {['PM', 'CEO', 'CTO'].includes(user?.role) && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTeam(team.id, team.name)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text-tertiary)',
+                          padding: '4px',
+                          borderRadius: 'var(--radius-xs)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all var(--transition-fast)'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--status-blocked)'; e.currentTarget.style.background = 'var(--status-blocked-bg)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent'; }}
+                        title="Delete Team"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Team Lead Section */}
@@ -329,26 +377,65 @@ const TeamsPage = () => {
                   border: '1px solid var(--border)',
                   marginBottom: '14px'
                 }}>
-                  <span className="text-xs font-semibold text-secondary uppercase block mb-1" style={{ fontSize: '10px' }}>
-                    Team Lead
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="text-xs font-semibold text-secondary uppercase" style={{ fontSize: '10px' }}>
+                      Team Lead
+                    </span>
+                    {user.role === 'PM' && (
+                      <select
+                        value={leadMembership ? String(leadMembership.user_id) : ''}
+                        onChange={(e) => handleAssignLead(team.id, e.target.value)}
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 6px',
+                          border: '1px solid var(--border)',
+                          borderRadius: 'var(--radius-xs)',
+                          background: 'var(--surface)',
+                          color: 'var(--brand-700)',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="" disabled>-- {leadMembership ? 'Change Lead' : 'Assign Lead'} --</option>
+                        {eligibleTeamCandidates.map(u => (
+                          <option key={u.id} value={u.id}>
+                            {getUserFullName(u)} ({u.role})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   {leadMembership ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: 'var(--radius-full)',
-                          background: 'var(--brand-gradient)',
-                          color: '#fff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '11px',
-                          fontWeight: 700
-                        }}>
-                          {leadMembership.user?.first_name?.[0]}{leadMembership.user?.last_name?.[0]}
-                        </div>
+                        {leadMembership.user?.avatar_url ? (
+                          <img
+                            src={leadMembership.user.avatar_url}
+                            alt=""
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: 'var(--radius-full)',
+                              objectFit: 'cover',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                            }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: 'var(--radius-full)',
+                            background: 'var(--brand-gradient)',
+                            color: '#fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '11px',
+                            fontWeight: 700
+                          }}>
+                            {leadMembership.user?.first_name?.[0]}{leadMembership.user?.last_name?.[0]}
+                          </div>
+                        )}
                         <div>
                           <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
                             {getUserFullName(leadMembership.user)}

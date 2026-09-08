@@ -96,36 +96,50 @@ html, body {
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
   background-color: var(--bg);
-  background-image: var(--bg-gradient);
-  background-attachment: fixed;
   color: var(--text-primary);
   line-height: 1.5;
   letter-spacing: -0.011em;
-  touch-action: pan-x pan-y;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: var(--bg-gradient);
+  pointer-events: none;
+  z-index: -1;
+  transform: translateZ(0);
 }
 
 #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  overscroll-behavior: none;
-  -webkit-overscroll-behavior: none;
+}
+
+/* Modal and Dialog Scroll Containment to Prevent Glitches */
+.modal-animate, .modal-scroll, [role="dialog"] {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.3);
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.55);
+  background: rgba(100, 116, 139, 0.5);
 }
 
 a {

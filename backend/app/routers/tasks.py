@@ -46,9 +46,15 @@ async def _broadcast_task(task, team_id, event_type):
 
 
 @router.get("", response_model=List[TaskResponse])
-def list_tasks(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def list_tasks(
+    project_id: Optional[UUID] = None,
+    scheduled_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
     q = db.query(Task)
     if user.role == "TM":
+        # Regular members only see tasks allocated to them
         q = q.filter(Task.assigned_to == user.id)
     elif user.role == "TL":
         # TL sees tasks in teams where they are lead or assigned to them
@@ -60,14 +66,36 @@ def list_tasks(db: Session = Depends(get_db), user: User = Depends(get_current_u
     elif user.role == "PM":
         from app.models.project import Team, Project
         team_ids = db.query(Team.id).join(Project).filter(Project.created_by == user.id).subquery()
-        q = q.filter((Task.team_id.in_(team_ids)) | (Task.assigned_to == user.id))
+        p_ids = db.query(Project.id).filter(Project.created_by == user.id).subquery()
+        q = q.filter((Task.team_id.in_(team_ids)) | (Task.project_id.in_(p_ids)) | (Task.assigned_to == user.id))
     # CEO/CTO see all
+
+    if project_id:
+        # Match directly or through team's project
+        team_ids = db.query(Team.id).filter(Team.project_id == project_id).subquery()
+        q = q.filter((Task.project_id == project_id) | (Task.team_id.in_(team_ids)))
+
+    if scheduled_date:
+        q = q.filter(Task.scheduled_date == scheduled_date)
+
     return q.order_by(Task.created_at.desc()).all()
 
 
 @router.post("", response_model=TaskResponse)
 async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    # If team_id is not specified, resolve automatically from assignee's team or creator's team
+    # Auto-resolve team_id and project_id if either is missing
+    if not req.team_id and req.project_id:
+        # Find a team associated with this project where user is lead, or any team in project
+        proj_team = db.query(Team).join(TeamMembership).filter(
+            Team.project_id == req.project_id,
+            TeamMembership.user_id == user.id,
+            (TeamMembership.is_lead == True) | (user.role == "TL")
+        ).first()
+        if not proj_team:
+            proj_team = db.query(Team).filter(Team.project_id == req.project_id).first()
+        if proj_team:
+            req.team_id = proj_team.id
+
     if not req.team_id:
         membership = db.query(TeamMembership).filter(TeamMembership.user_id == req.assigned_to).first()
         if not membership:
@@ -78,17 +106,21 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
             team = db.query(Team).first()
             if team:
                 req.team_id = team.id
-            else:
-                raise HTTPException(400, "No active team found to link this task to.")
 
-    # Must be TL of that team, or CEO/CTO/PM
-    lead = db.query(TeamMembership).filter(
-        TeamMembership.team_id == req.team_id,
-        TeamMembership.user_id == user.id,
-        (TeamMembership.is_lead == True) | (user.role == "TL")
-    ).first()
-    if not lead and user.role not in ("CEO", "CTO", "PM"):
-        raise HTTPException(403, "Only Team Leads can create tasks")
+    if req.team_id and not req.project_id:
+        team_obj = db.query(Team).filter(Team.id == req.team_id).first()
+        if team_obj and team_obj.project_id:
+            req.project_id = team_obj.project_id
+
+    # Check authorization: Must be TL of that team, or CEO/CTO/PM
+    if req.team_id:
+        lead = db.query(TeamMembership).filter(
+            TeamMembership.team_id == req.team_id,
+            TeamMembership.user_id == user.id,
+            (TeamMembership.is_lead == True) | (user.role == "TL")
+        ).first()
+        if not lead and user.role not in ("CEO", "CTO", "PM"):
+            raise HTTPException(403, "Only Team Leads or PMs can allocate tasks")
 
     # Find target assignee user
     target_user = db.query(User).filter(User.id == req.assigned_to).first()
@@ -103,16 +135,6 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
     if user.role == "TM" and target_user.role == "PM":
         raise HTTPException(400, "Team Members (TM) cannot assign tasks to Project Managers (PM).")
 
-    # If user is TL, ensure assignee is either themselves or a member of that team
-    if user.role == "TL":
-        is_self = str(req.assigned_to) == str(user.id)
-        is_member = db.query(TeamMembership).filter(
-            TeamMembership.team_id == req.team_id,
-            TeamMembership.user_id == req.assigned_to
-        ).first()
-        if not is_self and not is_member:
-            raise HTTPException(400, "Team Leads can only assign tasks to members of their team or to themselves.")
-
     task = Task(**req.model_dump(), assigned_by=user.id)
     db.add(task)
     db.flush()
@@ -121,11 +143,12 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
     else:
         log_msg = f"Task assigned by {user.role} {user.first_name} {user.last_name}"
     _log_status(db, task, "created", "not_started", user.id, log_msg)
-    _notify(db, req.assigned_to, "New Task Assigned", f"You have a new task: {req.title}", TASK_CREATED, None)
+    _notify(db, req.assigned_to, "New Task Assigned", f"You have been allocated a new task: {req.title}", TASK_CREATED, str(task.id))
     db.commit()
     db.refresh(task)
-    await _broadcast_task(task, req.team_id, TASK_CREATED)
-    await manager.send_to_user(str(req.assigned_to), {"type": NOTIFICATION_NEW, "data": {"message": f"New task: {req.title}"}})
+    if req.team_id:
+        await _broadcast_task(task, req.team_id, TASK_CREATED)
+    await manager.send_to_user(str(req.assigned_to), {"type": NOTIFICATION_NEW, "data": {"title": "New Task Assigned", "message": f"You have been allocated a new task: {req.title}"}})
     return task
 
 
@@ -137,18 +160,38 @@ def get_task(task_id: UUID, db: Session = Depends(get_db), _=Depends(get_current
     return task
 
 
+@router.post("/{task_id}/start", response_model=TaskResponse)
+@router.put("/{task_id}/start", response_model=TaskResponse)
 @router.put("/{task_id}/accept", response_model=TaskResponse)
-async def accept_task(task_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    task = db.query(Task).filter(Task.id == task_id, Task.assigned_to == user.id).first()
+async def start_task(task_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
-        raise HTTPException(404, "Task not found or not assigned to you")
+        raise HTTPException(404, "Task not found")
+    is_assignee = str(task.assigned_to) == str(user.id)
+    is_lead = False
+    if task.team_id:
+        is_lead = bool(db.query(TeamMembership).filter(
+            TeamMembership.team_id == task.team_id,
+            TeamMembership.user_id == user.id,
+            (TeamMembership.is_lead == True) | (user.role == "TL")
+        ).first())
+    if not is_assignee and not is_lead and user.role not in ("CEO", "CTO", "PM"):
+        raise HTTPException(403, "Not authorized to start this task")
     if task.status != "not_started":
-        raise HTTPException(400, "Task cannot be accepted in current state")
-    _log_status(db, task, task.status, "in_progress", user.id)
+        raise HTTPException(400, f"Task cannot be started in '{task.status}' status")
+
+    _log_status(db, task, task.status, "in_progress", user.id, f"Started by {user.first_name} {user.last_name}")
     task.status = "in_progress"
+
+    notify_target = task.assigned_by if is_assignee else task.assigned_to
+    if str(notify_target) != str(user.id):
+        _notify(db, notify_target, "Task Started", f"{user.first_name} {user.last_name} started working on '{task.title}'", TASK_STATUS_CHANGED, str(task.id))
+        await manager.send_to_user(str(notify_target), {"type": NOTIFICATION_NEW, "data": {"title": "Task Started", "message": f"{user.first_name} {user.last_name} started working on '{task.title}'"}})
+
     db.commit()
     db.refresh(task)
-    await _broadcast_task(task, task.team_id, TASK_STATUS_CHANGED)
+    if task.team_id:
+        await _broadcast_task(task, task.team_id, TASK_STATUS_CHANGED)
     return task
 
 

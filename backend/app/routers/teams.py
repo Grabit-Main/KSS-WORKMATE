@@ -41,7 +41,8 @@ async def create_team(req: TeamCreate, db: Session = Depends(get_db), user: User
             db.add(m)
 
     db.commit()
-    db.refresh(team)
+    from sqlalchemy.orm import joinedload
+    team = db.query(Team).options(joinedload(Team.memberships).joinedload(TeamMembership.user)).filter(Team.id == team.id).first()
     event = {"type": TEAM_CREATED, "data": {"id": str(team.id), "name": team.name, "project_id": str(req.project_id) if req.project_id else None}}
     await manager.broadcast("global:admins", event)
     if req.project_id:
@@ -51,11 +52,13 @@ async def create_team(req: TeamCreate, db: Session = Depends(get_db), user: User
 
 @router.get("", response_model=List[TeamResponse])
 def list_teams(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from sqlalchemy.orm import joinedload
+    q = db.query(Team).options(joinedload(Team.memberships).joinedload(TeamMembership.user))
     if user.role in ("CEO", "CTO", "HR", "PM"):
-        return db.query(Team).all()
+        return q.all()
     # TL and TM see teams they are member or lead of
     team_ids = db.query(TeamMembership.team_id).filter(TeamMembership.user_id == user.id).subquery()
-    return db.query(Team).filter(Team.id.in_(team_ids)).all()
+    return q.filter(Team.id.in_(team_ids)).all()
 
 
 @router.get("/{team_id}", response_model=TeamResponse)
@@ -68,7 +71,7 @@ def get_team(team_id: UUID, db: Session = Depends(get_db), _=Depends(get_current
 
 @router.put("/{team_id}", response_model=TeamResponse)
 async def update_team(team_id: UUID, req: TeamUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    if user.role != "PM":
+    if user.role not in ("PM", "CEO", "CTO"):
         raise HTTPException(403, "Only Project Managers (PM) can manage and reallocate teams")
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
@@ -76,10 +79,90 @@ async def update_team(team_id: UUID, req: TeamUpdate, db: Session = Depends(get_
     if req.name is not None:
         team.name = req.name
     if req.project_id is not None:
-        team.project_id = req.project_id
+        team.project_id = req.project_id if str(req.project_id) != "" else None
+
+    if req.lead_user_id is not None:
+        new_lead = db.query(User).filter(User.id == req.lead_user_id).first()
+        if not new_lead:
+            raise HTTPException(404, "Selected lead user not found")
+        if new_lead.role in ("CEO", "CTO", "PM"):
+            raise HTTPException(400, f"{new_lead.role} cannot be assigned as a Team Lead")
+
+        # Unassign previous lead(s)
+        current_leads = db.query(TeamMembership).filter(TeamMembership.team_id == team_id, TeamMembership.is_lead == True).all()
+        for old_m in current_leads:
+            if str(old_m.user_id) != str(req.lead_user_id):
+                old_m.is_lead = False
+                old_uid = old_m.user_id
+                # Demote if not lead elsewhere
+                other_lead = db.query(TeamMembership).filter(
+                    TeamMembership.user_id == old_uid,
+                    TeamMembership.team_id != team_id,
+                    TeamMembership.is_lead == True
+                ).first()
+                if not other_lead:
+                    old_user = db.query(User).filter(User.id == old_uid).first()
+                    if old_user and old_user.role == "TL":
+                        old_user.role = "TM"
+
+        # Assign new lead
+        target_m = db.query(TeamMembership).filter(TeamMembership.team_id == team_id, TeamMembership.user_id == req.lead_user_id).first()
+        if target_m:
+            target_m.is_lead = True
+        else:
+            target_m = TeamMembership(team_id=team_id, user_id=req.lead_user_id, is_lead=True)
+            db.add(target_m)
+
+        if new_lead.role == "TM":
+            new_lead.role = "TL"
+
+        await manager.broadcast(f"team:{team_id}", {"type": TEAM_LEAD_ASSIGNED, "data": {"team_id": str(team_id), "user_id": str(req.lead_user_id), "is_lead": True}})
+        await manager.send_to_user(str(req.lead_user_id), {"type": "notification.new", "data": {"title": "Team Lead Assignment", "message": f"You are now designated as Team Lead for {team.name}"}})
+
     db.commit()
-    db.refresh(team)
-    return team
+    from sqlalchemy.orm import joinedload
+    return db.query(Team).options(joinedload(Team.memberships).joinedload(TeamMembership.user)).filter(Team.id == team_id).first()
+
+
+@router.put("/{team_id}/lead/{user_id}", response_model=TeamResponse)
+async def set_team_lead(team_id: UUID, user_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role not in ("PM", "CEO", "CTO"):
+        raise HTTPException(403, "Only Project Managers (PM) can assign Team Leads")
+    return await update_team(team_id, TeamUpdate(lead_user_id=user_id), db=db, user=user)
+
+
+@router.delete("/{team_id}")
+async def delete_team(team_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role not in ("PM", "CEO", "CTO"):
+        raise HTTPException(403, "Only Project Managers (PM) or Executives can delete teams")
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(404, "Team not found")
+
+    # Check leads to revert role if needed
+    leads = db.query(TeamMembership).filter(TeamMembership.team_id == team_id, TeamMembership.is_lead == True).all()
+    for l in leads:
+        other_lead = db.query(TeamMembership).filter(
+            TeamMembership.user_id == l.user_id,
+            TeamMembership.team_id != team_id,
+            TeamMembership.is_lead == True
+        ).first()
+        if not other_lead:
+            u = db.query(User).filter(User.id == l.user_id).first()
+            if u and u.role == "TL":
+                u.role = "TM"
+
+    # Detach tasks from this team
+    from app.models.task import Task
+    db.query(Task).filter(Task.team_id == team_id).update({"team_id": None})
+
+    db.delete(team)
+    db.commit()
+
+    event = {"type": "team.deleted", "data": {"id": str(team_id)}}
+    await manager.broadcast("global:admins", event)
+    await manager.broadcast(f"team:{team_id}", event)
+    return {"message": "Team deleted successfully"}
 
 
 @router.post("/{team_id}/members")

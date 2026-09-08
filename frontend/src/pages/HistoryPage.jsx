@@ -22,6 +22,8 @@ import {
   X
 } from 'lucide-react';
 
+import { getUsers } from '../api/users';
+
 const HistoryPage = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('activity'); // 'activity', 'projects', 'tasks'
@@ -30,6 +32,10 @@ const HistoryPage = () => {
   const [tasks, setTasks] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [usersList, setUsersList] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+
+  const isExecutive = ['CEO', 'CTO'].includes(user?.role);
 
   // Grouped Activity State & Dialog Modal
   const [selectedActivityGroup, setSelectedActivityGroup] = useState(null);
@@ -51,13 +57,20 @@ const HistoryPage = () => {
   const [taskSearchQuery, setTaskSearchQuery] = useState('');
   const [expandedTaskId, setExpandedTaskId] = useState(null);
 
+  useEffect(() => {
+    if (isExecutive) {
+      getUsers().then(setUsersList).catch(() => {});
+    }
+  }, [isExecutive]);
+
   const loadData = async () => {
     try {
+      const uid = selectedUserId || null;
       const [sumRes, projRes, taskRes, actRes] = await Promise.all([
-        getHistorySummary().catch(() => null),
-        getProjectsHistory().catch(() => []),
-        getTasksHistory({ status: taskStatusFilter, search: taskSearchQuery }).catch(() => []),
-        getActivityHistory().catch(() => [])
+        getHistorySummary(uid).catch(() => null),
+        getProjectsHistory(uid).catch(() => []),
+        getTasksHistory({ status: taskStatusFilter, search: taskSearchQuery, user_id: uid }).catch(() => []),
+        getActivityHistory(uid).catch(() => [])
       ]);
       if (sumRes) setSummary(sumRes);
       setProjects(projRes);
@@ -72,7 +85,7 @@ const HistoryPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [taskStatusFilter]);
+  }, [taskStatusFilter, selectedUserId]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -186,44 +199,72 @@ const HistoryPage = () => {
             History & Audit Logs
           </h2>
           <p className="text-sm text-secondary mt-1">
-            Complete historical trail and audit lifecycle of all company projects, task assignments, and status updates
+            {isExecutive
+              ? (selectedUserId ? 'Viewing historical trail filtered for selected user' : 'Complete company-wide historical trail and audit lifecycle of all projects, tasks, and updates')
+              : (user?.role === 'PM'
+                  ? 'Historical trail of projects, squads, and tasks managed by you'
+                  : (user?.role === 'TL'
+                      ? 'Historical trail of your squads, assigned deliverables, and status updates'
+                      : 'Your personal activity trail, allocated tasks, and work lifecycle history'))}
           </p>
         </div>
 
-        {/* Tab Selection */}
-        <div style={{
-          display: 'flex',
-          background: 'var(--subtle)',
-          padding: '4px',
-          borderRadius: 'var(--radius-full)',
-          border: '1px solid var(--border)',
-          gap: '2px',
-          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)'
-        }}>
-          {[
-            { id: 'activity', label: 'All Activity' },
-            { id: 'projects', label: 'Projects History' },
-            { id: 'tasks', label: 'Tasks History' },
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              style={{
-                padding: '7px 18px',
-                fontSize: '13px',
-                fontWeight: activeTab === t.id ? 600 : 500,
-                border: 'none',
-                borderRadius: 'var(--radius-full)',
-                cursor: 'pointer',
-                background: activeTab === t.id ? 'var(--surface)' : 'transparent',
-                color: activeTab === t.id ? 'var(--brand-600)' : 'var(--text-secondary)',
-                boxShadow: activeTab === t.id ? 'var(--shadow-subtle)' : 'none',
-                transition: 'all var(--transition-fast)'
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Executive User Filter for CEO/CTO */}
+          {isExecutive && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="text-xs font-semibold text-secondary">User:</span>
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="input"
+                style={{ padding: '6px 12px', fontSize: '12px', borderRadius: 'var(--radius-full)', minWidth: '220px' }}
+              >
+                <option value="">-- All Company (Everyone) --</option>
+                {usersList.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.first_name} {u.last_name} ({u.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Tab Selection */}
+          <div style={{
+            display: 'flex',
+            background: 'var(--subtle)',
+            padding: '4px',
+            borderRadius: 'var(--radius-full)',
+            border: '1px solid var(--border)',
+            gap: '2px',
+            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)'
+          }}>
+            {[
+              { id: 'activity', label: 'All Activity' },
+              { id: 'projects', label: 'Projects History' },
+              { id: 'tasks', label: 'Tasks History' },
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                style={{
+                  padding: '7px 18px',
+                  fontSize: '13px',
+                  fontWeight: activeTab === t.id ? 600 : 500,
+                  border: 'none',
+                  borderRadius: 'var(--radius-full)',
+                  cursor: 'pointer',
+                  background: activeTab === t.id ? 'var(--surface)' : 'transparent',
+                  color: activeTab === t.id ? 'var(--brand-600)' : 'var(--text-secondary)',
+                  boxShadow: activeTab === t.id ? 'var(--shadow-subtle)' : 'none',
+                  transition: 'all var(--transition-fast)'
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

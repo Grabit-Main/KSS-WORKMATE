@@ -49,9 +49,7 @@ export const MainLayout = () => {
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
-          overscrollBehavior: 'none',
-          WebkitOverscrollBehavior: 'none',
-          scrollBehavior: 'smooth',
+          overscrollBehaviorY: 'contain',
           WebkitOverflowScrolling: 'touch'
         }}>
           <Outlet />

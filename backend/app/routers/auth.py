@@ -9,7 +9,7 @@ from app.schemas.user import (
     LoginRequest, TokenResponse, UserResponse,
     ForgotPasswordRequest, VerifyOTPRequest, ResetPasswordRequest, ChangePasswordRequest, UserUpdate,
 )
-from app.utils.security import verify_password, hash_password, create_access_token, create_refresh_token
+from app.utils.security import verify_password, hash_password, create_access_token, create_refresh_token, decode_jwt
 from app.services.email_service import send_otp_email
 from app.dependencies import get_current_user
 
@@ -35,6 +35,26 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     return TokenResponse(
         access_token=create_access_token(payload),
         refresh_token=create_refresh_token(payload),
+        user=UserResponse.model_validate(user),
+    )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_token(req: dict, db: Session = Depends(get_db)):
+    tok = req.get("refresh_token")
+    if not tok:
+        raise HTTPException(status_code=400, detail="Missing refresh token")
+    payload = decode_jwt(tok)
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    user_id = payload.get("sub")
+    user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+    new_payload = {"sub": str(user.id), "role": user.role}
+    return TokenResponse(
+        access_token=create_access_token(new_payload),
+        refresh_token=create_refresh_token(new_payload),
         user=UserResponse.model_validate(user),
     )
 

@@ -16,6 +16,16 @@ export const getUserFeedback = async (userId) => {
   }
 };
 
+export const getFeedback = async (type = 'received', userId = null) => {
+  const params = { type };
+  if (userId) params.user_id = userId;
+  return (await api.get('/feedback', { params })).data;
+};
+
+export const getFeedbackTargets = async () => {
+  return (await api.get('/feedback/targets')).data;
+};
+
 // Aliases for backward compatibility
 export const submitReview = submitFeedback;
 export const getUserReviews = getUserFeedback;

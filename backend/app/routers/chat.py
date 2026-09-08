@@ -15,16 +15,22 @@ from app.websocket.events import CHAT_NEW_MESSAGE
 router = APIRouter(prefix="/api/tasks", tags=["chat"])
 
 
+from app.models.notification import Notification
+
+
 def _can_chat(db, task, user):
-    """TL of team or assigned TM can chat."""
-    if str(task.assigned_to) == str(user.id):
+    """TL of team or assigned TM or assigner can chat."""
+    if str(task.assigned_to) == str(user.id) or str(task.assigned_by) == str(user.id):
         return True
-    lead = db.query(TeamMembership).filter(
-        TeamMembership.team_id == task.team_id,
-        TeamMembership.user_id == user.id,
-        TeamMembership.is_lead == True,
-    ).first()
-    return bool(lead) or user.role in ("CEO", "CTO", "PM")
+    if task.team_id:
+        lead = db.query(TeamMembership).filter(
+            TeamMembership.team_id == task.team_id,
+            TeamMembership.user_id == user.id,
+            (TeamMembership.is_lead == True) | (user.role == "TL"),
+        ).first()
+        if lead:
+            return True
+    return user.role in ("CEO", "CTO", "PM")
 
 
 @router.get("/{task_id}/chat", response_model=List[ChatMessageResponse])
@@ -42,6 +48,20 @@ async def send_message(task_id: UUID, req: ChatMessageCreate, db: Session = Depe
         raise HTTPException(403, "Access denied")
     msg = ChatMessage(task_id=task_id, sender_id=user.id, **req.model_dump())
     db.add(msg)
+
+    # Determine recipient
+    recipient_id = task.assigned_by if str(task.assigned_to) == str(user.id) else task.assigned_to
+    if recipient_id and str(recipient_id) != str(user.id):
+        preview_text = (msg.message[:80] + '...') if msg.message and len(msg.message) > 80 else (msg.message or 'Sent an attachment')
+        notif = Notification(
+            user_id=recipient_id,
+            title=f"Chat: {task.title}",
+            message=f"{user.first_name} {user.last_name}: {preview_text}",
+            event_type="chat.message",
+            ref_id=str(task.id)
+        )
+        db.add(notif)
+
     db.commit()
     db.refresh(msg)
     event = {
@@ -57,4 +77,12 @@ async def send_message(task_id: UUID, req: ChatMessageCreate, db: Session = Depe
         }
     }
     await manager.broadcast(f"task:{task_id}", event)
+    if recipient_id and str(recipient_id) != str(user.id):
+        await manager.send_to_user(str(recipient_id), {
+            "type": "notification.new",
+            "data": {
+                "title": f"Chat: {task.title}",
+                "message": f"{user.first_name} {user.last_name}: {msg.message or 'Sent an attachment'}"
+            }
+        })
     return msg
