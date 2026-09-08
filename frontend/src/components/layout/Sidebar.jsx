@@ -1,14 +1,13 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, CheckSquare, Users, MessageSquare, Folders,
-  Star, Settings, History, Plus, UserCog
+  Star, Settings, History, UserCog
 } from 'lucide-react';
 
 export const Sidebar = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   if (!user) return null;
 
@@ -24,15 +23,6 @@ export const Sidebar = () => {
   if (['CEO', 'CTO'].includes(user.role)) {
     links.push({ to: '/users', icon: <UserCog size={20} />, label: 'Users', roles: ['CEO', 'CTO'] });
   }
-
-  const handleCreateTeamSidebarClick = () => {
-    // Notify any active page listening for open-create-team
-    window.dispatchEvent(new CustomEvent('workmate:open-create-team'));
-    // If not on /teams or /projects, navigate to /teams?create=true
-    if (window.location.pathname !== '/teams' && window.location.pathname !== '/projects') {
-      navigate('/teams?create=true');
-    }
-  };
 
   return (
     <aside style={{
@@ -79,45 +69,6 @@ export const Sidebar = () => {
             <span>{link.label}</span>
           </NavLink>
         ))}
-
-        {/* Sidebar Element to Create Teams (Exclusive to PM) */}
-        {user.role === 'PM' && (
-          <div style={{ marginTop: '10px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
-            <button
-              type="button"
-              onClick={handleCreateTeamSidebarClick}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-md)',
-                background: 'rgba(99, 102, 241, 0.08)',
-                border: '1px dashed rgba(99, 102, 241, 0.4)',
-                color: 'var(--brand-600)',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--brand-50)';
-                e.currentTarget.style.borderColor = 'var(--brand-600)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(99, 102, 241, 0.08)';
-                e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
-                e.currentTarget.style.transform = 'none';
-              }}
-            >
-              <Plus size={16} strokeWidth={2.5} />
-              <span>Create Team</span>
-            </button>
-          </div>
-        )}
       </nav>
       
       <div style={{ padding: '16px', borderTop: '1px solid var(--border)' }}>
