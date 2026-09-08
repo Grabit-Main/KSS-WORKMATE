@@ -18,8 +18,12 @@ SINGLETON_ROLES = {"CEO", "CTO"}
 
 
 @router.get("", response_model=List[UserResponse])
-def list_users(db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
-    users = db.query(User).all()
+def list_users(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # CEO and CTO see all including inactive; other roles see active users
+    if user.role in ("CEO", "CTO"):
+        users = db.query(User).all()
+    else:
+        users = db.query(User).filter(User.is_active == True).all()
     # Sort by role hierarchy: CTO, CEO, PM, HR, TL, TM
     users.sort(key=lambda u: ROLE_ORDER.get(u.role, 99))
     return users

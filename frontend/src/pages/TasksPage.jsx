@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getTasks, createTask } from '../api/tasks';
+import { getTasks, createTask, acceptTask, completeTask, confirmTask } from '../api/tasks';
 import { getTeams } from '../api/teams';
 import { getUsers } from '../api/users';
 import { useRealtime } from '../realtime/useRealtime';
 import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Clock, ArrowRight, CheckSquare, X, User, Users, Calendar, Flag } from 'lucide-react';
+import { Plus, Clock, ArrowRight, CheckSquare, X, UserCheck, Check, Calendar, Flag, Sparkles } from 'lucide-react';
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState(() => {
@@ -13,6 +13,7 @@ const TasksPage = () => {
     return cached ? JSON.parse(cached) : [];
   });
   const [loading, setLoading] = useState(() => !localStorage.getItem('cache_tasks'));
+  const [filterTab, setFilterTab] = useState('all'); // 'all', 'mine', 'review'
   const { joinRoom } = useWebSocket();
   const { user } = useAuth();
 
@@ -44,7 +45,7 @@ const TasksPage = () => {
     }
   };
 
-  const loadModalDependencies = async () => {
+  const loadModalDependencies = async (isSelf = false) => {
     try {
       const [teamsData, usersData] = await Promise.all([
         getTeams().catch(() => []),
@@ -53,7 +54,12 @@ const TasksPage = () => {
       setTeams(teamsData);
       setUsersList(usersData);
       if (teamsData.length > 0 && !teamId) setTeamId(teamsData[0].id);
-      if (usersData.length > 0 && !assignedTo) setAssignedTo(usersData[0].id);
+
+      if (isSelf && user) {
+        setAssignedTo(user.id);
+      } else if (!assignedTo) {
+        setAssignedTo(user?.id || (usersData.length > 0 ? usersData[0].id : ''));
+      }
     } catch (err) {
       console.error('Failed to load modal deps:', err);
     }
@@ -63,8 +69,8 @@ const TasksPage = () => {
     loadTasks();
   }, []);
 
-  const openNewTaskModal = () => {
-    loadModalDependencies();
+  const openNewTaskModal = (isSelf = false) => {
+    loadModalDependencies(isSelf);
     setShowModal(true);
   };
 
@@ -108,6 +114,42 @@ const TasksPage = () => {
     }
   };
 
+  const handleAcceptTask = async (taskId, e) => {
+    e.stopPropagation();
+    try {
+      await acceptTask(taskId);
+      loadTasks();
+    } catch (err) {
+      console.error('Failed to accept task:', err);
+    }
+  };
+
+  const handleCompleteTask = async (taskId, e) => {
+    e.stopPropagation();
+    try {
+      await completeTask(taskId);
+      loadTasks();
+    } catch (err) {
+      console.error('Failed to complete task:', err);
+    }
+  };
+
+  const handleConfirmTask = async (taskId, e) => {
+    e.stopPropagation();
+    try {
+      await confirmTask(taskId);
+      loadTasks();
+    } catch (err) {
+      console.error('Failed to confirm task:', err);
+    }
+  };
+
+  const filteredTasks = tasks.filter(t => {
+    if (filterTab === 'mine') return String(t.assigned_to) === String(user?.id);
+    if (filterTab === 'review') return t.status === 'in_review';
+    return true;
+  });
+
   if (loading) {
     return (
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
@@ -129,102 +171,231 @@ const TasksPage = () => {
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>Tasks</h2>
-          <p className="text-sm text-secondary mt-1">Track assignments, progress updates, and completion deadlines</p>
+          <p className="text-sm text-secondary mt-1">Track assignments, self-assigned workload, and delivery milestones</p>
         </div>
 
-        {/* CEO, CTO, PM, and TL can assign tasks */}
-        {['CEO', 'CTO', 'PM', 'TL'].includes(user.role) && (
-          <button className="btn btn-primary" onClick={openNewTaskModal}>
-            <Plus size={16} /> New Task
+        {/* Leadership actions: CEO, CTO, PM, TL can assign tasks */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {/* Dedicated Self-Assign action for Project Managers */}
+          {user.role === 'PM' && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => openNewTaskModal(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <UserCheck size={16} color="var(--brand-600)" />
+              Self-Assign Task
+            </button>
+          )}
+
+          {['CEO', 'CTO', 'PM', 'TL'].includes(user.role) && (
+            <button className="btn btn-primary" onClick={() => openNewTaskModal(false)}>
+              <Plus size={16} /> New Task
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filter Tabs for Quick Access */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        {[
+          { id: 'all', label: `All Tasks (${tasks.length})` },
+          { id: 'mine', label: `Assigned to Me (${tasks.filter(t => String(t.assigned_to) === String(user?.id)).length})` },
+          { id: 'review', label: `In Review (${tasks.filter(t => t.status === 'in_review').length})` }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setFilterTab(tab.id)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '12px',
+              fontWeight: filterTab === tab.id ? 600 : 500,
+              border: '1px solid',
+              borderColor: filterTab === tab.id ? 'var(--brand-600)' : 'var(--border)',
+              background: filterTab === tab.id ? 'var(--brand-50)' : 'var(--surface)',
+              color: filterTab === tab.id ? 'var(--brand-700)' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              transition: 'all var(--transition-fast)'
+            }}
+          >
+            {tab.label}
           </button>
-        )}
+        ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-        {tasks.map(task => (
-          <div
-            key={task.id}
-            className="card"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'all var(--transition-smooth)'
-            }}
-          >
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  padding: '3px 10px',
-                  borderRadius: 'var(--radius-full)',
-                  background: `var(--status-${task.status.replace('_', '-')}-bg)`,
-                  color: `var(--status-${task.status.replace('_', '-')})`,
-                  letterSpacing: '0.02em'
-                }}>
-                  {task.status.replace('_', ' ').toUpperCase()}
-                </span>
-                {task.deadline && (
-                  <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Clock size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
-                    {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                  </span>
-                )}
-              </div>
-              <h3 className="font-bold text-base mb-1.5" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
-                {task.title}
-              </h3>
-              <p className="text-sm text-secondary mb-4" style={{
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                lineHeight: '1.4'
-              }}>
-                {task.description}
-              </p>
-            </div>
-            
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingTop: '12px',
-              borderTop: '1px solid var(--border)'
-            }}>
-              <div className="flex items-center gap-2">
-                <div style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: 'var(--radius-full)',
-                  background: 'var(--brand-gradient)',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  boxShadow: '0 2px 6px rgba(99, 102, 241, 0.25)'
-                }}>
-                  {task.assignee?.first_name?.[0]}{task.assignee?.last_name?.[0]}
+        {filteredTasks.map(task => {
+          const isAssignedToMe = String(task.assigned_to) === String(user?.id);
+          const isSelfAssignedByPM = isAssignedToMe && String(task.assigned_by) === String(user?.id);
+
+          return (
+            <div
+              key={task.id}
+              className="card"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                transition: 'all var(--transition-smooth)',
+                border: isAssignedToMe ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid var(--border)',
+                background: isAssignedToMe ? 'linear-gradient(180deg, var(--surface) 0%, rgba(238, 242, 255, 0.25) 100%)' : 'var(--surface)'
+              }}
+            >
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-full)',
+                      background: `var(--status-${task.status.replace('_', '-')}-bg)`,
+                      color: `var(--status-${task.status.replace('_', '-')})`,
+                      letterSpacing: '0.02em'
+                    }}>
+                      {task.status.replace('_', ' ').toUpperCase()}
+                    </span>
+
+                    {/* Self-assigned / Assigned to you badge */}
+                    {isAssignedToMe && (
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'var(--brand-100)',
+                        color: 'var(--brand-700)',
+                        letterSpacing: '0.02em',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <Sparkles size={10} />
+                        {isSelfAssignedByPM ? 'Self-Assigned' : 'Assigned to You'}
+                      </span>
+                    )}
+                  </div>
+
+                  {task.deadline && (
+                    <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Clock size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
+                      {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
                 </div>
-                <span className="text-xs font-semibold text-secondary">
-                  {task.assignee?.first_name} {task.assignee?.last_name}
+
+                <h3 className="font-bold text-base mb-1.5" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
+                  {task.title}
+                </h3>
+                <p className="text-sm text-secondary mb-4" style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  lineHeight: '1.4'
+                }}>
+                  {task.description}
+                </p>
+              </div>
+
+              {/* Quick Actions for Self-Assigned or Assigned Tasks */}
+              {isAssignedToMe && task.status === 'not_started' && (
+                <div style={{ marginBottom: '12px' }}>
+                  <button
+                    onClick={(e) => handleAcceptTask(task.id, e)}
+                    className="btn btn-primary"
+                    style={{ width: '100%', height: '32px', fontSize: '12px', padding: '0 12px' }}
+                  >
+                    Accept & Start Working
+                  </button>
+                </div>
+              )}
+
+              {isAssignedToMe && task.status === 'in_progress' && (
+                <div style={{ marginBottom: '12px' }}>
+                  <button
+                    onClick={(e) => handleCompleteTask(task.id, e)}
+                    className="btn btn-secondary"
+                    style={{
+                      width: '100%',
+                      height: '32px',
+                      fontSize: '12px',
+                      padding: '0 12px',
+                      color: 'var(--brand-700)',
+                      borderColor: 'rgba(99, 102, 241, 0.3)',
+                      background: 'var(--brand-50)'
+                    }}
+                  >
+                    Submit for Review
+                  </button>
+                </div>
+              )}
+
+              {task.status === 'in_review' && ['CEO', 'CTO', 'PM', 'TL'].includes(user.role) && (
+                <div style={{ marginBottom: '12px' }}>
+                  <button
+                    onClick={(e) => handleConfirmTask(task.id, e)}
+                    className="btn btn-primary"
+                    style={{
+                      width: '100%',
+                      height: '32px',
+                      fontSize: '12px',
+                      padding: '0 12px',
+                      background: 'var(--status-completed)',
+                      borderColor: 'var(--status-completed)'
+                    }}
+                  >
+                    Confirm Complete
+                  </button>
+                </div>
+              )}
+              
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: '12px',
+                borderTop: '1px solid var(--border)'
+              }}>
+                <div className="flex items-center gap-2">
+                  <div style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: 'var(--radius-full)',
+                    background: isAssignedToMe ? 'var(--brand-gradient)' : 'var(--subtle)',
+                    color: isAssignedToMe ? 'white' : 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    boxShadow: isAssignedToMe ? '0 2px 6px rgba(99, 102, 241, 0.25)' : 'none'
+                  }}>
+                    {task.assignee?.first_name?.[0]}{task.assignee?.last_name?.[0]}
+                  </div>
+                  <span className="text-xs font-semibold text-secondary">
+                    {isAssignedToMe ? 'You' : `${task.assignee?.first_name} ${task.assignee?.last_name}`}
+                  </span>
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  Details <ArrowRight size={12} strokeWidth={2} />
                 </span>
               </div>
-              <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                Details <ArrowRight size={12} strokeWidth={2} />
-              </span>
             </div>
-          </div>
-        ))}
-        {tasks.length === 0 && (
+          );
+        })}
+
+        {filteredTasks.length === 0 && (
           <div className="card" style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center' }}>
             <CheckSquare size={32} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
             <h4 className="font-bold text-base mb-1">No Tasks Found</h4>
-            <p className="text-secondary text-sm">You have no tasks assigned in this workspace.</p>
+            <p className="text-secondary text-sm">
+              {filterTab === 'mine'
+                ? 'You currently have no tasks self-assigned or assigned to you.'
+                : 'No tasks matching the selected filter were found.'}
+            </p>
           </div>
         )}
       </div>
@@ -257,10 +428,12 @@ const TasksPage = () => {
             <div className="flex justify-between items-center mb-5">
               <div>
                 <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                  Assign New Task
+                  {assignedTo === user?.id ? 'Self-Assign Task' : 'Assign New Task'}
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
-                  Leadership task dispatching · Logged under executive audit history
+                  {assignedTo === user?.id
+                    ? `Assigning directly to yourself (${user?.first_name} ${user?.last_name})`
+                    : 'Dispatch task deliverables to team members or self-assign'}
                 </p>
               </div>
               <button
@@ -303,17 +476,46 @@ const TasksPage = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Assign To User *</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label className="text-xs font-semibold text-secondary block">Assign To User *</label>
+                  {user && (
+                    <button
+                      type="button"
+                      onClick={() => setAssignedTo(user.id)}
+                      style={{
+                        background: assignedTo === user.id ? 'var(--brand-100)' : 'var(--subtle)',
+                        color: assignedTo === user.id ? 'var(--brand-700)' : 'var(--text-secondary)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-full)',
+                        padding: '2px 10px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Check size={12} /> Assign to myself ({user.first_name})
+                    </button>
+                  )}
+                </div>
+
                 <select
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
                   className="input"
                   required
                 >
-                  {usersList.length === 0 && <option value="">No users available</option>}
-                  {usersList.map(u => (
+                  {/* Current user at top for rapid self-assignment */}
+                  {user && (
+                    <option value={user.id} style={{ fontWeight: 'bold' }}>
+                      ⭐ Myself - {user.first_name} {user.last_name} ({user.role}{user.department ? ` · ${user.department}` : ''}) [Self-Assign]
+                    </option>
+                  )}
+                  {usersList.filter(u => u.id !== user?.id).map(u => (
                     <option key={u.id} value={u.id}>
-                      {u.first_name} {u.last_name} ({u.role}{u.department ? ` - ${u.department}` : ''})
+                      {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''})
                     </option>
                   ))}
                 </select>
@@ -384,7 +586,11 @@ const TasksPage = () => {
                   className="btn btn-primary"
                   disabled={submitting}
                 >
-                  {submitting ? 'Assigning Task...' : 'Assign Task'}
+                  {submitting
+                    ? 'Assigning Task...'
+                    : assignedTo === user?.id
+                      ? 'Self-Assign Task'
+                      : 'Assign Task'}
                 </button>
               </div>
             </form>

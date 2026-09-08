@@ -51,13 +51,13 @@ def list_tasks(db: Session = Depends(get_db), user: User = Depends(get_current_u
     if user.role == "TM":
         q = q.filter(Task.assigned_to == user.id)
     elif user.role == "TL":
-        # TL sees tasks in teams where they are lead
+        # TL sees tasks in teams where they are lead or assigned to them
         team_ids = db.query(TeamMembership.team_id).filter(TeamMembership.user_id == user.id, TeamMembership.is_lead == True).subquery()
-        q = q.filter(Task.team_id.in_(team_ids))
+        q = q.filter((Task.team_id.in_(team_ids)) | (Task.assigned_to == user.id))
     elif user.role == "PM":
         from app.models.project import Team, Project
         team_ids = db.query(Team.id).join(Project).filter(Project.created_by == user.id).subquery()
-        q = q.filter(Task.team_id.in_(team_ids))
+        q = q.filter((Task.team_id.in_(team_ids)) | (Task.assigned_to == user.id))
     # CEO/CTO see all
     return q.order_by(Task.created_at.desc()).all()
 
@@ -71,7 +71,11 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
     task = Task(**req.model_dump(), assigned_by=user.id)
     db.add(task)
     db.flush()
-    _log_status(db, task, "created", "not_started", user.id, f"Task assigned by {user.role} {user.first_name} {user.last_name}")
+    if str(req.assigned_to) == str(user.id):
+        log_msg = f"Task self-assigned by {user.role} {user.first_name} {user.last_name}"
+    else:
+        log_msg = f"Task assigned by {user.role} {user.first_name} {user.last_name}"
+    _log_status(db, task, "created", "not_started", user.id, log_msg)
     _notify(db, req.assigned_to, "New Task Assigned", f"You have a new task: {req.title}", TASK_CREATED, None)
     db.commit()
     db.refresh(task)
