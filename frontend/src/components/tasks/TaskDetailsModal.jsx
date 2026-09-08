@@ -9,19 +9,43 @@ import {
 
 const formatScheduledDate = (val) => {
   if (!val) return '';
-  if (/^\d{2}-\d{2}-\d{4}$/.test(val)) return val;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-    const [y, m, d] = val.split('-');
-    return `${d}-${m}-${y}`;
+  if (typeof val !== 'string') {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return '';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
   }
-  const d = new Date(val);
+  const clean = val.trim();
+  const ddmmyyyy = clean.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
+  if (ddmmyyyy) {
+    return `${ddmmyyyy[1]}-${ddmmyyyy[2]}-${ddmmyyyy[3]}`;
+  }
+  const yyyymmdd = clean.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
+  if (yyyymmdd) {
+    return `${yyyymmdd[3]}-${yyyymmdd[2]}-${yyyymmdd[1]}`;
+  }
+  const d = new Date(clean);
   if (!isNaN(d.getTime())) {
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
     return `${day}-${month}-${year}`;
   }
-  return val;
+  return clean;
+};
+
+const formatDeadlineWithTime = (dateVal) => {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return String(dateVal);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const datePart = `${day}-${month}-${year}`;
+  const timePart = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${datePart} at ${timePart}`;
 };
 
 export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) => {
@@ -239,7 +263,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                     This task was scheduled to complete on{' '}
-                    <strong>{new Date(currentTask.deadline).toLocaleString()}</strong> and is overdue. Immediate action required.
+                    <strong>{formatDeadlineWithTime(currentTask.deadline)}</strong> and is overdue. Immediate action required.
                   </div>
                 </div>
               </div>
@@ -303,12 +327,12 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
               </div>
 
               <div>
-                <span className="text-xs text-secondary font-semibold uppercase block mb-1">Deadline</span>
+                <span className="text-xs text-secondary font-semibold uppercase block mb-1">Deadline & Time</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
-                  <Calendar size={14} color="var(--brand-600)" />
-                  <span>
+                  <Clock size={14} color="var(--brand-600)" />
+                  <span style={{ fontWeight: 600 }}>
                     {currentTask.deadline
-                      ? new Date(currentTask.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                      ? formatDeadlineWithTime(currentTask.deadline)
                       : 'No deadline set'}
                   </span>
                 </div>

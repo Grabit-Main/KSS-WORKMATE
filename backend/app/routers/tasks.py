@@ -85,7 +85,20 @@ def list_tasks(
         q = q.filter(Task.project_id == project_id)
 
     if scheduled_date:
-        q = q.filter(Task.scheduled_date == scheduled_date)
+        import re
+        clean_sched = scheduled_date.strip()
+        m_iso = re.match(r"^(\d{4})[-/](\d{2})[-/](\d{2})", clean_sched)
+        m_dd = re.match(r"^(\d{2})[-/](\d{2})[-/](\d{4})", clean_sched)
+        if m_iso:
+            d1 = f"{m_iso.group(3)}-{m_iso.group(2)}-{m_iso.group(1)}"
+            d2 = f"{m_iso.group(1)}-{m_iso.group(2)}-{m_iso.group(3)}"
+            q = q.filter((Task.scheduled_date == d1) | (Task.scheduled_date == d2))
+        elif m_dd:
+            d1 = f"{m_dd.group(1)}-{m_dd.group(2)}-{m_dd.group(3)}"
+            d2 = f"{m_dd.group(3)}-{m_dd.group(2)}-{m_dd.group(1)}"
+            q = q.filter((Task.scheduled_date == d1) | (Task.scheduled_date == d2))
+        else:
+            q = q.filter(Task.scheduled_date == scheduled_date)
 
     return q.order_by(Task.created_at.desc()).all()
 
@@ -137,6 +150,17 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
         ).first() is not None)
         if not is_tl and user.role not in ("CEO", "CTO"):
             raise HTTPException(403, "Only Team Leads can allocate day-wise tasks.")
+
+        # Standardize scheduled_date into DD-MM-YYYY format
+        import re
+        clean_sched = req.scheduled_date.strip()
+        m_iso = re.match(r"^(\d{4})[-/](\d{2})[-/](\d{2})", clean_sched)
+        if m_iso:
+            req.scheduled_date = f"{m_iso.group(3)}-{m_iso.group(2)}-{m_iso.group(1)}"
+        else:
+            m_dd = re.match(r"^(\d{2})[-/](\d{2})[-/](\d{4})", clean_sched)
+            if m_dd:
+                req.scheduled_date = f"{m_dd.group(1)}-{m_dd.group(2)}-{m_dd.group(3)}"
 
     # Find target assignee user
     target_user = db.query(User).filter(User.id == req.assigned_to).first()
