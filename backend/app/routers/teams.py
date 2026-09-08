@@ -29,7 +29,11 @@ async def create_team(req: TeamCreate, db: Session = Depends(get_db), user: User
 
 @router.get("", response_model=List[TeamResponse])
 def list_teams(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return db.query(Team).all()
+    if user.role in ("CEO", "CTO", "HR", "PM"):
+        return db.query(Team).all()
+    # TL and TM see teams they are member or lead of
+    team_ids = db.query(TeamMembership.team_id).filter(TeamMembership.user_id == user.id).subquery()
+    return db.query(Team).filter(Team.id.in_(team_ids)).all()
 
 
 @router.get("/{team_id}", response_model=TeamResponse)

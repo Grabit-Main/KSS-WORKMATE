@@ -52,7 +52,10 @@ def list_tasks(db: Session = Depends(get_db), user: User = Depends(get_current_u
         q = q.filter(Task.assigned_to == user.id)
     elif user.role == "TL":
         # TL sees tasks in teams where they are lead or assigned to them
-        team_ids = db.query(TeamMembership.team_id).filter(TeamMembership.user_id == user.id, TeamMembership.is_lead == True).subquery()
+        team_ids = db.query(TeamMembership.team_id).filter(
+            TeamMembership.user_id == user.id,
+            (TeamMembership.is_lead == True) | (user.role == "TL")
+        ).subquery()
         q = q.filter((Task.team_id.in_(team_ids)) | (Task.assigned_to == user.id))
     elif user.role == "PM":
         from app.models.project import Team, Project
@@ -64,10 +67,25 @@ def list_tasks(db: Session = Depends(get_db), user: User = Depends(get_current_u
 
 @router.post("", response_model=TaskResponse)
 async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    # Must be TL of that team
-    lead = db.query(TeamMembership).filter(TeamMembership.team_id == req.team_id, TeamMembership.user_id == user.id, TeamMembership.is_lead == True).first()
+    # Must be TL of that team, or CEO/CTO/PM
+    lead = db.query(TeamMembership).filter(
+        TeamMembership.team_id == req.team_id,
+        TeamMembership.user_id == user.id,
+        (TeamMembership.is_lead == True) | (user.role == "TL")
+    ).first()
     if not lead and user.role not in ("CEO", "CTO", "PM"):
         raise HTTPException(403, "Only Team Leads can create tasks")
+
+    # If user is TL, ensure assignee is either themselves or a member of that team
+    if user.role == "TL":
+        is_self = str(req.assigned_to) == str(user.id)
+        is_member = db.query(TeamMembership).filter(
+            TeamMembership.team_id == req.team_id,
+            TeamMembership.user_id == req.assigned_to
+        ).first()
+        if not is_self and not is_member:
+            raise HTTPException(400, "Team Leads can only assign tasks to members of their team or to themselves.")
+
     task = Task(**req.model_dump(), assigned_by=user.id)
     db.add(task)
     db.flush()
@@ -143,8 +161,12 @@ async def confirm_task(task_id: UUID, db: Session = Depends(get_db), user: User 
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task or task.status != "in_review":
         raise HTTPException(400, "Task must be in review to confirm")
-    # Must be TL of team
-    lead = db.query(TeamMembership).filter(TeamMembership.team_id == task.team_id, TeamMembership.user_id == user.id, TeamMembership.is_lead == True).first()
+    # Must be TL of team, or CEO/CTO/PM
+    lead = db.query(TeamMembership).filter(
+        TeamMembership.team_id == task.team_id,
+        TeamMembership.user_id == user.id,
+        (TeamMembership.is_lead == True) | (user.role == "TL")
+    ).first()
     if not lead and user.role not in ("CEO", "CTO", "PM"):
         raise HTTPException(403, "Only Team Leads can confirm tasks")
     _log_status(db, task, task.status, "completed", user.id)
@@ -163,7 +185,11 @@ async def decline_task(task_id: UUID, req: StatusUpdate, db: Session = Depends(g
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task or task.status != "in_review":
         raise HTTPException(400, "Task must be in review to decline")
-    lead = db.query(TeamMembership).filter(TeamMembership.team_id == task.team_id, TeamMembership.user_id == user.id, TeamMembership.is_lead == True).first()
+    lead = db.query(TeamMembership).filter(
+        TeamMembership.team_id == task.team_id,
+        TeamMembership.user_id == user.id,
+        (TeamMembership.is_lead == True) | (user.role == "TL")
+    ).first()
     if not lead and user.role not in ("CEO", "CTO", "PM"):
         raise HTTPException(403, "Only Team Leads can decline tasks")
     _log_status(db, task, task.status, "in_progress", user.id, req.reason)
@@ -182,9 +208,23 @@ async def reassign_task(task_id: UUID, req: ReassignRequest, db: Session = Depen
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
-    lead = db.query(TeamMembership).filter(TeamMembership.team_id == task.team_id, TeamMembership.user_id == user.id, TeamMembership.is_lead == True).first()
+    lead = db.query(TeamMembership).filter(
+        TeamMembership.team_id == task.team_id,
+        TeamMembership.user_id == user.id,
+        (TeamMembership.is_lead == True) | (user.role == "TL")
+    ).first()
     if not lead and user.role not in ("CEO", "CTO", "PM"):
         raise HTTPException(403, "Only Team Leads can reassign tasks")
+
+    if user.role == "TL":
+        is_self = str(req.assigned_to) == str(user.id)
+        is_member = db.query(TeamMembership).filter(
+            TeamMembership.team_id == task.team_id,
+            TeamMembership.user_id == req.assigned_to
+        ).first()
+        if not is_self and not is_member:
+            raise HTTPException(400, "Team Leads can only reassign tasks to members of their team or to themselves.")
+
     old_assignee = task.assigned_to
     task.assigned_to = req.assigned_to
     task.status = "not_started"

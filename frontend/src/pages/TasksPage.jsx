@@ -53,15 +53,56 @@ const TasksPage = () => {
       ]);
       setTeams(teamsData);
       setUsersList(usersData);
-      if (teamsData.length > 0 && !teamId) setTeamId(teamsData[0].id);
+
+      const myTeams = user?.role === 'TL'
+        ? teamsData.filter(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(user?.id)))
+        : teamsData;
+
+      const defaultTeam = myTeams.length > 0 ? myTeams[0] : (teamsData[0] || null);
+      if (defaultTeam && (!teamId || !myTeams.some(t => String(t.id) === String(teamId)))) {
+        setTeamId(defaultTeam.id);
+      }
 
       if (isSelf && user) {
         setAssignedTo(user.id);
+      } else if (user?.role === 'TL' && defaultTeam) {
+        const otherMembers = (defaultTeam.memberships || []).filter(m => {
+          const uid = m.user?.id || m.user_id || m.id;
+          return String(uid) !== String(user?.id);
+        });
+        if (otherMembers.length > 0) {
+          const firstUser = otherMembers[0].user || otherMembers[0];
+          setAssignedTo(firstUser.id);
+        } else {
+          setAssignedTo(user.id);
+        }
       } else if (!assignedTo) {
         setAssignedTo(user?.id || (usersData.length > 0 ? usersData[0].id : ''));
       }
     } catch (err) {
       console.error('Failed to load modal deps:', err);
+    }
+  };
+
+  const handleTeamChange = (newTeamId) => {
+    setTeamId(newTeamId);
+    if (user?.role === 'TL') {
+      const selected = teams.find(t => String(t.id) === String(newTeamId));
+      const otherMembers = (selected?.memberships || []).filter(m => {
+        const uid = m.user?.id || m.user_id || m.id;
+        return String(uid) !== String(user?.id);
+      });
+      if (String(assignedTo) !== String(user?.id)) {
+        const isStillValid = otherMembers.some(m => String(m.user?.id || m.user_id || m.id) === String(assignedTo));
+        if (!isStillValid) {
+          if (otherMembers.length > 0) {
+            const firstUser = otherMembers[0].user || otherMembers[0];
+            setAssignedTo(firstUser.id);
+          } else {
+            setAssignedTo(user.id);
+          }
+        }
+      }
     }
   };
 
@@ -150,6 +191,17 @@ const TasksPage = () => {
     return true;
   });
 
+  const availableTeams = user?.role === 'TL'
+    ? teams.filter(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(user?.id)))
+    : teams;
+
+  const currentSelectedTeam = (availableTeams.length > 0 ? availableTeams : teams).find(t => String(t.id) === String(teamId)) || (availableTeams[0] || teams[0]);
+  const currentTeamMembers = currentSelectedTeam?.memberships || [];
+  const otherTeamMembers = currentTeamMembers.filter(m => {
+    const uid = m.user?.id || m.user_id || m.id;
+    return String(uid) !== String(user?.id);
+  });
+
   if (loading) {
     return (
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
@@ -176,8 +228,8 @@ const TasksPage = () => {
 
         {/* Leadership actions: CEO, CTO, PM, TL can assign tasks */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          {/* Dedicated Self-Assign action for Project Managers */}
-          {user.role === 'PM' && (
+          {/* Dedicated Self-Assign action for Project Managers and Team Leads */}
+          {['PM', 'TL'].includes(user.role) && (
             <button
               className="btn btn-secondary"
               onClick={() => openNewTaskModal(true)}
@@ -227,7 +279,7 @@ const TasksPage = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
         {filteredTasks.map(task => {
           const isAssignedToMe = String(task.assigned_to) === String(user?.id);
-          const isSelfAssignedByPM = isAssignedToMe && String(task.assigned_by) === String(user?.id);
+          const isSelfAssigned = isAssignedToMe && String(task.assigned_by) === String(user?.id);
 
           return (
             <div
@@ -273,7 +325,7 @@ const TasksPage = () => {
                         gap: '3px'
                       }}>
                         <Sparkles size={10} />
-                        {isSelfAssignedByPM ? 'Self-Assigned' : 'Assigned to You'}
+                        {isSelfAssigned ? 'Self-Assigned' : 'Assigned to You'}
                       </span>
                     )}
                   </div>
@@ -428,12 +480,18 @@ const TasksPage = () => {
             <div className="flex justify-between items-center mb-5">
               <div>
                 <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                  {assignedTo === user?.id ? 'Self-Assign Task' : 'Assign New Task'}
+                  {assignedTo === user?.id
+                    ? 'Self-Assign Task'
+                    : user?.role === 'TL'
+                      ? 'Assign Task to Team Member'
+                      : 'Assign New Task'}
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
                   {assignedTo === user?.id
-                    ? `Assigning directly to yourself (${user?.first_name} ${user?.last_name})`
-                    : 'Dispatch task deliverables to team members or self-assign'}
+                    ? `Assigning deliverable directly to yourself (${user?.first_name} ${user?.last_name})`
+                    : user?.role === 'TL'
+                      ? 'Assign deliverable to a member of your team or self-assign'
+                      : 'Dispatch task deliverables to team members or self-assign'}
                 </p>
               </div>
               <button
@@ -459,20 +517,27 @@ const TasksPage = () => {
 
             <form onSubmit={handleCreateTask} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Target Team *</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">
+                  {user?.role === 'TL' ? 'Your Team *' : 'Target Team *'}
+                </label>
                 <select
                   value={teamId}
-                  onChange={(e) => setTeamId(e.target.value)}
+                  onChange={(e) => handleTeamChange(e.target.value)}
                   className="input"
                   required
                 >
-                  {teams.length === 0 && <option value="">No teams found - create a team first</option>}
-                  {teams.map(t => (
+                  {availableTeams.length === 0 && <option value="">No teams found</option>}
+                  {availableTeams.map(t => (
                     <option key={t.id} value={t.id}>
                       {t.name}
                     </option>
                   ))}
                 </select>
+                {user?.role === 'TL' && (
+                  <p className="text-xs text-secondary mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                    As Team Lead, you can assign tasks to all members of this team or self-assign to yourself.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -513,11 +578,47 @@ const TasksPage = () => {
                       ⭐ Myself - {user.first_name} {user.last_name} ({user.role}{user.department ? ` · ${user.department}` : ''}) [Self-Assign]
                     </option>
                   )}
-                  {usersList.filter(u => u.id !== user?.id).map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''})
-                    </option>
-                  ))}
+
+                  {user?.role === 'TL' ? (
+                    otherTeamMembers.length > 0 ? (
+                      <optgroup label={`Team Members (${otherTeamMembers.length})`}>
+                        {otherTeamMembers.map(m => {
+                          const u = m.user || m;
+                          return (
+                            <option key={u.id} value={u.id}>
+                              {u.first_name} {u.last_name} ({u.role || 'Member'}{u.department ? ` · ${u.department}` : ''}){m.is_lead ? ' [Team Lead]' : ''}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    ) : (
+                      <option disabled value="">No other members in this team yet</option>
+                    )
+                  ) : (
+                    <>
+                      {otherTeamMembers.length > 0 && (
+                        <optgroup label={`Team Members (${otherTeamMembers.length})`}>
+                          {otherTeamMembers.map(m => {
+                            const u = m.user || m;
+                            return (
+                              <option key={u.id} value={u.id}>
+                                {u.first_name} {u.last_name} ({u.role || 'Member'}{u.department ? ` · ${u.department}` : ''})
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      )}
+                      <optgroup label="Other Organization Users">
+                        {usersList
+                          .filter(u => String(u.id) !== String(user?.id) && !otherTeamMembers.some(m => String(m.user?.id || m.user_id || m.id) === String(u.id)))
+                          .map(u => (
+                            <option key={u.id} value={u.id}>
+                              {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''})
+                            </option>
+                          ))}
+                      </optgroup>
+                    </>
+                  )}
                 </select>
               </div>
 
