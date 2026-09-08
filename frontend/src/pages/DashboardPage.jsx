@@ -120,12 +120,14 @@ const DashboardPage = () => {
     completed: m.kpi.completed
   }));
 
+  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.first_name || 'User';
+
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
       <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>
-            Welcome back, {user?.first_name}!
+            Welcome back, {fullName} !
           </h2>
           <p className="text-sm text-secondary mt-1">
             {isLeadership
