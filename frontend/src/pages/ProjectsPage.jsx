@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { getProjects, createProject } from '../api/projects';
-import { getTeams, createTeam, updateTeam } from '../api/teams';
+import { getProjects, createProject, updateProject } from '../api/projects';
+import { getTeams, updateTeam } from '../api/teams';
 import { getUsers } from '../api/users';
 import { getTasks } from '../api/tasks';
 import { uploadFile } from '../api/upload';
@@ -9,7 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import {
   Plus, Calendar, ArrowRight, FolderKanban, X, Check, Users,
   Paperclip, Image as ImageIcon, Film, FileText, ExternalLink,
-  Briefcase, UserCheck, ChevronRight, CheckCircle2, Clock, AlertCircle
+  Briefcase, UserCheck, ChevronRight, CheckCircle2, Clock, AlertCircle,
+  Pencil
 } from 'lucide-react';
 
 const ProjectsPage = () => {
@@ -35,19 +36,19 @@ const ProjectsPage = () => {
   const [formError, setFormError] = useState('');
   const fileInputRef = useRef(null);
 
-  // Create Team Modal state (For PM only)
-  const [showTeamModal, setShowTeamModal] = useState(false);
-  const [teamName, setTeamName] = useState('');
-  const [teamLeadId, setTeamLeadId] = useState('');
-  const [teamMemberIds, setTeamMemberIds] = useState([]);
-  const [teamSubmitting, setTeamSubmitting] = useState(false);
-  const [teamFormError, setTeamFormError] = useState('');
+  // Edit Project Modal state (For PM only)
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editAim, setEditAim] = useState('');
+  const [editStatus, setEditStatus] = useState('active');
+  const [editDeadline, setEditDeadline] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editFormError, setEditFormError] = useState('');
 
   // Project Overview Modal state
   const [selectedProject, setSelectedProject] = useState(null);
   const [overviewTeamToAllocate, setOverviewTeamToAllocate] = useState('');
-  const [overviewUploading, setOverviewUploading] = useState(false);
-  const overviewFileInputRef = useRef(null);
 
   const loadData = async () => {
     try {
@@ -90,27 +91,13 @@ const ProjectsPage = () => {
   useRealtime('task.updated', handleUpdate);
   useRealtime('task.completed', handleUpdate);
 
-  // Listen for sidebar "+ Create Team" event
-  useEffect(() => {
-    const handleOpenCreateTeamEvent = () => {
-      if (user?.role === 'PM') {
-        setTeamFormError('');
-        setShowTeamModal(true);
-      }
-    };
-    window.addEventListener('workmate:open-create-team', handleOpenCreateTeamEvent);
-    return () => {
-      window.removeEventListener('workmate:open-create-team', handleOpenCreateTeamEvent);
-    };
-  }, [user?.role]);
-
   // Escape key handler to close modals
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setSelectedProject(null);
         setShowModal(false);
-        setShowTeamModal(false);
+        setShowEditModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -151,11 +138,6 @@ const ProjectsPage = () => {
       'User'
     );
   };
-
-  // Team Leads and Team Members cannot be CEO, CTO, or PM
-  const eligibleTeamCandidates = usersList.filter(
-    u => u.role !== 'CEO' && u.role !== 'CTO' && u.role !== 'PM'
-  );
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
@@ -207,30 +189,46 @@ const ProjectsPage = () => {
     }
   };
 
-  const handleCreateTeam = async (e) => {
+  const handleOpenEditModal = (project, e) => {
+    if (e) e.stopPropagation();
+    setEditingProject(project);
+    setEditName(project.name || '');
+    setEditAim(project.aim || '');
+    setEditStatus(project.status || 'active');
+    setEditDeadline(project.deadline ? project.deadline.split('T')[0] : '');
+    setEditFormError('');
+    setShowEditModal(true);
+  };
+
+  const handleUpdateProject = async (e) => {
     e.preventDefault();
-    if (!teamName.trim()) {
-      setTeamFormError('Please provide a team name.');
+    if (!editingProject) return;
+    if (!editName.trim() || !editAim.trim()) {
+      setEditFormError('Project name and aim/objective are required.');
       return;
     }
-    setTeamSubmitting(true);
-    setTeamFormError('');
+    setEditSubmitting(true);
+    setEditFormError('');
     try {
-      await createTeam({
-        name: teamName.trim(),
-        lead_user_id: teamLeadId || null,
-        member_user_ids: teamMemberIds.length > 0 ? teamMemberIds : null,
+      const updated = await updateProject(editingProject.id, {
+        name: editName.trim(),
+        aim: editAim.trim(),
+        status: editStatus,
+        deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
       });
 
-      setShowTeamModal(false);
-      setTeamName('');
-      setTeamLeadId('');
-      setTeamMemberIds([]);
+      // Update in active modal if open
+      if (selectedProject && String(selectedProject.id) === String(editingProject.id)) {
+        setSelectedProject(prev => ({ ...prev, ...updated }));
+      }
+
+      setShowEditModal(false);
+      setEditingProject(null);
       loadData();
     } catch (err) {
-      setTeamFormError(err.response?.data?.detail || 'Failed to create team.');
+      setEditFormError(err.response?.data?.detail || 'Failed to update project.');
     } finally {
-      setTeamSubmitting(false);
+      setEditSubmitting(false);
     }
   };
 
@@ -243,31 +241,6 @@ const ProjectsPage = () => {
     } catch (err) {
       console.error('Failed to allocate team to project:', err);
     }
-  };
-
-  const handleOverviewFileSelect = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0 || !selectedProject) return;
-    setOverviewUploading(true);
-    try {
-      for (const file of files) {
-        await uploadFile(file, null, selectedProject.id);
-      }
-      loadData();
-    } catch (err) {
-      console.error('Failed to upload project attachment:', err);
-    } finally {
-      setOverviewUploading(false);
-      if (overviewFileInputRef.current) {
-        overviewFileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const toggleMemberSelection = (userId) => {
-    setTeamMemberIds(prev =>
-      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
-    );
   };
 
   // Helper to compute tasks and progress for a project
@@ -308,32 +281,19 @@ const ProjectsPage = () => {
           <p className="text-sm text-secondary mt-1">Active company deliverables, squad allocations, and milestone timelines</p>
         </div>
 
-        {/* PM has exclusive ability to create teams and assign deliverables */}
+        {/* PM has ability to create and assign project deliverables */}
         {user.role === 'PM' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                setTeamFormError('');
-                setShowTeamModal(true);
-              }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
-            >
-              <Users size={16} color="var(--brand-600)" />
-              <span>Create Team</span>
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                setFormError('');
-                setShowModal(true);
-              }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
-            >
-              <Plus size={16} />
-              <span>New Project</span>
-            </button>
-          </div>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              setFormError('');
+              setShowModal(true);
+            }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+          >
+            <Plus size={16} />
+            <span>New Project</span>
+          </button>
         )}
       </div>
 
@@ -360,23 +320,48 @@ const ProjectsPage = () => {
             >
               <div>
                 <div className="flex justify-between items-center mb-3">
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    padding: '3px 10px',
-                    borderRadius: 'var(--radius-full)',
-                    background: 'var(--brand-50)',
-                    color: 'var(--brand-700)',
-                    border: '1px solid rgba(99, 102, 241, 0.15)',
-                    letterSpacing: '0.03em'
-                  }}>
-                    {p.status?.toUpperCase() || 'ACTIVE'}
-                  </span>
-                  {p.deadline && (
-                    <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
-                      {new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  <div className="flex items-center gap-2">
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-full)',
+                      background: 'var(--brand-50)',
+                      color: 'var(--brand-700)',
+                      border: '1px solid rgba(99, 102, 241, 0.15)',
+                      letterSpacing: '0.03em'
+                    }}>
+                      {p.status?.toUpperCase() || 'ACTIVE'}
                     </span>
+                    {p.deadline && (
+                      <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
+                        {new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+
+                  {user.role === 'PM' && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenEditModal(p, e)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: 'var(--radius-sm)',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                      title="Edit Project"
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--brand-600)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <Pencil size={14} />
+                    </button>
                   )}
                 </div>
 
@@ -495,7 +480,7 @@ const ProjectsPage = () => {
                 )}
               </div>
 
-              {/* Functional & Prominent Overview Action Button */}
+              {/* Functional Overview Action Button */}
               <button
                 type="button"
                 onClick={(e) => {
@@ -777,10 +762,10 @@ const ProjectsPage = () => {
         </div>
       )}
 
-      {/* Create Team Modal (Exclusive to PM) */}
-      {showTeamModal && (
+      {/* Edit Project Modal (Exclusive to PM) */}
+      {showEditModal && editingProject && (
         <div
-          onClick={(e) => { if (e.target === e.currentTarget) setShowTeamModal(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowEditModal(false); }}
           style={{
             position: 'fixed',
             top: 0,
@@ -792,7 +777,7 @@ const ProjectsPage = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 999,
+            zIndex: 1000,
             padding: '20px'
           }}
         >
@@ -808,19 +793,19 @@ const ProjectsPage = () => {
             <div className="flex justify-between items-center mb-5">
               <div>
                 <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                  Create New Team
+                  Edit Project
                 </h3>
-                <p className="text-xs text-secondary mt-0.5">Assemble a squad, designate a lead, and allocate deliverables</p>
+                <p className="text-xs text-secondary mt-0.5">Update project deliverables, scope, and timeline</p>
               </div>
               <button
-                onClick={() => setShowTeamModal(false)}
+                onClick={() => setShowEditModal(false)}
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            {teamFormError && (
+            {editFormError && (
               <div style={{
                 padding: '10px 14px',
                 background: 'var(--status-blocked-bg)',
@@ -829,119 +814,76 @@ const ProjectsPage = () => {
                 fontSize: '13px',
                 marginBottom: '16px'
               }}>
-                {teamFormError}
+                {editFormError}
               </div>
             )}
 
-            <form onSubmit={handleCreateTeam} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleUpdateProject} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Team Name *</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Project Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Frontend Engineering, AI Research Squad"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
                   className="input"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Designate Team Lead (Optional)</label>
-                <select
-                  value={teamLeadId}
-                  onChange={(e) => setTeamLeadId(e.target.value)}
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Aim & Scope Description *</label>
+                <textarea
+                  rows={4}
+                  value={editAim}
+                  onChange={(e) => setEditAim(e.target.value)}
                   className="input"
-                >
-                  <option value="">-- No Lead Assigned Yet --</option>
-                  {eligibleTeamCandidates.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {getUserFullName(u)} ({u.role})
-                    </option>
-                  ))}
-                </select>
+                  style={{ resize: 'vertical' }}
+                  required
+                />
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">
-                  Select Team Members ({teamMemberIds.length} selected)
-                </label>
-                <div style={{
-                  maxHeight: '160px',
-                  overflowY: 'auto',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '8px',
-                  background: 'var(--surface-hover)'
-                }}>
-                  {eligibleTeamCandidates.map(u => {
-                    const isSelected = teamMemberIds.includes(u.id);
-                    const isLead = String(teamLeadId) === String(u.id);
-                    return (
-                      <div
-                        key={u.id}
-                        onClick={() => toggleMemberSelection(u.id)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '6px 8px',
-                          borderRadius: 'var(--radius-sm)',
-                          cursor: 'pointer',
-                          background: isSelected ? 'var(--brand-50)' : 'transparent',
-                          marginBottom: '4px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}}
-                            style={{ cursor: 'pointer' }}
-                          />
-                          <span style={{ fontSize: '12px', fontWeight: isSelected ? 600 : 400, color: 'var(--text-primary)' }}>
-                            {getUserFullName(u)}
-                          </span>
-                          {isLead && (
-                            <span style={{
-                              fontSize: '10px',
-                              padding: '1px 6px',
-                              borderRadius: 'var(--radius-full)',
-                              background: 'var(--brand-600)',
-                              color: '#fff',
-                              fontWeight: 600
-                            }}>
-                              Lead
-                            </span>
-                          )}
-                        </div>
-                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{u.role}</span>
-                      </div>
-                    );
-                  })}
-                  {eligibleTeamCandidates.length === 0 && (
-                    <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', padding: '8px', textAlign: 'center' }}>
-                      No eligible candidates available (TL/TM only).
-                    </p>
-                  )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Project Status</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="input"
+                  >
+                    <option value="active">Active</option>
+                    <option value="in_review">In Review</option>
+                    <option value="completed">Completed</option>
+                    <option value="blocked">Blocked</option>
+                    <option value="on_hold">On Hold</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Target Deadline</label>
+                  <input
+                    type="date"
+                    value={editDeadline}
+                    onChange={(e) => setEditDeadline(e.target.value)}
+                    className="input"
+                  />
                 </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
                 <button
                   type="button"
-                  onClick={() => setShowTeamModal(false)}
+                  onClick={() => setShowEditModal(false)}
                   className="btn btn-secondary"
-                  disabled={teamSubmitting}
+                  disabled={editSubmitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={teamSubmitting}
+                  disabled={editSubmitting}
                 >
-                  {teamSubmitting ? 'Creating Team...' : 'Create Team'}
+                  {editSubmitting ? 'Saving Changes...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -1004,12 +946,26 @@ const ProjectsPage = () => {
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={() => setSelectedProject(null)}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-                >
-                  <X size={20} />
-                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {user.role === 'PM' && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenEditModal(selectedProject, e)}
+                      className="btn btn-secondary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', fontSize: '12px' }}
+                    >
+                      <Pencil size={13} />
+                      <span>Edit Project</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedProject(null)}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
 
               <h3 className="font-bold text-xl mb-3" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
@@ -1198,43 +1154,12 @@ const ProjectsPage = () => {
                 )}
               </div>
 
-              {/* Attached Images, Videos & Documents */}
+              {/* Attached Images, Videos & Documents (No Attach More button) */}
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="text-xs font-semibold text-secondary uppercase" style={{ letterSpacing: '0.05em' }}>
                     Attachments ({selectedProject.attachments?.length || 0})
                   </h4>
-                  {user.role === 'PM' && (
-                    <>
-                      <input
-                        type="file"
-                        ref={overviewFileInputRef}
-                        onChange={handleOverviewFileSelect}
-                        multiple
-                        accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-                        style={{ display: 'none' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => overviewFileInputRef.current?.click()}
-                        disabled={overviewUploading}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: 'var(--brand-600)',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <Paperclip size={12} />
-                        {overviewUploading ? 'Uploading...' : 'Attach More'}
-                      </button>
-                    </>
-                  )}
                 </div>
 
                 {(selectedProject.attachments && selectedProject.attachments.length > 0) ? (
@@ -1278,7 +1203,7 @@ const ProjectsPage = () => {
                 )}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
                 <button
                   type="button"
                   onClick={() => setSelectedProject(null)}
@@ -1286,6 +1211,17 @@ const ProjectsPage = () => {
                 >
                   Close Overview
                 </button>
+                {user.role === 'PM' && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenEditModal(selectedProject, e)}
+                    className="btn btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Pencil size={14} />
+                    <span>Edit Project</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
