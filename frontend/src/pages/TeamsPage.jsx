@@ -25,7 +25,6 @@ const TeamsPage = () => {
   // Create Team Modal State
   const [showModal, setShowModal] = useState(false);
   const [teamName, setTeamName] = useState('');
-  const [teamProjectId, setTeamProjectId] = useState('');
   const [teamLeadId, setTeamLeadId] = useState('');
   const [teamMemberIds, setTeamMemberIds] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -90,7 +89,21 @@ const TeamsPage = () => {
     };
   }, [location.search, user?.role, navigate]);
 
-  const eligibleAssignees = usersList.filter(u => u.role !== 'CEO' && u.role !== 'CTO');
+  // Helper to reliably format user's full name
+  const getUserFullName = (u) => {
+    if (!u) return 'Unknown User';
+    return (
+      u.full_name ||
+      `${u.first_name || ''} ${u.last_name || ''}`.trim() ||
+      u.email ||
+      'User'
+    );
+  };
+
+  // Team Leads and Team Members cannot be CEO, CTO, or PM
+  const eligibleTeamCandidates = usersList.filter(
+    u => u.role !== 'CEO' && u.role !== 'CTO' && u.role !== 'PM'
+  );
 
   const handleCreateTeam = async (e) => {
     e.preventDefault();
@@ -103,14 +116,12 @@ const TeamsPage = () => {
     try {
       await createTeam({
         name: teamName.trim(),
-        project_id: teamProjectId || null,
         lead_user_id: teamLeadId || null,
         member_user_ids: teamMemberIds.length > 0 ? teamMemberIds : null,
       });
 
       setShowModal(false);
       setTeamName('');
-      setTeamProjectId('');
       setTeamLeadId('');
       setTeamMemberIds([]);
       loadData();
@@ -320,7 +331,7 @@ const TeamsPage = () => {
                         </div>
                         <div>
                           <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {leadMembership.user?.full_name}
+                            {getUserFullName(leadMembership.user)}
                           </p>
                           <p style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
                             {leadMembership.user?.email}
@@ -394,7 +405,7 @@ const TeamsPage = () => {
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '12px', color: 'var(--text-primary)' }}>
-                              {m.user?.full_name}
+                              {getUserFullName(m.user)}
                             </span>
                             <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
                               ({m.user?.role || 'TM'})
@@ -459,7 +470,7 @@ const TeamsPage = () => {
             <Users size={32} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
             <h4 className="font-bold text-base mb-1">No Teams Created Yet</h4>
             <p className="text-secondary text-sm">
-              {user.role === 'PM' ? 'Click "+ Create Team" or use the sidebar element to assemble squads.' : 'Teams created by Project Managers will be displayed here.'}
+              {user.role === 'PM' ? 'Click "+ Create Team" to assemble squads.' : 'Teams created by Project Managers will be displayed here.'}
             </p>
           </div>
         )}
@@ -467,20 +478,23 @@ const TeamsPage = () => {
 
       {/* Create Team Modal */}
       {showModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.45)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999,
-          padding: '20px'
-        }}>
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            padding: '20px'
+          }}
+        >
           <div className="card modal-animate" style={{
             width: '100%',
             maxWidth: '540px',
@@ -495,7 +509,7 @@ const TeamsPage = () => {
                 <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
                   Create New Team
                 </h3>
-                <p className="text-xs text-secondary mt-0.5">Assemble a squad, designate a lead, and allocate deliverables</p>
+                <p className="text-xs text-secondary mt-0.5">Assemble a squad and designate squad members</p>
               </div>
               <button
                 onClick={() => setShowModal(false)}
@@ -532,22 +546,6 @@ const TeamsPage = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Allocate to Project (Optional)</label>
-                <select
-                  value={teamProjectId}
-                  onChange={(e) => setTeamProjectId(e.target.value)}
-                  className="input"
-                >
-                  <option value="">-- Standalone (No Project) --</option>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
                 <label className="text-xs font-semibold text-secondary mb-1.5 block">Designate Team Lead (Optional)</label>
                 <select
                   value={teamLeadId}
@@ -555,9 +553,9 @@ const TeamsPage = () => {
                   className="input"
                 >
                   <option value="">-- No Lead Assigned Yet --</option>
-                  {eligibleAssignees.map(u => (
+                  {eligibleTeamCandidates.map(u => (
                     <option key={u.id} value={u.id}>
-                      {u.full_name} ({u.role})
+                      {getUserFullName(u)} ({u.role})
                     </option>
                   ))}
                 </select>
@@ -575,7 +573,7 @@ const TeamsPage = () => {
                   padding: '8px',
                   background: 'var(--surface-hover)'
                 }}>
-                  {eligibleAssignees.map(u => {
+                  {eligibleTeamCandidates.map(u => {
                     const isSelected = teamMemberIds.includes(u.id);
                     const isLead = String(teamLeadId) === String(u.id);
                     return (
@@ -601,7 +599,7 @@ const TeamsPage = () => {
                             style={{ cursor: 'pointer' }}
                           />
                           <span style={{ fontSize: '12px', fontWeight: isSelected ? 600 : 400, color: 'var(--text-primary)' }}>
-                            {u.full_name}
+                            {getUserFullName(u)}
                           </span>
                           {isLead && (
                             <span style={{
@@ -620,6 +618,11 @@ const TeamsPage = () => {
                       </div>
                     );
                   })}
+                  {eligibleTeamCandidates.length === 0 && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', padding: '8px', textAlign: 'center' }}>
+                      No eligible candidates available (TL/TM only).
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -647,20 +650,23 @@ const TeamsPage = () => {
 
       {/* Add Member Modal */}
       {memberModalTeam && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.45)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999,
-          padding: '20px'
-        }}>
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setMemberModalTeam(null); }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            padding: '20px'
+          }}
+        >
           <div className="card modal-animate" style={{
             width: '100%',
             maxWidth: '440px',
@@ -703,11 +709,11 @@ const TeamsPage = () => {
                   required
                 >
                   <option value="">-- Choose User --</option>
-                  {eligibleAssignees
+                  {eligibleTeamCandidates
                     .filter(u => !memberModalTeam.memberships?.some(m => String(m.user_id) === String(u.id)))
                     .map(u => (
                       <option key={u.id} value={u.id}>
-                        {u.full_name} ({u.role})
+                        {getUserFullName(u)} ({u.role})
                       </option>
                     ))}
                 </select>

@@ -38,7 +38,6 @@ const ProjectsPage = () => {
   // Create Team Modal state (For PM only)
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [teamName, setTeamName] = useState('');
-  const [teamProjectId, setTeamProjectId] = useState('');
   const [teamLeadId, setTeamLeadId] = useState('');
   const [teamMemberIds, setTeamMemberIds] = useState([]);
   const [teamSubmitting, setTeamSubmitting] = useState(false);
@@ -143,8 +142,20 @@ const ProjectsPage = () => {
     return <FileText size={13} color="#10b981" />;
   };
 
-  // Filter eligible users for Team Leads and Team Members (exclude CEO and CTO)
-  const eligibleAssignees = usersList.filter(u => u.role !== 'CEO' && u.role !== 'CTO');
+  const getUserFullName = (u) => {
+    if (!u) return 'Unknown User';
+    return (
+      u.full_name ||
+      `${u.first_name || ''} ${u.last_name || ''}`.trim() ||
+      u.email ||
+      'User'
+    );
+  };
+
+  // Team Leads and Team Members cannot be CEO, CTO, or PM
+  const eligibleTeamCandidates = usersList.filter(
+    u => u.role !== 'CEO' && u.role !== 'CTO' && u.role !== 'PM'
+  );
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
@@ -207,14 +218,12 @@ const ProjectsPage = () => {
     try {
       await createTeam({
         name: teamName.trim(),
-        project_id: teamProjectId || null,
         lead_user_id: teamLeadId || null,
         member_user_ids: teamMemberIds.length > 0 ? teamMemberIds : null,
       });
 
       setShowTeamModal(false);
       setTeamName('');
-      setTeamProjectId('');
       setTeamLeadId('');
       setTeamMemberIds([]);
       loadData();
@@ -838,22 +847,6 @@ const ProjectsPage = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Allocate to Project (Optional)</label>
-                <select
-                  value={teamProjectId}
-                  onChange={(e) => setTeamProjectId(e.target.value)}
-                  className="input"
-                >
-                  <option value="">-- None (Standalone Squad) --</option>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
                 <label className="text-xs font-semibold text-secondary mb-1.5 block">Designate Team Lead (Optional)</label>
                 <select
                   value={teamLeadId}
@@ -861,9 +854,9 @@ const ProjectsPage = () => {
                   className="input"
                 >
                   <option value="">-- No Lead Assigned Yet --</option>
-                  {eligibleAssignees.map(u => (
+                  {eligibleTeamCandidates.map(u => (
                     <option key={u.id} value={u.id}>
-                      {u.full_name} ({u.role})
+                      {getUserFullName(u)} ({u.role})
                     </option>
                   ))}
                 </select>
@@ -881,7 +874,7 @@ const ProjectsPage = () => {
                   padding: '8px',
                   background: 'var(--surface-hover)'
                 }}>
-                  {eligibleAssignees.map(u => {
+                  {eligibleTeamCandidates.map(u => {
                     const isSelected = teamMemberIds.includes(u.id);
                     const isLead = String(teamLeadId) === String(u.id);
                     return (
@@ -907,7 +900,7 @@ const ProjectsPage = () => {
                             style={{ cursor: 'pointer' }}
                           />
                           <span style={{ fontSize: '12px', fontWeight: isSelected ? 600 : 400, color: 'var(--text-primary)' }}>
-                            {u.full_name}
+                            {getUserFullName(u)}
                           </span>
                           {isLead && (
                             <span style={{
@@ -926,6 +919,11 @@ const ProjectsPage = () => {
                       </div>
                     );
                   })}
+                  {eligibleTeamCandidates.length === 0 && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', padding: '8px', textAlign: 'center' }}>
+                      No eligible candidates available (TL/TM only).
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1121,7 +1119,7 @@ const ProjectsPage = () => {
                           </span>
                         </div>
                         <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                          {t.assignee?.full_name || 'Unassigned'}
+                          {getUserFullName(t.assignee)}
                         </span>
                       </div>
                     ))}
@@ -1159,7 +1157,7 @@ const ProjectsPage = () => {
                             <div>
                               <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{team.name}</p>
                               <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                {team.memberships?.length || 0} members {lead ? `• Lead: ${lead.user?.full_name}` : '• No lead assigned'}
+                                {team.memberships?.length || 0} members {lead ? `• Lead: ${getUserFullName(lead.user)}` : '• No lead assigned'}
                               </p>
                             </div>
                           </div>

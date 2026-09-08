@@ -22,15 +22,20 @@ async def create_team(req: TeamCreate, db: Session = Depends(get_db), user: User
     db.flush()
 
     if req.lead_user_id:
+        lead_user = db.query(User).filter(User.id == req.lead_user_id).first()
+        if lead_user and lead_user.role in ("CEO", "CTO", "PM"):
+            raise HTTPException(400, f"{lead_user.role} cannot be assigned as a Team Lead")
         lead_m = TeamMembership(team_id=team.id, user_id=req.lead_user_id, is_lead=True)
         db.add(lead_m)
-        lead_user = db.query(User).filter(User.id == req.lead_user_id).first()
         if lead_user and lead_user.role == "TM":
             lead_user.role = "TL"
 
     if req.member_user_ids:
         for uid in req.member_user_ids:
             if req.lead_user_id and str(uid) == str(req.lead_user_id):
+                continue
+            m_user = db.query(User).filter(User.id == uid).first()
+            if m_user and m_user.role in ("CEO", "CTO", "PM"):
                 continue
             m = TeamMembership(team_id=team.id, user_id=uid, is_lead=False)
             db.add(m)
@@ -89,10 +94,14 @@ async def add_member(team_id: UUID, req: AddMemberRequest, db: Session = Depends
     existing = db.query(TeamMembership).filter(TeamMembership.team_id == team_id, TeamMembership.user_id == req.user_id).first()
     if existing:
         raise HTTPException(400, "User already in team")
+    target_user = db.query(User).filter(User.id == req.user_id).first()
+    if not target_user:
+        raise HTTPException(404, "User not found")
+    if target_user.role in ("CEO", "CTO", "PM"):
+        raise HTTPException(400, f"{target_user.role} cannot be added to a team squad")
     m = TeamMembership(team_id=team_id, user_id=req.user_id, is_lead=req.is_lead)
     db.add(m)
     if req.is_lead:
-        target_user = db.query(User).filter(User.id == req.user_id).first()
         if target_user and target_user.role == "TM":
             target_user.role = "TL"
     db.commit()

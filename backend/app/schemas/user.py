@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, computed_field
 
 
 DEPARTMENTS = [
@@ -45,9 +45,14 @@ class UserResponse(BaseModel):
     last_name: str
     role: str
     department: Optional[str] = None
-    avatar_url: Optional[str]
+    avatar_url: Optional[str] = None
     is_active: bool
     created_at: datetime
+
+    @computed_field
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}".strip()
 
     class Config:
         from_attributes = True
