@@ -119,3 +119,9 @@ def change_password(req: ChangePasswordRequest, db: Session = Depends(get_db), u
     db.commit()
     return {"message": "Password updated successfully"}
 
+
+@router.get("/google-client-id")
+def get_google_client_id():
+    return {"client_id": settings.GOOGLE_CLIENT_ID or ""}
+
+

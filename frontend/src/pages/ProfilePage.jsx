@@ -4,12 +4,23 @@ import api from '../api/axios';
 import {
   User, Mail, Shield, Briefcase, KeyRound, Camera,
   Check, AlertCircle, Eye, EyeOff, Lock, RefreshCw,
-  Trash2, Sparkles, CheckCircle2, ArrowRight, Upload
+  Trash2, Sparkles, CheckCircle2, ArrowRight, Upload,
+  Link2, Unlink
 } from 'lucide-react';
 import { ImageCropModal } from '../components/profile/ImageCropModal';
+import {
+  isGoogleDriveConnected,
+  requestGoogleAccessToken,
+  disconnectGoogleDrive
+} from '../services/googleDriveAuth';
 
 const ProfilePage = () => {
   const { user, updateCurrentUser } = useAuth();
+
+  // Google Drive Connection State
+  const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
+  const [gdriveLoading, setGdriveLoading] = useState(false);
+  const [gdriveMsg, setGdriveMsg] = useState({ type: '', text: '' });
 
   // Name & Profile State
   const [firstName, setFirstName] = useState(user?.first_name || '');
@@ -43,6 +54,12 @@ const ProfilePage = () => {
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [passSuccessMsg, setPassSuccessMsg] = useState('');
   const [passErrorMsg, setPassErrorMsg] = useState('');
+
+  useEffect(() => {
+    const handleGdriveChange = () => setGdriveConnected(isGoogleDriveConnected());
+    window.addEventListener('gdrive_auth_change', handleGdriveChange);
+    return () => window.removeEventListener('gdrive_auth_change', handleGdriveChange);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -262,6 +279,25 @@ const ProfilePage = () => {
     setNewPassword('');
     setConfirmPassword('');
     setPassErrorMsg('');
+  };
+
+  const handleConnectGoogleDrive = async () => {
+    setGdriveLoading(true);
+    setGdriveMsg({ type: '', text: '' });
+    try {
+      await requestGoogleAccessToken();
+      setGdriveMsg({ type: 'success', text: 'Google Drive connected successfully!' });
+    } catch (err) {
+      console.error('Google Drive Auth error:', err);
+      setGdriveMsg({ type: 'error', text: err.message || 'Failed to authenticate with Google Drive.' });
+    } finally {
+      setGdriveLoading(false);
+    }
+  };
+
+  const handleDisconnectGoogleDrive = () => {
+    disconnectGoogleDrive();
+    setGdriveMsg({ type: 'success', text: 'Google Drive disconnected from this session.' });
   };
 
   if (!user) return null;
@@ -1056,6 +1092,162 @@ const ProfilePage = () => {
                 </div>
               </form>
             )}
+          </div>
+
+          {/* Card 3: Google Drive Integration */}
+          <div className="card" style={{
+            padding: '28px',
+            background: 'var(--surface-glass)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-card)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M7.71 3.5L1.15 15l3.43 6h6.56l-3.43-6L14.28 3.5H7.71z" fill="#0066DA"/>
+                    <path d="M22.85 15l-3.43-6H6.57l3.43 6h12.85z" fill="#00AC47"/>
+                    <path d="M14.29 3.5L7.71 15l3.43 6 6.57-11.5L14.29 3.5z" fill="#EA4335"/>
+                    <path d="M14.29 3.5h8.56l-6.57 11.5h-6.56L14.29 3.5z" fill="#FFBA00"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
+                    Google Drive Integration
+                  </h3>
+                  <p className="text-xs text-secondary">
+                    Connect your Google account to upload document attachments to your Google Drive
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                {gdriveConnected ? (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'var(--status-active-bg)',
+                    color: 'var(--status-active)',
+                    fontSize: '11px',
+                    fontWeight: 600
+                  }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-active)' }} />
+                    Connected
+                  </span>
+                ) : (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'var(--subtle)',
+                    color: 'var(--text-tertiary)',
+                    fontSize: '11px',
+                    fontWeight: 600
+                  }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-tertiary)' }} />
+                    Not Connected
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {gdriveMsg.text && (
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-sm)',
+                background: gdriveMsg.type === 'success' ? 'var(--status-active-bg)' : 'var(--status-blocked-bg)',
+                color: gdriveMsg.type === 'success' ? 'var(--status-active)' : 'var(--status-blocked)',
+                fontSize: '13px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                {gdriveMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                <span>{gdriveMsg.text}</span>
+              </div>
+            )}
+
+            <div style={{
+              padding: '16px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--surface-hover)',
+              border: '1px solid var(--border)',
+              marginBottom: '20px'
+            }}>
+              <p className="text-xs text-secondary" style={{ lineHeight: 1.6, margin: 0 }}>
+                {gdriveConnected ? (
+                  <>
+                    <strong style={{ color: 'var(--text-primary)' }}>Active Session:</strong> Your Google account is authenticated with Google Drive. Any documents or attachments you upload to tasks and projects will automatically be saved to your Google Drive account, organized into project folders, and made accessible to teammates with a view link.
+                  </>
+                ) : (
+                  <>
+                    <strong style={{ color: 'var(--text-primary)' }}>Why connect?</strong> Whenever you attach documents (PDFs, spreadsheets, DOCX, ZIP files) in Tasks or Projects, Workmate requires Google OAuth permissions to store them safely. You can connect now or authenticate when uploading.
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              {gdriveConnected ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleDisconnectGoogleDrive}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '13px', padding: '9px 16px', gap: '6px' }}
+                  >
+                    <Unlink size={14} />
+                    <span>Disconnect</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConnectGoogleDrive}
+                    disabled={gdriveLoading}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '13px', padding: '9px 16px', gap: '6px' }}
+                  >
+                    {gdriveLoading ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                    <span>Refresh Session</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnectGoogleDrive}
+                  disabled={gdriveLoading}
+                  className="btn btn-primary"
+                  style={{ gap: '8px', padding: '10px 22px' }}
+                >
+                  {gdriveLoading ? (
+                    <>
+                      <RefreshCw size={15} className="animate-spin" />
+                      <span>Connecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Link2 size={16} />
+                      <span>Connect Google Drive</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
 
         </div>

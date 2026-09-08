@@ -19,6 +19,7 @@ async def upload_file(
     file: UploadFile = File(...),
     task_id: Optional[UUID] = Form(None),
     project_id: Optional[UUID] = Form(None),
+    google_token: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -45,18 +46,46 @@ async def upload_file(
                 cloudinary_public_id=result.get("public_id"),
             )
         else:
-            try:
-                result = gdrive_service.upload_file(content, file.filename, project.name, "overview")
-                attachment = ProjectAttachment(
-                    project_id=project_id,
-                    uploaded_by=user.id,
-                    file_name=file.filename,
-                    file_type="document",
-                    file_url=result["url"],
-                    storage_provider="gdrive",
-                    gdrive_file_id=result.get("file_id"),
-                )
-            except Exception:
+            upload_success = False
+            # 1. Prioritize user's authenticated Google Drive OAuth session
+            if google_token:
+                try:
+                    result = gdrive_service.upload_file_user(google_token, content, file.filename, project.name, "overview")
+                    attachment = ProjectAttachment(
+                        project_id=project_id,
+                        uploaded_by=user.id,
+                        file_name=file.filename,
+                        file_type="document",
+                        file_url=result["url"],
+                        storage_provider="gdrive",
+                        gdrive_file_id=result.get("file_id"),
+                    )
+                    upload_success = True
+                    print(f"[GDRIVE] Document successfully uploaded to user's Google Drive: {file.filename}")
+                except Exception as user_gdrive_err:
+                    print(f"[GDRIVE USER ERROR] User Google Drive upload failed: {user_gdrive_err}")
+
+            # 2. Server-level Google Drive fallback
+            if not upload_success:
+                try:
+                    result = gdrive_service.upload_file(content, file.filename, project.name, "overview")
+                    attachment = ProjectAttachment(
+                        project_id=project_id,
+                        uploaded_by=user.id,
+                        file_name=file.filename,
+                        file_type="document",
+                        file_url=result["url"],
+                        storage_provider="gdrive",
+                        gdrive_file_id=result.get("file_id"),
+                    )
+                    upload_success = True
+                    print(f"[GDRIVE] Document successfully uploaded via server Google Drive: {file.filename}")
+                except Exception as server_gdrive_err:
+                    print(f"[GDRIVE SERVER ERROR] Server Google Drive upload failed: {server_gdrive_err}")
+
+            # 3. Cloudinary fallback
+            if not upload_success:
+                print(f"[FALLBACK] Falling back to Cloudinary for document: {file.filename}")
                 result = cloudinary_service.upload_file(content, file.filename, folder=f"workmate/projects/{project.id}")
                 attachment = ProjectAttachment(
                     project_id=project_id,
@@ -93,18 +122,47 @@ async def upload_file(
             team = db.query(Team).filter(Team.id == task.team_id).first()
             project = db.query(Project).filter(Project.id == team.project_id).first() if team else None
             project_name = project.name if project else "General"
-            try:
-                result = gdrive_service.upload_file(content, file.filename, project_name, str(task_id))
-                attachment = TaskAttachment(
-                    task_id=task_id,
-                    uploaded_by=user.id,
-                    file_name=file.filename,
-                    file_type="document",
-                    file_url=result["url"],
-                    storage_provider="gdrive",
-                    gdrive_file_id=result.get("file_id"),
-                )
-            except Exception:
+            upload_success = False
+
+            # 1. Prioritize user's authenticated Google Drive OAuth session
+            if google_token:
+                try:
+                    result = gdrive_service.upload_file_user(google_token, content, file.filename, project_name, str(task_id))
+                    attachment = TaskAttachment(
+                        task_id=task_id,
+                        uploaded_by=user.id,
+                        file_name=file.filename,
+                        file_type="document",
+                        file_url=result["url"],
+                        storage_provider="gdrive",
+                        gdrive_file_id=result.get("file_id"),
+                    )
+                    upload_success = True
+                    print(f"[GDRIVE] Task document successfully uploaded to user's Google Drive: {file.filename}")
+                except Exception as user_gdrive_err:
+                    print(f"[GDRIVE USER ERROR] User Google Drive task upload failed: {user_gdrive_err}")
+
+            # 2. Server-level Google Drive fallback
+            if not upload_success:
+                try:
+                    result = gdrive_service.upload_file(content, file.filename, project_name, str(task_id))
+                    attachment = TaskAttachment(
+                        task_id=task_id,
+                        uploaded_by=user.id,
+                        file_name=file.filename,
+                        file_type="document",
+                        file_url=result["url"],
+                        storage_provider="gdrive",
+                        gdrive_file_id=result.get("file_id"),
+                    )
+                    upload_success = True
+                    print(f"[GDRIVE] Task document successfully uploaded via server Google Drive: {file.filename}")
+                except Exception as server_gdrive_err:
+                    print(f"[GDRIVE SERVER ERROR] Server Google Drive task upload failed: {server_gdrive_err}")
+
+            # 3. Cloudinary fallback
+            if not upload_success:
+                print(f"[FALLBACK] Falling back to Cloudinary for task document: {file.filename}")
                 result = cloudinary_service.upload_file(content, file.filename)
                 attachment = TaskAttachment(
                     task_id=task_id,

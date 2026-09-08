@@ -78,8 +78,42 @@ def upload_file(file_bytes: bytes, filename: str, project_name: str, task_id: st
     return {"url": url, "file_id": file_id}
 
 
-def delete_file(file_id: str):
+def upload_file_user(access_token: str, file_bytes: bytes, filename: str, project_name: str, task_id: str) -> dict:
+    """Upload to user's personal Google Drive under Workmate/Projects/{project}/Tasks/{task_id}/, return {url, file_id}."""
+    creds = Credentials(token=access_token)
+    service = build("drive", "v3", credentials=creds, cache_discovery=False)
+
+    root = _get_or_create_folder(service, "Workmate")
+    projects = _get_or_create_folder(service, "Projects", root)
+    project_folder = _get_or_create_folder(service, project_name, projects)
+    tasks = _get_or_create_folder(service, "Tasks", project_folder)
+    task_folder = _get_or_create_folder(service, task_id, tasks)
+
+    media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype="application/octet-stream", resumable=False)
+    file_meta = {"name": filename, "parents": [task_folder]}
+    uploaded = service.files().create(body=file_meta, media_body=media, fields="id").execute()
+    file_id = uploaded["id"]
+
+    # Make publicly readable with link so other team members in Workmate can view it
     try:
-        _get_service().files().delete(fileId=file_id).execute()
+        service.permissions().create(
+            fileId=file_id,
+            body={"type": "anyone", "role": "reader"},
+        ).execute()
+    except Exception as perm_err:
+        print(f"[GDRIVE PERMISSION WARN] Could not set public reader permission: {perm_err}")
+
+    url = f"https://drive.google.com/file/d/{file_id}/view"
+    return {"url": url, "file_id": file_id}
+
+
+def delete_file(file_id: str, access_token: str = None):
+    try:
+        if access_token:
+            creds = Credentials(token=access_token)
+            service = build("drive", "v3", credentials=creds, cache_discovery=False)
+            service.files().delete(fileId=file_id).execute()
+        else:
+            _get_service().files().delete(fileId=file_id).execute()
     except Exception:
         pass

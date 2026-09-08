@@ -3,6 +3,7 @@ import { getTasks, createTask, acceptTask, completeTask, confirmTask } from '../
 import { getTeams } from '../api/teams';
 import { getUsers } from '../api/users';
 import { uploadFile } from '../api/upload';
+import { getStoredGoogleToken, requestGoogleAccessToken, isGoogleDriveConnected } from '../services/googleDriveAuth';
 import { useRealtime } from '../realtime/useRealtime';
 import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +19,7 @@ const TasksPage = () => {
   });
   const [loading, setLoading] = useState(() => !localStorage.getItem('cache_tasks'));
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'mine', 'review'
+  const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const { joinRoom } = useWebSocket();
   const { user } = useAuth();
 
@@ -135,6 +137,9 @@ const TasksPage = () => {
 
   useEffect(() => {
     loadTasks();
+    const handleGdriveChange = () => setGdriveConnected(isGoogleDriveConnected());
+    window.addEventListener('gdrive_auth_change', handleGdriveChange);
+    return () => window.removeEventListener('gdrive_auth_change', handleGdriveChange);
   }, []);
 
   const openNewTaskModal = () => {
@@ -159,6 +164,25 @@ const TasksPage = () => {
       setFormError('Please fill in task title, description, and select an assignee.');
       return;
     }
+
+    // Check if user has attached document files that require Google Drive OAuth
+    const hasDocFiles = attachedFiles.some(f => !f.type?.startsWith('image/') && !f.type?.startsWith('video/'));
+    let googleToken = null;
+    if (hasDocFiles) {
+      googleToken = getStoredGoogleToken();
+      if (!googleToken) {
+        setSubmitting(true);
+        try {
+          googleToken = await requestGoogleAccessToken();
+        } catch (authErr) {
+          console.warn('Google Drive Auth error:', authErr);
+          setFormError(authErr?.message || 'Google Drive authentication is required to upload document attachments. Please grant permissions in the Google window.');
+          setSubmitting(false);
+          return;
+        }
+      }
+    }
+
     setSubmitting(true);
     setFormError('');
 
@@ -181,8 +205,9 @@ const TasksPage = () => {
       // Upload attached files if any
       if (attachedFiles.length > 0 && newTask?.id) {
         for (const file of attachedFiles) {
+          const isDoc = !file.type?.startsWith('image/') && !file.type?.startsWith('video/');
           try {
-            await uploadFile(file, newTask.id);
+            await uploadFile(file, newTask.id, null, isDoc ? googleToken : null);
           } catch (uploadErr) {
             console.error('Failed to upload file attachment:', file.name, uploadErr);
           }
@@ -720,6 +745,56 @@ const TasksPage = () => {
                           </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {attachedFiles.some(f => !f.type?.startsWith('image/') && !f.type?.startsWith('video/')) && (
+                    <div style={{
+                      marginTop: '10px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: gdriveConnected ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                      border: `1px solid ${gdriveConnected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                          <path d="M7.71 3.5L1.15 15l3.43 6h6.56l-3.43-6L14.28 3.5H7.71z" fill="#0066DA"/>
+                          <path d="M22.85 15l-3.43-6H6.57l3.43 6h12.85z" fill="#00AC47"/>
+                          <path d="M14.29 3.5L7.71 15l3.43 6 6.57-11.5L14.29 3.5z" fill="#EA4335"/>
+                          <path d="M14.29 3.5h8.56l-6.57 11.5h-6.56L14.29 3.5z" fill="#FFBA00"/>
+                        </svg>
+                        <span style={{ color: gdriveConnected ? 'var(--status-active)' : 'var(--brand-600)', fontWeight: 500 }}>
+                          {gdriveConnected ? 'Google Drive Connected (Files upload to your Drive)' : 'Google Drive Auth required for documents'}
+                        </span>
+                      </div>
+                      {!gdriveConnected && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await requestGoogleAccessToken();
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                          style={{
+                            background: 'var(--brand-600)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Connect
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

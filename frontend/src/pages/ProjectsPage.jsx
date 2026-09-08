@@ -4,6 +4,7 @@ import { getTeams, updateTeam } from '../api/teams';
 import { getUsers } from '../api/users';
 import { getTasks } from '../api/tasks';
 import { uploadFile } from '../api/upload';
+import { getStoredGoogleToken, requestGoogleAccessToken, isGoogleDriveConnected } from '../services/googleDriveAuth';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -15,6 +16,7 @@ import {
 
 const ProjectsPage = () => {
   const { user } = useAuth();
+  const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const [projects, setProjects] = useState(() => {
     try {
       const cached = localStorage.getItem('cache_projects');
@@ -109,7 +111,7 @@ const ProjectsPage = () => {
   useRealtime('task.updated', handleUpdate);
   useRealtime('task.completed', handleUpdate);
 
-  // Escape key handler to close modals
+  // Escape key handler to close modals & GDrive auth change listener
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -118,8 +120,13 @@ const ProjectsPage = () => {
         setShowEditModal(false);
       }
     };
+    const handleGdriveChange = () => setGdriveConnected(isGoogleDriveConnected());
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('gdrive_auth_change', handleGdriveChange);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('gdrive_auth_change', handleGdriveChange);
+    };
   }, []);
 
   // File handling helpers
@@ -186,6 +193,26 @@ const ProjectsPage = () => {
       setFormError('Please allocate this project to a team.');
       return;
     }
+    // Check if user has attached document files that require Google Drive OAuth
+    const hasDocFiles = attachedFiles.some(f => !f.type?.startsWith('image/') && !f.type?.startsWith('video/'));
+    let googleToken = null;
+    if (hasDocFiles) {
+      googleToken = getStoredGoogleToken();
+      if (!googleToken) {
+        setSubmitting(true);
+        setSubmitStatusText('Requesting Google Drive permission...');
+        try {
+          googleToken = await requestGoogleAccessToken();
+        } catch (authErr) {
+          console.warn('Google Drive Auth error:', authErr);
+          setFormError(authErr?.message || 'Google Drive authentication is required to upload document attachments. Please grant permissions in the Google window.');
+          setSubmitting(false);
+          setSubmitStatusText('');
+          return;
+        }
+      }
+    }
+
     setSubmitting(true);
     setSubmitStatusText('Creating project...');
     setFormError('');
@@ -204,8 +231,9 @@ const ProjectsPage = () => {
         setSubmitStatusText(`Uploading ${attachedFiles.length} attachment(s)...`);
         for (let i = 0; i < attachedFiles.length; i++) {
           const file = attachedFiles[i];
+          const isDoc = !file.type?.startsWith('image/') && !file.type?.startsWith('video/');
           try {
-            await uploadFile(file, null, createdProject.id);
+            await uploadFile(file, null, createdProject.id, isDoc ? googleToken : null);
           } catch (uploadErr) {
             console.error(`Failed to upload file ${file.name}:`, uploadErr);
           }
@@ -247,6 +275,25 @@ const ProjectsPage = () => {
       setEditFormError('Project name and aim/objective are required.');
       return;
     }
+
+    // Check if user has attached document files that require Google Drive OAuth
+    const hasDocFiles = editAttachedFiles.some(f => !f.type?.startsWith('image/') && !f.type?.startsWith('video/'));
+    let googleToken = null;
+    if (hasDocFiles) {
+      googleToken = getStoredGoogleToken();
+      if (!googleToken) {
+        setEditSubmitting(true);
+        try {
+          googleToken = await requestGoogleAccessToken();
+        } catch (authErr) {
+          console.warn('Google Drive Auth error:', authErr);
+          setEditFormError(authErr?.message || 'Google Drive authentication is required to upload document attachments. Please grant permissions in the Google window.');
+          setEditSubmitting(false);
+          return;
+        }
+      }
+    }
+
     setEditSubmitting(true);
     setEditFormError('');
     try {
@@ -261,8 +308,9 @@ const ProjectsPage = () => {
       if (editAttachedFiles.length > 0) {
         for (let i = 0; i < editAttachedFiles.length; i++) {
           const file = editAttachedFiles[i];
+          const isDoc = !file.type?.startsWith('image/') && !file.type?.startsWith('video/');
           try {
-            await uploadFile(file, null, editingProject.id);
+            await uploadFile(file, null, editingProject.id, isDoc ? googleToken : null);
           } catch (uploadErr) {
             console.error(`Failed to upload file ${file.name}:`, uploadErr);
           }
@@ -1035,6 +1083,56 @@ const ProjectsPage = () => {
                       ))}
                     </div>
                   )}
+
+                  {attachedFiles.some(f => !f.type?.startsWith('image/') && !f.type?.startsWith('video/')) && (
+                    <div style={{
+                      marginTop: '10px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: gdriveConnected ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                      border: `1px solid ${gdriveConnected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                          <path d="M7.71 3.5L1.15 15l3.43 6h6.56l-3.43-6L14.28 3.5H7.71z" fill="#0066DA"/>
+                          <path d="M22.85 15l-3.43-6H6.57l3.43 6h12.85z" fill="#00AC47"/>
+                          <path d="M14.29 3.5L7.71 15l3.43 6 6.57-11.5L14.29 3.5z" fill="#EA4335"/>
+                          <path d="M14.29 3.5h8.56l-6.57 11.5h-6.56L14.29 3.5z" fill="#FFBA00"/>
+                        </svg>
+                        <span style={{ color: gdriveConnected ? 'var(--status-active)' : 'var(--brand-600)', fontWeight: 500 }}>
+                          {gdriveConnected ? 'Google Drive Connected (Files upload to your Drive)' : 'Google Drive Auth required for documents'}
+                        </span>
+                      </div>
+                      {!gdriveConnected && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await requestGoogleAccessToken();
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                          style={{
+                            background: 'var(--brand-600)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Connect
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1244,6 +1342,56 @@ const ProjectsPage = () => {
                           </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {editAttachedFiles.some(f => !f.type?.startsWith('image/') && !f.type?.startsWith('video/')) && (
+                    <div style={{
+                      marginTop: '10px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: gdriveConnected ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                      border: `1px solid ${gdriveConnected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                          <path d="M7.71 3.5L1.15 15l3.43 6h6.56l-3.43-6L14.28 3.5H7.71z" fill="#0066DA"/>
+                          <path d="M22.85 15l-3.43-6H6.57l3.43 6h12.85z" fill="#00AC47"/>
+                          <path d="M14.29 3.5L7.71 15l3.43 6 6.57-11.5L14.29 3.5z" fill="#EA4335"/>
+                          <path d="M14.29 3.5h8.56l-6.57 11.5h-6.56L14.29 3.5z" fill="#FFBA00"/>
+                        </svg>
+                        <span style={{ color: gdriveConnected ? 'var(--status-active)' : 'var(--brand-600)', fontWeight: 500 }}>
+                          {gdriveConnected ? 'Google Drive Connected (Files upload to your Drive)' : 'Google Drive Auth required for documents'}
+                        </span>
+                      </div>
+                      {!gdriveConnected && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await requestGoogleAccessToken();
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                          style={{
+                            background: 'var(--brand-600)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Connect
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
