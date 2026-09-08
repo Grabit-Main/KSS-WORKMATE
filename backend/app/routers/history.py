@@ -204,23 +204,34 @@ def get_tasks_history(
 
 @router.get("/activity")
 def get_activity_history(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    t_logs = db.query(TaskStatusLog).order_by(TaskStatusLog.created_at.desc()).limit(40).all()
-    p_logs = db.query(ProjectStatusLog).order_by(ProjectStatusLog.created_at.desc()).limit(20).all()
+    from app.models.project import Team
+    t_logs = db.query(TaskStatusLog).order_by(TaskStatusLog.created_at.desc()).limit(100).all()
+    p_logs = db.query(ProjectStatusLog).order_by(ProjectStatusLog.created_at.desc()).limit(50).all()
 
     events = []
 
     for lg in t_logs:
         task = db.query(Task).filter(Task.id == lg.task_id).first()
+        team = db.query(Team).filter(Team.id == task.team_id).first() if task else None
+        project = db.query(Project).filter(Project.id == team.project_id).first() if (team and team.project_id) else None
         events.append({
             "id": f"task-log-{lg.id}",
             "type": "task",
             "title": task.title if task else "Task Update",
-            "action": f"Status changed from {lg.from_status.replace('_', ' ')} to {lg.to_status.replace('_', ' ')}",
+            "action": f"Task '{task.title if task else 'Task'}': {lg.from_status.replace('_', ' ')} → {lg.to_status.replace('_', ' ')}",
             "status": lg.to_status,
+            "from_status": lg.from_status,
             "notes": lg.reason,
             "created_at": lg.created_at.isoformat() if lg.created_at else None,
             "timestamp": lg.created_at.timestamp() if lg.created_at else 0,
-            "actor": _user_dict(lg.changer)
+            "actor": _user_dict(lg.changer),
+            "project_id": str(project.id) if project else None,
+            "project_name": project.name if project else (f"Team: {team.name}" if team else "General Tasks"),
+            "project_aim": project.aim if project else None,
+            "project_deadline": project.deadline.isoformat() if (project and project.deadline) else None,
+            "team_name": team.name if team else None,
+            "task_id": str(task.id) if task else None,
+            "task_title": task.title if task else None
         })
 
     for pl in p_logs:
@@ -231,11 +242,19 @@ def get_activity_history(db: Session = Depends(get_db), user: User = Depends(get
             "title": project.name if project else "Project",
             "action": f"Project status: {pl.to_status.replace('_', ' ')}",
             "status": pl.to_status,
+            "from_status": pl.from_status,
             "notes": pl.notes,
             "created_at": pl.created_at.isoformat() if pl.created_at else None,
             "timestamp": pl.created_at.timestamp() if pl.created_at else 0,
-            "actor": _user_dict(pl.changer)
+            "actor": _user_dict(pl.changer),
+            "project_id": str(project.id) if project else None,
+            "project_name": project.name if project else "Project",
+            "project_aim": project.aim if project else None,
+            "project_deadline": project.deadline.isoformat() if (project and project.deadline) else None,
+            "team_name": None,
+            "task_id": None,
+            "task_title": None
         })
 
     events.sort(key=lambda x: x["timestamp"], reverse=True)
-    return events[:50]
+    return events[:150]

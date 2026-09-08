@@ -18,7 +18,8 @@ import {
   AlertCircle,
   TrendingUp,
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  X
 } from 'lucide-react';
 
 const HistoryPage = () => {
@@ -29,6 +30,21 @@ const HistoryPage = () => {
   const [tasks, setTasks] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Grouped Activity State & Dialog Modal
+  const [selectedActivityGroup, setSelectedActivityGroup] = useState(null);
+  const [activitySearchQuery, setActivitySearchQuery] = useState('');
+
+  // Escape key handler to close pop up dialog box
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedActivityGroup(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Filters for Tasks History
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
@@ -85,6 +101,68 @@ const HistoryPage = () => {
     if (s === 'blocked') return { bg: 'rgba(239, 68, 68, 0.12)', color: '#DC2626', border: 'rgba(239, 68, 68, 0.25)' };
     return { bg: 'var(--subtle)', color: 'var(--text-secondary)', border: 'var(--border)' };
   };
+
+  // Group activities by Project / Top-level Deliverable
+  const groupedActivities = React.useMemo(() => {
+    const map = new Map();
+
+    activity.forEach(evt => {
+      // Group by project if available, otherwise by task title or general
+      const key = evt.project_id || evt.project_name || (evt.type === 'project' ? evt.title : `task-${evt.task_id || evt.title}`);
+      const title = evt.project_name || evt.title || 'General Activity';
+      const isProject = Boolean(evt.project_id || evt.project_name || evt.type === 'project');
+
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          title,
+          type: isProject ? 'project' : 'task',
+          project_id: evt.project_id,
+          project_name: evt.project_name,
+          aim: evt.project_aim,
+          deadline: evt.project_deadline,
+          team_name: evt.team_name,
+          latest_status: evt.status,
+          latest_created_at: evt.created_at,
+          latest_timestamp: evt.timestamp || 0,
+          latest_action: evt.action,
+          latest_actor: evt.actor,
+          events: []
+        });
+      }
+
+      const grp = map.get(key);
+      if ((evt.timestamp || 0) > grp.latest_timestamp) {
+        grp.latest_timestamp = evt.timestamp || 0;
+        grp.latest_created_at = evt.created_at;
+        grp.latest_status = evt.status;
+        grp.latest_action = evt.action;
+        grp.latest_actor = evt.actor;
+      }
+      if (evt.project_aim && !grp.aim) grp.aim = evt.project_aim;
+      if (evt.project_deadline && !grp.deadline) grp.deadline = evt.project_deadline;
+      if (evt.team_name && !grp.team_name) grp.team_name = evt.team_name;
+
+      grp.events.push(evt);
+    });
+
+    const groups = Array.from(map.values());
+    // Sort events within each group by timestamp descending
+    groups.forEach(g => {
+      g.events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    });
+    // Sort groups by latest activity
+    return groups.sort((a, b) => b.latest_timestamp - a.latest_timestamp);
+  }, [activity]);
+
+  const filteredGroupedActivities = React.useMemo(() => {
+    if (!activitySearchQuery.trim()) return groupedActivities;
+    const q = activitySearchQuery.toLowerCase();
+    return groupedActivities.filter(g =>
+      g.title.toLowerCase().includes(q) ||
+      g.events.some(e => e.action?.toLowerCase().includes(q) || (e.notes && e.notes.toLowerCase().includes(q)))
+    );
+  }, [groupedActivities, activitySearchQuery]);
 
   if (loading && !summary && projects.length === 0) {
     return (
@@ -278,141 +356,424 @@ const HistoryPage = () => {
         </div>
       </div>
 
-      {/* TAB 1: ALL ACTIVITY TIMELINE */}
+      {/* TAB 1: ALL ACTIVITY TIMELINE (GROUPED BY PROJECT / ENTITY WITH POPUP DIALOG) */}
       {activeTab === 'activity' && (
-        <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+        <div>
+          {/* Header Bar with Search & Quick Filter */}
           <div style={{
-            padding: '18px 24px',
-            borderBottom: '1px solid var(--border)',
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--subtle-glass)'
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+            marginBottom: '18px'
           }}>
-            <h3 className="font-bold text-base flex items-center gap-2" style={{ letterSpacing: '-0.015em' }}>
-              <Activity size={18} color="var(--brand-600)" />
-              Unified Audit Activity Feed
-            </h3>
-            <span className="text-xs text-secondary font-medium">
-              Real-time chronologically sorted events
-            </span>
+            <div>
+              <h3 className="font-bold text-lg flex items-center gap-2" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                <Activity size={20} color="var(--brand-600)" />
+                Unified Audit Activity Feed
+              </h3>
+              <p className="text-xs text-secondary mt-0.5">
+                Consolidated audit activity cards — click any card to inspect the full popup audit trail
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ position: 'relative', width: '260px' }}>
+                <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                <input
+                  type="text"
+                  placeholder="Filter activity feed..."
+                  value={activitySearchQuery}
+                  onChange={(e) => setActivitySearchQuery(e.target.value)}
+                  className="input"
+                  style={{ paddingLeft: '32px', fontSize: '12px', height: '36px' }}
+                />
+              </div>
+            </div>
           </div>
 
-          <div style={{ padding: '24px' }}>
-            {activity.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-secondary)' }}>
-                <History size={36} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
-                <h4 className="font-bold text-base mb-1">No Activity Records Found</h4>
-                <p className="text-secondary text-sm">Historical events will appear here as projects and tasks advance.</p>
+          {/* Cards Grid */}
+          {filteredGroupedActivities.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-secondary)' }}>
+              <History size={36} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
+              <h4 className="font-bold text-base mb-1">No Activity Records Found</h4>
+              <p className="text-secondary text-sm">Historical events will appear here as projects and tasks advance.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+              {filteredGroupedActivities.map(group => {
+                const badge = getStatusBadgeStyle(group.latest_status);
+                return (
+                  <div
+                    key={group.key}
+                    className="card"
+                    onClick={() => setSelectedActivityGroup(group)}
+                    style={{
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      padding: '22px',
+                      transition: 'all var(--transition-fast)',
+                      position: 'relative'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--brand-400)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = 'var(--shadow-float)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = 'var(--shadow-card)';
+                    }}
+                  >
+                    <div>
+                      {/* Top Header of Card */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div style={{
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '10px',
+                            background: group.type === 'project' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                            color: group.type === 'project' ? 'var(--brand-600)' : '#059669',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            {group.type === 'project' ? <Folders size={18} /> : <CheckSquare size={18} />}
+                          </div>
+                          <div>
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                              color: 'var(--text-tertiary)'
+                            }}>
+                              {group.type === 'project' ? 'Project Feed' : 'Task Feed'}
+                            </span>
+                            <h4 className="font-bold text-base" style={{ color: 'var(--text-primary)', letterSpacing: '-0.015em', marginTop: '1px' }}>
+                              {group.title}
+                            </h4>
+                          </div>
+                        </div>
+
+                        <span style={{
+                          padding: '3px 10px',
+                          borderRadius: 'var(--radius-full)',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          background: badge.bg,
+                          color: badge.color,
+                          border: `1px solid ${badge.border}`,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.02em'
+                        }}>
+                          {group.latest_status?.replace('_', ' ') || 'ACTIVE'}
+                        </span>
+                      </div>
+
+                      {/* Aim / Scope Description if present */}
+                      {group.aim && (
+                        <p className="text-xs text-secondary" style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: '1.5',
+                          marginBottom: '12px'
+                        }}>
+                          {group.aim}
+                        </p>
+                      )}
+
+                      {/* Latest Activity Preview Box */}
+                      <div style={{
+                        background: 'var(--subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '10px 12px',
+                        border: '1px solid var(--border)',
+                        marginBottom: '14px'
+                      }}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-semibold text-secondary" style={{ fontSize: '11px' }}>
+                            Recent Activity
+                          </span>
+                          <span className="text-xs text-secondary flex items-center gap-1 font-medium" style={{ fontSize: '11px' }}>
+                            <Clock size={11} />
+                            {group.latest_created_at ? new Date(group.latest_created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + new Date(group.latest_created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
+                          {group.latest_action}
+                        </p>
+                        {group.latest_actor && (
+                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
+                            Actor: {group.latest_actor.first_name} {group.latest_actor.last_name} ({group.latest_actor.role})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card Bottom Action */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingTop: '12px',
+                      borderTop: '1px solid var(--border)',
+                      fontSize: '12px'
+                    }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        fontWeight: 600,
+                        color: 'var(--brand-600)',
+                        background: 'var(--brand-50)',
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-full)'
+                      }}>
+                        <Activity size={12} />
+                        {group.events.length} event{group.events.length === 1 ? '' : 's'} recorded
+                      </span>
+
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        color: 'var(--brand-600)',
+                        fontWeight: 600
+                      }}>
+                        <span>View Audit Dialogue</span>
+                        <ArrowRight size={13} strokeWidth={2.2} />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Activity Details Popup Dialog Box Modal */}
+      {selectedActivityGroup && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedActivityGroup(null); }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+        >
+          <div className="card modal-animate" style={{
+            width: '100%',
+            maxWidth: '680px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '28px',
+            background: 'var(--surface)',
+            boxShadow: 'var(--shadow-float)'
+          }}>
+            {/* Modal Header */}
+            <div className="flex justify-between items-start mb-4">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: selectedActivityGroup.type === 'project' ? 'rgba(99, 102, 241, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                  color: selectedActivityGroup.type === 'project' ? 'var(--brand-600)' : '#059669',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {selectedActivityGroup.type === 'project' ? <Folders size={22} /> : <CheckSquare size={22} />}
+                </div>
+                <div>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: 'var(--text-tertiary)',
+                    letterSpacing: '0.04em'
+                  }}>
+                    {selectedActivityGroup.type === 'project' ? 'Project Audit Activity Trail' : 'Task Audit Activity Trail'}
+                  </span>
+                  <h3 className="font-bold text-xl" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em', marginTop: '1px' }}>
+                    {selectedActivityGroup.title}
+                  </h3>
+                </div>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}>
-                {/* Vertical connecting line */}
+
+              <button
+                onClick={() => setSelectedActivityGroup(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: 'var(--radius-sm)'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Entity Summary Bar */}
+            <div style={{
+              background: 'var(--subtle)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '14px 16px',
+              marginBottom: '22px'
+            }}>
+              <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span style={{
+                    padding: '3px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: getStatusBadgeStyle(selectedActivityGroup.latest_status).bg,
+                    color: getStatusBadgeStyle(selectedActivityGroup.latest_status).color,
+                    border: `1px solid ${getStatusBadgeStyle(selectedActivityGroup.latest_status).border}`,
+                    textTransform: 'uppercase'
+                  }}>
+                    Current Status: {selectedActivityGroup.latest_status?.replace('_', ' ') || 'ACTIVE'}
+                  </span>
+
+                  {selectedActivityGroup.deadline && (
+                    <span className="text-xs text-secondary font-medium flex items-center gap-1">
+                      <Calendar size={12} />
+                      Deadline: {new Date(selectedActivityGroup.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(selectedActivityGroup.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+
+                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  {selectedActivityGroup.events.length} Historical Event{selectedActivityGroup.events.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              {selectedActivityGroup.aim && (
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5', marginTop: '6px' }}>
+                  <strong style={{ color: 'var(--text-primary)' }}>Scope / Aim: </strong>
+                  {selectedActivityGroup.aim}
+                </div>
+              )}
+            </div>
+
+            {/* Complete Activity Timeline */}
+            <div>
+              <h4 className="text-xs font-semibold text-secondary uppercase mb-3" style={{ letterSpacing: '0.05em' }}>
+                Event Log & Audit History
+              </h4>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', paddingLeft: '8px' }}>
+                {/* Connecting Line */}
                 <div style={{
                   position: 'absolute',
-                  top: '20px',
-                  bottom: '20px',
-                  left: '19px',
+                  top: '12px',
+                  bottom: '12px',
+                  left: '17px',
                   width: '2px',
                   background: 'var(--border)',
                   zIndex: 1
                 }} />
 
-                {activity.map(evt => {
-                  const badge = getStatusBadgeStyle(evt.status);
+                {selectedActivityGroup.events.map((evt, idx) => {
+                  const evtBadge = getStatusBadgeStyle(evt.status);
                   return (
                     <div
-                      key={evt.id}
+                      key={evt.id || idx}
                       style={{
                         display: 'flex',
-                        gap: '16px',
+                        gap: '14px',
                         alignItems: 'flex-start',
                         position: 'relative',
                         zIndex: 2
                       }}
                     >
-                      {/* Node Icon */}
+                      {/* Node Bullet */}
                       <div style={{
-                        width: '40px',
-                        height: '40px',
+                        width: '20px',
+                        height: '20px',
                         borderRadius: 'var(--radius-full)',
                         background: 'var(--surface)',
                         border: '2px solid var(--brand-500)',
-                        color: 'var(--brand-600)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                        boxShadow: '0 0 0 3px var(--surface)',
+                        marginTop: '3px',
                         flexShrink: 0
-                      }}>
-                        {evt.type === 'project' ? <Folders size={17} /> : <CheckSquare size={17} />}
-                      </div>
+                      }} />
 
-                      {/* Content Card */}
+                      {/* Event Detail Box */}
                       <div style={{
                         flex: 1,
-                        background: 'var(--subtle)',
-                        borderRadius: 'var(--radius-md)',
-                        padding: '14px 18px',
-                        border: '1px solid var(--border)'
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '12px 14px',
+                        boxShadow: 'var(--shadow-subtle)'
                       }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              padding: '2px 8px',
-                              borderRadius: 'var(--radius-full)',
-                              background: 'var(--brand-100)',
-                              color: 'var(--brand-700)'
-                            }}>
-                              {evt.type}
-                            </span>
-                            <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-                              {evt.title}
-                            </span>
-                          </div>
-
-                          <span className="text-xs text-secondary font-medium flex items-center gap-1">
-                            <Clock size={12} />
-                            {evt.created_at ? new Date(evt.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                        <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {evt.action}
                           </span>
-                        </div>
-
-                        <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                          {evt.action}
+                          <span className="text-xs text-secondary flex items-center gap-1 font-medium">
+                            <Clock size={11} />
+                            {evt.created_at ? new Date(evt.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + new Date(evt.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                          </span>
                         </div>
 
                         {evt.notes && (
                           <div style={{
                             fontSize: '12px',
-                            background: 'var(--surface)',
-                            padding: '6px 12px',
+                            background: 'var(--subtle)',
+                            padding: '6px 10px',
                             borderRadius: 'var(--radius-sm)',
-                            border: '1px solid var(--border)',
+                            borderLeft: '3px solid var(--brand-500)',
                             color: 'var(--text-secondary)',
-                            marginTop: '6px',
+                            margin: '6px 0',
                             fontStyle: 'italic'
                           }}>
-                            Note: "{evt.notes}"
+                            "{evt.notes}"
                           </div>
                         )}
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border)', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid var(--border)', fontSize: '11px', color: 'var(--text-tertiary)' }}>
                           <span>
                             Actor: <strong style={{ color: 'var(--text-primary)' }}>{evt.actor ? `${evt.actor.first_name} ${evt.actor.last_name} (${evt.actor.role})` : 'System'}</strong>
                           </span>
                           <span style={{
-                            padding: '2px 8px',
+                            padding: '2px 7px',
                             borderRadius: 'var(--radius-full)',
                             fontSize: '10px',
                             fontWeight: 700,
-                            background: badge.bg,
-                            color: badge.color,
-                            border: `1px solid ${badge.border}`
+                            background: evtBadge.bg,
+                            color: evtBadge.color,
+                            border: `1px solid ${evtBadge.border}`,
+                            textTransform: 'uppercase'
                           }}>
-                            {evt.status?.toUpperCase()}
+                            {evt.status?.replace('_', ' ')}
                           </span>
                         </div>
                       </div>
@@ -420,7 +781,19 @@ const HistoryPage = () => {
                   );
                 })}
               </div>
-            )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedActivityGroup(null)}
+                className="btn btn-secondary"
+                style={{ fontSize: '13px', padding: '7px 18px' }}
+              >
+                Close Dialog
+              </button>
+            </div>
           </div>
         </div>
       )}
