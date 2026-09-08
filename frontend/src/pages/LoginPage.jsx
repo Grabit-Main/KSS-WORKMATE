@@ -279,16 +279,20 @@ const LoginPage = () => {
           <div className="card modal-animate" style={{
             width: '100%',
             maxWidth: '420px',
-            padding: '28px',
+            padding: '32px 28px',
             borderRadius: 'var(--radius-xl)',
             boxShadow: 'var(--shadow-float)',
             background: 'var(--surface)',
             border: '1px solid var(--border)'
           }}>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-start" style={{ marginBottom: '24px' }}>
               <div>
-                <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em' }}>Reset Password</h3>
-                <p className="text-xs text-secondary mt-0.5">We'll help you regain account access</p>
+                <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                  Reset Password
+                </h3>
+                <p className="text-xs text-secondary" style={{ lineHeight: 1.4 }}>
+                  We'll help you regain account access
+                </p>
               </div>
               <button
                 onClick={closeForgot}
@@ -301,45 +305,64 @@ const LoginPage = () => {
                   color: 'var(--text-secondary)',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  transition: 'all var(--transition-fast)'
                 }}
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
             {fpError && (
-              <div style={{ padding: '10px 14px', background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)', borderRadius: 'var(--radius-sm)', marginBottom: '16px', fontSize: '13px' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)', borderRadius: 'var(--radius-sm)', marginBottom: '20px', fontSize: '13px' }}>
                 {fpError}
               </div>
             )}
             {fpMessage && (
-              <div style={{ padding: '10px 14px', background: 'var(--status-completed-bg)', color: 'var(--status-completed)', borderRadius: 'var(--radius-sm)', marginBottom: '16px', fontSize: '13px' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--status-completed-bg)', color: 'var(--status-completed)', borderRadius: 'var(--radius-sm)', marginBottom: '20px', fontSize: '13px' }}>
                 {fpMessage}
               </div>
             )}
 
             {!fpMessage && (
-              <form onSubmit={handleForgotSubmit} className="flex-col gap-4">
+              <form onSubmit={handleForgotSubmit}>
                 {forgotStep === 1 && (
-                  <div>
-                    <label className="text-xs font-semibold text-secondary mb-1.5 block">Enter your registered email</label>
-                    <input required type="email" className="input" placeholder="name@kalpanaaasoftwaresolutions.in" value={fpEmail} onChange={e => setFpEmail(e.target.value)} disabled={fpLoading} />
-                    <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="text-xs font-semibold text-secondary block" style={{ marginBottom: '6px' }}>
+                      Enter your registered email
+                    </label>
+                    <input
+                      required
+                      type="email"
+                      className="input"
+                      placeholder="Enter Your Email"
+                      value={fpEmail}
+                      onChange={e => setFpEmail(e.target.value)}
+                      disabled={fpLoading}
+                      style={{ width: '100%', height: '42px' }}
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-primary w-full"
+                      style={{ marginTop: '20px', padding: '12px', fontSize: '14px', fontWeight: 600, height: '44px' }}
+                      disabled={fpLoading}
+                    >
                       {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Send Reset Code'}
                     </button>
                   </div>
                 )}
 
                 {forgotStep === 2 && (
-                  <div>
-                    <label className="text-xs font-semibold text-secondary mb-1.5 block">Enter 6-digit OTP code sent to your email</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="text-xs font-semibold text-secondary block" style={{ marginBottom: '6px' }}>
+                      Enter 6-digit OTP code sent to your email
+                    </label>
                     <input
                       required
                       type="text"
                       className="input"
                       placeholder="_ _ _ _ _ _"
-                      style={{ letterSpacing: '8px', textAlign: 'center', fontSize: '20px', fontWeight: 700, fontFamily: 'monospace' }}
+                      style={{ letterSpacing: '8px', textAlign: 'center', fontSize: '20px', fontWeight: 700, fontFamily: 'monospace', height: '46px', width: '100%' }}
                       value={fpOtp}
                       onChange={e => setFpOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       maxLength={6}
@@ -347,12 +370,13 @@ const LoginPage = () => {
                     />
                     <button
                       type="submit"
-                      className="btn btn-primary w-full mt-4"
+                      className="btn btn-primary w-full"
+                      style={{ marginTop: '20px', padding: '12px', fontSize: '14px', fontWeight: 600, height: '44px' }}
                       disabled={fpLoading || fpOtp.trim().length !== 6}
                     >
                       {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Verify Code'}
                     </button>
-                    <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                    <div style={{ textAlign: 'center', marginTop: '18px' }}>
                       <button
                         type="button"
                         onClick={handleResend}
@@ -373,16 +397,18 @@ const LoginPage = () => {
                 )}
 
                 {forgotStep === 3 && (
-                  <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div>
-                      <label className="text-xs font-semibold text-secondary mb-1.5 block">New Password</label>
+                      <label className="text-xs font-semibold text-secondary block" style={{ marginBottom: '6px' }}>
+                        New Password
+                      </label>
                       <div style={{ position: 'relative' }}>
                         <input
                           required
                           type={showFpPass ? 'text' : 'password'}
                           className="input"
                           placeholder="Enter New Password"
-                          style={{ paddingRight: '42px' }}
+                          style={{ paddingRight: '42px', height: '42px', width: '100%' }}
                           value={fpNewPass}
                           onChange={e => setFpNewPass(e.target.value)}
                           disabled={fpLoading}
@@ -411,21 +437,29 @@ const LoginPage = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-secondary mb-1.5 block">Confirm New Password</label>
+                      <label className="text-xs font-semibold text-secondary block" style={{ marginBottom: '6px' }}>
+                        Confirm New Password
+                      </label>
                       <input
                         required
                         type={showFpPass ? 'text' : 'password'}
                         className="input"
                         placeholder="Confirm New Password"
+                        style={{ height: '42px', width: '100%' }}
                         value={fpConfirmPass}
                         onChange={e => setFpConfirmPass(e.target.value)}
                         disabled={fpLoading}
                       />
                     </div>
-                    <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
+                    <button
+                      type="submit"
+                      className="btn btn-primary w-full"
+                      style={{ marginTop: '8px', padding: '12px', fontSize: '14px', fontWeight: 600, height: '44px' }}
+                      disabled={fpLoading}
+                    >
                       {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Update Password'}
                     </button>
-                  </>
+                  </div>
                 )}
               </form>
             )}
