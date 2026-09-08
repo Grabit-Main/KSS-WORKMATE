@@ -153,6 +153,8 @@ input, select, textarea {
 }
 
 /* Layout Utilities */
+.block { display: block; }
+.inline-block { display: inline-block; }
 .flex { display: flex; }
 .flex-col { display: flex; flex-direction: column; }
 .items-center { align-items: center; }

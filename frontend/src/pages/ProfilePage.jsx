@@ -4,8 +4,9 @@ import api from '../api/axios';
 import {
   User, Mail, Shield, Briefcase, KeyRound, Camera,
   Check, AlertCircle, Eye, EyeOff, Lock, RefreshCw,
-  Trash2, Sparkles, CheckCircle2, ArrowRight
+  Trash2, Sparkles, CheckCircle2, ArrowRight, Upload
 } from 'lucide-react';
+import { ImageCropModal } from '../components/profile/ImageCropModal';
 
 const ProfilePage = () => {
   const { user, updateCurrentUser } = useAuth();
@@ -17,13 +18,16 @@ const ProfilePage = () => {
   const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
   const [profileErrorMsg, setProfileErrorMsg] = useState('');
 
-  // Avatar Upload State
+  // Avatar Upload & Crop State
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar_url || '');
-  const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarSuccessMsg, setAvatarSuccessMsg] = useState('');
   const [avatarErrorMsg, setAvatarErrorMsg] = useState('');
+  const [showCameraMenu, setShowCameraMenu] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState(null);
   const fileInputRef = useRef(null);
+  const cameraMenuRef = useRef(null);
 
   // Progressive Password Change with OTP State
   // 'idle' -> 'send_otp' -> 'enter_otp' -> 'set_new_password'
@@ -59,6 +63,19 @@ const ProfilePage = () => {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
+  // Click-outside listener for camera options popover
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (cameraMenuRef.current && !cameraMenuRef.current.contains(e.target)) {
+        setShowCameraMenu(false);
+      }
+    };
+    if (showCameraMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCameraMenu]);
+
   // 1. Update Name
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -86,7 +103,7 @@ const ProfilePage = () => {
     }
   };
 
-  // 2. Avatar Selection & Upload
+  // 2. Avatar Selection, Interactive Cropping & Upload
   const handleAvatarFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -96,26 +113,26 @@ const ProfilePage = () => {
       return;
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      setAvatarErrorMsg('Image size exceeds 8MB limit');
+    if (file.size > 15 * 1024 * 1024) {
+      setAvatarErrorMsg('Image size exceeds 15MB limit');
       return;
     }
 
-    setSelectedAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    const objectUrl = URL.createObjectURL(file);
+    setRawImageSrc(objectUrl);
+    setCropModalOpen(true);
+    setShowCameraMenu(false);
     setAvatarErrorMsg('');
   };
 
-  const handleUploadAvatar = async () => {
-    if (!selectedAvatarFile) return;
-
+  const handleCroppedAvatarSave = async (croppedBlob, previewUrl) => {
     setUploadingAvatar(true);
     setAvatarErrorMsg('');
     setAvatarSuccessMsg('');
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedAvatarFile);
+      formData.append('file', croppedBlob, 'avatar.jpg');
 
       const res = await api.post('/upload/avatar', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -123,11 +140,14 @@ const ProfilePage = () => {
 
       const updatedUser = { ...user, avatar_url: res.data.url };
       updateCurrentUser(updatedUser);
-      setSelectedAvatarFile(null);
-      setAvatarSuccessMsg('Profile picture updated successfully!');
+      setAvatarPreview(res.data.url);
+      setCropModalOpen(false);
+      setRawImageSrc(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setAvatarSuccessMsg('Profile picture cropped and updated successfully!');
       setTimeout(() => setAvatarSuccessMsg(''), 4000);
     } catch (err) {
-      setAvatarErrorMsg(err.response?.data?.detail || 'Failed to upload profile picture');
+      setAvatarErrorMsg(err.response?.data?.detail || 'Failed to upload cropped profile picture');
     } finally {
       setUploadingAvatar(false);
     }
@@ -137,12 +157,12 @@ const ProfilePage = () => {
     setUploadingAvatar(true);
     setAvatarErrorMsg('');
     setAvatarSuccessMsg('');
+    setShowCameraMenu(false);
 
     try {
       const res = await api.put('/auth/me', { avatar_url: '' });
       updateCurrentUser(res.data);
       setAvatarPreview('');
-      setSelectedAvatarFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       setAvatarSuccessMsg('Profile picture removed.');
       setTimeout(() => setAvatarSuccessMsg(''), 4000);
@@ -302,33 +322,112 @@ const ProfilePage = () => {
               )}
             </div>
 
-            {/* Quick Camera Trigger */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Upload new photo"
-              style={{
-                position: 'absolute',
-                bottom: '2px',
-                right: '2px',
-                width: '38px',
-                height: '38px',
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--brand-600)',
-                color: 'white',
-                border: '3px solid var(--surface)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                boxShadow: 'var(--shadow-card)',
-                transition: 'all var(--transition-fast)'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              <Camera size={18} />
-            </button>
+            {/* Quick Camera Trigger with Options Popover */}
+            <div ref={cameraMenuRef} style={{ position: 'absolute', bottom: '2px', right: '2px', zIndex: 30 }}>
+              <button
+                type="button"
+                onClick={() => setShowCameraMenu(prev => !prev)}
+                title="Profile photo options"
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: 'var(--radius-full)',
+                  background: 'var(--brand-600)',
+                  color: 'white',
+                  border: '3px solid var(--surface)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-card)',
+                  transition: 'all var(--transition-fast)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <Camera size={18} />
+              </button>
+
+              {/* Camera Action Menu: Upload and (conditionally) Remove */}
+              {showCameraMenu && (
+                <div className="card modal-animate" style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  width: '180px',
+                  padding: '6px',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: 'var(--shadow-float)',
+                  border: '1px solid var(--border)',
+                  zIndex: 100,
+                  background: 'var(--surface)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCameraMenu(false);
+                      fileInputRef.current?.click();
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'transparent',
+                      border: 'none',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      width: '100%',
+                      transition: 'background var(--transition-fast)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--subtle)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <Upload size={15} style={{ color: 'var(--brand-600)' }} />
+                    <span>Upload Photo</span>
+                  </button>
+
+                  {avatarPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCameraMenu(false);
+                        handleRemoveAvatar();
+                      }}
+                      disabled={uploadingAvatar}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'transparent',
+                        border: 'none',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        color: 'var(--status-blocked)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        width: '100%',
+                        transition: 'background var(--transition-fast)'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--status-blocked-bg)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <Trash2 size={15} />
+                      <span>Remove Photo</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <input
@@ -371,66 +470,6 @@ const ProfilePage = () => {
           <p className="text-xs text-secondary mt-2 text-truncate" style={{ maxWidth: '100%' }}>
             {user.email}
           </p>
-
-          {/* Avatar Actions */}
-          <div style={{ marginTop: '20px', width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {selectedAvatarFile ? (
-              <button
-                type="button"
-                onClick={handleUploadAvatar}
-                disabled={uploadingAvatar}
-                className="btn btn-primary"
-                style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
-              >
-                {uploadingAvatar ? (
-                  <>
-                    <RefreshCw size={16} className="animate-spin" />
-                    <span>Uploading Photo...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check size={16} />
-                    <span>Save New Photo</span>
-                  </>
-                )}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="btn btn-secondary"
-                style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
-              >
-                <Camera size={16} />
-                <span>Update Profile Pic</span>
-              </button>
-            )}
-
-            {avatarPreview && (
-              <button
-                type="button"
-                onClick={handleRemoveAvatar}
-                disabled={uploadingAvatar}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--status-blocked)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  transition: 'opacity var(--transition-fast)'
-                }}
-              >
-                <Trash2 size={14} />
-                <span>Remove Photo</span>
-              </button>
-            )}
-          </div>
 
           {avatarSuccessMsg && (
             <div style={{
@@ -710,12 +749,12 @@ const ProfilePage = () => {
                 gap: '16px'
               }}>
                 <div>
-                  <span className="font-semibold text-sm block" style={{ color: 'var(--text-primary)' }}>
+                  <h4 className="font-semibold text-sm" style={{ color: 'var(--text-primary)', marginBottom: '4px' }}>
                     Account Security Credentials
-                  </span>
-                  <span className="text-xs text-secondary mt-0.5 block">
+                  </h4>
+                  <p className="text-xs text-secondary" style={{ margin: 0 }}>
                     Requires a one-time OTP verification code sent to your registered email.
-                  </span>
+                  </p>
                 </div>
 
                 <button
@@ -839,16 +878,16 @@ const ProfilePage = () => {
                     maxLength={6}
                     autoFocus
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     className="input"
-                    placeholder="123456"
+                    placeholder="_ _ _ _ _ _"
                     style={{
-                      letterSpacing: '8px',
-                      fontSize: '20px',
+                      letterSpacing: '10px',
+                      fontSize: '22px',
                       fontWeight: 700,
                       textAlign: 'center',
                       fontFamily: 'monospace',
-                      maxWidth: '260px',
+                      maxWidth: '280px',
                       margin: '6px auto 0',
                       display: 'block'
                     }}
@@ -1021,6 +1060,20 @@ const ProfilePage = () => {
 
         </div>
       </div>
+
+      {/* Interactive Photo Cropper & Adjust Modal */}
+      {cropModalOpen && rawImageSrc && (
+        <ImageCropModal
+          imageSrc={rawImageSrc}
+          onCropSave={handleCroppedAvatarSave}
+          onClose={() => {
+            setCropModalOpen(false);
+            setRawImageSrc(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+          }}
+          isUploading={uploadingAvatar}
+        />
+      )}
     </div>
   );
 };

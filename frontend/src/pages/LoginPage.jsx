@@ -71,7 +71,12 @@ const LoginPage = () => {
         setResendTimer(60);
         setForgotStep(2);
       } else if (forgotStep === 2) {
-        await api.post('/auth/verify-otp', { email: fpEmail, otp: fpOtp });
+        if (fpOtp.trim().length !== 6) {
+          setFpError('Please enter a valid 6-digit OTP code');
+          setFpLoading(false);
+          return;
+        }
+        await api.post('/auth/verify-otp', { email: fpEmail, otp: fpOtp.trim() });
         setForgotStep(3);
       } else if (forgotStep === 3) {
         await api.post('/auth/reset-password', {
@@ -329,8 +334,22 @@ const LoginPage = () => {
                 {forgotStep === 2 && (
                   <div>
                     <label className="text-xs font-semibold text-secondary mb-1.5 block">Enter 6-digit OTP code sent to your email</label>
-                    <input required className="input" placeholder="123456" style={{ letterSpacing: '4px', textAlign: 'center', fontSize: '18px', fontWeight: 700 }} value={fpOtp} onChange={e => setFpOtp(e.target.value)} maxLength={6} disabled={fpLoading} />
-                    <button type="submit" className="btn btn-primary w-full mt-4" disabled={fpLoading}>
+                    <input
+                      required
+                      type="text"
+                      className="input"
+                      placeholder="_ _ _ _ _ _"
+                      style={{ letterSpacing: '8px', textAlign: 'center', fontSize: '20px', fontWeight: 700, fontFamily: 'monospace' }}
+                      value={fpOtp}
+                      onChange={e => setFpOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      disabled={fpLoading}
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-primary w-full mt-4"
+                      disabled={fpLoading || fpOtp.trim().length !== 6}
+                    >
                       {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Verify Code'}
                     </button>
                     <div style={{ textAlign: 'center', marginTop: '16px' }}>
