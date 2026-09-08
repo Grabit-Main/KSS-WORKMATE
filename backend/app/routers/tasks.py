@@ -5,7 +5,7 @@ from typing import List
 from uuid import UUID
 from app.database import get_db
 from app.models.task import Task, TaskStatusLog
-from app.models.project import TeamMembership
+from app.models.project import Team, TeamMembership
 from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskResponse, StatusUpdate, ReassignRequest
@@ -67,6 +67,20 @@ def list_tasks(db: Session = Depends(get_db), user: User = Depends(get_current_u
 
 @router.post("", response_model=TaskResponse)
 async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # If team_id is not specified, resolve automatically from assignee's team or creator's team
+    if not req.team_id:
+        membership = db.query(TeamMembership).filter(TeamMembership.user_id == req.assigned_to).first()
+        if not membership:
+            membership = db.query(TeamMembership).filter(TeamMembership.user_id == user.id).first()
+        if membership:
+            req.team_id = membership.team_id
+        else:
+            team = db.query(Team).first()
+            if team:
+                req.team_id = team.id
+            else:
+                raise HTTPException(400, "No active team found to link this task to.")
+
     # Must be TL of that team, or CEO/CTO/PM
     lead = db.query(TeamMembership).filter(
         TeamMembership.team_id == req.team_id,

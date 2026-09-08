@@ -6,7 +6,7 @@ from app.schemas.user import UserResponse
 
 
 class TaskCreate(BaseModel):
-    team_id: UUID
+    team_id: Optional[UUID] = None
     title: str
     description: str
     assigned_to: UUID

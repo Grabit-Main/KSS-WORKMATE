@@ -99,43 +99,37 @@ const TasksPage = () => {
         : teamsData;
 
       const defaultTeam = myTeams.length > 0 ? myTeams[0] : (teamsData[0] || null);
-      let chosenTeamId = teamId;
-      if (defaultTeam && (!chosenTeamId || !myTeams.some(t => String(t.id) === String(chosenTeamId)))) {
-        chosenTeamId = defaultTeam.id;
-        setTeamId(chosenTeamId);
-      }
 
-      const activeTeam = (myTeams.length > 0 ? myTeams : teamsData).find(t => String(t.id) === String(chosenTeamId));
-      const teamEligible = (activeTeam?.memberships || [])
+      const tlTeamEligible = (defaultTeam?.memberships || [])
         .map(m => m.user || m)
         .filter(u => isEligibleAssignee(u.role));
 
       const orgEligible = usersData.filter(u => isEligibleAssignee(u.role));
+      const candidates = user?.role === 'TL' ? tlTeamEligible : orgEligible;
 
-      if (teamEligible.length > 0) {
-        setAssignedTo(teamEligible[0].id);
-      } else if (orgEligible.length > 0) {
-        setAssignedTo(orgEligible[0].id);
+      if (candidates.length > 0) {
+        const firstCandidate = candidates[0];
+        setAssignedTo(firstCandidate.id);
+        const candTeam = teamsData.find(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(firstCandidate.id)));
+        setTeamId(candTeam?.id || defaultTeam?.id || '');
       } else {
         setAssignedTo('');
+        setTeamId(defaultTeam?.id || '');
       }
     } catch (err) {
       console.error('Failed to load modal deps:', err);
     }
   };
 
-  const handleTeamChange = (newTeamId) => {
-    setTeamId(newTeamId);
-    const selected = teams.find(t => String(t.id) === String(newTeamId));
-    const teamEligible = (selected?.memberships || [])
-      .map(m => m.user || m)
-      .filter(u => isEligibleAssignee(u.role));
-
-    if (teamEligible.length > 0) {
-      const isStillValid = teamEligible.some(u => String(u.id) === String(assignedTo));
-      if (!isStillValid) {
-        setAssignedTo(teamEligible[0].id);
-      }
+  const handleAssigneeChange = (newUserId) => {
+    setAssignedTo(newUserId);
+    const userTeam = teams.find(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(newUserId)));
+    if (userTeam) {
+      setTeamId(userTeam.id);
+    } else if (user?.role === 'TL' && availableTeams.length > 0) {
+      setTeamId(availableTeams[0].id);
+    } else if (teams.length > 0) {
+      setTeamId(teams[0].id);
     }
   };
 
@@ -161,15 +155,22 @@ const TasksPage = () => {
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim() || !teamId || !assignedTo) {
-      setFormError('Please fill in task title, description, team, and assignee.');
+    if (!title.trim() || !description.trim() || !assignedTo) {
+      setFormError('Please fill in task title, description, and select an assignee.');
       return;
     }
     setSubmitting(true);
     setFormError('');
+
+    let effectiveTeamId = teamId;
+    if (!effectiveTeamId) {
+      const userTeam = teams.find(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(assignedTo)));
+      effectiveTeamId = userTeam?.id || (availableTeams[0]?.id || teams[0]?.id || null);
+    }
+
     try {
       const newTask = await createTask({
-        team_id: teamId,
+        team_id: effectiveTeamId,
         title: title.trim(),
         description: description.trim(),
         assigned_to: assignedTo,
@@ -580,40 +581,16 @@ const TasksPage = () => {
 
             <form onSubmit={handleCreateTask} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">
-                  {user?.role === 'TL' ? 'Your Team *' : 'Target Team *'}
-                </label>
-                <select
-                  value={teamId}
-                  onChange={(e) => handleTeamChange(e.target.value)}
-                  className="input"
-                  required
-                >
-                  {availableTeams.length === 0 && <option value="">No teams found</option>}
-                  {availableTeams.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-                {user?.role === 'TL' && (
-                  <p className="text-xs text-secondary mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                    As Team Lead, you can assign tasks to members of this team or to yourself.
-                  </p>
-                )}
-              </div>
-
-              <div>
                 <label className="text-xs font-semibold text-secondary mb-1.5 block">Assign To User *</label>
                 <select
                   value={assignedTo}
-                  onChange={(e) => setAssignedTo(e.target.value)}
+                  onChange={(e) => handleAssigneeChange(e.target.value)}
                   className="input"
                   required
                 >
                   {user?.role === 'TL' ? (
                     eligibleTeamMembers.length > 0 ? (
-                      <optgroup label={`Team Members (${eligibleTeamMembers.length})`}>
+                      <optgroup label={`Your Team Members (${eligibleTeamMembers.length})`}>
                         {eligibleTeamMembers.map(m => {
                           const u = m.user || m;
                           return (
@@ -624,34 +601,25 @@ const TasksPage = () => {
                         })}
                       </optgroup>
                     ) : (
-                      <option disabled value="">No eligible members in this team</option>
+                      <option disabled value="">No eligible members in your team</option>
                     )
                   ) : (
-                    <>
-                      {eligibleTeamMembers.length > 0 && (
-                        <optgroup label={`Team Members (${eligibleTeamMembers.length})`}>
-                          {eligibleTeamMembers.map(m => {
-                            const u = m.user || m;
-                            return (
-                              <option key={u.id} value={u.id}>
-                                {u.first_name} {u.last_name} ({u.role || 'Member'}{u.department ? ` · ${u.department}` : ''}){m.is_lead ? ' [Team Lead]' : ''}
-                              </option>
-                            );
-                          })}
-                        </optgroup>
-                      )}
-                      <optgroup label="Organization Users">
-                        {eligibleOrgUsers
-                          .filter(u => !eligibleTeamMembers.some(m => String(m.user?.id || m.id) === String(u.id)))
-                          .map(u => (
-                            <option key={u.id} value={u.id}>
-                              {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''})
-                            </option>
-                          ))}
-                      </optgroup>
-                    </>
+                    eligibleOrgUsers.map(u => {
+                      const userTeams = teams
+                        .filter(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(u.id)))
+                        .map(t => t.name)
+                        .join(', ');
+                      return (
+                        <option key={u.id} value={u.id}>
+                          {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''}){userTeams ? ` [${userTeams}]` : ''}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
+                <p className="text-xs text-secondary mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                  Select the person responsible for delivering this task.
+                </p>
               </div>
 
               <div>
