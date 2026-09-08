@@ -1,3 +1,11 @@
+import sys
+import os
+
+# Ensure current directory is in sys.path for Vercel Serverless Functions
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
@@ -33,4 +41,8 @@ app.include_router(websocket_router)
 
 @app.get("/")
 def root():
-    return {"message": "Workmate API is running"}
+    return {"message": "Workmate API is running", "status": "ok"}
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok", "message": "Workmate API is healthy"}

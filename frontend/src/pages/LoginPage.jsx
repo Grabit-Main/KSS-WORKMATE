@@ -53,7 +53,8 @@ const LoginPage = () => {
     try {
       await login(email, password);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed');
+      const msg = err.response?.data?.detail || (err.response?.status ? `Server error (${err.response.status})` : (err.message || 'Login failed'));
+      setError(msg);
     } finally {
       setLoading(false);
     }
