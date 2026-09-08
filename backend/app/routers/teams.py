@@ -19,11 +19,28 @@ async def create_team(req: TeamCreate, db: Session = Depends(get_db), user: User
         raise HTTPException(403, "Only Project Managers (PM) can create teams and assign projects")
     team = Team(project_id=req.project_id, name=req.name, created_by=user.id)
     db.add(team)
+    db.flush()
+
+    if req.lead_user_id:
+        lead_m = TeamMembership(team_id=team.id, user_id=req.lead_user_id, is_lead=True)
+        db.add(lead_m)
+        lead_user = db.query(User).filter(User.id == req.lead_user_id).first()
+        if lead_user and lead_user.role == "TM":
+            lead_user.role = "TL"
+
+    if req.member_user_ids:
+        for uid in req.member_user_ids:
+            if req.lead_user_id and str(uid) == str(req.lead_user_id):
+                continue
+            m = TeamMembership(team_id=team.id, user_id=uid, is_lead=False)
+            db.add(m)
+
     db.commit()
     db.refresh(team)
-    event = {"type": TEAM_CREATED, "data": {"id": str(team.id), "name": team.name, "project_id": str(req.project_id)}}
+    event = {"type": TEAM_CREATED, "data": {"id": str(team.id), "name": team.name, "project_id": str(req.project_id) if req.project_id else None}}
     await manager.broadcast("global:admins", event)
-    await manager.broadcast(f"project:{req.project_id}", event)
+    if req.project_id:
+        await manager.broadcast(f"project:{req.project_id}", event)
     return team
 
 

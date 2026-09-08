@@ -37,15 +37,31 @@ async def create_project(req: ProjectCreate, db: Session = Depends(get_db), user
     # Restrict project creation to PM only (CEO and CTO do not assign projects)
     if user.role != "PM":
         raise HTTPException(403, "Only Project Managers (PM) can create and assign projects. CEO and CTO oversee and assign tasks.")
-    project = Project(**req.model_dump(), created_by=user.id)
+    from app.models.project import Team
+    project_data = req.model_dump(exclude={"team_id", "team_ids"})
+    project = Project(**project_data, created_by=user.id)
     db.add(project)
     db.flush()
+
+    # Allocate to teams if specified
+    allocated_ids = list(req.team_ids or [])
+    if req.team_id and req.team_id not in allocated_ids:
+        allocated_ids.append(req.team_id)
+
+    allocated_team_names = []
+    for tid in allocated_ids:
+        team = db.query(Team).filter(Team.id == tid).first()
+        if team:
+            team.project_id = project.id
+            allocated_team_names.append(team.name)
+
+    notes = f"Project created and allocated to {', '.join(allocated_team_names)}" if allocated_team_names else "Project created and assigned by PM"
     log = ProjectStatusLog(
         project_id=project.id,
         from_status="created",
         to_status=project.status or "active",
         changed_by=user.id,
-        notes="Project created and assigned by PM"
+        notes=notes
     )
     db.add(log)
     db.commit()

@@ -21,13 +21,14 @@ class Project(Base):
     teams = relationship("Team", back_populates="project", cascade="all, delete-orphan")
     creator = relationship("User", foreign_keys=[created_by])
     status_logs = relationship("ProjectStatusLog", back_populates="project", cascade="all, delete-orphan")
+    attachments = relationship("ProjectAttachment", back_populates="project", cascade="all, delete-orphan")
 
 
 class Team(Base):
     __tablename__ = "teams"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
     name = Column(String, nullable=False)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -63,4 +64,24 @@ class ProjectStatusLog(Base):
 
     project = relationship("Project", back_populates="status_logs")
     changer = relationship("User")
+
+
+class ProjectAttachment(Base):
+    __tablename__ = "project_attachments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    file_name = Column(String, nullable=False)
+    # image, video, document
+    file_type = Column(String, nullable=False)
+    file_url = Column(String, nullable=False)
+    # cloudinary or gdrive
+    storage_provider = Column(String, nullable=False)
+    cloudinary_public_id = Column(String, nullable=True)
+    gdrive_file_id = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project", back_populates="attachments")
+    uploader = relationship("User")
 
