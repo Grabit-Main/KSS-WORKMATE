@@ -272,9 +272,12 @@ def get_activity_history(
         project = db.query(Project).filter(Project.id == task.project_id).first() if (task and task.project_id) else (
             db.query(Project).filter(Project.id == team.project_id).first() if (team and team.project_id) else None
         )
+        is_project_task = bool(project is not None)
         events.append({
             "id": f"task-log-{lg.id}",
             "type": "task",
+            "category": "project_task" if is_project_task else "normal_task",
+            "is_project_task": is_project_task,
             "title": task.title if task else "Task Update",
             "action": f"Task '{task.title if task else 'Task'}': {lg.from_status.replace('_', ' ')} → {lg.to_status.replace('_', ' ')}",
             "status": lg.to_status,
@@ -284,12 +287,15 @@ def get_activity_history(
             "timestamp": lg.created_at.timestamp() if lg.created_at else 0,
             "actor": _user_dict(lg.changer),
             "project_id": str(project.id) if project else None,
-            "project_name": project.name if project else (f"Team: {team.name}" if team else "General Tasks"),
+            "project_name": project.name if project else None,
             "project_aim": project.aim if project else None,
             "project_deadline": project.deadline.isoformat() if (project and project.deadline) else None,
             "team_name": team.name if team else None,
             "task_id": str(task.id) if task else None,
-            "task_title": task.title if task else None
+            "task_title": task.title if task else None,
+            "task_deadline": task.deadline.isoformat() if (task and task.deadline) else None,
+            "task_priority": task.priority if task else None,
+            "assignee": _user_dict(task.assignee) if (task and task.assignee) else None,
         })
 
     for pl in p_logs:
@@ -297,6 +303,8 @@ def get_activity_history(
         events.append({
             "id": f"project-log-{pl.id}",
             "type": "project",
+            "category": "project_task",
+            "is_project_task": True,
             "title": project.name if project else "Project",
             "action": f"Project status: {pl.to_status.replace('_', ' ')}",
             "status": pl.to_status,
@@ -311,7 +319,10 @@ def get_activity_history(
             "project_deadline": project.deadline.isoformat() if (project and project.deadline) else None,
             "team_name": None,
             "task_id": None,
-            "task_title": None
+            "task_title": None,
+            "task_deadline": None,
+            "task_priority": None,
+            "assignee": None,
         })
 
     events.sort(key=lambda x: x["timestamp"], reverse=True)

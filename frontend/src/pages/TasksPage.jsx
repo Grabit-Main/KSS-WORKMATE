@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { getTasks, createTask, startTask, acceptTask, completeTask, confirmTask } from '../api/tasks';
+import { useSearchParams } from 'react-router-dom';
+import { getTasks, getTask, createTask, startTask, acceptTask, completeTask, confirmTask } from '../api/tasks';
 import { getTeams } from '../api/teams';
 import { getUsers } from '../api/users';
 import { uploadFile } from '../api/upload';
@@ -8,12 +9,15 @@ import { useRealtime } from '../realtime/useRealtime';
 import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
+import { AttachmentCard } from '../components/common/AttachmentCard';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
-  Paperclip, Image as ImageIcon, Film, FileText
+  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle
 } from 'lucide-react';
 
 const TasksPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetTaskId = searchParams.get('taskId');
   const [tasks, setTasks] = useState(() => {
     const cached = localStorage.getItem('cache_tasks');
     return cached ? JSON.parse(cached) : [];
@@ -24,6 +28,21 @@ const TasksPage = () => {
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const { joinRoom } = useWebSocket();
   const { user } = useAuth();
+
+  // Auto-open task if URL has ?taskId=...
+  useEffect(() => {
+    if (!targetTaskId) return;
+    const found = tasks.find(t => String(t.id) === String(targetTaskId));
+    if (found) {
+      setSelectedTask(found);
+    } else {
+      getTask(targetTaskId)
+        .then(t => {
+          if (t) setSelectedTask(t);
+        })
+        .catch(err => console.error('Failed to load target task from URL:', err));
+    }
+  }, [targetTaskId, tasks]);
 
   // New Task Modal State (For CEO, CTO, PM, and TL)
   const [showModal, setShowModal] = useState(false);
@@ -346,116 +365,143 @@ const TasksPage = () => {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-        {filteredTasks.map(task => {
-          const isAssignedToMe = String(task.assigned_to) === String(user?.id);
-          const isSelfAssigned = isAssignedToMe && String(task.assigned_by) === String(user?.id);
+      {/* Task List Grid */}
+      {loading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+          {[1, 2, 3, 4].map(i => <div key={i} className="card skeleton" style={{ height: '220px' }} />)}
+        </div>
+      ) : filteredTasks.length === 0 ? (
+        <div className="card" style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--subtle-glass)' }}>
+          <CheckSquare size={48} strokeWidth={1.5} style={{ margin: '0 auto 16px', color: 'var(--text-tertiary)' }} />
+          <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--text-primary)' }}>No Tasks Found</h3>
+          <p className="text-secondary text-sm">There are no tasks matching your current view filter.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+          {filteredTasks.map(task => {
+            const isAssignedToMe = String(task.assigned_to) === String(user?.id);
+            const isSelfAssigned = isAssignedToMe && String(task.assigned_by) === String(user?.id);
+            const isOverdue = task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
 
-          return (
-            <div
-              key={task.id}
-              className="card"
-              onClick={() => setSelectedTask(task)}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-                transition: 'all var(--transition-smooth)',
-                border: isAssignedToMe ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid var(--border)',
-                background: isAssignedToMe ? 'linear-gradient(180deg, var(--surface) 0%, rgba(238, 242, 255, 0.25) 100%)' : 'var(--surface)'
-              }}
-            >
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '3px 10px',
-                      borderRadius: 'var(--radius-full)',
-                      background: `var(--status-${task.status.replace('_', '-')}-bg)`,
-                      color: `var(--status-${task.status.replace('_', '-')})`,
-                      letterSpacing: '0.02em'
-                    }}>
-                      {task.status.replace('_', ' ').toUpperCase()}
-                    </span>
-
-                    {/* Self-assigned / Assigned to you badge */}
-                    {isAssignedToMe && (
+            return (
+              <div
+                key={task.id}
+                className="card"
+                onClick={() => setSelectedTask(task)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-smooth)',
+                  position: 'relative',
+                  border: isOverdue
+                    ? '1px solid rgba(239, 68, 68, 0.45)'
+                    : isAssignedToMe
+                    ? '1px solid rgba(99, 102, 241, 0.35)'
+                    : '1px solid var(--border)',
+                  borderLeft: isOverdue ? '4px solid #EF4444' : undefined,
+                  background: isOverdue
+                    ? 'linear-gradient(180deg, var(--surface) 0%, rgba(254, 242, 242, 0.25) 100%)'
+                    : isAssignedToMe
+                    ? 'linear-gradient(180deg, var(--surface) 0%, rgba(238, 242, 255, 0.25) 100%)'
+                    : 'var(--surface)'
+                }}
+              >
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <span style={{
-                        fontSize: '10px',
+                        fontSize: '11px',
                         fontWeight: 700,
-                        padding: '2px 8px',
+                        padding: '3px 10px',
                         borderRadius: 'var(--radius-full)',
-                        background: 'var(--brand-100)',
-                        color: 'var(--brand-700)',
-                        letterSpacing: '0.02em',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px'
+                        background: `var(--status-${task.status.replace('_', '-')}-bg)`,
+                        color: `var(--status-${task.status.replace('_', '-')})`,
+                        letterSpacing: '0.02em'
                       }}>
-                        <Sparkles size={10} />
-                        {isSelfAssigned ? 'Self-Assigned' : 'Assigned to You'}
+                        {task.status.replace('_', ' ').toUpperCase()}
                       </span>
+
+                      {/* Self-assigned / Assigned to you badge */}
+                      {isAssignedToMe && (
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          background: 'var(--brand-100)',
+                          color: 'var(--brand-700)',
+                          letterSpacing: '0.02em',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}>
+                          <Sparkles size={10} />
+                          {isSelfAssigned ? 'Self-Assigned' : 'Assigned to You'}
+                        </span>
+                      )}
+                    </div>
+
+                    {task.deadline && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {isOverdue && (
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            padding: '2px 7px',
+                            borderRadius: 'var(--radius-full)',
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            color: '#DC2626',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.02em'
+                          }}>
+                            <AlertTriangle size={10} />
+                            Exceeded
+                          </span>
+                        )}
+                        <span className="text-xs font-medium" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isOverdue ? '#DC2626' : 'var(--text-secondary)' }}>
+                          <Calendar size={13} strokeWidth={1.8} style={{ color: isOverdue ? '#DC2626' : 'var(--text-tertiary)' }} />
+                          {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
                     )}
                   </div>
 
-                  {task.deadline && (
-                    <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <Clock size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
-                      {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                  <h3 className="font-bold text-base mb-1.5" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
+                    {task.title}
+                  </h3>
+                  <p className="text-sm text-secondary mb-3" style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    lineHeight: '1.4'
+                  }}>
+                    {task.description}
+                  </p>
+
+                  {/* Attachments Display in small clickable boxes */}
+                  {task.attachments && task.attachments.length > 0 && (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                        gap: '6px',
+                        marginBottom: '14px'
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {task.attachments.map(att => (
+                        <AttachmentCard key={att.id || att.file_url} attachment={att} />
+                      ))}
+                    </div>
                   )}
                 </div>
-
-                <h3 className="font-bold text-base mb-1.5" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
-                  {task.title}
-                </h3>
-                <p className="text-sm text-secondary mb-3" style={{
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  lineHeight: '1.4'
-                }}>
-                  {task.description}
-                </p>
-
-                {/* Attachments Display */}
-                {task.attachments && task.attachments.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
-                    {task.attachments.map((att) => (
-                      <a
-                        key={att.id}
-                        href={att.file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '3px 8px',
-                          borderRadius: 'var(--radius-sm)',
-                          background: 'var(--subtle)',
-                          border: '1px solid var(--border)',
-                          fontSize: '11px',
-                          color: 'var(--brand-700)',
-                          textDecoration: 'none',
-                          transition: 'all var(--transition-fast)'
-                        }}
-                        title={`Open attachment: ${att.file_name}`}
-                      >
-                        <Paperclip size={11} />
-                        <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {att.file_name}
-                        </span>
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
 
               {/* Quick Actions for Self-Assigned or Assigned Tasks */}
               {isAssignedToMe && task.status === 'not_started' && (
@@ -543,19 +589,8 @@ const TasksPage = () => {
             </div>
           );
         })}
-
-        {filteredTasks.length === 0 && (
-          <div className="card" style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center' }}>
-            <CheckSquare size={32} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
-            <h4 className="font-bold text-base mb-1">No Tasks Found</h4>
-            <p className="text-secondary text-sm">
-              {filterTab === 'mine'
-                ? 'You currently have no tasks self-assigned or assigned to you.'
-                : 'No tasks matching the selected filter were found.'}
-            </p>
-          </div>
-        )}
       </div>
+      )}
 
       {/* Task Assignment Modal (Available to CEO, CTO, PM, and TL) */}
       {showModal && (
@@ -861,7 +896,13 @@ const TasksPage = () => {
         <TaskDetailsModal
           task={selectedTask}
           currentUser={user}
-          onClose={() => setSelectedTask(null)}
+          onClose={() => {
+            setSelectedTask(null);
+            if (searchParams.get('taskId')) {
+              searchParams.delete('taskId');
+              setSearchParams(searchParams, { replace: true });
+            }
+          }}
           onTaskUpdated={(updated) => {
             setSelectedTask(updated);
             loadTasks();

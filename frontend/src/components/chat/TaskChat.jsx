@@ -1,14 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getChat, sendMessage } from '../../api/chat';
+import { uploadFile } from '../../api/upload';
 import { useRealtime } from '../../realtime/useRealtime';
-import { Send, MessageSquare, Shield, Clock } from 'lucide-react';
+import { useWebSocket } from '../../context/WebSocketContext';
+import { AttachmentCard } from '../common/AttachmentCard';
+import { Send, MessageSquare, Paperclip, X, Loader2 } from 'lucide-react';
 
 export const TaskChat = ({ task, currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileUploading, setFileUploading] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const { joinRoom, leaveRoom } = useWebSocket();
 
   // Identify counterpart
   const isAssignee = String(task.assigned_to) === String(currentUser.id);
@@ -29,47 +37,102 @@ export const TaskChat = ({ task, currentUser }) => {
     }
   };
 
+  // Join task room for real-time WebSocket events
   useEffect(() => {
     if (task?.id) {
+      joinRoom(`task:${task.id}`);
       loadMessages();
+      return () => {
+        leaveRoom(`task:${task.id}`);
+      };
     }
-  }, [task?.id]);
+  }, [task?.id, joinRoom, leaveRoom]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // Realtime new message listener
+  // Realtime new message listener via WebSocket
   useRealtime('chat.new_message', (eventData) => {
     if (String(eventData?.task_id) === String(task.id)) {
       setMessages(prev => {
-        // Prevent duplicate messages if already appended
         if (prev.some(m => String(m.id) === String(eventData.id))) return prev;
         return [...prev, eventData];
       });
+      setTimeout(scrollToBottom, 50);
     }
   });
 
+  // Background fallback poll (every 3s when chat is open) to guarantee zero missed messages
+  useEffect(() => {
+    if (!task?.id) return;
+    const interval = setInterval(() => {
+      getChat(task.id)
+        .then(data => {
+          if (data && Array.isArray(data)) {
+            setMessages(prev => {
+              if (data.length !== prev.length || JSON.stringify(data.map(d => d.id)) !== JSON.stringify(prev.map(p => p.id))) {
+                return data;
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [task?.id]);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+    e.target.value = '';
+  };
+
   const handleSend = async (e) => {
     if (e) e.preventDefault();
-    if (!newMessage.trim() || sending) return;
-
     const textToSend = newMessage.trim();
-    setNewMessage('');
+    if ((!textToSend && !selectedFile) || sending || fileUploading) return;
+
     setSending(true);
+    setNewMessage('');
+
+    let attachmentUrl = null;
+    let attachmentType = null;
+    let storageProvider = null;
 
     try {
-      const sentMsg = await sendMessage(task.id, { message: textToSend });
+      if (selectedFile) {
+        setFileUploading(true);
+        const uploadRes = await uploadFile(selectedFile, task.id);
+        attachmentUrl = uploadRes.url;
+        attachmentType = uploadRes.file_type;
+        storageProvider = uploadRes.storage_provider;
+        setSelectedFile(null);
+      }
+
+      const payload = {
+        message: textToSend || (selectedFile ? `Shared attachment: ${selectedFile.name}` : ''),
+        attachment_url: attachmentUrl,
+        attachment_type: attachmentType,
+        storage_provider: storageProvider
+      };
+
+      const sentMsg = await sendMessage(task.id, payload);
       setMessages(prev => {
         if (prev.some(m => String(m.id) === String(sentMsg.id))) return prev;
         return [...prev, sentMsg];
       });
+      setTimeout(scrollToBottom, 50);
     } catch (err) {
       console.error('Failed to send message:', err);
-      // restore unsent message
-      setNewMessage(textToSend);
+      // restore text if failed
+      if (textToSend) setNewMessage(textToSend);
     } finally {
       setSending(false);
+      setFileUploading(false);
     }
   };
 
@@ -197,7 +260,7 @@ export const TaskChat = ({ task, currentUser }) => {
                 }}
               >
                 <div style={{
-                  padding: '10px 14px',
+                  padding: m.attachment_url ? '8px' : '10px 14px',
                   borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                   background: isMe ? 'var(--brand-gradient)' : 'var(--subtle)',
                   color: isMe ? '#fff' : 'var(--text-primary)',
@@ -206,8 +269,24 @@ export const TaskChat = ({ task, currentUser }) => {
                   wordBreak: 'break-word',
                   boxShadow: isMe ? 'var(--brand-glow)' : 'var(--shadow-subtle)'
                 }}>
-                  {m.message}
+                  {m.message && (
+                    <div style={{ marginBottom: m.attachment_url ? '6px' : '0', padding: m.attachment_url ? '2px 4px' : '0' }}>
+                      {m.message}
+                    </div>
+                  )}
+
+                  {/* Render attachment in a clickable small box */}
+                  {m.attachment_url && (
+                    <div style={{ marginTop: m.message ? '4px' : '0' }}>
+                      <AttachmentCard
+                        url={m.attachment_url}
+                        type={m.attachment_type}
+                        storage={m.storage_provider}
+                      />
+                    </div>
+                  )}
                 </div>
+
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -229,22 +308,89 @@ export const TaskChat = ({ task, currentUser }) => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Attachment Preview (if selected) */}
+      {selectedFile && (
+        <div style={{
+          padding: '8px 16px',
+          background: 'var(--subtle)',
+          borderTop: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '12px',
+          color: 'var(--text-secondary)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+            <Paperclip size={14} color="var(--brand-600)" />
+            <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+              {selectedFile.name}
+            </span>
+            <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
+              ({(selectedFile.size / 1024).toFixed(1)} KB)
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedFile(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-tertiary)',
+              padding: '2px',
+              borderRadius: 'var(--radius-full)'
+            }}
+            title="Remove attachment"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Input Box */}
       <form
         onSubmit={handleSend}
         style={{
-          padding: '14px 16px',
+          padding: '12px 16px',
           borderTop: '1px solid var(--border)',
           background: 'var(--surface)',
           display: 'flex',
-          gap: '10px',
+          gap: '8px',
           alignItems: 'center',
           flexShrink: 0
         }}
       >
         <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          style={{ display: 'none' }}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            background: selectedFile ? 'var(--brand-50)' : 'transparent',
+            border: '1px solid ' + (selectedFile ? 'var(--brand-400)' : 'var(--border)'),
+            borderRadius: 'var(--radius-full)',
+            width: '36px',
+            height: '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: selectedFile ? 'var(--brand-600)' : 'var(--text-secondary)',
+            transition: 'all var(--transition-fast)'
+          }}
+          title="Add attachment (image, document, video)"
+          disabled={sending || fileUploading}
+        >
+          <Paperclip size={16} />
+        </button>
+
+        <input
           type="text"
-          placeholder={`Message ${getUserName(partnerUser)}...`}
+          placeholder={selectedFile ? 'Add a caption (optional)...' : `Message ${getUserName(partnerUser)}...`}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -255,12 +401,12 @@ export const TaskChat = ({ task, currentUser }) => {
             padding: '9px 16px',
             fontSize: '13px'
           }}
-          disabled={sending}
+          disabled={sending || fileUploading}
         />
         <button
           type="submit"
           className="btn btn-primary"
-          disabled={!newMessage.trim() || sending}
+          disabled={(!newMessage.trim() && !selectedFile) || sending || fileUploading}
           style={{
             borderRadius: 'var(--radius-full)',
             width: '38px',
@@ -273,7 +419,7 @@ export const TaskChat = ({ task, currentUser }) => {
           }}
           title="Send message"
         >
-          <Send size={16} />
+          {sending || fileUploading ? <Loader2 size={16} className="spinner" /> : <Send size={16} />}
         </button>
       </form>
     </div>

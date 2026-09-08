@@ -34,6 +34,20 @@ async def websocket_endpoint(websocket: WebSocket):
         if role in ("CEO", "CTO"):
             await manager.join("global:admins", user_id, websocket)
 
+        # Auto-join user teams
+        try:
+            from app.database import SessionLocal
+            from app.models.project import TeamMembership
+            db = SessionLocal()
+            try:
+                memberships = db.query(TeamMembership).filter(TeamMembership.user_id == user_id).all()
+                for m in memberships:
+                    await manager.join(f"team:{m.team_id}", user_id, websocket)
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"[WS] Error joining team rooms for {user_id}: {e}")
+
         await websocket.send_json({"type": "connected", "user_id": user_id})
 
         # Listen for join/leave room commands from client

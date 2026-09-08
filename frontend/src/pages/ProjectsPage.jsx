@@ -11,8 +11,9 @@ import {
   Plus, Calendar, ArrowRight, FolderKanban, X, Check, Users,
   Paperclip, Image as ImageIcon, Film, FileText, ExternalLink,
   Briefcase, UserCheck, ChevronRight, CheckCircle2, Clock, AlertCircle,
-  Pencil
+  Pencil, AlertTriangle
 } from 'lucide-react';
+import { AttachmentCard } from '../components/common/AttachmentCard';
 import { DayWiseTaskPlanner } from '../components/projects/DayWiseTaskPlanner';
 
 const ProjectsPage = () => {
@@ -725,12 +726,28 @@ const ProjectsPage = () => {
                     }}>
                       {p.status?.toUpperCase() || 'ACTIVE'}
                     </span>
-                    {p.deadline && (
-                      <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
-                        {new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(p.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
+                    {p.deadline && (() => {
+                      const isOverdue = new Date(p.deadline).getTime() < Date.now() && p.status !== 'completed';
+                      return (
+                        <span
+                          className="text-xs font-medium"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            color: isOverdue ? '#DC2626' : 'var(--text-secondary)',
+                            background: isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                            padding: isOverdue ? '2px 8px' : '0',
+                            borderRadius: isOverdue ? 'var(--radius-sm)' : '0',
+                            border: isOverdue ? '1px solid rgba(239, 68, 68, 0.25)' : 'none'
+                          }}
+                        >
+                          {isOverdue ? <AlertTriangle size={13} color="#DC2626" /> : <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />}
+                          <span>{new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(p.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          {isOverdue && <strong style={{ color: '#DC2626', fontSize: '11px' }}>Exceeded</strong>}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {user?.role === 'PM' && (
@@ -836,37 +853,16 @@ const ProjectsPage = () => {
                 {/* Attachments Section */}
                 {attachments.length > 0 && (
                   <div
-                    style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+                      gap: '8px',
+                      marginTop: '12px'
+                    }}
                     onClick={e => e.stopPropagation()}
                   >
                     {attachments.map(att => (
-                      <a
-                        key={att.id}
-                        href={att.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          padding: '3px 8px',
-                          borderRadius: 'var(--radius-sm)',
-                          background: 'var(--subtle)',
-                          border: '1px solid var(--border)',
-                          fontSize: '11px',
-                          color: 'var(--text-secondary)',
-                          textDecoration: 'none',
-                          maxWidth: '170px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title={`Open attachment: ${att.file_name}`}
-                      >
-                        {getFileIcon(att.file_type)}
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{att.file_name}</span>
-                        <ExternalLink size={10} style={{ opacity: 0.6, flexShrink: 0 }} />
-                      </a>
+                      <AttachmentCard key={att.id || att.file_url} attachment={att} />
                     ))}
                   </div>
                 )}
@@ -1533,12 +1529,28 @@ const ProjectsPage = () => {
                   }}>
                     {selectedProject.status?.toUpperCase() || 'ACTIVE'}
                   </span>
-                  {selectedProject.deadline && (
-                    <span className="text-xs text-secondary font-medium" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />
-                      Target: {new Date(selectedProject.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(selectedProject.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  )}
+                  {selectedProject.deadline && (() => {
+                    const isProjOverdue = new Date(selectedProject.deadline).getTime() < Date.now() && selectedProject.status !== 'completed';
+                    return (
+                      <span
+                        className="text-xs font-medium"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          color: isProjOverdue ? '#DC2626' : 'var(--text-secondary)',
+                          background: isProjOverdue ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                          padding: isProjOverdue ? '2px 8px' : '0',
+                          borderRadius: isProjOverdue ? 'var(--radius-sm)' : '0',
+                          border: isProjOverdue ? '1px solid rgba(239, 68, 68, 0.25)' : 'none'
+                        }}
+                      >
+                        {isProjOverdue ? <AlertTriangle size={13} color="#DC2626" /> : <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />}
+                        <span>Target: {new Date(selectedProject.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(selectedProject.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        {isProjOverdue && <strong style={{ color: '#DC2626', fontSize: '11px' }}>Exceeded</strong>}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1770,39 +1782,13 @@ const ProjectsPage = () => {
                 </div>
 
                 {(selectedProject.attachments && selectedProject.attachments.length > 0) ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                    gap: '10px'
+                  }}>
                     {selectedProject.attachments.map(att => (
-                      <a
-                        key={att.id}
-                        href={att.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          borderRadius: 'var(--radius-sm)',
-                          background: 'var(--subtle)',
-                          border: '1px solid var(--border)',
-                          textDecoration: 'none',
-                          color: 'inherit',
-                          transition: 'all var(--transition-fast)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {getFileIcon(att.file_type)}
-                          <div>
-                            <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                              {att.file_name}
-                            </p>
-                            <p style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
-                              Storage: {att.storage_provider}
-                            </p>
-                          </div>
-                        </div>
-                        <ExternalLink size={14} color="var(--text-secondary)" />
-                      </a>
+                      <AttachmentCard key={att.id || att.file_url} attachment={att} />
                     ))}
                   </div>
                 ) : (

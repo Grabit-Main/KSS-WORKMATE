@@ -73,16 +73,23 @@ async def send_message(task_id: UUID, req: ChatMessageCreate, db: Session = Depe
             "sender_name": f"{user.first_name} {user.last_name}",
             "message": msg.message,
             "attachment_url": msg.attachment_url,
+            "attachment_type": msg.attachment_type,
+            "storage_provider": msg.storage_provider,
             "created_at": msg.created_at.isoformat(),
         }
     }
     await manager.broadcast(f"task:{task_id}", event)
     if recipient_id and str(recipient_id) != str(user.id):
+        await manager.send_to_user(str(recipient_id), event)
         await manager.send_to_user(str(recipient_id), {
             "type": "notification.new",
             "data": {
                 "title": f"Chat: {task.title}",
-                "message": f"{user.first_name} {user.last_name}: {msg.message or 'Sent an attachment'}"
+                "message": f"{user.first_name} {user.last_name}: {msg.message or 'Sent an attachment'}",
+                "ref_id": str(task.id),
+                "task_id": str(task.id),
+                "event_type": "chat.message"
             }
         })
+    await manager.send_to_user(str(user.id), event)
     return msg

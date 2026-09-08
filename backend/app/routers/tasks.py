@@ -35,13 +35,22 @@ async def _broadcast_task(task, team_id, event_type):
             "id": str(task.id),
             "title": task.title,
             "status": task.status,
-            "team_id": str(team_id),
-            "assigned_to": str(task.assigned_to),
+            "team_id": str(team_id) if team_id else None,
+            "assigned_to": str(task.assigned_to) if task.assigned_to else None,
+            "assigned_by": str(task.assigned_by) if task.assigned_by else None,
             "is_locked": task.is_locked,
+            "scheduled_date": task.scheduled_date,
+            "deadline": task.deadline.isoformat() if task.deadline else None,
         }
     }
-    await manager.broadcast(f"team:{team_id}", data)
+    if team_id:
+        await manager.broadcast(f"team:{team_id}", data)
     await manager.broadcast(f"task:{task.id}", data)
+    if task.assigned_to:
+        await manager.send_to_user(str(task.assigned_to), data)
+    if task.assigned_by and str(task.assigned_by) != str(task.assigned_to):
+        await manager.send_to_user(str(task.assigned_by), data)
+    await manager.broadcast("global:admins", data)
     await manager.broadcast("global:admins", {"type": ANALYTICS_REFRESH, "data": {}})
 
 
@@ -122,6 +131,18 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
         if not lead and user.role not in ("CEO", "CTO", "PM"):
             raise HTTPException(403, "Only Team Leads or PMs can allocate tasks")
 
+    # Day-wise task allocation rule: PMs cannot allocate day-wise tasks, only Team Leads can
+    if req.scheduled_date:
+        if user.role == "PM":
+            raise HTTPException(403, "Project Managers cannot allocate day-wise tasks. Only Team Leads can allocate day-wise tasks.")
+        is_tl = (user.role == "TL") or (req.team_id and db.query(TeamMembership).filter(
+            TeamMembership.team_id == req.team_id,
+            TeamMembership.user_id == user.id,
+            TeamMembership.is_lead == True
+        ).first() is not None)
+        if not is_tl and user.role not in ("CEO", "CTO"):
+            raise HTTPException(403, "Only Team Leads can allocate day-wise tasks.")
+
     # Find target assignee user
     target_user = db.query(User).filter(User.id == req.assigned_to).first()
     if not target_user:
@@ -148,7 +169,16 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
     db.refresh(task)
     if req.team_id:
         await _broadcast_task(task, req.team_id, TASK_CREATED)
-    await manager.send_to_user(str(req.assigned_to), {"type": NOTIFICATION_NEW, "data": {"title": "New Task Assigned", "message": f"You have been allocated a new task: {req.title}"}})
+    await manager.send_to_user(str(req.assigned_to), {
+        "type": NOTIFICATION_NEW,
+        "data": {
+            "title": "New Task Assigned",
+            "message": f"You have been allocated a new task: {req.title}",
+            "ref_id": str(task.id),
+            "task_id": str(task.id),
+            "event_type": TASK_CREATED
+        }
+    })
     return task
 
 

@@ -1,10 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { TaskChat } from '../chat/TaskChat';
 import { startTask, completeTask, confirmTask } from '../../api/tasks';
+import { AttachmentCard } from '../common/AttachmentCard';
 import {
   X, Calendar, Clock, Play, CheckCircle2, User,
-  Flag, AlertCircle, FolderKanban, Users, Shield
+  Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle
 } from 'lucide-react';
+
+const formatScheduledDate = (val) => {
+  if (!val) return '';
+  if (/^\d{2}-\d{2}-\d{4}$/.test(val)) return val;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [y, m, d] = val.split('-');
+    return `${d}-${m}-${y}`;
+  }
+  const d = new Date(val);
+  if (!isNaN(d.getTime())) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+  return val;
+};
 
 export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) => {
   const [currentTask, setCurrentTask] = useState(task);
@@ -160,9 +178,13 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                   borderRadius: 'var(--radius-full)',
                   background: 'var(--brand-50)',
                   color: 'var(--brand-700)',
-                  border: '1px solid rgba(99, 102, 241, 0.2)'
+                  border: '1px solid rgba(99, 102, 241, 0.2)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}>
-                  {currentTask.scheduled_date}
+                  <Calendar size={11} />
+                  {formatScheduledDate(currentTask.scheduled_date)}
                 </span>
               )}
             </div>
@@ -193,6 +215,33 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                 fontSize: '13px'
               }}>
                 {errorMsg}
+              </div>
+            )}
+
+            {/* Overdue Warning Banner */}
+            {currentTask.deadline &&
+              new Date(currentTask.deadline).getTime() < Date.now() &&
+              currentTask.status !== 'completed' && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 16px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                borderRadius: 'var(--radius-md)',
+                color: '#EF4444'
+              }}>
+                <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700 }}>
+                    Deadline Exceeded!
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    This task was scheduled to complete on{' '}
+                    <strong>{new Date(currentTask.deadline).toLocaleString()}</strong> and is overdue. Immediate action required.
+                  </div>
+                </div>
               </div>
             )}
 
@@ -295,6 +344,34 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                 {currentTask.description || 'No description provided.'}
               </div>
             </div>
+
+            {/* Task Attachments */}
+            {currentTask.attachments && currentTask.attachments.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-secondary uppercase mb-2" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Attachments</span>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'var(--subtle)',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    {currentTask.attachments.length}
+                  </span>
+                </h4>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '10px'
+                }}>
+                  {currentTask.attachments.map((att) => (
+                    <AttachmentCard key={att.id || att.file_url} attachment={att} />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Action Bar */}
             <div style={{
