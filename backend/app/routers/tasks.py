@@ -332,8 +332,9 @@ async def reassign_task(task_id: UUID, req: ReassignRequest, db: Session = Depen
         TeamMembership.user_id == user.id,
         (TeamMembership.is_lead == True) | (user.role == "TL")
     ).first()
-    if not lead and user.role not in ("CEO", "CTO", "PM"):
-        raise HTTPException(403, "Only Team Leads can reassign tasks")
+    is_task_assigner = str(task.assigned_by) == str(user.id)
+    if not lead and not is_task_assigner and user.role not in ("CEO", "CTO", "PM"):
+        raise HTTPException(403, "Only Team Leads, Project Managers, or the task assigner can reassign tasks")
 
     # Find target assignee user
     target_user = db.query(User).filter(User.id == req.assigned_to).first()
@@ -350,18 +351,29 @@ async def reassign_task(task_id: UUID, req: ReassignRequest, db: Session = Depen
 
     if user.role == "TL":
         is_self = str(req.assigned_to) == str(user.id)
+        # Check all teams where user is TL
+        led_teams = db.query(TeamMembership.team_id).filter(
+            TeamMembership.user_id == user.id,
+            (TeamMembership.is_lead == True) | (user.role == "TL")
+        ).all()
+        led_team_ids = [m.team_id for m in led_teams]
+        if task.team_id and task.team_id not in led_team_ids:
+            led_team_ids.append(task.team_id)
+
         is_member = db.query(TeamMembership).filter(
-            TeamMembership.team_id == task.team_id,
+            TeamMembership.team_id.in_(led_team_ids),
             TeamMembership.user_id == req.assigned_to
-        ).first()
+        ).first() is not None
+
         if not is_self and not is_member:
-            raise HTTPException(400, "Team Leads can only reassign tasks to members of their team or to themselves.")
+            raise HTTPException(400, "Team Leads can only reassign tasks to members of their squads or to themselves.")
 
     old_assignee = task.assigned_to
     task.assigned_to = req.assigned_to
     task.status = "not_started"
-    _log_status(db, task, "reassigned", "not_started", user.id, f"Task reassigned by {user.role} {user.first_name} {user.last_name}")
-    _notify(db, req.assigned_to, "Task Reassigned to You", f"Task '{task.title}' has been reassigned to you.", TASK_REASSIGNED, task.id)
+    reason_suffix = f" (Note: {req.reason.strip()})" if req.reason and req.reason.strip() else ""
+    _log_status(db, task, "reassigned", "not_started", user.id, f"Task reassigned by {user.role} {user.first_name} {user.last_name}{reason_suffix}")
+    _notify(db, req.assigned_to, "Task Reassigned to You", f"Task '{task.title}' has been reassigned to you.{reason_suffix}", TASK_REASSIGNED, task.id)
     db.commit()
     db.refresh(task)
     await _broadcast_task(task, task.team_id, TASK_REASSIGNED)

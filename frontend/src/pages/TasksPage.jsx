@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getTasks, getTask, createTask, startTask, acceptTask, completeTask, confirmTask } from '../api/tasks';
+import { getTasks, getTask, createTask, startTask, acceptTask, completeTask, confirmTask, reassignTask } from '../api/tasks';
 import { getTeams } from '../api/teams';
 import { getUsers } from '../api/users';
 import { uploadFile } from '../api/upload';
@@ -13,7 +13,7 @@ import { AttachmentCard } from '../components/common/AttachmentCard';
 import { formatDeadlineWithTime } from '../components/projects/DayWiseTaskPlanner';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
-  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle
+  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck
 } from 'lucide-react';
 
 const TasksPage = () => {
@@ -29,6 +29,12 @@ const TasksPage = () => {
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const { joinRoom } = useWebSocket();
   const { user } = useAuth();
+
+  // Reassign Task State
+  const [reassigningTask, setReassigningTask] = useState(null);
+  const [reassignCandidate, setReassignCandidate] = useState('');
+  const [reassignReason, setReassignReason] = useState('');
+  const [reassignSubmitting, setReassignSubmitting] = useState(false);
 
   // Auto-open task if URL has ?taskId=...
   useEffect(() => {
@@ -316,6 +322,23 @@ const TasksPage = () => {
     }
   };
 
+  const handleExecuteReassign = async (e) => {
+    e.preventDefault();
+    if (!reassigningTask || !reassignCandidate) return;
+    setReassignSubmitting(true);
+    try {
+      await reassignTask(reassigningTask.id, reassignCandidate, reassignReason.trim() || undefined);
+      setReassigningTask(null);
+      setReassignCandidate('');
+      setReassignReason('');
+      loadTasks();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to reassign task.');
+    } finally {
+      setReassignSubmitting(false);
+    }
+  };
+
   const filteredTasks = tasks.filter(t => {
     if (filterTab === 'mine') return String(t.assigned_to) === String(user?.id);
     if (filterTab === 'review') return t.status === 'in_review';
@@ -562,20 +585,52 @@ const TasksPage = () => {
               )}
 
               {task.status === 'in_review' && ['CEO', 'CTO', 'PM', 'TL'].includes(user.role) && (
-                <div style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReassigningTask(task);
+                      setReassignCandidate('');
+                      setReassignReason('');
+                    }}
+                    className="btn btn-secondary"
+                    style={{
+                      flex: 1,
+                      height: '32px',
+                      fontSize: '12px',
+                      padding: '0 8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      color: 'var(--brand-700)',
+                      borderColor: 'rgba(99, 102, 241, 0.3)',
+                      background: 'var(--brand-50)'
+                    }}
+                    title="Reassign to another squad member"
+                  >
+                    <UserCheck size={14} />
+                    <span>Reassign</span>
+                  </button>
+
                   <button
                     onClick={(e) => handleConfirmTask(task.id, e)}
                     className="btn btn-primary"
                     style={{
-                      width: '100%',
+                      flex: 1.3,
                       height: '32px',
                       fontSize: '12px',
-                      padding: '0 12px',
+                      padding: '0 10px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
                       background: 'var(--status-completed)',
                       borderColor: 'var(--status-completed)'
                     }}
                   >
-                    Confirm Complete
+                    <CheckCircle2 size={14} />
+                    <span>Confirm Complete</span>
                   </button>
                 </div>
               )}
@@ -979,6 +1034,121 @@ const TasksPage = () => {
                   disabled={submitting}
                 >
                   {submitting ? 'Assigning Task...' : 'Assign Task'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reassign Modal */}
+      {reassigningTask && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setReassigningTask(null); }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+        >
+          <div className="card modal-animate" style={{
+            width: '100%',
+            maxWidth: '460px',
+            padding: '24px',
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-float)'
+          }}>
+            <div className="flex justify-between items-center mb-3">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'rgba(99, 102, 241, 0.12)',
+                  color: 'var(--brand-600)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <UserCheck size={18} />
+                </div>
+                <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
+                  Reassign Task
+                </h3>
+              </div>
+              <button
+                onClick={() => setReassigningTask(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-secondary mb-4" style={{ lineHeight: 1.5 }}>
+              Transfer responsibility for <strong>"{reassigningTask.title}"</strong> to another squad member. The status will return to Not Started.
+            </p>
+
+            <form onSubmit={handleExecuteReassign} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">
+                  Select New Assignee *
+                </label>
+                <select
+                  value={reassignCandidate}
+                  onChange={(e) => setReassignCandidate(e.target.value)}
+                  className="input"
+                  required
+                >
+                  <option value="">-- Select Member --</option>
+                  {eligibleOrgUsers
+                    .filter(m => String(m.id) !== String(reassigningTask.assigned_to))
+                    .map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.first_name} {m.last_name} ({m.role} - {m.department || 'Squad'})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">
+                  Reassignment Note / Instructions (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Explain why this deliverable is being reassigned..."
+                  value={reassignReason}
+                  onChange={(e) => setReassignReason(e.target.value)}
+                  className="input"
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setReassigningTask(null)}
+                  className="btn btn-secondary"
+                  disabled={reassignSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={reassignSubmitting || !reassignCandidate}
+                >
+                  {reassignSubmitting ? 'Reassigning...' : 'Confirm Reassign'}
                 </button>
               </div>
             </form>

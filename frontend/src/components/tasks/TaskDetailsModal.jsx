@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { TaskChat } from '../chat/TaskChat';
-import { startTask, completeTask, confirmTask } from '../../api/tasks';
+import { startTask, completeTask, confirmTask, reassignTask } from '../../api/tasks';
+import { getUsers } from '../../api/users';
+import { getTeams } from '../../api/teams';
 import { AttachmentCard } from '../common/AttachmentCard';
 import {
   X, Calendar, Clock, Play, CheckCircle2, User,
-  Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle
+  Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle, UserCheck
 } from 'lucide-react';
 
 const formatScheduledDate = (val) => {
@@ -53,9 +55,60 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Reassign State
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [reassignCandidate, setReassignCandidate] = useState('');
+  const [reassignReason, setReassignReason] = useState('');
+  const [reassignLoading, setReassignLoading] = useState(false);
+  const [eligibleMembers, setEligibleMembers] = useState([]);
+  const [reassignSuccessMsg, setReassignSuccessMsg] = useState('');
+
   useEffect(() => {
     setCurrentTask(task);
   }, [task]);
+
+  useEffect(() => {
+    const fetchEligibleMembers = async () => {
+      try {
+        const [usersData, teamsData] = await Promise.all([
+          getUsers().catch(() => []),
+          getTeams().catch(() => [])
+        ]);
+
+        let pool = [];
+        if (currentTask.project_id) {
+          const projTeams = teamsData.filter(t => String(t.project_id) === String(currentTask.project_id));
+          if (projTeams.length > 0) {
+            const memberIds = new Set(projTeams.flatMap(t => (t.memberships || []).map(m => String(m.user_id || m.user?.id))));
+            pool = usersData.filter(u => memberIds.has(String(u.id)));
+          }
+        }
+        if (pool.length === 0 && currentTask.team_id) {
+          const curTeam = teamsData.find(t => String(t.id) === String(currentTask.team_id));
+          if (curTeam && curTeam.memberships) {
+            const memberIds = new Set(curTeam.memberships.map(m => String(m.user_id || m.user?.id)));
+            pool = usersData.filter(u => memberIds.has(String(u.id)));
+          }
+        }
+        if (pool.length === 0) {
+          pool = usersData;
+        }
+
+        const filtered = pool.filter(u => {
+          if (!u || !u.id) return false;
+          if (String(u.id) === String(currentTask.assigned_to)) return false;
+          if (u.role === 'CEO' || u.role === 'CTO') return false;
+          if (currentUser.role === 'TM' && u.role === 'PM') return false;
+          return true;
+        });
+        setEligibleMembers(filtered);
+      } catch (err) {
+        console.error('Failed to load eligible reassign members:', err);
+      }
+    };
+
+    fetchEligibleMembers();
+  }, [currentTask?.id, currentTask?.assigned_to, currentTask?.project_id, currentTask?.team_id, currentUser.role]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -110,6 +163,28 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
       setErrorMsg(err.response?.data?.detail || 'Failed to confirm task.');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleExecuteReassign = async (e) => {
+    e.preventDefault();
+    if (!reassignCandidate) return;
+    setReassignLoading(true);
+    setErrorMsg('');
+    try {
+      const updated = await reassignTask(currentTask.id, reassignCandidate, reassignReason.trim() || undefined);
+      setCurrentTask(updated);
+      if (onTaskUpdated) onTaskUpdated(updated);
+      setShowReassignModal(false);
+      setReassignReason('');
+      const targetUser = eligibleMembers.find(m => String(m.id) === String(reassignCandidate));
+      const targetName = targetUser ? `${targetUser.first_name} ${targetUser.last_name}` : 'new assignee';
+      setReassignSuccessMsg(`Task successfully reassigned to ${targetName}!`);
+      setTimeout(() => setReassignSuccessMsg(''), 4000);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.detail || 'Failed to reassign task.');
+    } finally {
+      setReassignLoading(false);
     }
   };
 
@@ -230,6 +305,20 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
 
           {/* Body Details */}
           <div style={{ padding: '28px', flex: 1, display: 'flex', flexDirection: 'column', gap: '22px' }}>
+            {reassignSuccessMsg && (
+              <div style={{
+                padding: '10px 14px',
+                background: 'rgba(16, 185, 129, 0.1)',
+                color: '#059669',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '13px',
+                fontWeight: 600
+              }}>
+                ✓ {reassignSuccessMsg}
+              </div>
+            )}
+
             {errorMsg && (
               <div style={{
                 padding: '10px 14px',
@@ -458,17 +547,51 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                   </button>
                 )}
 
-                {/* IN REVIEW -> CONFIRM TASK */}
+                {/* IN REVIEW -> REASSIGN & CONFIRM TASK */}
                 {currentTask.status === 'in_review' && (isAssigner || canConfirm) && (
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleConfirm}
-                    disabled={actionLoading}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'var(--status-completed)', borderColor: 'var(--status-completed)' }}
-                  >
-                    <CheckCircle2 size={16} />
-                    <span>{actionLoading ? 'Confirming...' : 'Confirm & Complete'}</span>
-                  </button>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setErrorMsg('');
+                        setShowReassignModal(true);
+                      }}
+                      disabled={actionLoading || reassignLoading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '13px',
+                        padding: '8px 14px',
+                        background: 'var(--subtle)',
+                        color: 'var(--brand-700)',
+                        border: '1px solid rgba(99, 102, 241, 0.3)'
+                      }}
+                      title="Reassign this deliverable to another team member"
+                    >
+                      <UserCheck size={16} />
+                      <span>Reassign</span>
+                    </button>
+
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleConfirm}
+                      disabled={actionLoading || reassignLoading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '7px',
+                        fontSize: '13px',
+                        padding: '8px 18px',
+                        background: 'var(--status-completed)',
+                        borderColor: 'var(--status-completed)'
+                      }}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>{actionLoading ? 'Confirming...' : 'Confirm & Complete'}</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -485,6 +608,122 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
           <TaskChat task={currentTask} currentUser={currentUser} />
         </div>
       </div>
+
+      {/* Reassign Deliverable Modal Dialog */}
+      {showReassignModal && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowReassignModal(false); }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '20px'
+          }}
+        >
+          <div className="card modal-animate" style={{
+            width: '100%',
+            maxWidth: '460px',
+            padding: '24px',
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-float)'
+          }}>
+            <div className="flex justify-between items-center mb-3">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'rgba(99, 102, 241, 0.12)',
+                  color: 'var(--brand-600)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <UserCheck size={18} />
+                </div>
+                <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
+                  Reassign Task
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowReassignModal(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-secondary mb-4" style={{ lineHeight: 1.5 }}>
+              Transfer responsibility for <strong>"{currentTask.title}"</strong> to another squad member. The task status will return to Not Started for the new assignee.
+            </p>
+
+            <form onSubmit={handleExecuteReassign} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">
+                  Select New Assignee *
+                </label>
+                <select
+                  value={reassignCandidate}
+                  onChange={(e) => setReassignCandidate(e.target.value)}
+                  className="input"
+                  required
+                >
+                  <option value="">-- Select Member --</option>
+                  {eligibleMembers.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.first_name} {m.last_name} ({m.role} - {m.department || 'Squad'})
+                    </option>
+                  ))}
+                </select>
+                {eligibleMembers.length === 0 && (
+                  <span className="text-xs text-tertiary mt-1 block">No alternate members found in squad.</span>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">
+                  Reassignment Note / Instructions (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Explain why this deliverable is being reassigned..."
+                  value={reassignReason}
+                  onChange={(e) => setReassignReason(e.target.value)}
+                  className="input"
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowReassignModal(false)}
+                  className="btn btn-secondary"
+                  disabled={reassignLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={reassignLoading || !reassignCandidate}
+                >
+                  {reassignLoading ? 'Reassigning...' : 'Confirm Reassign'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

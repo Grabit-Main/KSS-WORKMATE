@@ -11,4 +11,4 @@ export const rejectTask = async (id, reason) => (await api.put(`/tasks/${id}/rej
 export const completeTask = async (id) => (await api.put(`/tasks/${id}/complete`)).data;
 export const confirmTask = async (id) => (await api.put(`/tasks/${id}/confirm`)).data;
 export const declineTask = async (id, reason) => (await api.put(`/tasks/${id}/decline`, { reason })).data;
-export const reassignTask = async (id, assigned_to) => (await api.put(`/tasks/${id}/reassign`, { assigned_to })).data;
+export const reassignTask = async (id, assigned_to, reason) => (await api.put(`/tasks/${id}/reassign`, { assigned_to, reason })).data;

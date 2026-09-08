@@ -31,6 +31,7 @@ class StatusUpdate(BaseModel):
 
 class ReassignRequest(BaseModel):
     assigned_to: UUID
+    reason: Optional[str] = None
 
 
 class AttachmentResponse(BaseModel):
