@@ -352,8 +352,7 @@ const ProjectsPage = () => {
     const safeTeamsList = Array.isArray(teams) ? teams : [];
     const safeTasksList = Array.isArray(tasks) ? tasks : [];
     const allocatedTeams = safeTeamsList.filter(t => String(t.project_id) === String(projectId));
-    const teamIds = new Set(allocatedTeams.map(t => String(t.id)));
-    const projectTasks = safeTasksList.filter(t => teamIds.has(String(t.team_id)));
+    const projectTasks = safeTasksList.filter(t => String(t.project_id) === String(projectId));
     const total = projectTasks.length;
     const completed = projectTasks.filter(t => t.status === 'completed').length;
     const inReview = projectTasks.filter(t => t.status === 'in_review').length;

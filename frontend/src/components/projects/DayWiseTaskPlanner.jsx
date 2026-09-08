@@ -125,12 +125,13 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
 
       setTasks(tasksData);
 
-      // Identify the squad allocated to this project
-      const allocatedTeam = teamsData.find(t => String(t.project_id) === String(project.id));
-      if (allocatedTeam) {
-        setTeamId(allocatedTeam.id);
-        const memberIds = (allocatedTeam.memberships || []).map(m => String(m.user_id));
-        const filteredMembers = usersData.filter(u => memberIds.includes(String(u.id)));
+      // Identify the squad(s) allocated to this project
+      const allocatedTeams = teamsData.filter(t => String(t.project_id) === String(project.id));
+      if (allocatedTeams.length > 0) {
+        const myTeam = allocatedTeams.find(t => t.memberships?.some(m => String(m.user_id) === String(currentUser?.id) && (m.is_lead || currentUser?.role === 'TL')));
+        setTeamId(myTeam ? myTeam.id : allocatedTeams[0].id);
+        const memberIds = new Set(allocatedTeams.flatMap(t => (t.memberships || []).map(m => String(m.user_id || m.user?.id))));
+        const filteredMembers = usersData.filter(u => memberIds.has(String(u.id)));
         setTeamMembers(filteredMembers.length > 0 ? filteredMembers : usersData);
       } else {
         setTeamMembers(usersData);

@@ -80,9 +80,9 @@ def list_tasks(
     # CEO/CTO see all
 
     if project_id:
-        # Match directly or through team's project
-        team_ids = db.query(Team.id).filter(Team.project_id == project_id).subquery()
-        q = q.filter((Task.project_id == project_id) | (Task.team_id.in_(team_ids)))
+        # Match strictly tasks assigned directly to this project.
+        # Standalone tasks assigned separately must NOT be included in projects.
+        q = q.filter(Task.project_id == project_id)
 
     if scheduled_date:
         q = q.filter(Task.scheduled_date == scheduled_date)
@@ -92,7 +92,7 @@ def list_tasks(
 
 @router.post("", response_model=TaskResponse)
 async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    # Auto-resolve team_id and project_id if either is missing
+    # Auto-resolve team_id if missing and project_id is specified
     if not req.team_id and req.project_id:
         # Find a team associated with this project where user is lead, or any team in project
         proj_team = db.query(Team).join(TeamMembership).filter(
@@ -115,11 +115,6 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
             team = db.query(Team).first()
             if team:
                 req.team_id = team.id
-
-    if req.team_id and not req.project_id:
-        team_obj = db.query(Team).filter(Team.id == req.team_id).first()
-        if team_obj and team_obj.project_id:
-            req.project_id = team_obj.project_id
 
     # Check authorization: Must be TL of that team, or CEO/CTO/PM
     if req.team_id:
