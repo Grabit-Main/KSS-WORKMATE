@@ -1,4 +1,12 @@
+import os
 from pydantic_settings import BaseSettings
+
+# Locate .env in backend directory or current directory
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+backend_env = os.path.join(backend_dir, ".env")
+env_files = [".env"]
+if os.path.exists(backend_env):
+    env_files.insert(0, backend_env)
 
 
 class Settings(BaseSettings):
@@ -6,9 +14,9 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ALLOWED_ORIGINS: str = "http://localhost:5173,https://kss-workmate.vercel.app,http://localhost:3000"
 
-    DATABASE_URL: str = ""
-    SUPABASE_URL: str = ""
-    SUPABASE_KEY: str = ""
+    DATABASE_URL: str = "postgresql://postgres.wdtvedyfmtdqnvvhgcso:Kalpanaaa123@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
+    SUPABASE_URL: str = "https://wdtvedyfmtdqnvvhgcso.supabase.co"
+    SUPABASE_KEY: str = "sb_publishable_9CTIC0REo14-8DCQQJqG8g_n1pc3T9h"
 
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
@@ -31,7 +39,7 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
     class Config:
-        env_file = ".env"
+        env_file = env_files
         extra = "ignore"
 
 

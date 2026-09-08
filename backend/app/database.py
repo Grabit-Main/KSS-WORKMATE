@@ -5,7 +5,9 @@ from app.config import settings
 from sqlalchemy.pool import NullPool
 import os
 
-db_url = settings.DATABASE_URL or ""
+db_url = settings.DATABASE_URL or os.getenv("DATABASE_URL", "")
+if not db_url:
+    db_url = "postgresql://postgres.wdtvedyfmtdqnvvhgcso:Kalpanaaa123@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
