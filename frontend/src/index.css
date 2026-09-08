@@ -83,6 +83,16 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overscroll-behavior: none;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
   background-color: var(--bg);
@@ -91,7 +101,15 @@ body {
   color: var(--text-primary);
   line-height: 1.5;
   letter-spacing: -0.011em;
-  overflow-x: hidden;
+  touch-action: pan-x pan-y;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overscroll-behavior: none;
 }
 
 /* Custom Sleek Scrollbar */

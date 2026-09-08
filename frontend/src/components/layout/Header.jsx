@@ -51,6 +51,7 @@ export const Header = ({ title }) => {
   return (
     <header style={{
       height: '72px',
+      flexShrink: 0,
       background: 'var(--surface-glass)',
       backdropFilter: 'blur(24px) saturate(180%)',
       WebkitBackdropFilter: 'blur(24px) saturate(180%)',
@@ -59,10 +60,9 @@ export const Header = ({ title }) => {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0 32px',
-      position: 'sticky',
-      top: 0,
+      position: 'relative',
       zIndex: 15,
-      transition: 'all var(--transition-smooth)'
+      userSelect: 'none'
     }}>
       <h1 className="font-bold text-xl" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
         {title || 'Dashboard'}

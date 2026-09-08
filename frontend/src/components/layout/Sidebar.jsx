@@ -27,6 +27,7 @@ export const Sidebar = () => {
   return (
     <aside style={{
       width: '260px',
+      flexShrink: 0,
       background: 'var(--surface-glass)',
       backdropFilter: 'blur(24px) saturate(180%)',
       WebkitBackdropFilter: 'blur(24px) saturate(180%)',
@@ -34,17 +35,17 @@ export const Sidebar = () => {
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
-      position: 'sticky',
-      top: 0,
+      position: 'relative',
       zIndex: 20,
-      transition: 'all var(--transition-smooth)'
+      userSelect: 'none',
+      overscrollBehavior: 'none'
     }}>
       <div style={{
-        padding: '28px 24px 16px 24px',
+        padding: '36px 24px 16px 24px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: '16px'
+        marginBottom: '36px'
       }}>
         <img src="/logo.webp" alt="Logo" style={{ width: '100%', maxHeight: '54px', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.04))' }} />
       </div>
@@ -55,7 +56,8 @@ export const Sidebar = () => {
         display: 'flex',
         flexDirection: 'column',
         gap: '6px',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        overscrollBehavior: 'contain'
       }}>
         {links.map(link => (
           <NavLink

@@ -14,9 +14,15 @@ import {
 } from 'lucide-react';
 
 const ProjectsPage = () => {
+  const { user } = useAuth();
   const [projects, setProjects] = useState(() => {
-    const cached = localStorage.getItem('cache_projects');
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem('cache_projects');
+      const parsed = cached ? JSON.parse(cached) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
   const [teams, setTeams] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -61,16 +67,25 @@ const ProjectsPage = () => {
         getUsers().catch(() => []),
         getTasks().catch(() => [])
       ]);
-      setProjects(projectsData);
-      setTeams(teamsData);
-      setUsersList(usersData);
-      setTasks(tasksData);
-      localStorage.setItem('cache_projects', JSON.stringify(projectsData));
+      const safeProjects = Array.isArray(projectsData) ? projectsData : [];
+      const safeTeams = Array.isArray(teamsData) ? teamsData : [];
+      const safeUsers = Array.isArray(usersData) ? usersData : [];
+      const safeTasks = Array.isArray(tasksData) ? tasksData : [];
+
+      setProjects(safeProjects);
+      setTeams(safeTeams);
+      setUsersList(safeUsers);
+      setTasks(safeTasks);
+      try {
+        localStorage.setItem('cache_projects', JSON.stringify(safeProjects));
+      } catch (e) {
+        console.warn('Could not cache projects to localStorage:', e);
+      }
 
       // If a project is currently open in overview modal, refresh its data
       setSelectedProject(prev => {
         if (!prev) return null;
-        return projectsData.find(p => String(p.id) === String(prev.id)) || prev;
+        return safeProjects.find(p => String(p.id) === String(prev.id)) || prev;
       });
     } catch (err) {
       console.error('Failed to load project data:', err);
@@ -283,9 +298,11 @@ const ProjectsPage = () => {
 
   // Helper to compute tasks and progress for a project
   const getProjectTaskStats = (projectId) => {
-    const allocatedTeams = teams.filter(t => String(t.project_id) === String(projectId));
+    const safeTeamsList = Array.isArray(teams) ? teams : [];
+    const safeTasksList = Array.isArray(tasks) ? tasks : [];
+    const allocatedTeams = safeTeamsList.filter(t => String(t.project_id) === String(projectId));
     const teamIds = new Set(allocatedTeams.map(t => String(t.id)));
-    const projectTasks = tasks.filter(t => teamIds.has(String(t.team_id)));
+    const projectTasks = safeTasksList.filter(t => teamIds.has(String(t.team_id)));
     const total = projectTasks.length;
     const completed = projectTasks.filter(t => t.status === 'completed').length;
     const inReview = projectTasks.filter(t => t.status === 'in_review').length;
@@ -296,17 +313,18 @@ const ProjectsPage = () => {
   };
 
   // Analytics & Filtering Calculations
-  const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => (p.status || 'active').toLowerCase() === 'active').length;
-  const inReviewProjects = projects.filter(p => (p.status || '').toLowerCase() === 'in_review').length;
-  const completedProjects = projects.filter(p => (p.status || '').toLowerCase() === 'completed').length;
-  const onHoldProjects = projects.filter(p => ['blocked', 'on_hold', 'hold'].includes((p.status || '').toLowerCase())).length;
+  const projectList = Array.isArray(projects) ? projects : [];
+  const totalProjects = projectList.length;
+  const activeProjects = projectList.filter(p => (p.status || 'active').toLowerCase() === 'active').length;
+  const inReviewProjects = projectList.filter(p => (p.status || '').toLowerCase() === 'in_review').length;
+  const completedProjects = projectList.filter(p => (p.status || '').toLowerCase() === 'completed').length;
+  const onHoldProjects = projectList.filter(p => ['blocked', 'on_hold', 'hold'].includes((p.status || '').toLowerCase())).length;
 
   const overallCompletionRate = totalProjects > 0
     ? Math.round((completedProjects / totalProjects) * 100)
     : 0;
 
-  const filteredProjects = projects.filter(p => {
+  const filteredProjects = projectList.filter(p => {
     const st = (p.status || 'active').toLowerCase();
     if (filterStatus === 'all') return true;
     if (filterStatus === 'active') return st === 'active';
@@ -341,7 +359,7 @@ const ProjectsPage = () => {
         </div>
 
         {/* PM has ability to create and assign project deliverables */}
-        {user.role === 'PM' && (
+        {user?.role === 'PM' && (
           <button
             className="btn btn-primary"
             onClick={() => {
@@ -659,7 +677,7 @@ const ProjectsPage = () => {
                     )}
                   </div>
 
-                  {user.role === 'PM' && (
+                  {user?.role === 'PM' && (
                     <button
                       type="button"
                       onClick={(e) => handleOpenEditModal(p, e)}
@@ -842,7 +860,7 @@ const ProjectsPage = () => {
             </h4>
             <p className="text-secondary text-sm mb-3">
               {totalProjects === 0
-                ? (user.role === 'PM' ? 'Click "+ New Project" to create deliverables and allocate teams.' : 'Projects assigned by Project Managers will be listed here.')
+                ? (user?.role === 'PM' ? 'Click "+ New Project" to create deliverables and allocate teams.' : 'Projects assigned by Project Managers will be listed here.')
                 : 'There are currently no projects matching this filter criteria.'}
             </p>
             {totalProjects > 0 && filterStatus !== 'all' && (
@@ -1030,7 +1048,7 @@ const ProjectsPage = () => {
                   required
                 >
                   <option value="">-- Select Team * --</option>
-                  {teams.map(t => (
+                  {(Array.isArray(teams) ? teams : []).map(t => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.memberships?.length || 0} members)
                     </option>
@@ -1284,7 +1302,7 @@ const ProjectsPage = () => {
       {selectedProject && (() => {
         const stats = getProjectTaskStats(selectedProject.id);
         const allocatedTeams = stats.allocatedTeams.length > 0 ? stats.allocatedTeams : (selectedProject.teams || []);
-        const unallocatedTeams = teams.filter(t => !t.project_id);
+        const unallocatedTeams = (Array.isArray(teams) ? teams : []).filter(t => !t.project_id);
 
         return (
           <div
@@ -1337,7 +1355,7 @@ const ProjectsPage = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {user.role === 'PM' && (
+                  {user?.role === 'PM' && (
                     <button
                       type="button"
                       onClick={(e) => handleOpenEditModal(selectedProject, e)}
@@ -1515,7 +1533,7 @@ const ProjectsPage = () => {
                 )}
 
                 {/* PM Quick Team Allocation */}
-                {user.role === 'PM' && unallocatedTeams.length > 0 && (
+                {user?.role === 'PM' && unallocatedTeams.length > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
                     <select
                       value={overviewTeamToAllocate}
@@ -1600,7 +1618,7 @@ const ProjectsPage = () => {
                 >
                   Close Overview
                 </button>
-                {user.role === 'PM' && (
+                {user?.role === 'PM' && (
                   <button
                     type="button"
                     onClick={(e) => handleOpenEditModal(selectedProject, e)}
