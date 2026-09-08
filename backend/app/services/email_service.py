@@ -1,8 +1,9 @@
+import os
 import resend
 from app.config import settings
-from datetime import datetime
+from datetime import datetime, timezone
 
-resend.api_key = settings.RESEND_API_KEY
+DEFAULT_FROM_EMAIL = "Kalpanaaa Software Solutions <no-reply@kalpanaaa.in>"
 
 OTP_TEMPLATE = """
 <!DOCTYPE html>
@@ -41,17 +42,46 @@ OTP_TEMPLATE = """
 """
 
 
-def send_otp_email(to_email: str, otp: str):
-    print(f"[AUTH-OTP] Generated OTP for {to_email}: {otp}")
+def send_otp_email(to_email: str, otp: str) -> bool:
+    print(f"[AUTH-OTP] Preparing OTP email for {to_email}: {otp}")
+    api_key = settings.RESEND_API_KEY or os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        print("[AUTH-OTP] ERROR: No RESEND_API_KEY configured in environment or settings.")
+        return False
+
+    resend.api_key = api_key
+    from_email = settings.RESEND_FROM_EMAIL or os.environ.get("RESEND_FROM_EMAIL") or DEFAULT_FROM_EMAIL
+
+    # Use safe .replace instead of .format to avoid ValueError with CSS curly braces
+    formatted_html = (
+        OTP_TEMPLATE
+        .replace("{otp}", str(otp))
+        .replace("{timestamp}", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
+    )
+
     try:
-        if settings.RESEND_API_KEY:
-            resend.Emails.send({
-                "from": settings.RESEND_FROM_EMAIL,
-                "to": [to_email],
-                "subject": "Your OTP Code",
-                "html": OTP_TEMPLATE.format(otp=otp, timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")),
-            })
-            print(f"[AUTH-OTP] Sent email to {to_email} successfully.")
+        resp = resend.Emails.send({
+            "from": from_email,
+            "to": [to_email],
+            "subject": "Your Workmate Password Reset OTP",
+            "html": formatted_html,
+        })
+        print(f"[AUTH-OTP] Sent email to {to_email} successfully. Response: {resp}")
+        return True
     except Exception as e:
-        print(f"[AUTH-OTP] Failed to send email via Resend: {e}")
+        print(f"[AUTH-OTP] Primary send failed via {from_email} to {to_email}: {e}")
+        # Try fallback sender if domain policy causes rejection
+        if "from" in str(e).lower() or "domain" in str(e).lower() or "verify" in str(e).lower():
+            try:
+                resp = resend.Emails.send({
+                    "from": "Workmate <onboarding@resend.dev>",
+                    "to": [to_email],
+                    "subject": "Your Workmate Password Reset OTP",
+                    "html": formatted_html,
+                })
+                print(f"[AUTH-OTP] Sent email via fallback sender to {to_email}: {resp}")
+                return True
+            except Exception as e2:
+                print(f"[AUTH-OTP] Fallback sender also failed: {e2}")
+        return False
 
