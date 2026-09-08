@@ -1,11 +1,15 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { getTasks, createTask, acceptTask, completeTask, confirmTask } from '../api/tasks';
 import { getTeams } from '../api/teams';
 import { getUsers } from '../api/users';
+import { uploadFile } from '../api/upload';
 import { useRealtime } from '../realtime/useRealtime';
 import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Clock, ArrowRight, CheckSquare, X, UserCheck, Check, Calendar, Flag, Sparkles } from 'lucide-react';
+import {
+  Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
+  Paperclip, Image as ImageIcon, Film, FileText
+} from 'lucide-react';
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState(() => {
@@ -30,6 +34,42 @@ const TasksPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // File Attachments State
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const fileInputRef = useRef(null);
+
+  // Filter eligible assignees: No one can assign to CEO/CTO; TM cannot assign to PM
+  const isEligibleAssignee = useCallback((targetRole) => {
+    if (!targetRole) return false;
+    if (targetRole === 'CEO' || targetRole === 'CTO') return false;
+    if (user?.role === 'TM' && targetRole === 'PM') return false;
+    return true;
+  }, [user?.role]);
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setAttachedFiles(prev => [...prev, ...files]);
+    }
+  };
+
+  const removeAttachedFile = (index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getFileIcon = (fileType) => {
+    if (fileType?.startsWith('image/')) return <ImageIcon size={14} color="#3b82f6" />;
+    if (fileType?.startsWith('video/')) return <Film size={14} color="#8b5cf6" />;
+    return <FileText size={14} color="#10b981" />;
+  };
+
   const loadTasks = async () => {
     try {
       const data = await getTasks();
@@ -45,7 +85,7 @@ const TasksPage = () => {
     }
   };
 
-  const loadModalDependencies = async (isSelf = false) => {
+  const loadModalDependencies = async () => {
     try {
       const [teamsData, usersData] = await Promise.all([
         getTeams().catch(() => []),
@@ -59,25 +99,25 @@ const TasksPage = () => {
         : teamsData;
 
       const defaultTeam = myTeams.length > 0 ? myTeams[0] : (teamsData[0] || null);
-      if (defaultTeam && (!teamId || !myTeams.some(t => String(t.id) === String(teamId)))) {
-        setTeamId(defaultTeam.id);
+      let chosenTeamId = teamId;
+      if (defaultTeam && (!chosenTeamId || !myTeams.some(t => String(t.id) === String(chosenTeamId)))) {
+        chosenTeamId = defaultTeam.id;
+        setTeamId(chosenTeamId);
       }
 
-      if (isSelf && user) {
-        setAssignedTo(user.id);
-      } else if (user?.role === 'TL' && defaultTeam) {
-        const otherMembers = (defaultTeam.memberships || []).filter(m => {
-          const uid = m.user?.id || m.user_id || m.id;
-          return String(uid) !== String(user?.id);
-        });
-        if (otherMembers.length > 0) {
-          const firstUser = otherMembers[0].user || otherMembers[0];
-          setAssignedTo(firstUser.id);
-        } else {
-          setAssignedTo(user.id);
-        }
-      } else if (!assignedTo) {
-        setAssignedTo(user?.id || (usersData.length > 0 ? usersData[0].id : ''));
+      const activeTeam = (myTeams.length > 0 ? myTeams : teamsData).find(t => String(t.id) === String(chosenTeamId));
+      const teamEligible = (activeTeam?.memberships || [])
+        .map(m => m.user || m)
+        .filter(u => isEligibleAssignee(u.role));
+
+      const orgEligible = usersData.filter(u => isEligibleAssignee(u.role));
+
+      if (teamEligible.length > 0) {
+        setAssignedTo(teamEligible[0].id);
+      } else if (orgEligible.length > 0) {
+        setAssignedTo(orgEligible[0].id);
+      } else {
+        setAssignedTo('');
       }
     } catch (err) {
       console.error('Failed to load modal deps:', err);
@@ -86,22 +126,15 @@ const TasksPage = () => {
 
   const handleTeamChange = (newTeamId) => {
     setTeamId(newTeamId);
-    if (user?.role === 'TL') {
-      const selected = teams.find(t => String(t.id) === String(newTeamId));
-      const otherMembers = (selected?.memberships || []).filter(m => {
-        const uid = m.user?.id || m.user_id || m.id;
-        return String(uid) !== String(user?.id);
-      });
-      if (String(assignedTo) !== String(user?.id)) {
-        const isStillValid = otherMembers.some(m => String(m.user?.id || m.user_id || m.id) === String(assignedTo));
-        if (!isStillValid) {
-          if (otherMembers.length > 0) {
-            const firstUser = otherMembers[0].user || otherMembers[0];
-            setAssignedTo(firstUser.id);
-          } else {
-            setAssignedTo(user.id);
-          }
-        }
+    const selected = teams.find(t => String(t.id) === String(newTeamId));
+    const teamEligible = (selected?.memberships || [])
+      .map(m => m.user || m)
+      .filter(u => isEligibleAssignee(u.role));
+
+    if (teamEligible.length > 0) {
+      const isStillValid = teamEligible.some(u => String(u.id) === String(assignedTo));
+      if (!isStillValid) {
+        setAssignedTo(teamEligible[0].id);
       }
     }
   };
@@ -110,8 +143,9 @@ const TasksPage = () => {
     loadTasks();
   }, []);
 
-  const openNewTaskModal = (isSelf = false) => {
-    loadModalDependencies(isSelf);
+  const openNewTaskModal = () => {
+    setAttachedFiles([]);
+    loadModalDependencies();
     setShowModal(true);
   };
 
@@ -134,7 +168,7 @@ const TasksPage = () => {
     setSubmitting(true);
     setFormError('');
     try {
-      await createTask({
+      const newTask = await createTask({
         team_id: teamId,
         title: title.trim(),
         description: description.trim(),
@@ -142,11 +176,24 @@ const TasksPage = () => {
         priority,
         deadline: deadline ? new Date(deadline).toISOString() : null,
       });
+
+      // Upload attached files if any
+      if (attachedFiles.length > 0 && newTask?.id) {
+        for (const file of attachedFiles) {
+          try {
+            await uploadFile(file, newTask.id);
+          } catch (uploadErr) {
+            console.error('Failed to upload file attachment:', file.name, uploadErr);
+          }
+        }
+      }
+
       setShowModal(false);
       setTitle('');
       setDescription('');
       setPriority('normal');
       setDeadline('');
+      setAttachedFiles([]);
       loadTasks();
     } catch (err) {
       setFormError(err.response?.data?.detail || 'Failed to assign task.');
@@ -196,11 +243,13 @@ const TasksPage = () => {
     : teams;
 
   const currentSelectedTeam = (availableTeams.length > 0 ? availableTeams : teams).find(t => String(t.id) === String(teamId)) || (availableTeams[0] || teams[0]);
-  const currentTeamMembers = currentSelectedTeam?.memberships || [];
-  const otherTeamMembers = currentTeamMembers.filter(m => {
-    const uid = m.user?.id || m.user_id || m.id;
-    return String(uid) !== String(user?.id);
-  });
+  const eligibleTeamMembers = (currentSelectedTeam?.memberships || [])
+    .filter(m => {
+      const u = m.user || m;
+      return isEligibleAssignee(u.role);
+    });
+
+  const eligibleOrgUsers = usersList.filter(u => isEligibleAssignee(u.role));
 
   if (loading) {
     return (
@@ -228,20 +277,8 @@ const TasksPage = () => {
 
         {/* Leadership actions: CEO, CTO, PM, TL can assign tasks */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          {/* Dedicated Self-Assign action for Project Managers and Team Leads */}
-          {['PM', 'TL'].includes(user.role) && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => openNewTaskModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <UserCheck size={16} color="var(--brand-600)" />
-              Self-Assign Task
-            </button>
-          )}
-
           {['CEO', 'CTO', 'PM', 'TL'].includes(user.role) && (
-            <button className="btn btn-primary" onClick={() => openNewTaskModal(false)}>
+            <button className="btn btn-primary" onClick={() => openNewTaskModal()}>
               <Plus size={16} /> New Task
             </button>
           )}
@@ -341,7 +378,7 @@ const TasksPage = () => {
                 <h3 className="font-bold text-base mb-1.5" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
                   {task.title}
                 </h3>
-                <p className="text-sm text-secondary mb-4" style={{
+                <p className="text-sm text-secondary mb-3" style={{
                   display: '-webkit-box',
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
@@ -350,6 +387,40 @@ const TasksPage = () => {
                 }}>
                   {task.description}
                 </p>
+
+                {/* Attachments Display */}
+                {task.attachments && task.attachments.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
+                    {task.attachments.map((att) => (
+                      <a
+                        key={att.id}
+                        href={att.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '3px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'var(--subtle)',
+                          border: '1px solid var(--border)',
+                          fontSize: '11px',
+                          color: 'var(--brand-700)',
+                          textDecoration: 'none',
+                          transition: 'all var(--transition-fast)'
+                        }}
+                        title={`Open attachment: ${att.file_name}`}
+                      >
+                        <Paperclip size={11} />
+                        <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {att.file_name}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Quick Actions for Self-Assigned or Assigned Tasks */}
@@ -480,18 +551,10 @@ const TasksPage = () => {
             <div className="flex justify-between items-center mb-5">
               <div>
                 <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                  {assignedTo === user?.id
-                    ? 'Self-Assign Task'
-                    : user?.role === 'TL'
-                      ? 'Assign Task to Team Member'
-                      : 'Assign New Task'}
+                  {user?.role === 'TL' ? 'Assign Task to Team Member' : 'Assign New Task'}
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
-                  {assignedTo === user?.id
-                    ? `Assigning deliverable directly to yourself (${user?.first_name} ${user?.last_name})`
-                    : user?.role === 'TL'
-                      ? 'Assign deliverable to a member of your team or self-assign'
-                      : 'Dispatch task deliverables to team members or self-assign'}
+                  Dispatch deliverables and instructions to team members
                 </p>
               </div>
               <button
@@ -535,54 +598,23 @@ const TasksPage = () => {
                 </select>
                 {user?.role === 'TL' && (
                   <p className="text-xs text-secondary mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                    As Team Lead, you can assign tasks to all members of this team or self-assign to yourself.
+                    As Team Lead, you can assign tasks to members of this team or to yourself.
                   </p>
                 )}
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label className="text-xs font-semibold text-secondary block">Assign To User *</label>
-                  {user && (
-                    <button
-                      type="button"
-                      onClick={() => setAssignedTo(user.id)}
-                      style={{
-                        background: assignedTo === user.id ? 'var(--brand-100)' : 'var(--subtle)',
-                        color: assignedTo === user.id ? 'var(--brand-700)' : 'var(--text-secondary)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--radius-full)',
-                        padding: '2px 10px',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <Check size={12} /> Assign to myself ({user.first_name})
-                    </button>
-                  )}
-                </div>
-
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Assign To User *</label>
                 <select
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
                   className="input"
                   required
                 >
-                  {/* Current user at top for rapid self-assignment */}
-                  {user && (
-                    <option value={user.id} style={{ fontWeight: 'bold' }}>
-                      ⭐ Myself - {user.first_name} {user.last_name} ({user.role}{user.department ? ` · ${user.department}` : ''}) [Self-Assign]
-                    </option>
-                  )}
-
                   {user?.role === 'TL' ? (
-                    otherTeamMembers.length > 0 ? (
-                      <optgroup label={`Team Members (${otherTeamMembers.length})`}>
-                        {otherTeamMembers.map(m => {
+                    eligibleTeamMembers.length > 0 ? (
+                      <optgroup label={`Team Members (${eligibleTeamMembers.length})`}>
+                        {eligibleTeamMembers.map(m => {
                           const u = m.user || m;
                           return (
                             <option key={u.id} value={u.id}>
@@ -592,25 +624,25 @@ const TasksPage = () => {
                         })}
                       </optgroup>
                     ) : (
-                      <option disabled value="">No other members in this team yet</option>
+                      <option disabled value="">No eligible members in this team</option>
                     )
                   ) : (
                     <>
-                      {otherTeamMembers.length > 0 && (
-                        <optgroup label={`Team Members (${otherTeamMembers.length})`}>
-                          {otherTeamMembers.map(m => {
+                      {eligibleTeamMembers.length > 0 && (
+                        <optgroup label={`Team Members (${eligibleTeamMembers.length})`}>
+                          {eligibleTeamMembers.map(m => {
                             const u = m.user || m;
                             return (
                               <option key={u.id} value={u.id}>
-                                {u.first_name} {u.last_name} ({u.role || 'Member'}{u.department ? ` · ${u.department}` : ''})
+                                {u.first_name} {u.last_name} ({u.role || 'Member'}{u.department ? ` · ${u.department}` : ''}){m.is_lead ? ' [Team Lead]' : ''}
                               </option>
                             );
                           })}
                         </optgroup>
                       )}
-                      <optgroup label="Other Organization Users">
-                        {usersList
-                          .filter(u => String(u.id) !== String(user?.id) && !otherTeamMembers.some(m => String(m.user?.id || m.user_id || m.id) === String(u.id)))
+                      <optgroup label="Organization Users">
+                        {eligibleOrgUsers
+                          .filter(u => !eligibleTeamMembers.some(m => String(m.user?.id || m.id) === String(u.id)))
                           .map(u => (
                             <option key={u.id} value={u.id}>
                               {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''})
@@ -645,6 +677,84 @@ const TasksPage = () => {
                   style={{ resize: 'vertical' }}
                   required
                 />
+
+                {/* Attach icon and files preview */}
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border)',
+                        background: 'var(--subtle)',
+                        color: 'var(--text-primary)',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--brand-500)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--subtle)'; }}
+                    >
+                      <Paperclip size={14} color="var(--brand-600)" />
+                      <span>Attach files (Images, Videos, Documents)</span>
+                    </button>
+                    <span className="text-xs text-secondary">
+                      {attachedFiles.length > 0 ? `${attachedFiles.length} file${attachedFiles.length > 1 ? 's' : ''} attached` : 'Supports images, videos & documents'}
+                    </span>
+                  </div>
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    multiple
+                    accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                    style={{ display: 'none' }}
+                  />
+
+                  {attachedFiles.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                      {attachedFiles.map((file, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--surface-hover)',
+                            border: '1px solid var(--border)',
+                            fontSize: '11px',
+                            color: 'var(--text-primary)'
+                          }}
+                        >
+                          {getFileIcon(file.type)}
+                          <span style={{ maxWidth: '170px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {file.name}
+                          </span>
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: '10px' }}>
+                            ({formatFileSize(file.size)})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeAttachedFile(idx)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px', display: 'flex', alignItems: 'center', color: 'var(--text-tertiary)' }}
+                            title="Remove attachment"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -687,11 +797,7 @@ const TasksPage = () => {
                   className="btn btn-primary"
                   disabled={submitting}
                 >
-                  {submitting
-                    ? 'Assigning Task...'
-                    : assignedTo === user?.id
-                      ? 'Self-Assign Task'
-                      : 'Assign Task'}
+                  {submitting ? 'Assigning Task...' : 'Assign Task'}
                 </button>
               </div>
             </form>

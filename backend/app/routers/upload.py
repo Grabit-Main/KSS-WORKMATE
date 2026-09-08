@@ -41,17 +41,31 @@ async def upload_file(
     else:
         # Get project name for folder hierarchy
         team = db.query(Team).filter(Team.id == task.team_id).first()
-        project = db.query(Project).filter(Project.id == team.project_id).first()
-        result = gdrive_service.upload_file(content, file.filename, project.name, str(task_id))
-        attachment = TaskAttachment(
-            task_id=task_id,
-            uploaded_by=user.id,
-            file_name=file.filename,
-            file_type="document",
-            file_url=result["url"],
-            storage_provider="gdrive",
-            gdrive_file_id=result["file_id"],
-        )
+        project = db.query(Project).filter(Project.id == team.project_id).first() if team else None
+        project_name = project.name if project else "General"
+        try:
+            result = gdrive_service.upload_file(content, file.filename, project_name, str(task_id))
+            attachment = TaskAttachment(
+                task_id=task_id,
+                uploaded_by=user.id,
+                file_name=file.filename,
+                file_type="document",
+                file_url=result["url"],
+                storage_provider="gdrive",
+                gdrive_file_id=result.get("file_id"),
+            )
+        except Exception:
+            # Fallback to Cloudinary raw upload
+            result = cloudinary_service.upload_file(content, file.filename)
+            attachment = TaskAttachment(
+                task_id=task_id,
+                uploaded_by=user.id,
+                file_name=file.filename,
+                file_type="document",
+                file_url=result["url"],
+                storage_provider="cloudinary",
+                cloudinary_public_id=result.get("public_id"),
+            )
 
     db.add(attachment)
     db.commit()

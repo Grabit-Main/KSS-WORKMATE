@@ -76,6 +76,19 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
     if not lead and user.role not in ("CEO", "CTO", "PM"):
         raise HTTPException(403, "Only Team Leads can create tasks")
 
+    # Find target assignee user
+    target_user = db.query(User).filter(User.id == req.assigned_to).first()
+    if not target_user:
+        raise HTTPException(404, "Assignee user not found")
+
+    # Rule: No one can assign tasks to CEO or CTO
+    if target_user.role in ("CEO", "CTO"):
+        raise HTTPException(400, "Tasks cannot be assigned to CEO or CTO.")
+
+    # Rule: TM cannot assign tasks to PM
+    if user.role == "TM" and target_user.role == "PM":
+        raise HTTPException(400, "Team Members (TM) cannot assign tasks to Project Managers (PM).")
+
     # If user is TL, ensure assignee is either themselves or a member of that team
     if user.role == "TL":
         is_self = str(req.assigned_to) == str(user.id)
@@ -215,6 +228,19 @@ async def reassign_task(task_id: UUID, req: ReassignRequest, db: Session = Depen
     ).first()
     if not lead and user.role not in ("CEO", "CTO", "PM"):
         raise HTTPException(403, "Only Team Leads can reassign tasks")
+
+    # Find target assignee user
+    target_user = db.query(User).filter(User.id == req.assigned_to).first()
+    if not target_user:
+        raise HTTPException(404, "Assignee user not found")
+
+    # Rule: No one can assign tasks to CEO or CTO
+    if target_user.role in ("CEO", "CTO"):
+        raise HTTPException(400, "Tasks cannot be assigned to CEO or CTO.")
+
+    # Rule: TM cannot assign tasks to PM
+    if user.role == "TM" and target_user.role == "PM":
+        raise HTTPException(400, "Team Members (TM) cannot assign tasks to Project Managers (PM).")
 
     if user.role == "TL":
         is_self = str(req.assigned_to) == str(user.id)
