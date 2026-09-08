@@ -10,6 +10,7 @@ import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
 import { AttachmentCard } from '../components/common/AttachmentCard';
+import { formatDeadlineWithTime } from '../components/projects/DayWiseTaskPlanner';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
   Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle
@@ -489,8 +490,8 @@ const TasksPage = () => {
                           </span>
                         )}
                         <span className="text-xs font-medium" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isOverdue ? '#DC2626' : 'var(--text-secondary)' }}>
-                          <Calendar size={13} strokeWidth={1.8} style={{ color: isOverdue ? '#DC2626' : 'var(--text-tertiary)' }} />
-                          {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          <Clock size={13} strokeWidth={1.8} style={{ color: isOverdue ? '#DC2626' : 'var(--text-tertiary)' }} />
+                          {formatDeadlineWithTime(task.deadline)}
                         </span>
                       </div>
                     )}

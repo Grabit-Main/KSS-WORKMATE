@@ -20,25 +20,52 @@ export const formatDateDDMMYYYY = (date) => {
   return `${day}-${month}-${year}`;
 };
 
+// Format deadline with time (e.g. "08-09-2026 at 06:00 PM")
+export const formatDeadlineWithTime = (dateVal) => {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return String(dateVal);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const datePart = `${day}-${month}-${year}`;
+  const timePart = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${datePart} at ${timePart}`;
+};
+
+// Normalize any date representation into DD-MM-YYYY strictly without timezone drift
+export const normalizeToDDMMYYYY = (val) => {
+  if (!val) return '';
+  if (typeof val !== 'string') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? '' : formatDateDDMMYYYY(d);
+  }
+  const clean = val.trim();
+  // Match DD-MM-YYYY or DD/MM/YYYY
+  const ddmmyyyy = clean.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
+  if (ddmmyyyy) {
+    return `${ddmmyyyy[1]}-${ddmmyyyy[2]}-${ddmmyyyy[3]}`;
+  }
+  // Match YYYY-MM-DD or YYYY/MM/DD (even if followed by T or space and time, e.g. 2026-09-08T14:30:00Z)
+  const yyyymmdd = clean.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
+  if (yyyymmdd) {
+    return `${yyyymmdd[3]}-${yyyymmdd[2]}-${yyyymmdd[1]}`;
+  }
+  const d = new Date(clean);
+  return isNaN(d.getTime()) ? clean : formatDateDDMMYYYY(d);
+};
+
 // Parse a date string to timestamp for sorting and comparisons
 export const parseDateStringToTimestamp = (str) => {
   if (!str) return 0;
-  if (typeof str === 'string') {
-    const parts = str.split('-');
+  const norm = normalizeToDDMMYYYY(str);
+  if (norm) {
+    const parts = norm.split('-');
     if (parts.length === 3) {
-      if (parts[0].length === 2 && parts[2].length === 4) {
-        // DD-MM-YYYY
-        const d = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        const y = parseInt(parts[2], 10);
-        return new Date(y, m, d).getTime();
-      } else if (parts[0].length === 4) {
-        // YYYY-MM-DD
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        const d = parseInt(parts[2], 10);
-        return new Date(y, m, d).getTime();
-      }
+      const d = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const y = parseInt(parts[2], 10);
+      return new Date(y, m, d).getTime();
     }
   }
   const parsed = new Date(str);
@@ -48,9 +75,10 @@ export const parseDateStringToTimestamp = (str) => {
 // Parse a DD-MM-YYYY string to Date object
 export const parseDateString = (str) => {
   if (!str) return new Date();
-  if (typeof str === 'string') {
-    const parts = str.split('-');
-    if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+  const norm = normalizeToDDMMYYYY(str);
+  if (norm) {
+    const parts = norm.split('-');
+    if (parts.length === 3) {
       const d = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10) - 1;
       const y = parseInt(parts[2], 10);
@@ -59,21 +87,6 @@ export const parseDateString = (str) => {
   }
   const parsed = new Date(str);
   return isNaN(parsed.getTime()) ? new Date() : parsed;
-};
-
-// Normalize any date representation into DD-MM-YYYY
-export const normalizeToDDMMYYYY = (val) => {
-  if (!val) return '';
-  if (/^\d{2}-\d{2}-\d{4}$/.test(val)) return val;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-    const [y, m, d] = val.split('-');
-    return `${d}-${m}-${y}`;
-  }
-  const d = new Date(val);
-  if (!isNaN(d.getTime())) {
-    return formatDateDDMMYYYY(d);
-  }
-  return val;
 };
 
 // Generate 5 consecutive dates starting from today in DD-MM-YYYY format
@@ -108,9 +121,42 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [newTaskAssignee, setNewTaskAssignee] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState('normal');
+  const [newTaskScheduledDate, setNewTaskScheduledDate] = useState('');
   const [newTaskDeadline, setNewTaskDeadline] = useState('');
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Helper to open the allocation modal with pre-configured scheduled date and deadline time
+  const handleOpenAddModal = (targetDate = activeDate) => {
+    setFormError('');
+    const sDate = targetDate || activeDate;
+    setNewTaskScheduledDate(sDate);
+    // Build default deadline datetime-local (e.g. target date at 18:00 / 6:00 PM)
+    const norm = normalizeToDDMMYYYY(sDate);
+    if (norm) {
+      const [d, m, y] = norm.split('-');
+      setNewTaskDeadline(`${y}-${m}-${d}T18:00`);
+    } else {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      setNewTaskDeadline(`${y}-${m}-${d}T18:00`);
+    }
+    setShowAddModal(true);
+  };
+
+  const handleScheduledDateChange = (newDate) => {
+    setNewTaskScheduledDate(newDate);
+    const norm = normalizeToDDMMYYYY(newDate);
+    if (norm) {
+      const [d, m, y] = norm.split('-');
+      const currentTime = (newTaskDeadline && newTaskDeadline.includes('T'))
+        ? newTaskDeadline.split('T')[1]
+        : '18:00';
+      setNewTaskDeadline(`${y}-${m}-${d}T${currentTime}`);
+    }
+  };
 
   // Task Details & Chat Modal
   const [selectedTask, setSelectedTask] = useState(null);
@@ -255,6 +301,15 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
       setFormError('Please select an assignee.');
       return;
     }
+    const finalScheduledDate = normalizeToDDMMYYYY(newTaskScheduledDate || activeDate);
+    if (!finalScheduledDate) {
+      setFormError('Please select a valid scheduled date.');
+      return;
+    }
+    if (!newTaskDeadline) {
+      setFormError('Please select the deadline date and time.');
+      return;
+    }
     setCreating(true);
     setFormError('');
     try {
@@ -265,15 +320,23 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
         description: newTaskDesc.trim() || 'No description provided.',
         assigned_to: newTaskAssignee,
         priority: newTaskPriority,
-        deadline: newTaskDeadline ? new Date(newTaskDeadline).toISOString() : null,
-        scheduled_date: activeDate
+        deadline: new Date(newTaskDeadline).toISOString(),
+        scheduled_date: finalScheduledDate
       });
+
+      // Ensure the scheduled date exists in the date tabs and activate it so the newly created task displays immediately
+      if (!dates.includes(finalScheduledDate)) {
+        setDates(prev => Array.from(new Set([...prev, finalScheduledDate])).sort((a, b) => parseDateStringToTimestamp(a) - parseDateStringToTimestamp(b)));
+      }
+      setActiveDate(finalScheduledDate);
+
       setShowAddModal(false);
       setNewTaskTitle('');
       setNewTaskDesc('');
       setNewTaskAssignee('');
       setNewTaskPriority('normal');
       setNewTaskDeadline('');
+      setNewTaskScheduledDate('');
       loadData();
     } catch (err) {
       setFormError(err.response?.data?.detail || 'Failed to create task.');
@@ -399,10 +462,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
             {/* Add Task for Date Button (Team Leads only) */}
             {canAllocate && (
               <button
-                onClick={() => {
-                  setFormError('');
-                  setShowAddModal(true);
-                }}
+                onClick={() => handleOpenAddModal(activeDate)}
                 className="btn btn-primary"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 14px' }}
               >
@@ -594,10 +654,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                     Assign tasks to squad members on this date or click "Pre-fill Tasks" to build a standard roadmap.
                   </p>
                   <button
-                    onClick={() => {
-                      setFormError('');
-                      setShowAddModal(true);
-                    }}
+                    onClick={() => handleOpenAddModal(activeDate)}
                     className="btn btn-primary"
                     style={{ fontSize: '12px', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
@@ -676,9 +733,29 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                       <h4 className="font-bold text-sm mb-1.5" style={{ color: 'var(--text-primary)', lineHeight: 1.4 }}>
                         {t.title}
                       </h4>
-                      <p className="text-xs text-secondary text-truncate-2" style={{ lineHeight: 1.5, marginBottom: '14px' }}>
+                      <p className="text-xs text-secondary text-truncate-2" style={{ lineHeight: 1.5, marginBottom: '10px' }}>
                         {t.description || 'No description provided.'}
                       </p>
+
+                      {/* Explicit Deadline with Date & Time display */}
+                      {t.deadline && (
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 9px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: isOverdue ? 'rgba(239, 68, 68, 0.08)' : 'var(--subtle)',
+                          border: `1px solid ${isOverdue ? 'rgba(239, 68, 68, 0.25)' : 'var(--border)'}`,
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: isOverdue ? '#DC2626' : 'var(--text-secondary)',
+                          marginBottom: '12px'
+                        }}>
+                          <Clock size={12} style={{ color: isOverdue ? '#DC2626' : 'var(--brand-500)', flexShrink: 0 }} />
+                          <span>Deadline: {formatDeadlineWithTime(t.deadline)}</span>
+                        </div>
+                      )}
 
                       {t.attachments && t.attachments.length > 0 && (
                         <div
@@ -859,6 +936,30 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">
+                    Scheduled Date *
+                  </label>
+                  <select
+                    value={newTaskScheduledDate || activeDate}
+                    onChange={(e) => handleScheduledDateChange(e.target.value)}
+                    className="input"
+                    required
+                  >
+                    {dates.map(d => (
+                      <option key={d} value={d}>
+                        {d} {d === formatDateDDMMYYYY(new Date()) ? '(Today)' : ''}
+                      </option>
+                    ))}
+                    {!dates.includes(newTaskScheduledDate) && newTaskScheduledDate && (
+                      <option value={newTaskScheduledDate}>{newTaskScheduledDate}</option>
+                    )}
+                  </select>
+                  <span className="text-xs text-tertiary mt-1 block" style={{ fontSize: '10px' }}>
+                    Task displays strictly on this date tab
+                  </span>
+                </div>
+
+                <div>
                   <label className="text-xs font-semibold text-secondary mb-1.5 block">Priority</label>
                   <select
                     value={newTaskPriority}
@@ -871,16 +972,22 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                     <option value="urgent">Urgent</option>
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Deadline</label>
-                  <input
-                    type="date"
-                    value={newTaskDeadline}
-                    onChange={(e) => setNewTaskDeadline(e.target.value)}
-                    className="input"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">
+                  Target Deadline & Time *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={newTaskDeadline}
+                  onChange={(e) => setNewTaskDeadline(e.target.value)}
+                  className="input"
+                  required
+                />
+                <span className="text-xs text-tertiary mt-1 block" style={{ fontSize: '11px' }}>
+                  Specify both completion date and cutoff time (e.g., 06:00 PM)
+                </span>
               </div>
 
               <div>
@@ -909,7 +1016,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                   className="btn btn-primary"
                   disabled={creating}
                 >
-                  {creating ? 'Allocating...' : `Allocate Task on ${activeDate}`}
+                  {creating ? 'Allocating...' : `Allocate Task for ${newTaskScheduledDate || activeDate}`}
                 </button>
               </div>
             </form>

@@ -14,7 +14,7 @@ import {
   Pencil, AlertTriangle
 } from 'lucide-react';
 import { AttachmentCard } from '../components/common/AttachmentCard';
-import { DayWiseTaskPlanner } from '../components/projects/DayWiseTaskPlanner';
+import { DayWiseTaskPlanner, formatDeadlineWithTime, normalizeToDDMMYYYY } from '../components/projects/DayWiseTaskPlanner';
 
 const ProjectsPage = () => {
   const { user } = useAuth();
@@ -1692,9 +1692,16 @@ const ProjectsPage = () => {
                             {t.title}
                           </span>
                         </div>
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                          {getUserFullName(t.assignee)}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                          {t.deadline && (
+                            <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Deadline & Time">
+                              <Clock size={11} /> {formatDeadlineWithTime(t.deadline)}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                            {getUserFullName(t.assignee)}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
