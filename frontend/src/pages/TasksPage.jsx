@@ -123,18 +123,30 @@ const TasksPage = () => {
 
       const defaultTeam = myTeams.length > 0 ? myTeams[0] : (teamsData[0] || null);
 
-      const tlTeamEligible = (defaultTeam?.memberships || [])
-        .map(m => m.user || m)
-        .filter(u => isEligibleAssignee(u.role));
+      // Collect all eligible members across ALL myTeams for Team Leads
+      const allMembersAcrossMyTeams = [];
+      myTeams.forEach(team => {
+        (team.memberships || []).forEach(m => {
+          const u = m.user || m;
+          if (isEligibleAssignee(u.role)) {
+            allMembersAcrossMyTeams.push({
+              ...u,
+              teamId: team.id,
+              teamName: team.name,
+              isLead: m.is_lead
+            });
+          }
+        });
+      });
 
       const orgEligible = usersData.filter(u => isEligibleAssignee(u.role));
-      const candidates = user?.role === 'TL' ? tlTeamEligible : orgEligible;
+      const candidates = user?.role === 'TL' ? allMembersAcrossMyTeams : orgEligible;
 
       if (candidates.length > 0) {
         const firstCandidate = candidates[0];
         setAssignedTo(firstCandidate.id);
-        const candTeam = teamsData.find(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(firstCandidate.id)));
-        setTeamId(candTeam?.id || defaultTeam?.id || '');
+        const candTeamId = firstCandidate.teamId || defaultTeam?.id || '';
+        setTeamId(candTeamId);
       } else {
         setAssignedTo('');
         setTeamId(defaultTeam?.id || '');
@@ -144,15 +156,32 @@ const TasksPage = () => {
     }
   };
 
-  const handleAssigneeChange = (newUserId) => {
-    setAssignedTo(newUserId);
-    const userTeam = teams.find(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(newUserId)));
-    if (userTeam) {
-      setTeamId(userTeam.id);
-    } else if (user?.role === 'TL' && availableTeams.length > 0) {
-      setTeamId(availableTeams[0].id);
-    } else if (teams.length > 0) {
-      setTeamId(teams[0].id);
+  const handleAssigneeChange = (value) => {
+    if (value.includes(':::')) {
+      const [uId, tId] = value.split(':::');
+      setAssignedTo(uId);
+      if (tId) setTeamId(tId);
+    } else {
+      setAssignedTo(value);
+      const curTeam = availableTeams.find(t => String(t.id) === String(teamId));
+      const inCurTeam = curTeam?.memberships?.some(m => String(m.user_id || m.user?.id) === String(value));
+      if (!inCurTeam) {
+        const matchingTeam = availableTeams.find(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(value)));
+        if (matchingTeam) {
+          setTeamId(matchingTeam.id);
+        }
+      }
+    }
+  };
+
+  const handleTeamChange = (newTeamId) => {
+    setTeamId(newTeamId);
+    const targetTeam = availableTeams.find(t => String(t.id) === String(newTeamId));
+    const members = (targetTeam?.memberships || [])
+      .map(m => m.user || m)
+      .filter(u => isEligibleAssignee(u.role));
+    if (members.length > 0 && !members.some(m => String(m.id) === String(assignedTo))) {
+      setAssignedTo(members[0].id);
     }
   };
 
@@ -221,6 +250,8 @@ const TasksPage = () => {
         assigned_to: assignedTo,
         priority,
         deadline: deadline ? new Date(deadline).toISOString() : null,
+        project_id: null,
+        scheduled_date: null
       });
 
       // Upload attached files if any
@@ -293,13 +324,6 @@ const TasksPage = () => {
   const availableTeams = user?.role === 'TL'
     ? teams.filter(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(user?.id)))
     : teams;
-
-  const currentSelectedTeam = (availableTeams.length > 0 ? availableTeams : teams).find(t => String(t.id) === String(teamId)) || (availableTeams[0] || teams[0]);
-  const eligibleTeamMembers = (currentSelectedTeam?.memberships || [])
-    .filter(m => {
-      const u = m.user || m;
-      return isEligibleAssignee(u.role);
-    });
 
   const eligibleOrgUsers = usersList.filter(u => isEligibleAssignee(u.role));
 
@@ -648,46 +672,116 @@ const TasksPage = () => {
             )}
 
             <form onSubmit={handleCreateTask} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Assign To User *</label>
-                <select
-                  value={assignedTo}
-                  onChange={(e) => handleAssigneeChange(e.target.value)}
-                  className="input"
-                  required
-                >
-                  {user?.role === 'TL' ? (
-                    eligibleTeamMembers.length > 0 ? (
-                      <optgroup label={`Your Team Members (${eligibleTeamMembers.length})`}>
-                        {eligibleTeamMembers.map(m => {
-                          const u = m.user || m;
+              <div style={{ display: 'grid', gridTemplateColumns: availableTeams.length > 1 ? '1fr 1fr' : '1fr', gap: '16px' }}>
+                {availableTeams.length > 1 && (
+                  <div>
+                    <label className="text-xs font-semibold text-secondary mb-1.5 block">Responsible Group / Team *</label>
+                    <select
+                      value={teamId}
+                      onChange={(e) => handleTeamChange(e.target.value)}
+                      className="input"
+                      required
+                    >
+                      {availableTeams.map(t => {
+                        const count = (t.memberships || []).filter(m => isEligibleAssignee((m.user || m).role)).length;
+                        return (
+                          <option key={t.id} value={t.id}>
+                            {t.name} ({count} eligible member{count === 1 ? '' : 's'})
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <p className="text-xs text-secondary mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                      {user?.role === 'TL' ? `You manage ${availableTeams.length} groups` : 'Target group'}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Assign To User *</label>
+                  <select
+                    value={assignedTo && teamId ? `${assignedTo}:::${teamId}` : assignedTo}
+                    onChange={(e) => handleAssigneeChange(e.target.value)}
+                    className="input"
+                    required
+                  >
+                    {user?.role === 'TL' ? (
+                      availableTeams.length > 0 ? (
+                        availableTeams.map(team => {
+                          const members = (team.memberships || [])
+                            .map(m => ({ ...(m.user || m), is_lead: m.is_lead }))
+                            .filter(u => isEligibleAssignee(u.role));
+
+                          if (members.length === 0) {
+                            return (
+                              <optgroup key={team.id} label={`${team.name} (0 members)`}>
+                                <option disabled value="">No eligible members in this group</option>
+                              </optgroup>
+                            );
+                          }
+
                           return (
-                            <option key={u.id} value={u.id}>
-                              {u.first_name} {u.last_name} ({u.role || 'Member'}{u.department ? ` · ${u.department}` : ''}){m.is_lead ? ' [Team Lead]' : ''}
-                            </option>
+                            <optgroup key={team.id} label={`${team.name} (${members.length} members)`}>
+                              {members.map(m => (
+                                <option key={`${team.id}-${m.id}`} value={`${m.id}:::${team.id}`}>
+                                  {m.first_name} {m.last_name} ({m.role || 'Member'}{m.department ? ` · ${m.department}` : ''}){m.is_lead ? ' [Team Lead]' : ''} — {team.name}
+                                </option>
+                              ))}
+                            </optgroup>
                           );
-                        })}
-                      </optgroup>
+                        })
+                      ) : (
+                        <option disabled value="">No eligible groups found for your account</option>
+                      )
                     ) : (
-                      <option disabled value="">No eligible members in your team</option>
-                    )
-                  ) : (
-                    eligibleOrgUsers.map(u => {
-                      const userTeams = teams
-                        .filter(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(u.id)))
-                        .map(t => t.name)
-                        .join(', ');
-                      return (
-                        <option key={u.id} value={u.id}>
-                          {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''}){userTeams ? ` [${userTeams}]` : ''}
-                        </option>
-                      );
-                    })
-                  )}
-                </select>
-                <p className="text-xs text-secondary mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                  Select the person responsible for delivering this task.
-                </p>
+                      // CEO, CTO, PM: Group by team so members are organized by group
+                      availableTeams.length > 0 ? (
+                        <>
+                          {availableTeams.map(team => {
+                            const members = (team.memberships || [])
+                              .map(m => ({ ...(m.user || m), is_lead: m.is_lead }))
+                              .filter(u => isEligibleAssignee(u.role));
+                            if (members.length === 0) return null;
+                            return (
+                              <optgroup key={team.id} label={`${team.name} (${members.length} members)`}>
+                                {members.map(m => (
+                                  <option key={`${team.id}-${m.id}`} value={`${m.id}:::${team.id}`}>
+                                    {m.first_name} {m.last_name} ({m.role || 'Member'}{m.department ? ` · ${m.department}` : ''}){m.is_lead ? ' [Lead]' : ''} — {team.name}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            );
+                          })}
+                          {(() => {
+                            const teamMemberUserIds = new Set(
+                              availableTeams.flatMap(t => (t.memberships || []).map(m => String(m.user_id || m.user?.id)))
+                            );
+                            const unassignedUsers = eligibleOrgUsers.filter(u => !teamMemberUserIds.has(String(u.id)));
+                            if (unassignedUsers.length === 0) return null;
+                            return (
+                              <optgroup label={`Other Organization Members (${unassignedUsers.length})`}>
+                                {unassignedUsers.map(u => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            );
+                          })()}
+                        </>
+                      ) : (
+                        eligibleOrgUsers.map(u => (
+                          <option key={u.id} value={u.id}>
+                            {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''})
+                          </option>
+                        ))
+                      )
+                    )}
+                  </select>
+                  <p className="text-xs text-secondary mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                    All members across your responsible groups are visible above.
+                  </p>
+                </div>
               </div>
 
               <div>

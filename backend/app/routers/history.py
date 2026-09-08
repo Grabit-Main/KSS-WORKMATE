@@ -190,9 +190,7 @@ def get_tasks_history(
     result = []
     for t in tasks:
         team = db.query(Team).filter(Team.id == t.team_id).first() if t.team_id else None
-        project = db.query(Project).filter(Project.id == t.project_id).first() if t.project_id else (
-            db.query(Project).filter(Project.id == team.project_id).first() if (team and team.project_id) else None
-        )
+        project = db.query(Project).filter(Project.id == t.project_id).first() if t.project_id else None
 
         logs = db.query(TaskStatusLog).filter(TaskStatusLog.task_id == t.id).order_by(TaskStatusLog.created_at.desc()).all()
         log_list = [{
@@ -216,7 +214,7 @@ def get_tasks_history(
             "updated_at": t.updated_at.isoformat() if t.updated_at else None,
             "is_locked": t.is_locked,
             "team_name": team.name if team else "General",
-            "project_name": project.name if project else "General Project",
+            "project_name": project.name if project else "Standalone Task",
             "assignee": _user_dict(t.assignee),
             "assigner": _user_dict(t.assigner),
             "status_logs": log_list
@@ -269,10 +267,8 @@ def get_activity_history(
     for lg in t_logs:
         task = db.query(Task).filter(Task.id == lg.task_id).first()
         team = db.query(Team).filter(Team.id == task.team_id).first() if (task and task.team_id) else None
-        project = db.query(Project).filter(Project.id == task.project_id).first() if (task and task.project_id) else (
-            db.query(Project).filter(Project.id == team.project_id).first() if (team and team.project_id) else None
-        )
-        is_project_task = bool(project is not None)
+        project = db.query(Project).filter(Project.id == task.project_id).first() if (task and task.project_id) else None
+        is_project_task = bool(task and task.project_id is not None)
         events.append({
             "id": f"task-log-{lg.id}",
             "type": "task",
