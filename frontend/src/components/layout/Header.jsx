@@ -441,34 +441,6 @@ export const Header = ({ title }) => {
                   <button
                     onClick={() => {
                       setShowProfileMenu(false);
-                      navigate('/profile');
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: 'none',
-                      background: 'transparent',
-                      color: 'var(--text-primary)',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'background var(--transition-fast)',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <User size={15} style={{ color: 'var(--text-secondary)' }} />
-                    <span>Edit Profile Settings</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
                       logout();
                     }}
                     style={{

@@ -25,16 +25,18 @@ const ProfilePage = () => {
   const [avatarErrorMsg, setAvatarErrorMsg] = useState('');
   const fileInputRef = useRef(null);
 
-  // Password Change with OTP State
-  const [otpSent, setOtpSent] = useState(false);
+  // Progressive Password Change with OTP State
+  // 'idle' -> 'send_otp' -> 'enter_otp' -> 'set_new_password'
+  const [passwordFlowStep, setPasswordFlowStep] = useState('idle');
   const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [changingPass, setChangingPass] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
-  const [changingPass, setChangingPass] = useState(false);
   const [passSuccessMsg, setPassSuccessMsg] = useState('');
   const [passErrorMsg, setPassErrorMsg] = useState('');
 
@@ -151,8 +153,9 @@ const ProfilePage = () => {
     }
   };
 
-  // 3. Password Change with OTP
-  const handleRequestOtp = async () => {
+  // 3. Progressive Password Change Flow:
+  // Step 1: Send OTP
+  const handleSendOtp = async () => {
     if (resendTimer > 0) return;
     setOtpSending(true);
     setPassErrorMsg('');
@@ -160,9 +163,9 @@ const ProfilePage = () => {
 
     try {
       await api.post('/auth/send-password-otp');
-      setOtpSent(true);
       setResendTimer(60);
-      setPassSuccessMsg(`A 6-digit verification code has been sent to ${user?.email}`);
+      setPasswordFlowStep('enter_otp');
+      setPassSuccessMsg(`A 6-digit OTP code has been sent to ${user?.email}`);
     } catch (err) {
       setPassErrorMsg(err.response?.data?.detail || 'Failed to send OTP code. Please try again.');
     } finally {
@@ -170,12 +173,35 @@ const ProfilePage = () => {
     }
   };
 
-  const handleChangePassword = async (e) => {
+  // Step 2: Verify OTP
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    if (!otpCode.trim()) {
-      setPassErrorMsg('Please enter the 6-digit verification OTP');
+    if (!otpCode.trim() || otpCode.trim().length !== 6) {
+      setPassErrorMsg('Please enter a valid 6-digit OTP code');
       return;
     }
+
+    setOtpVerifying(true);
+    setPassErrorMsg('');
+    setPassSuccessMsg('');
+
+    try {
+      await api.post('/auth/verify-otp', {
+        email: user.email,
+        otp: otpCode.trim(),
+      });
+      setPasswordFlowStep('set_new_password');
+      setPassSuccessMsg('OTP verified successfully! Please enter your new password.');
+    } catch (err) {
+      setPassErrorMsg(err.response?.data?.detail || 'Invalid or expired OTP code. Please try again.');
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  // Step 3: Set New Password & Confirm Password
+  const handleFinalPasswordChange = async (e) => {
+    e.preventDefault();
     if (newPassword.length < 6) {
       setPassErrorMsg('New password must be at least 6 characters long');
       return;
@@ -200,13 +226,22 @@ const ProfilePage = () => {
       setOtpCode('');
       setNewPassword('');
       setConfirmPassword('');
-      setOtpSent(false);
+      setPasswordFlowStep('idle');
       setResendTimer(0);
+      setTimeout(() => setPassSuccessMsg(''), 6000);
     } catch (err) {
-      setPassErrorMsg(err.response?.data?.detail || 'Failed to change password. Ensure the OTP is correct.');
+      setPassErrorMsg(err.response?.data?.detail || 'Failed to update password. Ensure OTP is correct.');
     } finally {
       setChangingPass(false);
     }
+  };
+
+  const handleCancelPasswordFlow = () => {
+    setPasswordFlowStep('idle');
+    setOtpCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPassErrorMsg('');
   };
 
   if (!user) return null;
@@ -592,7 +627,7 @@ const ProfilePage = () => {
             </form>
           </div>
 
-          {/* Card 2: Security & Password Change (with OTP verification) */}
+          {/* Card 2: Security & Password Change (Progressive Step Flow) */}
           <div className="card" style={{
             padding: '28px',
             background: 'var(--surface-glass)',
@@ -616,208 +651,372 @@ const ProfilePage = () => {
               </div>
               <div>
                 <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
-                  Change Password (OTP Verification)
+                  Change Password
                 </h3>
                 <p className="text-xs text-secondary">
-                  For your security, changing your password requires verifying a 6-digit code sent to your registered email.
+                  Update your account password securely using email verification.
                 </p>
               </div>
             </div>
 
-            {/* Step 1: Request OTP */}
-            <div style={{
-              padding: '16px 18px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--subtle-glass)',
-              border: '1px solid var(--border)',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '16px',
-              flexWrap: 'wrap'
-            }}>
-              <div>
-                <span className="font-semibold text-xs block" style={{ color: 'var(--text-primary)' }}>
-                  Send OTP Code to Email
-                </span>
-                <span className="text-xs text-secondary mt-0.5 block">
-                  Code will be sent to <strong>{user.email}</strong>
-                </span>
+            {/* Global feedback alerts for password actions */}
+            {passSuccessMsg && (
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--status-completed-bg)',
+                color: 'var(--status-completed)',
+                fontSize: '13px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '16px'
+              }}>
+                <CheckCircle2 size={16} />
+                <span>{passSuccessMsg}</span>
               </div>
+            )}
 
-              <button
-                type="button"
-                onClick={handleRequestOtp}
-                disabled={otpSending || resendTimer > 0}
-                className="btn btn-secondary"
-                style={{ gap: '8px', fontSize: '13px' }}
-              >
-                {otpSending ? (
-                  <>
-                    <RefreshCw size={14} className="animate-spin" />
-                    <span>Sending Code...</span>
-                  </>
-                ) : resendTimer > 0 ? (
-                  <span>Resend Code ({resendTimer}s)</span>
-                ) : (
-                  <>
-                    <Mail size={14} />
-                    <span>{otpSent ? 'Resend OTP Code' : 'Send Verification OTP'}</span>
-                  </>
-                )}
-              </button>
-            </div>
+            {passErrorMsg && (
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--status-blocked-bg)',
+                color: 'var(--status-blocked)',
+                fontSize: '13px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '16px'
+              }}>
+                <AlertCircle size={16} />
+                <span>{passErrorMsg}</span>
+              </div>
+            )}
 
-            {/* Step 2: Enter OTP & New Password */}
-            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">
-                  6-Digit Verification OTP *
-                </label>
-                <div style={{ position: 'relative' }}>
+            {/* STEP 0: Idle State - Initial "Change Password" Button */}
+            {passwordFlowStep === 'idle' && (
+              <div style={{
+                padding: '18px 20px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--subtle-glass)',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '16px'
+              }}>
+                <div>
+                  <span className="font-semibold text-sm block" style={{ color: 'var(--text-primary)' }}>
+                    Account Security Credentials
+                  </span>
+                  <span className="text-xs text-secondary mt-0.5 block">
+                    Requires a one-time OTP verification code sent to your registered email.
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPasswordFlowStep('send_otp');
+                    setPassErrorMsg('');
+                    setPassSuccessMsg('');
+                  }}
+                  className="btn btn-primary"
+                  style={{ gap: '8px', padding: '10px 22px' }}
+                >
+                  <KeyRound size={16} />
+                  <span>Change Password</span>
+                </button>
+              </div>
+            )}
+
+            {/* STEP 1: "Send OTP Code to Email Code will be sent to <Mail>" & "Send OTP" button */}
+            {passwordFlowStep === 'send_otp' && (
+              <div style={{
+                padding: '20px 22px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--subtle-glass)',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '16px'
+              }}>
+                <div>
+                  <h4 className="font-bold text-sm" style={{ color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    Send OTP Code to Email
+                  </h4>
+                  <p className="text-xs text-secondary">
+                    Code will be sent to <strong>{user.email}</strong>
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={handleCancelPasswordFlow}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '13px', padding: '9px 16px' }}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={otpSending}
+                    className="btn btn-primary"
+                    style={{ gap: '8px', fontSize: '13px', padding: '9px 20px' }}
+                  >
+                    {otpSending ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        <span>Sending OTP...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mail size={14} />
+                        <span>Send OTP</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: Ask for OTP & Submit button */}
+            {passwordFlowStep === 'enter_otp' && (
+              <form onSubmit={handleVerifyOtp} style={{
+                padding: '20px 22px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--subtle-glass)',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <h4 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+                      Enter 6-Digit Verification OTP
+                    </h4>
+                    <p className="text-xs text-secondary mt-0.5">
+                      Verification code sent to <strong>{user.email}</strong>
+                    </p>
+                  </div>
+
+                  {resendTimer > 0 ? (
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                      Resend in {resendTimer}s
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--brand-600)',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      Resend OTP
+                    </button>
+                  )}
+                </div>
+
+                <div>
                   <input
                     type="text"
                     maxLength={6}
+                    autoFocus
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                     className="input"
-                    placeholder="e.g. 123456"
+                    placeholder="123456"
                     style={{
-                      letterSpacing: '6px',
-                      fontSize: '18px',
+                      letterSpacing: '8px',
+                      fontSize: '20px',
                       fontWeight: 700,
                       textAlign: 'center',
                       fontFamily: 'monospace',
-                      maxWidth: '240px'
+                      maxWidth: '260px',
+                      margin: '6px auto 0',
+                      display: 'block'
                     }}
                     required
                   />
+                  <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '8px', textAlign: 'center' }}>
+                    Code expires in 10 minutes.
+                  </p>
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
-                  Enter the 6-digit code received on your email. Code expires in 10 minutes.
-                </span>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <label className="text-xs font-semibold text-secondary mb-1.5 block">New Password *</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showNewPass ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="input"
-                      placeholder="Minimum 6 characters"
-                      required
-                      style={{ paddingRight: '40px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPass(!showNewPass)}
-                      style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-tertiary)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={handleCancelPasswordFlow}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '13px', padding: '9px 16px' }}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={otpVerifying || otpCode.trim().length !== 6}
+                    className="btn btn-primary"
+                    style={{ gap: '8px', fontSize: '13px', padding: '9px 22px' }}
+                  >
+                    {otpVerifying ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check size={15} />
+                        <span>Submit OTP</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 3: When typed and submitted, New Pass and Confirm Pass come */}
+            {passwordFlowStep === 'set_new_password' && (
+              <form onSubmit={handleFinalPasswordChange} style={{
+                padding: '20px 22px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--subtle-glass)',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '18px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'var(--status-completed-bg)',
+                    color: 'var(--status-completed)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <CheckCircle2 size={13} /> OTP Verified
+                  </span>
+                  <span className="text-xs text-secondary">
+                    Please set your new password below.
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label className="text-xs font-semibold text-secondary mb-1.5 block">New Password *</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showNewPass ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="input"
+                        placeholder="Minimum 6 characters"
+                        required
+                        autoFocus
+                        style={{ paddingRight: '40px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPass(!showNewPass)}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-tertiary)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-secondary mb-1.5 block">Confirm Password *</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showConfirmPass ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="input"
+                        placeholder="Re-enter new password"
+                        required
+                        style={{ paddingRight: '40px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPass(!showConfirmPass)}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-tertiary)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-secondary mb-1.5 block">Confirm New Password *</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showConfirmPass ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="input"
-                      placeholder="Re-enter new password"
-                      required
-                      style={{ paddingRight: '40px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPass(!showConfirmPass)}
-                      style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-tertiary)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={handleCancelPasswordFlow}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '13px', padding: '9px 16px' }}
+                  >
+                    Cancel
+                  </button>
 
-              {passSuccessMsg && (
-                <div style={{
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'var(--status-completed-bg)',
-                  color: 'var(--status-completed)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <CheckCircle2 size={16} />
-                  <span>{passSuccessMsg}</span>
+                  <button
+                    type="submit"
+                    disabled={changingPass || !newPassword || !confirmPassword}
+                    className="btn btn-primary"
+                    style={{ gap: '8px', padding: '10px 24px' }}
+                  >
+                    {changingPass ? (
+                      <>
+                        <RefreshCw size={15} className="animate-spin" />
+                        <span>Updating Password...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={16} />
+                        <span>Save New Password</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-              )}
-
-              {passErrorMsg && (
-                <div style={{
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'var(--status-blocked-bg)',
-                  color: 'var(--status-blocked)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <AlertCircle size={16} />
-                  <span>{passErrorMsg}</span>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
-                <button
-                  type="submit"
-                  disabled={changingPass || !otpCode}
-                  className="btn btn-primary"
-                  style={{ gap: '8px', padding: '10px 24px' }}
-                >
-                  {changingPass ? (
-                    <>
-                      <RefreshCw size={15} className="animate-spin" />
-                      <span>Updating Password...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={16} />
-                      <span>Verify OTP & Change Password</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+              </form>
+            )}
           </div>
 
         </div>
