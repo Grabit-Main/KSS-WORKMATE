@@ -32,6 +32,8 @@ def get_user_analytics(user_id: UUID, period: str = "monthly", db: Session = Dep
 def get_daily_me(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user.role in ("CEO", "CTO", "HR"):
         return analytics_service.get_organization_analytics(db, "daily")
+    if user.role == "PM":
+        return analytics_service.get_pm_analytics(db, str(user.id), "daily")
     return analytics_service.get_user_analytics(db, str(user.id), "daily")
 
 
@@ -39,6 +41,8 @@ def get_daily_me(db: Session = Depends(get_db), user: User = Depends(get_current
 def get_weekly_me(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user.role in ("CEO", "CTO", "HR"):
         return analytics_service.get_organization_analytics(db, "weekly")
+    if user.role == "PM":
+        return analytics_service.get_pm_analytics(db, str(user.id), "weekly")
     return analytics_service.get_user_analytics(db, str(user.id), "weekly")
 
 
@@ -46,4 +50,6 @@ def get_weekly_me(db: Session = Depends(get_db), user: User = Depends(get_curren
 def get_monthly_me(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user.role in ("CEO", "CTO", "HR"):
         return analytics_service.get_organization_analytics(db, "monthly")
+    if user.role == "PM":
+        return analytics_service.get_pm_analytics(db, str(user.id), "monthly")
     return analytics_service.get_user_analytics(db, str(user.id), "monthly")

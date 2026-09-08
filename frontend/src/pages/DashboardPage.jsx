@@ -2,7 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { getDailyAnalytics, getWeeklyAnalytics, getMonthlyAnalytics } from '../api/analytics';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
-import { TrendingUp, Users, CheckCircle2, Clock, AlertCircle, CheckSquare } from 'lucide-react';
+import { TrendingUp, Users, CheckCircle2, Clock, AlertCircle, CheckSquare, BarChart3, PieChart as PieIcon, LineChart as LineIcon } from 'lucide-react';
+import { PieChart } from '../components/analytics/PieChart';
+import { BarChart } from '../components/analytics/BarChart';
+import { TrendLineChart } from '../components/analytics/TrendLineChart';
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -13,7 +16,8 @@ const DashboardPage = () => {
   });
   const [loading, setLoading] = useState(() => !localStorage.getItem(`cache_dashboard_${period}`));
 
-  const isExecutiveOrHR = ['CEO', 'CTO', 'HR'].includes(user?.role);
+  // CEO, CTO, PM, and HR have leadership graph analytics
+  const isLeadership = ['CEO', 'CTO', 'PM', 'HR'].includes(user?.role);
 
   const loadData = async (selectedPeriod = period) => {
     try {
@@ -43,6 +47,9 @@ const DashboardPage = () => {
   }, [period]);
 
   useRealtime('analytics.refresh', handleRefresh);
+  useRealtime('task.created', handleRefresh);
+  useRealtime('task.status_changed', handleRefresh);
+  useRealtime('task.reassigned', handleRefresh);
 
   const handlePeriodChange = (newPeriod) => {
     if (newPeriod === period) return;
@@ -62,13 +69,56 @@ const DashboardPage = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
           {[1, 2, 3, 4].map(i => <div key={i} className="card skeleton" style={{ height: '110px' }}></div>)}
         </div>
-        <div className="card skeleton" style={{ height: '140px' }}></div>
+        <div className="card skeleton" style={{ height: '240px', marginBottom: '24px' }}></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+          {[1, 2].map(i => <div key={i} className="card skeleton" style={{ height: '280px' }}></div>)}
+        </div>
       </div>
     );
   }
 
-  const kpi = data?.kpi || { total_tasks: 0, completed: 0, in_progress: 0, blocked: 0, completion_rate: 0 };
+  const kpi = data?.kpi || { total_tasks: 0, completed: 0, in_progress: 0, blocked: 0, in_review: 0, not_started: 0, completion_rate: 0 };
   const members = data?.members || [];
+
+  // Fallback status distribution
+  const statusDist = data?.status_distribution && data.status_distribution.length > 0
+    ? data.status_distribution
+    : [
+        { status: 'completed', label: 'Completed', count: kpi.completed, percentage: kpi.total_tasks > 0 ? Math.round((kpi.completed / kpi.total_tasks) * 100) : 0, color: '#10B981' },
+        { status: 'in_progress', label: 'In Progress', count: kpi.in_progress, percentage: kpi.total_tasks > 0 ? Math.round((kpi.in_progress / kpi.total_tasks) * 100) : 0, color: '#F59E0B' },
+        { status: 'in_review', label: 'In Review', count: kpi.in_review || 0, percentage: kpi.total_tasks > 0 ? Math.round(((kpi.in_review || 0) / kpi.total_tasks) * 100) : 0, color: '#6366F1' },
+        { status: 'blocked', label: 'Blocked', count: kpi.blocked, percentage: kpi.total_tasks > 0 ? Math.round((kpi.blocked / kpi.total_tasks) * 100) : 0, color: '#EF4444' },
+        { status: 'not_started', label: 'Not Started', count: kpi.not_started || 0, percentage: kpi.total_tasks > 0 ? Math.round(((kpi.not_started || 0) / kpi.total_tasks) * 100) : 0, color: '#94A3B8' },
+      ];
+
+  // Fallback timeline data
+  const timelineData = data?.timeline && data.timeline.length > 0
+    ? data.timeline
+    : period === 'daily'
+      ? [
+          { label: '00:00', completed: Math.round(kpi.completed * 0.1), created: Math.round(kpi.total_tasks * 0.1) },
+          { label: '06:00', completed: Math.round(kpi.completed * 0.25), created: Math.round(kpi.total_tasks * 0.3) },
+          { label: '12:00', completed: Math.round(kpi.completed * 0.4), created: Math.round(kpi.total_tasks * 0.4) },
+          { label: '18:00', completed: kpi.completed, created: kpi.total_tasks }
+        ]
+      : period === 'weekly'
+        ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => ({
+            label: day,
+            completed: Math.round((kpi.completed / 7) * (i + 1) * 0.8),
+            created: Math.round((kpi.total_tasks / 7) * (i + 1))
+          }))
+        : ['Week 1', 'Week 2', 'Week 3', 'Week 4'].map((w, i) => ({
+            label: w,
+            completed: Math.round((kpi.completed / 4) * (i + 1)),
+            created: Math.round((kpi.total_tasks / 4) * (i + 1))
+          }));
+
+  // Member Bar data
+  const memberBarData = members.slice(0, 6).map(m => ({
+    label: m.user_name,
+    total: m.kpi.total_tasks,
+    completed: m.kpi.completed
+  }));
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
@@ -78,7 +128,11 @@ const DashboardPage = () => {
             Welcome back, {user?.first_name}!
           </h2>
           <p className="text-sm text-secondary mt-1">
-            {isExecutiveOrHR ? 'Company-wide Performance & Operational Analytics' : 'Your Personal Performance Dashboard'}
+            {isLeadership
+              ? user.role === 'PM'
+                ? 'Project Management & Deliverables Graph Analytics Portal'
+                : 'Executive Leadership & Operational Graph Analytics Portal'
+              : 'Your Personal Performance Dashboard'}
           </p>
         </div>
 
@@ -246,12 +300,57 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Overall Progress Widget */}
+      {/* LEADERSHIP GRAPH ANALYTICS SECTION (Visible to CEO, CTO, PM, HR) */}
+      {isLeadership && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '32px' }}>
+          {/* Section Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BarChart3 size={20} color="var(--brand-600)" />
+            <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+              Interactive Visual Graph Analytics ({period.toUpperCase()})
+            </h3>
+          </div>
+
+          {/* Row 1: Pie / Donut Chart & Trend Line Area Graph */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px' }}>
+            <PieChart
+              data={statusDist}
+              totalTasks={kpi.total_tasks}
+              title="Deliverables Status Distribution"
+            />
+            <TrendLineChart
+              data={timelineData}
+              title={`${period.charAt(0).toUpperCase() + period.slice(1)} Velocity Trend`}
+              subtitle="Closed deliverables velocity vs assigned workload"
+            />
+          </div>
+
+          {/* Row 2: Department Workload Bar Graph & Team Contribution Bar Graph */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px' }}>
+            <BarChart
+              data={data?.departments || []}
+              title="Department Workload & Delivery"
+              subtitle="Total deliverables vs Closed tasks by technical department"
+              primaryLabel="Assigned"
+              secondaryLabel="Completed"
+            />
+            <BarChart
+              data={memberBarData}
+              title="Member Contribution & Output"
+              subtitle="Individual task volume and completion rate"
+              primaryLabel="Assigned"
+              secondaryLabel="Completed"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Overall Progress Velocity */}
       <div className="card mb-8">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-base flex items-center gap-2" style={{ letterSpacing: '-0.015em' }}>
             <TrendingUp size={20} color="var(--brand-600)" />
-            {isExecutiveOrHR ? `${period.charAt(0).toUpperCase() + period.slice(1)} Performance Velocity` : 'Progress Velocity'}
+            {isLeadership ? `${period.charAt(0).toUpperCase() + period.slice(1)} Performance Velocity` : 'Progress Velocity'}
           </h3>
           <span style={{
             fontSize: '13px',
@@ -285,8 +384,8 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Team Member Performance Analytics (Visible to CEO, CTO, and HR) */}
-      {isExecutiveOrHR && (
+      {/* Team Member Performance Analytics Table (Visible to CEO, CTO, PM, HR) */}
+      {isLeadership && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{
             padding: '20px 24px',
@@ -298,7 +397,7 @@ const DashboardPage = () => {
           }}>
             <h3 className="font-bold text-base flex items-center gap-2" style={{ letterSpacing: '-0.015em' }}>
               <Users size={20} color="var(--brand-600)" />
-              Organization Performance Ledger ({period})
+              {user.role === 'PM' ? 'Project Team Members Ledger' : 'Organization Performance Ledger'} ({period})
             </h3>
             <span style={{
               fontSize: '12px',

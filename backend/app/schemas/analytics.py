@@ -21,7 +21,34 @@ class UserAnalytics(BaseModel):
     kpi: KPIData
 
 
+class TimelineDataPoint(BaseModel):
+    label: str
+    completed: int
+    created: int
+    in_progress: int
+
+
+class DepartmentAnalytics(BaseModel):
+    department: str
+    total_tasks: int
+    completed: int
+    in_progress: int
+    completion_rate: float
+
+
+class StatusDistribution(BaseModel):
+    status: str
+    label: str
+    count: int
+    percentage: float
+    color: str
+
+
 class AnalyticsResponse(BaseModel):
     period: str  # daily, weekly, monthly
     kpi: KPIData
     members: Optional[List[UserAnalytics]] = None
+    timeline: Optional[List[TimelineDataPoint]] = None
+    departments: Optional[List[DepartmentAnalytics]] = None
+    status_distribution: Optional[List[StatusDistribution]] = None
+
