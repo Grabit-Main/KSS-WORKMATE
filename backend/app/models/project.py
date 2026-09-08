@@ -20,6 +20,7 @@ class Project(Base):
 
     teams = relationship("Team", back_populates="project", cascade="all, delete-orphan")
     creator = relationship("User", foreign_keys=[created_by])
+    status_logs = relationship("ProjectStatusLog", back_populates="project", cascade="all, delete-orphan")
 
 
 class Team(Base):
@@ -47,3 +48,19 @@ class TeamMembership(Base):
 
     team = relationship("Team", back_populates="memberships")
     user = relationship("User")
+
+
+class ProjectStatusLog(Base):
+    __tablename__ = "project_status_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    from_status = Column(String, nullable=False)
+    to_status = Column(String, nullable=False)
+    changed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project", back_populates="status_logs")
+    changer = relationship("User")
+

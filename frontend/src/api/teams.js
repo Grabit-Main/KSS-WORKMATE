@@ -1,5 +1,6 @@
 import api from './axios';
 
+export const getTeams = async () => (await api.get('/teams')).data;
 export const createTeam = async (data) => (await api.post('/teams', data)).data;
 export const getTeam = async (id) => (await api.get(`/teams/${id}`)).data;
 export const addMember = async (teamId, data) => (await api.post(`/teams/${teamId}/members`, data)).data;

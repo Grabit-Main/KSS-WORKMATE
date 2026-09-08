@@ -70,6 +70,8 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
         raise HTTPException(403, "Only Team Leads can create tasks")
     task = Task(**req.model_dump(), assigned_by=user.id)
     db.add(task)
+    db.flush()
+    _log_status(db, task, "created", "not_started", user.id, f"Task assigned by {user.role} {user.first_name} {user.last_name}")
     _notify(db, req.assigned_to, "New Task Assigned", f"You have a new task: {req.title}", TASK_CREATED, None)
     db.commit()
     db.refresh(task)
@@ -182,6 +184,7 @@ async def reassign_task(task_id: UUID, req: ReassignRequest, db: Session = Depen
     old_assignee = task.assigned_to
     task.assigned_to = req.assigned_to
     task.status = "not_started"
+    _log_status(db, task, "reassigned", "not_started", user.id, f"Task reassigned by {user.role} {user.first_name} {user.last_name}")
     _notify(db, req.assigned_to, "Task Reassigned to You", f"Task '{task.title}' has been reassigned to you.", TASK_REASSIGNED, task.id)
     db.commit()
     db.refresh(task)

@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, CheckSquare, Users, MessageSquare, Folders, Star, Settings } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Users, MessageSquare, Folders, Star, Settings, History } from 'lucide-react';
 
 export const Sidebar = () => {
   const { user } = useAuth();
@@ -11,7 +11,8 @@ export const Sidebar = () => {
     { to: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/projects', icon: <Folders size={20} />, label: 'Projects', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/tasks', icon: <CheckSquare size={20} />, label: 'Tasks', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
-    { to: '/reviews', icon: <Star size={20} />, label: 'Reviews', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
+    { to: '/feedback', icon: <Star size={20} />, label: 'Feedback', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
+    { to: '/history', icon: <History size={20} />, label: 'History', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
   ];
 
   if (['CEO', 'CTO'].includes(user.role)) {

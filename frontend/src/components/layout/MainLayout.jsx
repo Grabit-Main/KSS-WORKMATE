@@ -13,7 +13,8 @@ export const MainLayout = () => {
     if (path.startsWith('/tasks')) return 'Tasks';
     if (path.startsWith('/teams')) return 'Teams';
     if (path.startsWith('/users')) return 'Users';
-    if (path.startsWith('/reviews')) return 'Reviews';
+    if (path.startsWith('/feedback') || path.startsWith('/reviews')) return 'Feedback';
+    if (path.startsWith('/history')) return 'History';
     return 'Workmate';
   };
 

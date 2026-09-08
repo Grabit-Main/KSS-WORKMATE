@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 from app.database import get_db
-from app.models.project import Project
+from app.models.project import Project, ProjectStatusLog
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
-from app.dependencies import get_current_user, require_pm_up
+from app.dependencies import get_current_user
 from app.websocket.manager import manager
 from app.websocket.events import PROJECT_CREATED, PROJECT_UPDATED
 
@@ -28,13 +28,26 @@ def list_projects(db: Session = Depends(get_db), user: User = Depends(get_curren
         q = q.filter(Project.id.in_(project_ids))
     elif user.role == "PM":
         q = q.filter(Project.created_by == user.id)
-    return q.all()
+    # CEO and CTO have company-wide visibility to oversee projects
+    return q.order_by(Project.created_at.desc()).all()
 
 
 @router.post("", response_model=ProjectResponse)
-async def create_project(req: ProjectCreate, db: Session = Depends(get_db), user: User = Depends(require_pm_up)):
+async def create_project(req: ProjectCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Restrict project creation to PM only (CEO and CTO do not assign projects)
+    if user.role != "PM":
+        raise HTTPException(403, "Only Project Managers (PM) can create and assign projects. CEO and CTO oversee and assign tasks.")
     project = Project(**req.model_dump(), created_by=user.id)
     db.add(project)
+    db.flush()
+    log = ProjectStatusLog(
+        project_id=project.id,
+        from_status="created",
+        to_status=project.status or "active",
+        changed_by=user.id,
+        notes="Project created and assigned by PM"
+    )
+    db.add(log)
     db.commit()
     db.refresh(project)
     event = {"type": PROJECT_CREATED, "data": {"id": str(project.id), "name": project.name}}
@@ -51,12 +64,24 @@ def get_project(project_id: UUID, db: Session = Depends(get_db), user: User = De
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
-async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Depends(get_db), user: User = Depends(require_pm_up)):
+async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(404, "Project not found")
+    if user.role not in ("PM", "CEO", "CTO"):
+        raise HTTPException(403, "Insufficient permissions to update project")
+    old_status = project.status
     for field, val in req.model_dump(exclude_none=True).items():
         setattr(project, field, val)
+    if req.status and req.status != old_status:
+        log = ProjectStatusLog(
+            project_id=project.id,
+            from_status=old_status,
+            to_status=req.status,
+            changed_by=user.id,
+            notes=f"Project status updated to {req.status}"
+        )
+        db.add(log)
     db.commit()
     db.refresh(project)
     event = {"type": PROJECT_UPDATED, "data": {"id": str(project.id), "name": project.name, "status": project.status}}

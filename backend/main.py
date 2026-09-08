@@ -4,7 +4,7 @@ from app.config import settings
 
 from app.routers import (
     auth, users, projects, teams, tasks,
-    chat, upload, analytics, reviews, notifications
+    chat, upload, analytics, reviews, notifications, history
 )
 from app.websocket.router import router as websocket_router
 
@@ -27,6 +27,7 @@ app.include_router(chat.router)
 app.include_router(upload.router)
 app.include_router(analytics.router)
 app.include_router(reviews.router)
+app.include_router(history.router)
 app.include_router(notifications.router)
 app.include_router(websocket_router)
 

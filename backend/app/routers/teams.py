@@ -14,7 +14,9 @@ router = APIRouter(prefix="/api/teams", tags=["teams"])
 
 
 @router.post("", response_model=TeamResponse)
-async def create_team(req: TeamCreate, db: Session = Depends(get_db), user: User = Depends(require_pm_up)):
+async def create_team(req: TeamCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role != "PM":
+        raise HTTPException(403, "Only Project Managers (PM) can create teams and assign projects")
     team = Team(project_id=req.project_id, name=req.name, created_by=user.id)
     db.add(team)
     db.commit()
@@ -23,6 +25,11 @@ async def create_team(req: TeamCreate, db: Session = Depends(get_db), user: User
     await manager.broadcast("global:admins", event)
     await manager.broadcast(f"project:{req.project_id}", event)
     return team
+
+
+@router.get("", response_model=List[TeamResponse])
+def list_teams(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return db.query(Team).all()
 
 
 @router.get("/{team_id}", response_model=TeamResponse)
@@ -34,7 +41,9 @@ def get_team(team_id: UUID, db: Session = Depends(get_db), _=Depends(get_current
 
 
 @router.post("/{team_id}/members")
-async def add_member(team_id: UUID, req: AddMemberRequest, db: Session = Depends(get_db), user: User = Depends(require_pm_up)):
+async def add_member(team_id: UUID, req: AddMemberRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role != "PM":
+        raise HTTPException(403, "Only Project Managers (PM) can assign members and teams to projects")
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(404, "Team not found")
@@ -85,7 +94,9 @@ async def update_member(team_id: UUID, user_id: UUID, req: SetLeadRequest, db: S
 
 
 @router.delete("/{team_id}/members/{user_id}")
-async def remove_member(team_id: UUID, user_id: UUID, db: Session = Depends(get_db), user: User = Depends(require_pm_up)):
+async def remove_member(team_id: UUID, user_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role != "PM":
+        raise HTTPException(403, "Only Project Managers (PM) can remove team members from projects")
     m = db.query(TeamMembership).filter(TeamMembership.team_id == team_id, TeamMembership.user_id == user_id).first()
     if not m:
         raise HTTPException(404, "Member not found")
