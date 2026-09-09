@@ -33,8 +33,10 @@ async def _broadcast_task(task, team_id, event_type):
         "type": event_type,
         "data": {
             "id": str(task.id),
+            "task_id": str(task.id),
             "title": task.title,
             "status": task.status,
+            "project_id": str(task.project_id) if task.project_id else None,
             "team_id": str(team_id) if team_id else None,
             "assigned_to": str(task.assigned_to) if task.assigned_to else None,
             "assigned_by": str(task.assigned_by) if task.assigned_by else None,

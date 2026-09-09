@@ -5,6 +5,7 @@ import { getUsers } from '../../api/users';
 import { getTeams } from '../../api/teams';
 import { AttachmentCard } from '../common/AttachmentCard';
 import { useRealtime } from '../../realtime/useRealtime';
+import { useWebSocket } from '../../context/WebSocketContext';
 import { formatDateTime, normalizeToDDMMYYYY, getDeadlineStatus } from '../../utils/dateUtils';
 import {
   X, Calendar, Clock, Play, CheckCircle2, User,
@@ -18,6 +19,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
   const [currentTask, setCurrentTask] = useState(task);
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const { dispatch } = useWebSocket() || {};
 
   // Real-time synchronization for active task
   useRealtime('task.status_changed', (data) => {
@@ -129,6 +131,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
       const updated = await startTask(currentTask.id);
       setCurrentTask(updated);
       if (onTaskUpdated) onTaskUpdated(updated);
+      if (dispatch) dispatch('task.status_changed', { task_id: updated.id, id: updated.id, status: updated.status, project_id: updated.project_id });
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'Failed to start task.');
     } finally {
@@ -143,6 +146,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
       const updated = await completeTask(currentTask.id);
       setCurrentTask(updated);
       if (onTaskUpdated) onTaskUpdated(updated);
+      if (dispatch) dispatch('task.status_changed', { task_id: updated.id, id: updated.id, status: updated.status, project_id: updated.project_id });
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'Failed to submit task for review.');
     } finally {
@@ -157,6 +161,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
       const updated = await confirmTask(currentTask.id);
       setCurrentTask(updated);
       if (onTaskUpdated) onTaskUpdated(updated);
+      if (dispatch) dispatch('task.status_changed', { task_id: updated.id, id: updated.id, status: updated.status, is_locked: updated.is_locked, project_id: updated.project_id });
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'Failed to confirm task.');
     } finally {
@@ -173,6 +178,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
       const updated = await reassignTask(currentTask.id, reassignCandidate, reassignReason.trim() || undefined);
       setCurrentTask(updated);
       if (onTaskUpdated) onTaskUpdated(updated);
+      if (dispatch) dispatch('task.reassigned', { task_id: updated.id, id: updated.id, assigned_to: updated.assigned_to, project_id: updated.project_id });
       setShowReassignModal(false);
       setReassignReason('');
       const targetUser = eligibleMembers.find(m => String(m.id) === String(reassignCandidate));

@@ -112,9 +112,72 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
   const [teamId, setTeamId] = useState(null);
 
   // Role authorization: PMs, Team Leads, CEO, and CTO can allocate day-wise tasks
-  const { dispatch } = useWebSocket() || {};
+  const { dispatch, joinRoom, leaveRoom } = useWebSocket() || {};
   const isSquadLead = teamId && teamMembers.some(m => String(m.id) === String(currentUser?.id) && m.is_lead);
   const canAllocate = ['PM', 'TL', 'CEO', 'CTO'].includes(currentUser?.role) || isSquadLead;
+
+  // Join the project room for persistent real-time event streaming
+  useEffect(() => {
+    if (project?.id && joinRoom) {
+      joinRoom(`project:${project.id}`);
+      return () => {
+        if (leaveRoom) leaveRoom(`project:${project.id}`);
+      };
+    }
+  }, [project?.id, joinRoom, leaveRoom]);
+
+  // Real-time synchronization for project day-wise deliverables
+  useRealtime('task.status_changed', (eventData) => {
+    const tId = eventData?.task_id || eventData?.id;
+    if (!tId) return;
+    setTasks(prev => prev.map(t => {
+      if (String(t.id) === String(tId)) {
+        return {
+          ...t,
+          status: eventData.status || t.status,
+          is_locked: eventData.is_locked !== undefined ? eventData.is_locked : t.is_locked,
+          deadline_exceeded: eventData.deadline_exceeded !== undefined ? eventData.deadline_exceeded : t.deadline_exceeded
+        };
+      }
+      return t;
+    }));
+    setSelectedTask(curr => {
+      if (curr && String(curr.id) === String(tId)) {
+        return {
+          ...curr,
+          status: eventData.status || curr.status,
+          is_locked: eventData.is_locked !== undefined ? eventData.is_locked : curr.is_locked
+        };
+      }
+      return curr;
+    });
+  });
+
+  useRealtime('task.created', (eventData) => {
+    if (!eventData?.project_id || String(eventData.project_id) === String(project?.id)) {
+      loadData();
+    }
+  });
+
+  useRealtime('task.updated', (eventData) => {
+    const tId = eventData?.task_id || eventData?.id;
+    if (!tId) return;
+    setTasks(prev => prev.map(t => String(t.id) === String(tId) ? { ...t, ...eventData } : t));
+    setSelectedTask(curr => (curr && String(curr.id) === String(tId)) ? { ...curr, ...eventData } : curr);
+  });
+
+  useRealtime('task.reassigned', (eventData) => {
+    const tId = eventData?.task_id || eventData?.id;
+    if (!tId) return;
+    loadData();
+  });
+
+  useRealtime('task.locked', (eventData) => {
+    const tId = eventData?.task_id || eventData?.id;
+    if (!tId) return;
+    setTasks(prev => prev.map(t => String(t.id) === String(tId) ? { ...t, is_locked: true, status: 'completed' } : t));
+    setSelectedTask(curr => (curr && String(curr.id) === String(tId)) ? { ...curr, is_locked: true, status: 'completed' } : curr);
+  });
 
   // Modal State for New Task
   const [showAddModal, setShowAddModal] = useState(false);
@@ -1036,7 +1099,17 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
           onClose={() => setSelectedTask(null)}
           onTaskUpdated={(updated) => {
             setSelectedTask(updated);
-            setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
+            setTasks(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t));
+            if (dispatch) {
+              dispatch('task.status_changed', {
+                id: updated.id,
+                task_id: updated.id,
+                status: updated.status,
+                project_id: project.id,
+                is_locked: updated.is_locked,
+                deadline_exceeded: updated.deadline_exceeded
+              });
+            }
           }}
         />
       )}

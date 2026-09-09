@@ -106,8 +106,11 @@ const ProjectsPage = () => {
   useRealtime('project.updated', handleUpdate);
   useRealtime('team.created', handleUpdate);
   useRealtime('task.created', handleUpdate);
+  useRealtime('task.status_changed', handleUpdate);
   useRealtime('task.updated', handleUpdate);
   useRealtime('task.completed', handleUpdate);
+  useRealtime('task.reassigned', handleUpdate);
+  useRealtime('task.locked', handleUpdate);
 
   // Escape key handler to close modals & GDrive auth change listener
   useEffect(() => {

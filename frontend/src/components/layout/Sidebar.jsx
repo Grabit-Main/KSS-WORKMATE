@@ -1,15 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useWebSocket } from '../../context/WebSocketContext';
 import {
   LayoutDashboard, CheckSquare, Users, MessageSquare, Folders,
-  Star, Settings, History, UserCog, Radio
+  Star, Settings, History, UserCog
 } from 'lucide-react';
 
 export const Sidebar = () => {
   const { user } = useAuth();
-  const { isConnected } = useWebSocket();
 
   if (!user) return null;
 
@@ -87,36 +85,6 @@ export const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
-
-      {/* Live WebSocket Status Footer */}
-      <div style={{
-        padding: '10px 14px',
-        margin: '0 14px 16px 14px',
-        borderRadius: 'var(--radius-sm)',
-        background: 'var(--subtle-glass)',
-        border: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        fontSize: '11px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: isConnected ? '#10B981' : '#F59E0B',
-            boxShadow: isConnected ? '0 0 8px rgba(16, 185, 129, 0.6)' : '0 0 6px rgba(245, 158, 11, 0.4)',
-            transition: 'background var(--transition-fast)'
-          }} />
-          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-            {isConnected ? 'Realtime Connected' : 'Sync Engine Active'}
-          </span>
-        </div>
-        <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
-          {isConnected ? '0ms' : 'Polling'}
-        </span>
-      </div>
     </aside>
   );
 };
