@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { getHistorySummary, getProjectsHistory, getTasksHistory, getActivityHistory } from '../api/history';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
+import { formatDate, formatTime, formatDateTime, formatRelativeTime } from '../utils/dateUtils';
 import {
   History,
   CheckSquare,
@@ -731,7 +732,7 @@ const HistoryPage = () => {
                                   </span>
                                   <span className="text-xs text-secondary flex items-center gap-1 font-medium" style={{ fontSize: '11px' }}>
                                     <Clock size={11} />
-                                    {group.latest_created_at ? new Date(group.latest_created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + new Date(group.latest_created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                                    {group.latest_created_at ? formatDateTime(group.latest_created_at) : 'Recent'}
                                   </span>
                                 </div>
                                 <p style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
@@ -954,7 +955,7 @@ const HistoryPage = () => {
                                   </span>
                                   <span className="text-xs text-secondary flex items-center gap-1 font-medium" style={{ fontSize: '11px' }}>
                                     <Clock size={11} />
-                                    {group.latest_created_at ? new Date(group.latest_created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + new Date(group.latest_created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                                    {group.latest_created_at ? formatDateTime(group.latest_created_at) : 'Recent'}
                                   </span>
                                 </div>
                                 <p style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
@@ -1116,7 +1117,7 @@ const HistoryPage = () => {
                   {selectedActivityGroup.deadline && (
                     <span className="text-xs text-secondary font-medium flex items-center gap-1">
                       <Calendar size={12} />
-                      Deadline: {new Date(selectedActivityGroup.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      Deadline: {formatDate(selectedActivityGroup.deadline)}
                     </span>
                   )}
 
@@ -1220,7 +1221,7 @@ const HistoryPage = () => {
                           </span>
                           <span className="text-xs text-secondary flex items-center gap-1 font-medium">
                             <Clock size={11} />
-                            {evt.created_at ? new Date(evt.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + new Date(evt.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                            {evt.created_at ? formatDateTime(evt.created_at) : 'Recent'}
                           </span>
                         </div>
 
@@ -1311,11 +1312,11 @@ const HistoryPage = () => {
                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div className="text-xs text-secondary flex items-center gap-1 justify-end">
                       <Calendar size={13} />
-                      Created: {new Date(proj.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      Created: {formatDate(proj.created_at)}
                     </div>
                     {proj.deadline && (
                       <div className="text-xs font-medium" style={{ color: 'var(--brand-700)' }}>
-                        Deadline: {new Date(proj.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(proj.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        Deadline: {formatDateTime(proj.deadline)}
                       </div>
                     )}
                   </div>
@@ -1417,7 +1418,7 @@ const HistoryPage = () => {
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-tertiary)' }}>
                             <span>By: {log.changer ? `${log.changer.first_name} (${log.changer.role})` : 'System'}</span>
-                            <span>{new Date(log.created_at).toLocaleDateString()}</span>
+                            <span>{formatDate(log.created_at)}</span>
                           </div>
                         </div>
                       ))}
@@ -1537,7 +1538,7 @@ const HistoryPage = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                       <div className="text-xs text-secondary flex items-center gap-1">
                         <Calendar size={12} />
-                        {new Date(t.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {formatDate(t.created_at)}
                       </div>
 
                       <button
@@ -1574,7 +1575,7 @@ const HistoryPage = () => {
 
                     {t.deadline && (
                       <span className="text-xs text-secondary">
-                        Due: {new Date(t.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(t.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        Due: {formatDateTime(t.deadline)}
                       </span>
                     )}
                   </div>

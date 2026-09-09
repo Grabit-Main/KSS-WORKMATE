@@ -4,6 +4,7 @@ import { uploadFile } from '../../api/upload';
 import { useRealtime } from '../../realtime/useRealtime';
 import { useWebSocket } from '../../context/WebSocketContext';
 import { AttachmentCard } from '../common/AttachmentCard';
+import { formatTime } from '../../utils/dateUtils';
 import { Send, MessageSquare, Paperclip, X, Loader2 } from 'lucide-react';
 
 export const TaskChat = ({ task, currentUser }) => {
@@ -16,7 +17,7 @@ export const TaskChat = ({ task, currentUser }) => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const { joinRoom, leaveRoom } = useWebSocket();
+  const { joinRoom, leaveRoom, dispatch } = useWebSocket();
 
   // Identify counterpart
   const isAssignee = String(task.assigned_to) === String(currentUser.id);
@@ -52,34 +53,42 @@ export const TaskChat = ({ task, currentUser }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Realtime new message listener via WebSocket
+  // Realtime new message listener via WebSocket & EventBus
   useRealtime('chat.new_message', (eventData) => {
     if (String(eventData?.task_id) === String(task.id)) {
       setMessages(prev => {
-        if (prev.some(m => String(m.id) === String(eventData.id))) return prev;
-        return [...prev, eventData];
+        // Replace optimistic placeholder if matching message already present
+        const cleaned = prev.filter(m => !m.isOptimistic || m.message !== eventData.message);
+        if (cleaned.some(m => String(m.id) === String(eventData.id))) return cleaned;
+        return [...cleaned, eventData];
       });
       setTimeout(scrollToBottom, 50);
     }
   });
 
-  // Background fallback poll (every 3s when chat is open) to guarantee zero missed messages
+  // High-frequency smart fallback sync (every 600ms when chat is open) to guarantee near-instant message receipt
   useEffect(() => {
     if (!task?.id) return;
+    let isFetching = false;
     const interval = setInterval(() => {
+      if (isFetching || document.hidden) return;
+      isFetching = true;
       getChat(task.id)
         .then(data => {
           if (data && Array.isArray(data)) {
             setMessages(prev => {
-              if (data.length !== prev.length || JSON.stringify(data.map(d => d.id)) !== JSON.stringify(prev.map(p => p.id))) {
-                return data;
+              const optimisticMsgs = prev.filter(m => m.isOptimistic);
+              const realPrev = prev.filter(m => !m.isOptimistic);
+              if (data.length !== realPrev.length || JSON.stringify(data.map(d => d.id)) !== JSON.stringify(realPrev.map(p => p.id))) {
+                return [...data, ...optimisticMsgs.filter(opt => !data.some(d => d.message === opt.message && String(d.sender_id) === String(opt.sender_id)))];
               }
               return prev;
             });
           }
         })
-        .catch(() => {});
-    }, 3000);
+        .catch(() => {})
+        .finally(() => { isFetching = false; });
+    }, 600);
     return () => clearInterval(interval);
   }, [task?.id]);
 
@@ -98,6 +107,25 @@ export const TaskChat = ({ task, currentUser }) => {
 
     setSending(true);
     setNewMessage('');
+
+    // 0 ms Optimistic update for instant feedback
+    let tempId = null;
+    if (textToSend && !selectedFile) {
+      tempId = 'opt_' + Date.now();
+      const optimisticMsg = {
+        id: tempId,
+        task_id: task.id,
+        sender_id: currentUser.id,
+        sender_name: currentUser.full_name || `${currentUser.first_name} ${currentUser.last_name}`,
+        message: textToSend,
+        attachment_url: null,
+        attachment_type: null,
+        created_at: new Date().toISOString(),
+        isOptimistic: true
+      };
+      setMessages(prev => [...prev, optimisticMsg]);
+      setTimeout(scrollToBottom, 20);
+    }
 
     let attachmentUrl = null;
     let attachmentType = null;
@@ -122,13 +150,19 @@ export const TaskChat = ({ task, currentUser }) => {
 
       const sentMsg = await sendMessage(task.id, payload);
       setMessages(prev => {
-        if (prev.some(m => String(m.id) === String(sentMsg.id))) return prev;
-        return [...prev, sentMsg];
+        const withoutOpt = tempId ? prev.filter(m => m.id !== tempId) : prev;
+        if (withoutOpt.some(m => String(m.id) === String(sentMsg.id))) return withoutOpt;
+        return [...withoutOpt, sentMsg];
       });
+      if (dispatch) {
+        dispatch('chat.new_message', sentMsg);
+      }
       setTimeout(scrollToBottom, 50);
     } catch (err) {
       console.error('Failed to send message:', err);
-      // restore text if failed
+      if (tempId) {
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+      }
       if (textToSend) setNewMessage(textToSend);
     } finally {
       setSending(false);
@@ -298,7 +332,7 @@ export const TaskChat = ({ task, currentUser }) => {
                   <span>{isMe ? 'You' : (m.sender_name || getUserName(partnerUser))}</span>
                   <span>•</span>
                   <span>
-                    {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                    {m.created_at ? formatTime(m.created_at) : 'Now'}
                   </span>
                 </div>
               </div>

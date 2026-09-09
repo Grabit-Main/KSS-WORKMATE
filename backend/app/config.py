@@ -12,7 +12,9 @@ if os.path.exists(backend_env):
 class Settings(BaseSettings):
     SECRET_KEY: str = "secret-key-workmate-production"
     DEBUG: bool = False
-    ALLOWED_ORIGINS: str = "http://localhost:5173,https://kss-workmate.vercel.app,http://localhost:3000"
+    ALLOWED_ORIGINS: str = "https://kss-workmate.vercel.app"
+    BACKEND_URL: str = "https://kss-workmate.onrender.com"
+    FRONTEND_URL: str = "https://kss-workmate.vercel.app"
 
     DATABASE_URL: str = "postgresql://postgres.wdtvedyfmtdqnvvhgcso:Kalpanaaa123@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
     SUPABASE_URL: str = "https://wdtvedyfmtdqnvvhgcso.supabase.co"

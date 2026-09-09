@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useRealtime } from '../../realtime/useRealtime';
+import { formatRelativeTime } from '../../utils/dateUtils';
 import { Bell, LogOut, Check, User, ChevronRight, X } from 'lucide-react';
 import { getNotifications, markRead, markAllRead } from '../../api/notifications';
 
@@ -99,17 +100,21 @@ export const Header = ({ title }) => {
   }, []);
 
   const handleMarkRead = async (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     try {
       await markRead(id);
+    } catch (err) {
       loadNotifications();
-    } catch (err) {}
+    }
   };
 
   const handleMarkAllRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     try {
       await markAllRead();
+    } catch (err) {
       loadNotifications();
-    } catch (err) {}
+    }
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -263,11 +268,16 @@ export const Header = ({ title }) => {
                             {taskId && <ChevronRight size={14} color="var(--text-tertiary)" />}
                           </div>
                           <div className="text-xs text-secondary" style={{ lineHeight: 1.4 }}>{n.message || n.content}</div>
-                          {taskId && (
-                            <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600, marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                              Open task →
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+                            {taskId ? (
+                              <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                Open task →
+                              </span>
+                            ) : <span />}
+                            <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
+                              {n.created_at ? formatRelativeTime(n.created_at) : 'Just now'}
                             </span>
-                          )}
+                          </div>
                         </div>
                         {!n.is_read && (
                           <button

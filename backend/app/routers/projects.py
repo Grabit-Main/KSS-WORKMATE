@@ -68,6 +68,7 @@ async def create_project(req: ProjectCreate, db: Session = Depends(get_db), user
     db.refresh(project)
     event = {"type": PROJECT_CREATED, "data": {"id": str(project.id), "name": project.name}}
     await manager.broadcast("global:admins", event)
+    await manager.broadcast("global:all", event)
     return project
 
 
@@ -103,4 +104,5 @@ async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Dep
     event = {"type": PROJECT_UPDATED, "data": {"id": str(project.id), "name": project.name, "status": project.status}}
     await manager.broadcast(f"project:{project_id}", event)
     await manager.broadcast("global:admins", event)
+    await manager.broadcast("global:all", event)
     return project

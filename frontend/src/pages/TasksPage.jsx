@@ -13,22 +13,23 @@ import { AttachmentCard } from '../components/common/AttachmentCard';
 import { formatDeadlineWithTime } from '../components/projects/DayWiseTaskPlanner';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
-  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck
+  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2
 } from 'lucide-react';
 
 const TasksPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const targetTaskId = searchParams.get('taskId');
+  const { user } = useAuth();
+  const cacheKey = user ? `cache_tasks_${user.id}` : 'cache_tasks';
   const [tasks, setTasks] = useState(() => {
-    const cached = localStorage.getItem('cache_tasks');
+    const cached = localStorage.getItem(cacheKey) || localStorage.getItem('cache_tasks');
     return cached ? JSON.parse(cached) : [];
   });
-  const [loading, setLoading] = useState(() => !localStorage.getItem('cache_tasks'));
-  const [filterTab, setFilterTab] = useState('all'); // 'all', 'mine', 'review'
+  const [loading, setLoading] = useState(() => !(localStorage.getItem(cacheKey) || localStorage.getItem('cache_tasks')));
+  const [filterTab, setFilterTab] = useState('all'); // 'all', 'projects', 'standalone', 'mine', 'review'
   const [selectedTask, setSelectedTask] = useState(null);
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
-  const { joinRoom } = useWebSocket();
-  const { user } = useAuth();
+  const { joinRoom, dispatch } = useWebSocket();
 
   // Reassign Task State
   const [reassigningTask, setReassigningTask] = useState(null);
@@ -104,7 +105,7 @@ const TasksPage = () => {
     try {
       const data = await getTasks();
       setTasks(data);
-      localStorage.setItem('cache_tasks', JSON.stringify(data));
+      if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(data));
       // Join team rooms for real-time updates
       const teamIds = [...new Set(data.map(t => t.team_id))];
       teamIds.forEach(id => joinRoom(`team:${id}`));
@@ -289,14 +290,18 @@ const TasksPage = () => {
 
   const handleStartTask = async (taskId, e) => {
     if (e) e.stopPropagation();
+    // 0 ms Optimistic UI update
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'in_progress' } : t));
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask(prev => ({ ...prev, status: 'in_progress' }));
+    }
+    if (dispatch) dispatch('task.status_changed', { id: taskId, status: 'in_progress' });
     try {
-      await startTask(taskId);
-      loadTasks();
-      if (selectedTask && selectedTask.id === taskId) {
-        setSelectedTask(prev => ({ ...prev, status: 'in_progress' }));
-      }
+      const updated = await startTask(taskId);
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updated } : t));
     } catch (err) {
       console.error('Failed to start task:', err);
+      loadTasks();
     }
   };
 
@@ -304,36 +309,59 @@ const TasksPage = () => {
 
   const handleCompleteTask = async (taskId, e) => {
     e.stopPropagation();
+    // 0 ms Optimistic UI update
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'in_review' } : t));
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask(prev => ({ ...prev, status: 'in_review' }));
+    }
+    if (dispatch) dispatch('task.status_changed', { id: taskId, status: 'in_review' });
     try {
-      await completeTask(taskId);
-      loadTasks();
+      const updated = await completeTask(taskId);
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updated } : t));
     } catch (err) {
       console.error('Failed to complete task:', err);
+      loadTasks();
     }
   };
 
   const handleConfirmTask = async (taskId, e) => {
     e.stopPropagation();
+    // 0 ms Optimistic UI update
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'completed', is_locked: true } : t));
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask(prev => ({ ...prev, status: 'completed', is_locked: true }));
+    }
+    if (dispatch) dispatch('task.locked', { id: taskId, status: 'completed', is_locked: true });
     try {
-      await confirmTask(taskId);
-      loadTasks();
+      const updated = await confirmTask(taskId);
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updated } : t));
     } catch (err) {
       console.error('Failed to confirm task:', err);
+      loadTasks();
     }
   };
 
   const handleExecuteReassign = async (e) => {
     e.preventDefault();
     if (!reassigningTask || !reassignCandidate) return;
+    const targetTaskId = reassigningTask.id;
+    const cand = reassignCandidate;
+    const rReason = reassignReason.trim() || undefined;
+
+    // 0 ms Optimistic UI update
+    setTasks(prev => prev.map(t => t.id === targetTaskId ? { ...t, assigned_to: cand, status: 'not_started' } : t));
+    setReassigningTask(null);
+    setReassignCandidate('');
+    setReassignReason('');
+    if (dispatch) dispatch('task.reassigned', { id: targetTaskId, assigned_to: cand });
+
     setReassignSubmitting(true);
     try {
-      await reassignTask(reassigningTask.id, reassignCandidate, reassignReason.trim() || undefined);
-      setReassigningTask(null);
-      setReassignCandidate('');
-      setReassignReason('');
-      loadTasks();
+      const updated = await reassignTask(targetTaskId, cand, rReason);
+      setTasks(prev => prev.map(t => t.id === targetTaskId ? { ...t, ...updated } : t));
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to reassign task.');
+      loadTasks();
     } finally {
       setReassignSubmitting(false);
     }
@@ -342,6 +370,8 @@ const TasksPage = () => {
   const filteredTasks = tasks.filter(t => {
     if (filterTab === 'mine') return String(t.assigned_to) === String(user?.id);
     if (filterTab === 'review') return t.status === 'in_review';
+    if (filterTab === 'projects') return Boolean(t.project_id);
+    if (filterTab === 'standalone') return !t.project_id;
     return true;
   });
 
@@ -389,6 +419,8 @@ const TasksPage = () => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
         {[
           { id: 'all', label: `All Tasks (${tasks.length})` },
+          { id: 'projects', label: `Project Tasks (${tasks.filter(t => Boolean(t.project_id)).length})` },
+          { id: 'standalone', label: `Standalone Tasks (${tasks.filter(t => !t.project_id).length})` },
           { id: 'mine', label: `Assigned to Me (${tasks.filter(t => String(t.assigned_to) === String(user?.id)).length})` },
           { id: 'review', label: `In Review (${tasks.filter(t => t.status === 'in_review').length})` }
         ].map(tab => (
@@ -470,6 +502,41 @@ const TasksPage = () => {
                       }}>
                         {task.status.replace('_', ' ').toUpperCase()}
                       </span>
+
+                      {/* Project Deliverable vs Standalone Task Badge */}
+                      {task.project_id ? (
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          background: 'rgba(99, 102, 241, 0.1)',
+                          color: 'var(--brand-700)',
+                          border: '1px solid rgba(99, 102, 241, 0.25)',
+                          letterSpacing: '0.02em',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}>
+                          Project Deliverable
+                        </span>
+                      ) : (
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          background: 'var(--subtle)',
+                          color: 'var(--text-secondary)',
+                          border: '1px solid var(--border)',
+                          letterSpacing: '0.02em',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}>
+                          Standalone Task
+                        </span>
+                      )}
 
                       {/* Self-assigned / Assigned to you badge */}
                       {isAssignedToMe && (

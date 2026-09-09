@@ -45,13 +45,17 @@ async def _broadcast_task(task, team_id, event_type):
     }
     if team_id:
         await manager.broadcast(f"team:{team_id}", data)
+    if task.project_id:
+        await manager.broadcast(f"project:{task.project_id}", data)
     await manager.broadcast(f"task:{task.id}", data)
     if task.assigned_to:
         await manager.send_to_user(str(task.assigned_to), data)
     if task.assigned_by and str(task.assigned_by) != str(task.assigned_to):
         await manager.send_to_user(str(task.assigned_by), data)
     await manager.broadcast("global:admins", data)
+    await manager.broadcast("global:all", data)
     await manager.broadcast("global:admins", {"type": ANALYTICS_REFRESH, "data": {}})
+    await manager.broadcast("global:all", {"type": ANALYTICS_REFRESH, "data": {}})
 
 
 @router.get("", response_model=List[TaskResponse])
@@ -66,18 +70,13 @@ def list_tasks(
         # Regular members only see tasks allocated to them
         q = q.filter(Task.assigned_to == user.id)
     elif user.role == "TL":
-        # TL sees tasks in teams where they are lead or assigned to them
+        # TL sees tasks in teams where they are lead or assigned to/by them
         team_ids = db.query(TeamMembership.team_id).filter(
             TeamMembership.user_id == user.id,
             (TeamMembership.is_lead == True) | (user.role == "TL")
         ).subquery()
-        q = q.filter((Task.team_id.in_(team_ids)) | (Task.assigned_to == user.id))
-    elif user.role == "PM":
-        from app.models.project import Team, Project
-        team_ids = db.query(Team.id).join(Project).filter(Project.created_by == user.id).subquery()
-        p_ids = db.query(Project.id).filter(Project.created_by == user.id).subquery()
-        q = q.filter((Task.team_id.in_(team_ids)) | (Task.project_id.in_(p_ids)) | (Task.assigned_to == user.id))
-    # CEO/CTO see all
+        q = q.filter((Task.team_id.in_(team_ids)) | (Task.assigned_to == user.id) | (Task.assigned_by == user.id))
+    # CEO, CTO, PM, and HR have company and project-wide visibility to oversee deliverables
 
     if project_id:
         # Match strictly tasks assigned directly to this project.
@@ -139,17 +138,16 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
         if not lead and user.role not in ("CEO", "CTO", "PM"):
             raise HTTPException(403, "Only Team Leads or PMs can allocate tasks")
 
-    # Day-wise task allocation rule: PMs cannot allocate day-wise tasks, only Team Leads can
+    # Day-wise task allocation rule: Team Leads, Project Managers, and Executives can allocate day-wise tasks
     if req.scheduled_date:
-        if user.role == "PM":
-            raise HTTPException(403, "Project Managers cannot allocate day-wise tasks. Only Team Leads can allocate day-wise tasks.")
-        is_tl = (user.role == "TL") or (req.team_id and db.query(TeamMembership).filter(
-            TeamMembership.team_id == req.team_id,
-            TeamMembership.user_id == user.id,
-            TeamMembership.is_lead == True
-        ).first() is not None)
-        if not is_tl and user.role not in ("CEO", "CTO"):
-            raise HTTPException(403, "Only Team Leads can allocate day-wise tasks.")
+        if user.role not in ("PM", "TL", "CEO", "CTO"):
+            is_squad_lead = bool(req.team_id and db.query(TeamMembership).filter(
+                TeamMembership.team_id == req.team_id,
+                TeamMembership.user_id == user.id,
+                TeamMembership.is_lead == True
+            ).first())
+            if not is_squad_lead:
+                raise HTTPException(403, "Only Team Leads, Project Managers, or Executives can allocate day-wise tasks.")
 
         # Standardize scheduled_date into DD-MM-YYYY format
         import re

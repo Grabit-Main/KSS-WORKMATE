@@ -2,13 +2,13 @@ import { useEffect } from 'react';
 import { useWebSocket } from '../context/WebSocketContext';
 
 export const useRealtime = (eventType, callback) => {
-  const { subscribe, isConnected } = useWebSocket();
+  const ws = useWebSocket();
 
   useEffect(() => {
-    if (!isConnected) return;
-    const unsubscribe = subscribe(eventType, callback);
+    if (!ws || !ws.subscribe || !callback) return;
+    const unsubscribe = ws.subscribe(eventType, callback);
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [eventType, callback, subscribe, isConnected]);
+  }, [eventType, callback, ws]);
 };
