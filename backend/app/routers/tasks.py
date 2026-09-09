@@ -73,8 +73,6 @@ async def _broadcast_task(task, team_id, event_type):
         await manager.send_to_user(str(task.assigned_to), data)
     if task.assigned_by and str(task.assigned_by) != str(task.assigned_to):
         await manager.send_to_user(str(task.assigned_by), data)
-    await manager.broadcast("global:admins", data)
-    await manager.broadcast("global:all", data)
     await manager.broadcast("global:admins", {"type": ANALYTICS_REFRESH, "data": {}})
     await manager.broadcast("global:all", {"type": ANALYTICS_REFRESH, "data": {}})
 
@@ -86,18 +84,8 @@ def list_tasks(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    q = db.query(Task)
-    if user.role == "TM":
-        # Regular members only see tasks allocated to them
-        q = q.filter(Task.assigned_to == user.id)
-    elif user.role == "TL":
-        # TL sees tasks in teams where they are lead or assigned to/by them
-        team_ids = db.query(TeamMembership.team_id).filter(
-            TeamMembership.user_id == user.id,
-            (TeamMembership.is_lead == True) | (user.role == "TL")
-        ).subquery()
-        q = q.filter((Task.team_id.in_(team_ids)) | (Task.assigned_to == user.id) | (Task.assigned_by == user.id))
-    # CEO, CTO, PM, and HR have company and project-wide visibility to oversee deliverables
+    # Visibility rule: strictly only show for the user who assigned the task and the user assigned to do it
+    q = db.query(Task).filter((Task.assigned_to == user.id) | (Task.assigned_by == user.id))
 
     if project_id:
         # Match strictly tasks assigned directly to this project.
@@ -220,10 +208,12 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
-def get_task(task_id: UUID, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_task(task_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
+    if str(task.assigned_to) != str(user.id) and str(task.assigned_by) != str(user.id):
+        raise HTTPException(403, "Not authorized to view this task. Only the assigner and assignee can access.")
     return task
 
 
@@ -235,15 +225,8 @@ async def start_task(task_id: UUID, db: Session = Depends(get_db), user: User = 
     if not task:
         raise HTTPException(404, "Task not found")
     is_assignee = str(task.assigned_to) == str(user.id)
-    is_lead = False
-    if task.team_id:
-        is_lead = bool(db.query(TeamMembership).filter(
-            TeamMembership.team_id == task.team_id,
-            TeamMembership.user_id == user.id,
-            (TeamMembership.is_lead == True) | (user.role == "TL")
-        ).first())
-    if not is_assignee and not is_lead and user.role not in ("CEO", "CTO", "PM"):
-        raise HTTPException(403, "Not authorized to start this task")
+    if not is_assignee:
+        raise HTTPException(403, "Only the assigned user can start this task")
     if task.status != "not_started":
         raise HTTPException(400, f"Task cannot be started in '{task.status}' status")
 
@@ -299,17 +282,10 @@ async def confirm_task(task_id: UUID, db: Session = Depends(get_db), user: User 
         raise HTTPException(404, "Task not found")
     if task.status == "completed":
         raise HTTPException(400, "Task is already completed")
-    # Must be assigner of task, or TL of team, or CEO/CTO/PM
+    # Must strictly be assigner of task
     is_assigner = str(task.assigned_by) == str(user.id)
-    lead = False
-    if task.team_id:
-        lead = db.query(TeamMembership).filter(
-            TeamMembership.team_id == task.team_id,
-            TeamMembership.user_id == user.id,
-            (TeamMembership.is_lead == True) | (user.role == "TL")
-        ).first() is not None
-    if not is_assigner and not lead and user.role not in ("CEO", "CTO", "PM"):
-        raise HTTPException(403, "Only the task assigner, Team Leads, or Project Managers can confirm tasks")
+    if not is_assigner:
+        raise HTTPException(403, "Only the task assigner can confirm and complete tasks")
     _log_status(db, task, task.status, "completed", user.id)
     task.status = "completed"
     task.is_locked = True
@@ -350,14 +326,9 @@ async def reassign_task(task_id: UUID, req: ReassignRequest, db: Session = Depen
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
-    lead = db.query(TeamMembership).filter(
-        TeamMembership.team_id == task.team_id,
-        TeamMembership.user_id == user.id,
-        (TeamMembership.is_lead == True) | (user.role == "TL")
-    ).first()
     is_task_assigner = str(task.assigned_by) == str(user.id)
-    if not lead and not is_task_assigner and user.role not in ("CEO", "CTO", "PM"):
-        raise HTTPException(403, "Only Team Leads, Project Managers, or the task assigner can reassign tasks")
+    if not is_task_assigner:
+        raise HTTPException(403, "Only the task assigner can reassign tasks")
 
     # Find target assignee user
     target_user = db.query(User).filter(User.id == req.assigned_to).first()

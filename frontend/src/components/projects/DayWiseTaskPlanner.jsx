@@ -492,7 +492,10 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     }
   };
 
-  const activeDateTasks = tasks.filter(t => normalizeToDDMMYYYY(t.scheduled_date) === activeDate);
+  const userVisibleTasks = tasks.filter(t => {
+    return String(t.assigned_to) === String(currentUser?.id) || String(t.assigned_by) === String(currentUser?.id);
+  });
+  const activeDateTasks = userVisibleTasks.filter(t => normalizeToDDMMYYYY(t.scheduled_date) === activeDate);
 
   const getStatusBadge = (status) => {
     const map = {
@@ -638,7 +641,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
           flexShrink: 0
         }}>
           {dates.map(d => {
-            const countForDate = tasks.filter(t => normalizeToDDMMYYYY(t.scheduled_date) === d).length;
+            const countForDate = userVisibleTasks.filter(t => normalizeToDDMMYYYY(t.scheduled_date) === d).length;
             const isSelected = activeDate === d;
             return (
               <button
@@ -805,6 +808,8 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
+                      minHeight: '235px',
+                      height: '100%',
                       transition: 'all var(--transition-smooth)',
                       border: isOverdue ? '1.5px solid rgba(239, 68, 68, 0.45)' : '1px solid var(--border)',
                       background: isOverdue ? 'rgba(239, 68, 68, 0.02)' : 'var(--surface)'
@@ -819,7 +824,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                     }}
                   >
                     <div>
-                      <div className="flex justify-between items-start mb-2.5">
+                      <div className="flex justify-between items-start mb-2.5" style={{ minHeight: '24px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {getStatusBadge(t.status)}
                           {isOverdue && (
@@ -850,10 +855,25 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                         </span>
                       </div>
 
-                      <h4 className="font-bold text-sm mb-1.5" style={{ color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                      <h4 className="font-bold text-sm mb-1.5" style={{
+                        color: 'var(--text-primary)',
+                        minHeight: '40px',
+                        lineHeight: 1.35,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
                         {t.title}
                       </h4>
-                      <p className="text-xs text-secondary text-truncate-2" style={{ lineHeight: 1.5, marginBottom: '10px' }}>
+                      <p className="text-xs text-secondary mb-2" style={{
+                        minHeight: '34px',
+                        lineHeight: 1.45,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
                         {t.description || 'No description provided.'}
                       </p>
 
@@ -863,33 +883,36 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '6px',
-                          padding: '4px 9px',
+                          padding: '3px 8px',
                           borderRadius: 'var(--radius-sm)',
                           background: isOverdue ? 'rgba(239, 68, 68, 0.08)' : 'var(--subtle)',
                           border: `1px solid ${isOverdue ? 'rgba(239, 68, 68, 0.25)' : 'var(--border)'}`,
                           fontSize: '11px',
                           fontWeight: 600,
                           color: isOverdue ? '#DC2626' : 'var(--text-secondary)',
-                          marginBottom: '12px'
+                          marginBottom: '8px'
                         }}>
-                          <Clock size={12} style={{ color: isOverdue ? '#DC2626' : 'var(--brand-500)', flexShrink: 0 }} />
+                          <Clock size={11} style={{ color: isOverdue ? '#DC2626' : 'var(--brand-500)', flexShrink: 0 }} />
                           <span>Deadline: {formatDeadlineWithTime(t.deadline)}</span>
                         </div>
                       )}
 
                       {t.attachments && t.attachments.length > 0 && (
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                            gap: '6px',
-                            marginBottom: '12px'
-                          }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          {t.attachments.map(att => (
-                            <AttachmentCard key={att.id || att.file_url} attachment={att} />
-                          ))}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }} onClick={e => e.stopPropagation()}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            padding: '2px 7px',
+                            borderRadius: 'var(--radius-full)',
+                            background: 'var(--subtle)',
+                            border: '1px solid var(--border)',
+                            color: 'var(--brand-700)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <Paperclip size={11} /> {t.attachments.length} attachment{t.attachments.length === 1 ? '' : 's'}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -898,7 +921,8 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      paddingTop: '12px',
+                      paddingTop: '10px',
+                      marginTop: 'auto',
                       borderTop: '1px solid var(--border)',
                       fontSize: '11px'
                     }}>
