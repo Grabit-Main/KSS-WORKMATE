@@ -150,7 +150,14 @@ const TasksPage = () => {
       const orgEligible = usersData.filter(u => isEligibleAssignee(u.role));
       const candidates = user?.role === 'TL' ? allMembersAcrossMyTeams : orgEligible;
 
-      if (candidates.length > 0) {
+      if (user?.role === 'PM') {
+        if (orgEligible.length > 0) {
+          setAssignedTo(orgEligible[0].id);
+        } else {
+          setAssignedTo('');
+        }
+        setTeamId('');
+      } else if (candidates.length > 0) {
         const firstCandidate = candidates[0];
         setAssignedTo(firstCandidate.id);
         const candTeamId = firstCandidate.teamId || defaultTeam?.id || '';
@@ -165,6 +172,10 @@ const TasksPage = () => {
   };
 
   const handleAssigneeChange = (value) => {
+    if (user?.role === 'PM') {
+      setAssignedTo(value);
+      return;
+    }
     if (value.includes(':::')) {
       const [uId, tId] = value.split(':::');
       setAssignedTo(uId);
@@ -245,7 +256,10 @@ const TasksPage = () => {
     setFormError('');
 
     let effectiveTeamId = teamId;
-    if (!effectiveTeamId) {
+    if (user?.role === 'PM') {
+      const userTeam = teams.find(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(assignedTo)));
+      effectiveTeamId = userTeam ? userTeam.id : null;
+    } else if (!effectiveTeamId) {
       const userTeam = teams.find(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(assignedTo)));
       effectiveTeamId = userTeam?.id || (availableTeams[0]?.id || teams[0]?.id || null);
     }
@@ -795,8 +809,8 @@ const TasksPage = () => {
             )}
 
             <form onSubmit={handleCreateTask} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: availableTeams.length > 1 ? '1fr 1fr' : '1fr', gap: '16px' }}>
-                {availableTeams.length > 1 && (
+              <div style={{ display: 'grid', gridTemplateColumns: (user?.role !== 'PM' && availableTeams.length > 1) ? '1fr 1fr' : '1fr', gap: '16px' }}>
+                {user?.role !== 'PM' && availableTeams.length > 1 && (
                   <div>
                     <label className="text-xs font-semibold text-secondary mb-1.5 block">Responsible Group / Team *</label>
                     <select
@@ -823,12 +837,19 @@ const TasksPage = () => {
                 <div>
                   <label className="text-xs font-semibold text-secondary mb-1.5 block">Assign To User *</label>
                   <select
-                    value={assignedTo && teamId ? `${assignedTo}:::${teamId}` : assignedTo}
+                    value={assignedTo && teamId && user?.role !== 'PM' ? `${assignedTo}:::${teamId}` : assignedTo}
                     onChange={(e) => handleAssigneeChange(e.target.value)}
                     className="input"
                     required
                   >
-                    {user?.role === 'TL' ? (
+                    {user?.role === 'PM' ? (
+                      // PM can give task to anyone, don't display teams
+                      eligibleOrgUsers.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''})
+                        </option>
+                      ))
+                    ) : user?.role === 'TL' ? (
                       availableTeams.length > 0 ? (
                         availableTeams.map(team => {
                           const members = (team.memberships || [])
@@ -857,7 +878,7 @@ const TasksPage = () => {
                         <option disabled value="">No eligible groups found for your account</option>
                       )
                     ) : (
-                      // CEO, CTO, PM: Group by team so members are organized by group
+                      // CEO, CTO: Group by team so members are organized by group
                       availableTeams.length > 0 ? (
                         <>
                           {availableTeams.map(team => {
@@ -883,6 +904,7 @@ const TasksPage = () => {
                             if (unassignedUsers.length === 0) return null;
                             return (
                               <optgroup label={`Other Organization Members (${unassignedUsers.length})`}>
+                                <option disabled value="">Select member...</option>
                                 {unassignedUsers.map(u => (
                                   <option key={u.id} value={u.id}>
                                     {u.first_name} {u.last_name} ({u.role}{u.department ? ` · ${u.department}` : ''})
@@ -902,7 +924,9 @@ const TasksPage = () => {
                     )}
                   </select>
                   <p className="text-xs text-secondary mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                    All members across your responsible groups are visible above.
+                    {user?.role === 'PM'
+                      ? 'You can assign tasks to any team member or lead across the organization.'
+                      : 'All members across your responsible groups are visible above.'}
                   </p>
                 </div>
               </div>

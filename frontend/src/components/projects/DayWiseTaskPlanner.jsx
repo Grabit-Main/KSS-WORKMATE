@@ -174,7 +174,12 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
 
       // Identify the squad(s) allocated to this project
       const allocatedTeams = teamsData.filter(t => String(t.project_id) === String(project.id));
-      if (allocatedTeams.length > 0) {
+      if (currentUser?.role === 'PM') {
+        // PM can assign tasks to anyone across the organization without team/squad restriction
+        const eligibleUsers = usersData.filter(u => u.role !== 'CEO' && u.role !== 'CTO');
+        setTeamMembers(eligibleUsers.length > 0 ? eligibleUsers : usersData);
+        setTeamId(allocatedTeams.length > 0 ? allocatedTeams[0].id : null);
+      } else if (allocatedTeams.length > 0) {
         const myTeam = allocatedTeams.find(t => t.memberships?.some(m => String(m.user_id) === String(currentUser?.id) && (m.is_lead || currentUser?.role === 'TL')));
         setTeamId(myTeam ? myTeam.id : allocatedTeams[0].id);
         const memberIds = new Set(allocatedTeams.flatMap(t => (t.memberships || []).map(m => String(m.user_id || m.user?.id))));
@@ -925,7 +930,9 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                   <option value="">-- Select Member * --</option>
                   {teamMembers.map(m => (
                     <option key={m.id} value={m.id}>
-                      {m.first_name} {m.last_name} ({m.role} - {m.department || 'Squad'})
+                      {currentUser?.role === 'PM'
+                        ? `${m.first_name} ${m.last_name} (${m.role}${m.department ? ' · ' + m.department : ''})`
+                        : `${m.first_name} ${m.last_name} (${m.role} - ${m.department || 'Squad'})`}
                     </option>
                   ))}
                 </select>
