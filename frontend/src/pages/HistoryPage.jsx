@@ -23,8 +23,6 @@ import {
   X
 } from 'lucide-react';
 
-import { getUsers } from '../api/users';
-
 const HistoryPage = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('activity'); // 'activity', 'projects', 'tasks'
@@ -33,8 +31,6 @@ const HistoryPage = () => {
   const [tasks, setTasks] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [usersList, setUsersList] = useState([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
 
   const isExecutive = ['CEO', 'CTO'].includes(user?.role);
 
@@ -59,20 +55,13 @@ const HistoryPage = () => {
   const [taskSearchQuery, setTaskSearchQuery] = useState('');
   const [expandedTaskId, setExpandedTaskId] = useState(null);
 
-  useEffect(() => {
-    if (isExecutive) {
-      getUsers().then(setUsersList).catch(() => {});
-    }
-  }, [isExecutive]);
-
   const loadData = async () => {
     try {
-      const uid = selectedUserId || null;
       const [sumRes, projRes, taskRes, actRes] = await Promise.all([
-        getHistorySummary(uid).catch(() => null),
-        getProjectsHistory(uid).catch(() => []),
-        getTasksHistory({ status: taskStatusFilter, search: taskSearchQuery, user_id: uid }).catch(() => []),
-        getActivityHistory(uid).catch(() => [])
+        getHistorySummary().catch(() => null),
+        getProjectsHistory().catch(() => []),
+        getTasksHistory({ status: taskStatusFilter, search: taskSearchQuery }).catch(() => []),
+        getActivityHistory().catch(() => [])
       ]);
       if (sumRes) setSummary(sumRes);
       setProjects(projRes);
@@ -87,7 +76,7 @@ const HistoryPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [taskStatusFilter, selectedUserId]);
+  }, [taskStatusFilter]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -267,7 +256,7 @@ const HistoryPage = () => {
           </h2>
           <p className="text-sm text-secondary mt-1">
             {isExecutive
-              ? (selectedUserId ? 'Viewing historical trail filtered for selected user' : 'Complete company-wide historical trail and audit lifecycle of all projects, tasks, and updates')
+              ? 'Complete company-wide historical trail and audit lifecycle of all projects, tasks, and updates'
               : (user?.role === 'PM'
                   ? 'Historical trail of projects, squads, and tasks managed by you'
                   : (user?.role === 'TL'
@@ -277,25 +266,6 @@ const HistoryPage = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Executive User Filter for CEO/CTO */}
-          {isExecutive && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="text-xs font-semibold text-secondary">User:</span>
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="input"
-                style={{ padding: '6px 12px', fontSize: '12px', borderRadius: 'var(--radius-full)', minWidth: '220px' }}
-              >
-                <option value="">-- All Company (Everyone) --</option>
-                {usersList.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.first_name} {u.last_name} ({u.role})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* Tab Selection */}
           <div style={{
@@ -1494,9 +1464,6 @@ const HistoryPage = () => {
               const userVisibleHistoryTasks = tasks.filter(t => {
                 const isAssignee = String(t.assignee?.id || t.assigned_to) === String(user?.id);
                 const isAssigner = String(t.assigner?.id || t.assigned_by) === String(user?.id);
-                if (selectedUserId && isExecutive) {
-                  return String(t.assignee?.id || t.assigned_to) === String(selectedUserId) || String(t.assigner?.id || t.assigned_by) === String(selectedUserId);
-                }
                 return isAssignee || isAssigner;
               });
 
