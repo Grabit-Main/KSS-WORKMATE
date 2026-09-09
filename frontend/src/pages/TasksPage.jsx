@@ -10,7 +10,7 @@ import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
 import { AttachmentCard } from '../components/common/AttachmentCard';
-import { formatDeadlineWithTime } from '../components/projects/DayWiseTaskPlanner';
+import { formatDeadlineWithTime, isUpcomingDate } from '../components/projects/DayWiseTaskPlanner';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
   Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2
@@ -340,7 +340,13 @@ const TasksPage = () => {
   const userTasks = tasks.filter(t => {
     const isAssignedToMe = String(t.assigned_to) === String(user?.id);
     const isAssignedByMe = String(t.assigned_by) === String(user?.id);
-    return isAssignedToMe || isAssignedByMe;
+    if (!isAssignedToMe && !isAssignedByMe) return false;
+
+    // The members can see current date tasks only; they can't access next upcoming days tasks
+    if (user?.role === 'TM' && t.scheduled_date && isUpcomingDate(t.scheduled_date)) {
+      return false;
+    }
+    return true;
   });
 
   const filteredTasks = userTasks.filter(t => {

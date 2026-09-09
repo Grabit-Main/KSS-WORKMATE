@@ -9,7 +9,7 @@ import { AttachmentCard } from '../common/AttachmentCard';
 import {
   Calendar, Plus, Clock, User, CheckCircle2,
   FolderKanban, Play, Sparkles, X, ChevronRight, MessageSquare,
-  AlertCircle, AlertTriangle
+  AlertCircle, AlertTriangle, Lock
 } from 'lucide-react';
 
 // Format a Date object to DD-MM-YYYY (e.g. "08-09-2026")
@@ -91,6 +91,36 @@ export const parseDateString = (str) => {
   return isNaN(parsed.getTime()) ? new Date() : parsed;
 };
 
+// Check if a date string represents an upcoming/future date (strictly after today)
+export const isUpcomingDate = (dateStr) => {
+  if (!dateStr) return false;
+  const targetTs = parseDateStringToTimestamp(dateStr);
+  if (!targetTs) return false;
+  const now = new Date();
+  const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return targetTs > todayTs;
+};
+
+// Check if a date string is today (current date)
+export const isCurrentDate = (dateStr) => {
+  if (!dateStr) return false;
+  const targetTs = parseDateStringToTimestamp(dateStr);
+  if (!targetTs) return false;
+  const now = new Date();
+  const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return targetTs === todayTs;
+};
+
+// Format Date object to YYYY-MM-DD for native HTML5 date input
+export const formatDateYYYYMMDD = (date) => {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Generate 5 consecutive dates starting from today in DD-MM-YYYY format
 const generateInitialDates = () => {
   const result = [];
@@ -110,6 +140,8 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
   const [activeDate, setActiveDate] = useState(() => formatDateDDMMYYYY(new Date()));
   const [teamMembers, setTeamMembers] = useState([]);
   const [teamId, setTeamId] = useState(null);
+  const [isAddDateDialogOpen, setIsAddDateDialogOpen] = useState(false);
+  const [pickerDate, setPickerDate] = useState('');
 
   // Role authorization: Day-wise planner is strictly for Team Leads (TL) only
   const { dispatch, joinRoom, leaveRoom } = useWebSocket() || {};
@@ -312,7 +344,11 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
           const merged = Array.from(new Set([...prev, ...existingDates]));
           return merged.sort((a, b) => parseDateStringToTimestamp(a) - parseDateStringToTimestamp(b));
         });
-        setActiveDate(curr => curr || existingDates[0]);
+        if (currentUser?.role === 'TM') {
+          setActiveDate(formatDateDDMMYYYY(new Date()));
+        } else {
+          setActiveDate(curr => curr || existingDates[0]);
+        }
       }
     } catch (err) {
       console.error('Failed loading planner data:', err);
@@ -327,35 +363,39 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     }
   }, [project?.id]);
 
-  const handleAddNextDate = () => {
-    if (dates.length === 0) {
-      const todayStr = formatDateDDMMYYYY(new Date());
-      setDates([todayStr]);
-      setActiveDate(todayStr);
-      return;
+  const handleOpenAddDateDialog = () => {
+    const now = new Date();
+    let defaultDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    if (dates.length > 0) {
+      const latestStr = dates[dates.length - 1];
+      const latestObj = parseDateString(latestStr);
+      if (latestObj && !isNaN(latestObj.getTime())) {
+        const nextD = new Date(latestObj);
+        nextD.setDate(nextD.getDate() + 1);
+        defaultDate = nextD;
+      }
     }
-    const latestStr = dates[dates.length - 1];
-    const latestObj = parseDateString(latestStr);
-    const nextDateObj = new Date(latestObj);
-    nextDateObj.setDate(nextDateObj.getDate() + 1);
-    const nextStr = formatDateDDMMYYYY(nextDateObj);
-    if (!dates.includes(nextStr)) {
-      const updated = [...dates, nextStr].sort((a, b) => parseDateStringToTimestamp(a) - parseDateStringToTimestamp(b));
-      setDates(updated);
-    }
-    setActiveDate(nextStr);
+    setPickerDate(formatDateYYYYMMDD(defaultDate));
+    setIsAddDateDialogOpen(true);
   };
 
-  const handlePickCustomDate = (e) => {
-    const val = e.target.value;
-    if (!val) return;
-    const formatted = normalizeToDDMMYYYY(val);
+  const handleConfirmAddDate = () => {
+    if (!pickerDate) return;
+    const formatted = normalizeToDDMMYYYY(pickerDate);
+    if (!formatted) return;
     if (!dates.includes(formatted)) {
       const updated = [...dates, formatted].sort((a, b) => parseDateStringToTimestamp(a) - parseDateStringToTimestamp(b));
       setDates(updated);
     }
     setActiveDate(formatted);
-    e.target.value = '';
+    setIsAddDateDialogOpen(false);
+  };
+
+  const handleSelectDate = (dateStr) => {
+    if (currentUser?.role === 'TM' && isUpcomingDate(dateStr)) {
+      return; // Members cannot access upcoming days tasks
+    }
+    setActiveDate(dateStr);
   };
 
   const handlePreFillTasks = async () => {
@@ -488,7 +528,13 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
   };
 
   const userVisibleTasks = tasks.filter(t => {
-    return String(t.assigned_to) === String(currentUser?.id) || String(t.assigned_by) === String(currentUser?.id);
+    const isParty = String(t.assigned_to) === String(currentUser?.id) || String(t.assigned_by) === String(currentUser?.id);
+    if (!isParty) return false;
+    // The members can see current date tasks only; they can't access next upcoming days tasks
+    if (currentUser?.role === 'TM' && t.scheduled_date && isUpcomingDate(t.scheduled_date)) {
+      return false;
+    }
+    return true;
   });
   const activeDateTasks = userVisibleTasks.filter(t => normalizeToDDMMYYYY(t.scheduled_date) === activeDate);
 
@@ -517,8 +563,8 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     );
   };
 
-  // Authorization guard: Day-wise planner is strictly for Team Leads (TL) only
-  if (currentUser?.role !== 'TL' && !isSquadLead) {
+  // Authorization guard: PM, CTO, and CEO do not have access to day-wise planner
+  if (['PM', 'CTO', 'CEO'].includes(currentUser?.role)) {
     return null;
   }
 
@@ -641,21 +687,26 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
           flexShrink: 0
         }}>
           {dates.map(d => {
+            const isUpcoming = isUpcomingDate(d);
+            const isMemberLocked = currentUser?.role === 'TM' && isUpcoming;
             const countForDate = userVisibleTasks.filter(t => normalizeToDDMMYYYY(t.scheduled_date) === d).length;
             const isSelected = activeDate === d;
             return (
               <button
                 key={d}
-                onClick={() => setActiveDate(d)}
+                disabled={isMemberLocked}
+                onClick={() => handleSelectDate(d)}
+                title={isMemberLocked ? "Upcoming deliverable date is locked for members" : `Deliverables for ${d}`}
                 style={{
                   padding: '7px 16px',
                   borderRadius: 'var(--radius-full)',
                   border: isSelected ? '1px solid var(--brand-500)' : '1px solid var(--border)',
-                  background: isSelected ? 'var(--brand-50)' : 'var(--subtle)',
-                  color: isSelected ? 'var(--brand-700)' : 'var(--text-secondary)',
+                  background: isSelected ? 'var(--brand-50)' : isMemberLocked ? 'var(--subtle)' : 'var(--subtle)',
+                  color: isSelected ? 'var(--brand-700)' : isMemberLocked ? 'var(--text-tertiary)' : 'var(--text-secondary)',
                   fontWeight: isSelected ? 700 : 500,
                   fontSize: '12px',
-                  cursor: 'pointer',
+                  cursor: isMemberLocked ? 'not-allowed' : 'pointer',
+                  opacity: isMemberLocked ? 0.55 : 1,
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
@@ -663,81 +714,60 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                   whiteSpace: 'nowrap'
                 }}
               >
+                {isMemberLocked && <Lock size={11} />}
                 <span>{d}</span>
-                <span style={{
-                  fontSize: '10px',
-                  padding: '1px 6px',
-                  borderRadius: 'var(--radius-full)',
-                  background: isSelected ? 'var(--brand-600)' : 'var(--border)',
-                  color: isSelected ? '#fff' : 'var(--text-secondary)',
-                  fontWeight: 700
-                }}>
-                  {countForDate}
-                </span>
+                {isMemberLocked ? (
+                  <span style={{
+                    fontSize: '9px',
+                    padding: '1px 5px',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'rgba(0,0,0,0.06)',
+                    color: 'var(--text-tertiary)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase'
+                  }}>
+                    Locked
+                  </span>
+                ) : (
+                  <span style={{
+                    fontSize: '10px',
+                    padding: '1px 6px',
+                    borderRadius: 'var(--radius-full)',
+                    background: isSelected ? 'var(--brand-600)' : 'var(--border)',
+                    color: isSelected ? '#fff' : 'var(--text-secondary)',
+                    fontWeight: 700
+                  }}>
+                    {countForDate}
+                  </span>
+                )}
               </button>
             );
           })}
 
           {canAllocate && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={handleAddNextDate}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-full)',
-                  border: '1px dashed var(--border)',
-                  background: 'transparent',
-                  color: 'var(--brand-600)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  whiteSpace: 'nowrap'
-                }}
-                title="Add next consecutive date"
-              >
-                <Plus size={13} />
-                <span>Add Date</span>
-              </button>
-
-              <label
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 'var(--radius-full)',
-                  border: '1px dashed var(--border)',
-                  background: 'transparent',
-                  color: 'var(--text-secondary)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  whiteSpace: 'nowrap',
-                  position: 'relative'
-                }}
-                title="Pick a specific date from calendar"
-              >
-                <Calendar size={12} />
-                <span>Pick Date</span>
-                <input
-                  type="date"
-                  onChange={handlePickCustomDate}
-                  style={{
-                    position: 'absolute',
-                    opacity: 0,
-                    width: '100%',
-                    height: '100%',
-                    left: 0,
-                    top: 0,
-                    cursor: 'pointer'
-                  }}
-                />
-              </label>
-            </div>
+            <button
+              type="button"
+              onClick={handleOpenAddDateDialog}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-full)',
+                border: '1px dashed var(--brand-500)',
+                background: 'var(--brand-50)',
+                color: 'var(--brand-600)',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                whiteSpace: 'nowrap',
+                transition: 'all var(--transition-fast)'
+              }}
+              title="Add a new deliverable date via calendar selection"
+            >
+              <Plus size={13} />
+              <span>Add Date</span>
+            </button>
           )}
         </div>
 
@@ -749,51 +779,87 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch'
         }}>
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="font-bold text-sm" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-              Allocated Deliverables for {activeDate} ({activeDateTasks.length})
-            </h4>
-            <span className="text-xs text-secondary">
-              Click any card to open full details & team chat
-            </span>
-          </div>
-
-          {loading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-              {[1, 2, 3].map(i => <div key={i} className="card skeleton" style={{ height: '140px' }} />)}
-            </div>
-          ) : activeDateTasks.length === 0 ? (
+          {currentUser?.role === 'TM' && isUpcomingDate(activeDate) ? (
             <div className="card" style={{
               padding: '48px 24px',
               textAlign: 'center',
               background: 'var(--subtle-glass)',
-              border: '1px dashed var(--border)'
+              border: '1px dashed var(--border)',
+              maxWidth: '520px',
+              margin: '40px auto'
             }}>
-              <Calendar size={36} strokeWidth={1.5} style={{ margin: '0 auto 10px', color: 'var(--text-tertiary)' }} />
-              <h5 className="font-bold text-sm mb-1">No Deliverables Scheduled for {activeDate}</h5>
-              {canAllocate ? (
-                <>
-                  <p className="text-xs text-secondary mb-4">
-                    Assign tasks to squad members on this date or click "Pre-fill Tasks" to build a standard roadmap.
-                  </p>
-                  <button
-                    onClick={() => handleOpenAddModal(activeDate)}
-                    className="btn btn-primary"
-                    style={{ fontSize: '12px', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Plus size={14} />
-                    <span>Add Task on {activeDate}</span>
-                  </button>
-                </>
-              ) : (
-                <p className="text-xs text-secondary mb-1">
-                  {isPM
-                    ? 'No deliverables scheduled for this date. As a Project Manager, you can monitor deliverables once allocated by Team Leads.'
-                    : 'No deliverables scheduled for this date.'}
-                </p>
-              )}
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: 'var(--subtle)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 12px',
+                color: 'var(--text-tertiary)'
+              }}>
+                <Lock size={22} />
+              </div>
+              <h5 className="font-bold text-base mb-1" style={{ color: 'var(--text-primary)' }}>
+                Upcoming Deliverables Locked
+              </h5>
+              <p className="text-xs text-secondary mb-4">
+                Team members can only view deliverables for the current date ({formatDateDDMMYYYY(new Date())}). Upcoming days will unlock on their scheduled date.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveDate(formatDateDDMMYYYY(new Date()))}
+                className="btn btn-sm btn-primary"
+              >
+                View Today's Deliverables
+              </button>
             </div>
           ) : (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-bold text-sm" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                  Allocated Deliverables for {activeDate} ({activeDateTasks.length})
+                </h4>
+                <span className="text-xs text-secondary">
+                  Click any card to open full details & team chat
+                </span>
+              </div>
+
+              {loading ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                  {[1, 2, 3].map(i => <div key={i} className="card skeleton" style={{ height: '140px' }} />)}
+                </div>
+              ) : activeDateTasks.length === 0 ? (
+                <div className="card" style={{
+                  padding: '48px 24px',
+                  textAlign: 'center',
+                  background: 'var(--subtle-glass)',
+                  border: '1px dashed var(--border)'
+                }}>
+                  <Calendar size={36} strokeWidth={1.5} style={{ margin: '0 auto 10px', color: 'var(--text-tertiary)' }} />
+                  <h5 className="font-bold text-sm mb-1">No Deliverables Scheduled for {activeDate}</h5>
+                  {canAllocate ? (
+                    <>
+                      <p className="text-xs text-secondary mb-4">
+                        Assign tasks to squad members on this date or click "Pre-fill Tasks" to build a standard roadmap.
+                      </p>
+                      <button
+                        onClick={() => handleOpenAddModal(activeDate)}
+                        className="btn btn-primary"
+                        style={{ fontSize: '12px', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Plus size={14} />
+                        <span>Add Task on {activeDate}</span>
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-secondary mb-1">
+                      No deliverables scheduled for this date.
+                    </p>
+                  )}
+                </div>
+              ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
               {activeDateTasks.map(t => {
                 const isOverdue = t.deadline && new Date(t.deadline).getTime() < Date.now() && t.status !== 'completed';
@@ -989,6 +1055,8 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
               })}
             </div>
           )}
+          </>
+        )}
         </div>
       </div>
 
@@ -1191,6 +1259,193 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
             loadData();
           }}
         />
+      )}
+
+      {/* Add Deliverable Date Modal with Calendar Selection */}
+      {isAddDateDialogOpen && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setIsAddDateDialogOpen(false); }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1050,
+            padding: '20px'
+          }}
+        >
+          <div className="card modal-animate" style={{
+            width: '100%',
+            maxWidth: '440px',
+            padding: '28px',
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius-xl)',
+            boxShadow: 'var(--shadow-float)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--brand-50)',
+                  color: 'var(--brand-600)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Calendar size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '17px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                    Add Deliverable Date
+                  </h3>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+                    Pick a calendar date for day-wise scheduling
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddDateDialogOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Calendar Selection Control */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Select Date from Calendar *
+              </label>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border)',
+                background: 'var(--surface-hover)',
+                transition: 'border-color var(--transition-fast)'
+              }}>
+                <Calendar size={18} color="var(--brand-600)" />
+                <input
+                  type="date"
+                  value={pickerDate}
+                  min={formatDateYYYYMMDD(new Date())}
+                  onChange={(e) => setPickerDate(e.target.value)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    width: '100%',
+                    cursor: 'pointer'
+                  }}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Quick Suggestions / Presets */}
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                Quick Shortcuts
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Today', offset: 0 },
+                  { label: 'Tomorrow', offset: 1 },
+                  { label: '+2 Days', offset: 2 },
+                  { label: '+3 Days', offset: 3 },
+                  { label: '+1 Week', offset: 7 }
+                ].map(p => {
+                  const targetD = new Date();
+                  targetD.setDate(targetD.getDate() + p.offset);
+                  const val = formatDateYYYYMMDD(targetD);
+                  const isSelected = pickerDate === val;
+                  return (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => setPickerDate(val)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '11px',
+                        fontWeight: isSelected ? 700 : 500,
+                        border: isSelected ? '1px solid var(--brand-500)' : '1px solid var(--border)',
+                        background: isSelected ? 'var(--brand-50)' : 'var(--subtle)',
+                        color: isSelected ? 'var(--brand-700)' : 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Selected Date Preview */}
+            {pickerDate && (
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--brand-50)',
+                border: '1px solid rgba(99, 102, 241, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span style={{ fontSize: '12px', color: 'var(--brand-700)' }}>
+                  Target Deliverable Date:
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-800)' }}>
+                  {normalizeToDDMMYYYY(pickerDate)}
+                </span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setIsAddDateDialogOpen(false)}
+                style={{ padding: '8px 16px', fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!pickerDate}
+                onClick={handleConfirmAddDate}
+                style={{ padding: '8px 18px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Plus size={14} />
+                <span>Add to Timeline</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

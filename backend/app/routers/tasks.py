@@ -108,7 +108,31 @@ def list_tasks(
         else:
             q = q.filter(Task.scheduled_date == scheduled_date)
 
-    return q.order_by(Task.created_at.desc()).all()
+    tasks = q.order_by(Task.created_at.desc()).all()
+    if user.role == "TM":
+        from datetime import datetime
+        import re
+        today = datetime.now().date()
+        filtered = []
+        for t in tasks:
+            if t.scheduled_date:
+                clean_s = t.scheduled_date.strip()
+                m_iso = re.match(r"^(\d{4})[-/](\d{2})[-/](\d{2})", clean_s)
+                m_dd = re.match(r"^(\d{2})[-/](\d{2})[-/](\d{4})", clean_s)
+                try:
+                    if m_iso:
+                        t_date = datetime.strptime(f"{m_iso.group(1)}-{m_iso.group(2)}-{m_iso.group(3)}", "%Y-%m-%d").date()
+                    elif m_dd:
+                        t_date = datetime.strptime(f"{m_dd.group(3)}-{m_dd.group(2)}-{m_dd.group(1)}", "%Y-%m-%d").date()
+                    else:
+                        t_date = datetime.strptime(clean_s, "%Y-%m-%d").date()
+                    if t_date > today:
+                        continue
+                except Exception:
+                    pass
+            filtered.append(t)
+        return filtered
+    return tasks
 
 
 @router.post("", response_model=TaskResponse)
@@ -214,6 +238,26 @@ def get_task(task_id: UUID, db: Session = Depends(get_db), user: User = Depends(
         raise HTTPException(404, "Task not found")
     if str(task.assigned_to) != str(user.id) and str(task.assigned_by) != str(user.id):
         raise HTTPException(403, "Not authorized to view this task. Only the assigner and assignee can access.")
+    if user.role == "TM" and task.scheduled_date:
+        from datetime import datetime
+        import re
+        today = datetime.now().date()
+        clean_s = task.scheduled_date.strip()
+        m_iso = re.match(r"^(\d{4})[-/](\d{2})[-/](\d{2})", clean_s)
+        m_dd = re.match(r"^(\d{2})[-/](\d{2})[-/](\d{4})", clean_s)
+        try:
+            if m_iso:
+                t_date = datetime.strptime(f"{m_iso.group(1)}-{m_iso.group(2)}-{m_iso.group(3)}", "%Y-%m-%d").date()
+            elif m_dd:
+                t_date = datetime.strptime(f"{m_dd.group(3)}-{m_dd.group(2)}-{m_dd.group(1)}", "%Y-%m-%d").date()
+            else:
+                t_date = datetime.strptime(clean_s, "%Y-%m-%d").date()
+            if t_date > today:
+                raise HTTPException(403, "Members can only access current date tasks; upcoming days tasks are locked.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
     return task
 
 
@@ -227,6 +271,26 @@ async def start_task(task_id: UUID, db: Session = Depends(get_db), user: User = 
     is_assignee = str(task.assigned_to) == str(user.id)
     if not is_assignee:
         raise HTTPException(403, "Only the assigned user can start this task")
+    if user.role == "TM" and task.scheduled_date:
+        from datetime import datetime
+        import re
+        today = datetime.now().date()
+        clean_s = task.scheduled_date.strip()
+        m_iso = re.match(r"^(\d{4})[-/](\d{2})[-/](\d{2})", clean_s)
+        m_dd = re.match(r"^(\d{2})[-/](\d{2})[-/](\d{4})", clean_s)
+        try:
+            if m_iso:
+                t_date = datetime.strptime(f"{m_iso.group(1)}-{m_iso.group(2)}-{m_iso.group(3)}", "%Y-%m-%d").date()
+            elif m_dd:
+                t_date = datetime.strptime(f"{m_dd.group(3)}-{m_dd.group(2)}-{m_dd.group(1)}", "%Y-%m-%d").date()
+            else:
+                t_date = datetime.strptime(clean_s, "%Y-%m-%d").date()
+            if t_date > today:
+                raise HTTPException(403, "Members cannot start an upcoming task before its scheduled date.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
     if task.status != "not_started":
         raise HTTPException(400, f"Task cannot be started in '{task.status}' status")
 
