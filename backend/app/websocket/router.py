@@ -30,23 +30,35 @@ async def websocket_endpoint(websocket: WebSocket):
         # Auto-join personal room
         await manager.join(f"user:{user_id}", user_id, websocket)
 
-        # Auto-join admins room for CEO/CTO
-        if role in ("CEO", "CTO"):
+        # Auto-join company-wide room for all users
+        await manager.join("global:all", user_id, websocket)
+
+        # Auto-join admins & managers room for CEO, CTO, PM, HR
+        if role in ("CEO", "CTO", "PM", "HR"):
             await manager.join("global:admins", user_id, websocket)
 
-        # Auto-join user teams
+        # Auto-join user teams & projects
         try:
             from app.database import SessionLocal
-            from app.models.project import TeamMembership
+            from app.models.project import TeamMembership, Team, Project
             db = SessionLocal()
             try:
                 memberships = db.query(TeamMembership).filter(TeamMembership.user_id == user_id).all()
                 for m in memberships:
                     await manager.join(f"team:{m.team_id}", user_id, websocket)
+                    team = db.query(Team).filter(Team.id == m.team_id).first()
+                    if team and team.project_id:
+                        await manager.join(f"project:{team.project_id}", user_id, websocket)
+
+                # Leadership roles auto-join all project rooms
+                if role in ("CEO", "CTO", "PM"):
+                    projects = db.query(Project).all()
+                    for p in projects:
+                        await manager.join(f"project:{p.id}", user_id, websocket)
             finally:
                 db.close()
         except Exception as e:
-            print(f"[WS] Error joining team rooms for {user_id}: {e}")
+            print(f"[WS] Error joining rooms for {user_id}: {e}")
 
         await websocket.send_json({"type": "connected", "user_id": user_id})
 

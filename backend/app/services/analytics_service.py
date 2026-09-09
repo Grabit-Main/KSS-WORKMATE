@@ -192,26 +192,25 @@ def get_user_analytics(db: Session, user_id: str, period: str) -> AnalyticsRespo
 
 def get_pm_analytics(db: Session, pm_user_id: str, period: str) -> AnalyticsResponse:
     since = _since(period)
-    # Tasks in projects created by PM
-    team_ids = db.query(Team.id).join(Project).filter(Project.created_by == pm_user_id).subquery()
-    tasks = db.query(Task).filter(Task.team_id.in_(team_ids), Task.created_at >= since).all()
+    # Tasks across company projects and teams
+    tasks = db.query(Task).filter(Task.created_at >= since).all()
     overall_kpi = _task_kpi(tasks)
 
-    # Members involved in PM's teams
-    member_user_ids = db.query(TeamMembership.user_id).filter(TeamMembership.team_id.in_(team_ids)).distinct().subquery()
-    users = db.query(User).filter(User.id.in_(member_user_ids), User.is_active == True).all()
+    # Active users with tasks
+    users = db.query(User).filter(User.is_active == True).all()
 
     members_analytics = []
     for u in users:
         u_tasks = [t for t in tasks if str(t.assigned_to) == str(u.id)]
-        members_analytics.append(
-            UserAnalytics(
-                user_id=str(u.id),
-                user_name=f"{u.first_name} {u.last_name}",
-                role=u.role,
-                kpi=_task_kpi(u_tasks),
+        if u_tasks:
+            members_analytics.append(
+                UserAnalytics(
+                    user_id=str(u.id),
+                    user_name=f"{u.first_name} {u.last_name}",
+                    role=u.role,
+                    kpi=_task_kpi(u_tasks),
+                )
             )
-        )
 
     return AnalyticsResponse(
         period=period,

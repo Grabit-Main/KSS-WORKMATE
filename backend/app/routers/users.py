@@ -29,8 +29,10 @@ def list_users(db: Session = Depends(get_db), user: User = Depends(get_current_u
     return users
 
 
+from app.websocket.manager import manager
+
 @router.post("", response_model=UserResponse)
-def create_user(req: UserCreate, db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
+async def create_user(req: UserCreate, db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
     if db.query(User).filter(User.email == req.email).first():
         raise HTTPException(400, "Email already registered")
 
@@ -55,6 +57,22 @@ def create_user(req: UserCreate, db: Session = Depends(get_db), _=Depends(requir
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    event = {
+        "type": "user.created",
+        "data": {
+            "id": str(user.id),
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "role": user.role,
+            "department": user.department,
+            "is_active": user.is_active
+        }
+    }
+    await manager.broadcast("global:admins", event)
+    await manager.broadcast("global:all", event)
+
     return user
 
 
@@ -67,7 +85,7 @@ def get_user(user_id: UUID, db: Session = Depends(get_db), _=Depends(require_ceo
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-def update_user(user_id: UUID, req: UserUpdate, db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
+async def update_user(user_id: UUID, req: UserUpdate, db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
@@ -95,11 +113,28 @@ def update_user(user_id: UUID, req: UserUpdate, db: Session = Depends(get_db), _
         setattr(user, field, val)
     db.commit()
     db.refresh(user)
+
+    event = {
+        "type": "user.updated",
+        "data": {
+            "id": str(user.id),
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "role": user.role,
+            "department": user.department,
+            "is_active": user.is_active
+        }
+    }
+    await manager.broadcast("global:admins", event)
+    await manager.broadcast("global:all", event)
+    await manager.send_to_user(str(user.id), event)
+
     return user
 
 
 @router.delete("/{user_id}")
-def delete_user(user_id: UUID, db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
+async def delete_user(user_id: UUID, db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
@@ -107,4 +142,9 @@ def delete_user(user_id: UUID, db: Session = Depends(get_db), _=Depends(require_
         raise HTTPException(400, "CEO and CTO accounts cannot be deleted")
     db.delete(user)
     db.commit()
+
+    event = {"type": "user.deleted", "data": {"id": str(user_id)}}
+    await manager.broadcast("global:admins", event)
+    await manager.broadcast("global:all", event)
+
     return {"message": "User deleted"}

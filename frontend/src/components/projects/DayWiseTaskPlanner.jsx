@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getTasks, createTask, startTask } from '../../api/tasks';
 import { getUsers } from '../../api/users';
 import { getTeams } from '../../api/teams';
+import { useWebSocket } from '../../context/WebSocketContext';
+import { useRealtime } from '../../realtime/useRealtime';
 import { TaskDetailsModal } from '../tasks/TaskDetailsModal';
 import { AttachmentCard } from '../common/AttachmentCard';
 import {
@@ -109,11 +111,10 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [teamId, setTeamId] = useState(null);
 
-  // Role authorization: PM cannot allocate day-wise tasks, only Team Leads can
-  const isPM = currentUser?.role === 'PM';
+  // Role authorization: PMs, Team Leads, CEO, and CTO can allocate day-wise tasks
+  const { dispatch } = useWebSocket() || {};
   const isSquadLead = teamId && teamMembers.some(m => String(m.id) === String(currentUser?.id) && m.is_lead);
-  const isTeamLead = currentUser?.role === 'TL' || currentUser?.role === 'CEO' || currentUser?.role === 'CTO' || isSquadLead;
-  const canAllocate = !isPM && isTeamLead;
+  const canAllocate = ['PM', 'TL', 'CEO', 'CTO'].includes(currentUser?.role) || isSquadLead;
 
   // Modal State for New Task
   const [showAddModal, setShowAddModal] = useState(false);
@@ -241,7 +242,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
 
   const handlePreFillTasks = async () => {
     if (!canAllocate) {
-      alert('Only Team Leads can allocate day-wise tasks. Project Managers cannot allocate day-wise tasks.');
+      alert('You do not have permission to allocate tasks.');
       return;
     }
     if (!teamMembers || teamMembers.length === 0) {
@@ -254,43 +255,45 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     );
     if (!confirmPreFill) return;
 
-    setLoading(true);
-    const sampleTemplates = [
-      { title: 'Architecture Setup & DB Models', desc: 'Initialize core entity models, database relations, and authentication flow.' },
-      { title: 'API Endpoints & Business Logic', desc: 'Build and validate CRUD operations, business constraints, and data validations.' },
-      { title: 'Frontend UI Integration', desc: 'Connect REST endpoints, implement responsive state management and rich user feedback.' },
-      { title: 'Comprehensive QA & Testing', desc: 'Perform end-to-end user journey tests, boundary checks, and error audits.' },
-      { title: 'Production Staging & Client Demo', desc: 'Deploy final build artifact to staging environment, prepare milestone presentation.' }
-    ];
-
     try {
-      for (let i = 0; i < sampleTemplates.length; i++) {
-        const t = sampleTemplates[i];
+      const defaultBlueprints = [
+        { title: 'Deliverable Blueprint & Architecture Review', priority: 'high' },
+        { title: 'Core Feature Modules Implementation', priority: 'high' },
+        { title: 'Component Integration & Visual Verification', priority: 'normal' },
+        { title: 'Quality Assurance, Bug Fixes & Edge Cases', priority: 'normal' },
+        { title: 'Deployment Readiness & Final Milestone Signoff', priority: 'urgent' }
+      ];
+
+      for (let i = 0; i < defaultBlueprints.length; i++) {
+        const bp = defaultBlueprints[i];
         const assignedMember = teamMembers[i % teamMembers.length];
         const taskDate = targetDates[i] || targetDates[0];
-        await createTask({
+        const [d, m, y] = taskDate.split('-');
+        const deadlineIso = `${y}-${m}-${d}T18:00:00.000Z`;
+
+        const created = await createTask({
           project_id: project.id,
           team_id: teamId,
-          title: t.title,
-          description: t.desc,
+          title: bp.title,
+          description: `Deliverable milestone for ${taskDate}. Coordinated squad execution.`,
           assigned_to: assignedMember.id,
-          priority: 'normal',
+          priority: bp.priority,
+          deadline: deadlineIso,
           scheduled_date: taskDate
         });
+        if (dispatch) dispatch('task.created', created);
       }
       await loadData();
     } catch (err) {
       console.error('Failed to pre-fill tasks:', err);
-      alert('Error pre-filling deliverables: ' + (err.response?.data?.detail || err.message));
-    } finally {
-      setLoading(false);
+      alert(err.response?.data?.detail || 'Failed to pre-fill deliverables.');
     }
   };
 
   const handleCreateTaskSubmit = async (e) => {
     e.preventDefault();
     if (!canAllocate) {
-      setFormError('Project Managers cannot allocate day-wise tasks. Only Team Leads can allocate day-wise tasks.');
+      setFormError('You do not have permission to allocate tasks.');
       return;
     }
     if (!newTaskTitle.trim()) {
@@ -313,7 +316,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     setCreating(true);
     setFormError('');
     try {
-      await createTask({
+      const created = await createTask({
         project_id: project.id,
         team_id: teamId,
         title: newTaskTitle.trim(),
@@ -323,6 +326,13 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
         deadline: new Date(newTaskDeadline).toISOString(),
         scheduled_date: finalScheduledDate
       });
+
+      // 0 ms Optimistic update
+      setTasks(prev => {
+        if (prev.some(t => t.id === created.id)) return prev;
+        return [...prev, created];
+      });
+      if (dispatch) dispatch('task.created', created);
 
       // Ensure the scheduled date exists in the date tabs and activate it so the newly created task displays immediately
       if (!dates.includes(finalScheduledDate)) {
@@ -347,11 +357,15 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
 
   const handleStartTaskDirect = async (e, task) => {
     e.stopPropagation();
+    // 0 ms Optimistic UI update
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'in_progress' } : t));
+    if (dispatch) dispatch('task.status_changed', { id: task.id, status: 'in_progress' });
     try {
       const updated = await startTask(task.id);
       setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to start task.');
+      loadData();
     }
   };
 
@@ -487,24 +501,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
           </div>
         </div>
 
-        {/* PM Role Notice Banner */}
-        {isPM && (
-          <div style={{
-            padding: '9px 28px',
-            background: 'rgba(239, 68, 68, 0.08)',
-            borderBottom: '1px solid rgba(239, 68, 68, 0.18)',
-            color: 'var(--status-blocked, #dc2626)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '12px',
-            fontWeight: 600,
-            flexShrink: 0
-          }}>
-            <AlertCircle size={15} />
-            <span>Notice: Project Managers cannot allocate day-wise tasks. Only Team Leads can allocate day-wise tasks.</span>
-          </div>
-        )}
+
 
         {/* Dates Bar */}
         <div style={{

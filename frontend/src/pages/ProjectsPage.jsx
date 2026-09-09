@@ -1,28 +1,27 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { getProjects, createProject, updateProject } from '../api/projects';
 import { getTeams, updateTeam } from '../api/teams';
-import { getUsers } from '../api/users';
 import { getTasks } from '../api/tasks';
 import { uploadFile } from '../api/upload';
 import { getStoredGoogleToken, requestGoogleAccessToken, isGoogleDriveConnected } from '../services/googleDriveAuth';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
 import {
-  Plus, Calendar, ArrowRight, FolderKanban, X, Check, Users,
-  Paperclip, Image as ImageIcon, Film, FileText, ExternalLink,
-  Briefcase, UserCheck, ChevronRight, CheckCircle2, Clock, AlertCircle,
-  Pencil, AlertTriangle
+  Plus, Calendar, ArrowRight, FolderKanban, X, Users,
+  Paperclip, Image as ImageIcon, Film, FileText,
+  Clock, AlertCircle, Pencil, AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import { AttachmentCard } from '../components/common/AttachmentCard';
-import { DayWiseTaskPlanner, formatDeadlineWithTime, normalizeToDDMMYYYY } from '../components/projects/DayWiseTaskPlanner';
+import { DayWiseTaskPlanner, formatDeadlineWithTime } from '../components/projects/DayWiseTaskPlanner';
 
 const ProjectsPage = () => {
   const { user } = useAuth();
+  const cacheKey = user ? `cache_projects_${user.id}` : 'cache_projects';
   const [plannerProject, setPlannerProject] = useState(null);
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const [projects, setProjects] = useState(() => {
     try {
-      const cached = localStorage.getItem('cache_projects');
+      const cached = localStorage.getItem(cacheKey) || localStorage.getItem('cache_projects');
       const parsed = cached ? JSON.parse(cached) : [];
       return Array.isArray(parsed) ? parsed : [];
     } catch {
@@ -31,8 +30,7 @@ const ProjectsPage = () => {
   });
   const [teams, setTeams] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [usersList, setUsersList] = useState([]);
-  const [loading, setLoading] = useState(() => !localStorage.getItem('cache_projects'));
+  const [loading, setLoading] = useState(() => !(localStorage.getItem(cacheKey) || localStorage.getItem('cache_projects')));
   // Filter and Analytics state
   const [filterStatus, setFilterStatus] = useState('all');
 
@@ -66,23 +64,20 @@ const ProjectsPage = () => {
 
   const loadData = async () => {
     try {
-      const [projectsData, teamsData, usersData, tasksData] = await Promise.all([
+      const [projectsData, teamsData, tasksData] = await Promise.all([
         getProjects().catch(() => []),
         getTeams().catch(() => []),
-        getUsers().catch(() => []),
         getTasks().catch(() => [])
       ]);
       const safeProjects = Array.isArray(projectsData) ? projectsData : [];
       const safeTeams = Array.isArray(teamsData) ? teamsData : [];
-      const safeUsers = Array.isArray(usersData) ? usersData : [];
       const safeTasks = Array.isArray(tasksData) ? tasksData : [];
 
       setProjects(safeProjects);
       setTeams(safeTeams);
-      setUsersList(safeUsers);
       setTasks(safeTasks);
       try {
-        localStorage.setItem('cache_projects', JSON.stringify(safeProjects));
+        if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(safeProjects));
       } catch (e) {
         console.warn('Could not cache projects to localStorage:', e);
       }
@@ -885,23 +880,22 @@ const ProjectsPage = () => {
                     e.stopPropagation();
                     setPlannerProject(p);
                   }}
+                  className="btn btn-sm"
                   style={{
                     background: 'var(--brand-50)',
-                    border: '1px solid rgba(99, 102, 241, 0.2)',
+                    border: '1px solid rgba(99, 102, 241, 0.25)',
                     borderRadius: 'var(--radius-full)',
-                    padding: '4px 10px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    cursor: 'pointer',
+                    padding: '5px 12px',
                     color: 'var(--brand-700)',
                     fontWeight: 600,
                     fontSize: '11px',
-                    transition: 'all var(--transition-fast)'
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
                   }}
                   title="Open day-wise deliverables planner"
                 >
-                  <Calendar size={12} />
+                  <Calendar size={13} />
                   <span>Day-Wise Tasks</span>
                 </button>
 
@@ -911,20 +905,15 @@ const ProjectsPage = () => {
                     e.stopPropagation();
                     setSelectedProject(p);
                   }}
+                  className="btn btn-sm btn-secondary"
                   style={{
-                    background: 'transparent',
-                    border: 'none',
+                    padding: '5px 12px',
+                    fontSize: '11px',
+                    borderRadius: 'var(--radius-full)',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px',
-                    cursor: 'pointer',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 600,
-                    fontSize: '11px',
-                    transition: 'all var(--transition-fast)'
+                    gap: '5px'
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
                 >
                   <span>Overview</span>
                   <ArrowRight size={12} strokeWidth={2} />

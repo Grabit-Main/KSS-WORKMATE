@@ -8,6 +8,7 @@ import {
   Link2, Unlink
 } from 'lucide-react';
 import { ImageCropModal } from '../components/profile/ImageCropModal';
+import { useRealtime } from '../realtime/useRealtime';
 import {
   isGoogleDriveConnected,
   requestGoogleAccessToken,
@@ -68,6 +69,14 @@ const ProfilePage = () => {
       setAvatarPreview(user.avatar_url || '');
     }
   }, [user]);
+
+  useRealtime('user.updated', (updatedUser) => {
+    if (String(updatedUser?.id) === String(user?.id)) {
+      if (updatedUser.first_name) setFirstName(updatedUser.first_name);
+      if (updatedUser.last_name) setLastName(updatedUser.last_name);
+      if (updatedUser.avatar_url) setAvatarPreview(updatedUser.avatar_url);
+    }
+  });
 
   // Resend OTP countdown timer
   useEffect(() => {

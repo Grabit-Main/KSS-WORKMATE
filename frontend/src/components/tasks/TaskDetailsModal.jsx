@@ -4,56 +4,54 @@ import { startTask, completeTask, confirmTask, reassignTask } from '../../api/ta
 import { getUsers } from '../../api/users';
 import { getTeams } from '../../api/teams';
 import { AttachmentCard } from '../common/AttachmentCard';
+import { useRealtime } from '../../realtime/useRealtime';
+import { formatDateTime, normalizeToDDMMYYYY, getDeadlineStatus } from '../../utils/dateUtils';
 import {
   X, Calendar, Clock, Play, CheckCircle2, User,
   Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle, UserCheck
 } from 'lucide-react';
 
-const formatScheduledDate = (val) => {
-  if (!val) return '';
-  if (typeof val !== 'string') {
-    const d = new Date(val);
-    if (isNaN(d.getTime())) return '';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
-  }
-  const clean = val.trim();
-  const ddmmyyyy = clean.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
-  if (ddmmyyyy) {
-    return `${ddmmyyyy[1]}-${ddmmyyyy[2]}-${ddmmyyyy[3]}`;
-  }
-  const yyyymmdd = clean.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
-  if (yyyymmdd) {
-    return `${yyyymmdd[3]}-${yyyymmdd[2]}-${yyyymmdd[1]}`;
-  }
-  const d = new Date(clean);
-  if (!isNaN(d.getTime())) {
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
-  }
-  return clean;
-};
-
-const formatDeadlineWithTime = (dateVal) => {
-  if (!dateVal) return '';
-  const d = new Date(dateVal);
-  if (isNaN(d.getTime())) return String(dateVal);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  const datePart = `${day}-${month}-${year}`;
-  const timePart = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-  return `${datePart} at ${timePart}`;
-};
+const formatScheduledDate = (val) => normalizeToDDMMYYYY(val);
+const formatDeadlineWithTime = (dateVal) => formatDateTime(dateVal);
 
 export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) => {
   const [currentTask, setCurrentTask] = useState(task);
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Real-time synchronization for active task
+  useRealtime('task.status_changed', (data) => {
+    if (String(data?.task_id) === String(currentTask?.id)) {
+      setCurrentTask(prev => ({
+        ...prev,
+        status: data.status || prev.status,
+        is_locked: data.is_locked !== undefined ? data.is_locked : prev.is_locked,
+        deadline_exceeded: data.deadline_exceeded !== undefined ? data.deadline_exceeded : prev.deadline_exceeded
+      }));
+    }
+  });
+
+  useRealtime('task.updated', (data) => {
+    if (String(data?.task_id || data?.id) === String(currentTask?.id)) {
+      setCurrentTask(prev => ({ ...prev, ...data }));
+    }
+  });
+
+  useRealtime('task.reassigned', (data) => {
+    if (String(data?.task_id) === String(currentTask?.id)) {
+      setCurrentTask(prev => ({
+        ...prev,
+        assigned_to: data.assigned_to || prev.assigned_to,
+        status: data.status || prev.status
+      }));
+    }
+  });
+
+  useRealtime('task.locked', (data) => {
+    if (String(data?.task_id) === String(currentTask?.id)) {
+      setCurrentTask(prev => ({ ...prev, is_locked: true, status: 'completed' }));
+    }
+  });
 
   // Reassign State
   const [showReassignModal, setShowReassignModal] = useState(false);

@@ -50,6 +50,11 @@ const DashboardPage = () => {
   useRealtime('task.created', handleRefresh);
   useRealtime('task.status_changed', handleRefresh);
   useRealtime('task.reassigned', handleRefresh);
+  useRealtime('project.created', handleRefresh);
+  useRealtime('project.updated', handleRefresh);
+  useRealtime('team.created', handleRefresh);
+  useRealtime('team.deleted', handleRefresh);
+  useRealtime('review.submitted', handleRefresh);
 
   const handlePeriodChange = (newPeriod) => {
     if (newPeriod === period) return;

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { getNotifications } from '../api/notifications';
 
 const WebSocketContext = createContext(null);
 
@@ -22,7 +23,63 @@ export const WebSocketProvider = ({ children }) => {
   const activeRooms = useRef(new Set()); // Set<roomName>
   const reconnectTimeoutRef = useRef(null);
   const heartbeatIntervalRef = useRef(null);
+  const fallbackPollIntervalRef = useRef(null);
   const isDestroyedRef = useRef(false);
+  const lastKnownNotifIdsRef = useRef(new Set());
+  const broadcastChannelRef = useRef(null);
+
+  // Initialize cross-tab BroadcastChannel
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        const channel = new BroadcastChannel('workmate_realtime_bus');
+        broadcastChannelRef.current = channel;
+        channel.onmessage = (event) => {
+          if (event.data && event.data.type) {
+            const { type, data } = event.data;
+            const typeListeners = listeners.current.get(type);
+            if (typeListeners) {
+              typeListeners.forEach(cb => {
+                try { cb(data); } catch (err) { console.error('[BC] Callback error:', err); }
+              });
+            }
+          }
+        };
+      } catch (e) {
+        console.warn('[Realtime] BroadcastChannel unavailable:', e);
+      }
+    }
+    return () => {
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+        broadcastChannelRef.current = null;
+      }
+    };
+  }, []);
+
+  // Instant local event dispatch (0 ms latency)
+  const dispatch = useCallback((eventType, data, { broadcast = true } = {}) => {
+    if (!eventType) return;
+    const typeListeners = listeners.current.get(eventType);
+    if (typeListeners) {
+      typeListeners.forEach(cb => {
+        try {
+          cb(data !== undefined ? data : {});
+        } catch (cbErr) {
+          console.error('[EventBus] Listener callback error:', cbErr);
+        }
+      });
+    }
+
+    // Propagate to other tabs immediately
+    if (broadcast && broadcastChannelRef.current) {
+      try {
+        broadcastChannelRef.current.postMessage({ type: eventType, data });
+      } catch (err) {
+        console.warn('[EventBus] Broadcast post error:', err);
+      }
+    }
+  }, []);
 
   const connect = useCallback(() => {
     if (isDestroyedRef.current || !user) return;
@@ -39,31 +96,27 @@ export const WebSocketProvider = ({ children }) => {
         ws.current = null;
       }
 
-      console.log('[WS] Connecting to:', wsUrl);
       const socket = new WebSocket(wsUrl);
       ws.current = socket;
 
       socket.onopen = () => {
-        console.log('[WS] Connection open, authenticating...');
         setIsConnected(true);
         // Authenticate immediately
         socket.send(JSON.stringify({ type: 'auth', token }));
 
-        // Start heartbeat to prevent proxy timeout
+        // Start heartbeat
         if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
         heartbeatIntervalRef.current = setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: 'ping' }));
           }
-        }, 25000);
+        }, 20000);
       };
 
       socket.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          // If authenticated, restore all joined rooms
           if (msg.type === 'connected') {
-            console.log('[WS] Authenticated as user:', msg.user_id);
             activeRooms.current.forEach(room => {
               if (socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'join', room }));
@@ -72,47 +125,96 @@ export const WebSocketProvider = ({ children }) => {
           }
 
           if (msg.type) {
-            const typeListeners = listeners.current.get(msg.type);
-            if (typeListeners) {
-              typeListeners.forEach(cb => {
-                try {
-                  cb(msg.data !== undefined ? msg.data : msg);
-                } catch (cbErr) {
-                  console.error('[WS] Listener callback error:', cbErr);
-                }
-              });
-            }
+            dispatch(msg.type, msg.data !== undefined ? msg.data : msg, { broadcast: false });
           }
         } catch (e) {
           console.error('[WS] Failed to parse message', e);
         }
       };
 
-      socket.onerror = (err) => {
-        console.warn('[WS] Socket error, will reconnect:', err);
+      socket.onerror = () => {
+        setIsConnected(false);
       };
 
-      socket.onclose = (e) => {
-        console.log('[WS] Socket disconnected, code:', e.code);
+      socket.onclose = () => {
         setIsConnected(false);
         if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
 
-        // Schedule reconnect if user is still logged in
+        // Schedule reconnect if user is logged in
         if (!isDestroyedRef.current && user) {
           if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('[WS] Attempting reconnect...');
             connect();
           }, 3000);
         }
       };
-    } catch (err) {
-      console.error('[WS] Connection failed:', err);
+    } catch {
+      setIsConnected(false);
       if (!isDestroyedRef.current && user) {
         reconnectTimeoutRef.current = setTimeout(connect, 3000);
       }
     }
-  }, [user]);
+  }, [user, dispatch]);
+
+  // Adaptive High-Frequency Fallback Poller for instant updates when WS is disconnected
+  useEffect(() => {
+    if (!user) {
+      if (fallbackPollIntervalRef.current) clearInterval(fallbackPollIntervalRef.current);
+      return;
+    }
+
+    let isPolling = false;
+    const pollFast = async () => {
+      if (isPolling || isDestroyedRef.current || document.hidden) return;
+      isPolling = true;
+      try {
+        const notifs = await getNotifications();
+        if (Array.isArray(notifs)) {
+          const currentIds = new Set(notifs.map(n => String(n.id)));
+          // Check for newly arrived notifications
+          if (lastKnownNotifIdsRef.current.size > 0) {
+            const newlyArrived = notifs.filter(n => !lastKnownNotifIdsRef.current.has(String(n.id)));
+            newlyArrived.forEach(n => {
+              dispatch('notification.new', {
+                id: n.id,
+                title: n.title,
+                message: n.message,
+                ref_id: n.ref_id,
+                task_id: n.ref_id,
+                event_type: n.event_type
+              });
+            });
+          }
+          lastKnownNotifIdsRef.current = currentIds;
+        }
+      } catch {
+        // Silently tolerate temporary network drops
+      } finally {
+        isPolling = false;
+      }
+    };
+
+    // Initial poll
+    pollFast();
+
+    // High frequency 1500ms sync
+    fallbackPollIntervalRef.current = setInterval(pollFast, 1500);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        pollFast();
+        if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
+          connect();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (fallbackPollIntervalRef.current) clearInterval(fallbackPollIntervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, dispatch, connect]);
 
   useEffect(() => {
     isDestroyedRef.current = false;
@@ -157,6 +259,7 @@ export const WebSocketProvider = ({ children }) => {
   }, []);
 
   const subscribe = useCallback((eventType, callback) => {
+    if (!eventType || !callback) return () => {};
     if (!listeners.current.has(eventType)) {
       listeners.current.set(eventType, new Set());
     }
@@ -167,7 +270,7 @@ export const WebSocketProvider = ({ children }) => {
   }, []);
 
   return (
-    <WebSocketContext.Provider value={{ isConnected, joinRoom, leaveRoom, subscribe }}>
+    <WebSocketContext.Provider value={{ isConnected, joinRoom, leaveRoom, subscribe, dispatch }}>
       {children}
     </WebSocketContext.Provider>
   );

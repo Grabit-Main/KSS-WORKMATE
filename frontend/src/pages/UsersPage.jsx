@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getUsers, createUser, updateUser, deactivateUser } from '../api/users';
 import { UserPlus, X, Trash2, Power, Pencil, AlertCircle, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useRealtime } from '../realtime/useRealtime';
 
 const ROLE_ORDER = { CTO: 0, CEO: 1, PM: 2, HR: 3, TL: 4, TM: 5 };
 
@@ -68,6 +69,16 @@ const UsersPage = () => {
       setLoading(false);
     }
   };
+
+  const handleLiveUserUpdate = useCallback(() => {
+    loadUsers();
+  }, []);
+
+  useRealtime('user.created', handleLiveUserUpdate);
+  useRealtime('user.updated', handleLiveUserUpdate);
+  useRealtime('user.deleted', handleLiveUserUpdate);
+  useRealtime('team.member_added', handleLiveUserUpdate);
+  useRealtime('team.lead_assigned', handleLiveUserUpdate);
 
   useEffect(() => {
     loadUsers();
@@ -146,10 +157,14 @@ const UsersPage = () => {
       alert("You cannot disable your own account.");
       return;
     }
+    const newActive = !u.is_active;
+    // 0 ms optimistic update
+    setUsers(prev => prev.map(user => user.id === u.id ? { ...user, is_active: newActive } : user));
     try {
-      await updateUser(u.id, { is_active: !u.is_active });
-      loadUsers();
+      await updateUser(u.id, { is_active: newActive });
     } catch (err) {
+      // Rollback on failure
+      setUsers(prev => prev.map(user => user.id === u.id ? { ...user, is_active: u.is_active } : user));
       alert('Failed to update user: ' + (err.response?.data?.detail || err.message));
     }
   };
@@ -164,10 +179,13 @@ const UsersPage = () => {
       return;
     }
     if (window.confirm(`Are you sure you want to permanently delete ${u.first_name}?`)) {
+      // 0 ms optimistic removal
+      const originalUsers = [...users];
+      setUsers(prev => prev.filter(user => user.id !== u.id));
       try {
         await deactivateUser(u.id);
-        loadUsers();
       } catch (err) {
+        setUsers(originalUsers);
         alert('Failed to delete user: ' + (err.response?.data?.detail || err.message));
       }
     }

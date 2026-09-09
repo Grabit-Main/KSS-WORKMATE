@@ -42,15 +42,17 @@ def get_history_summary(
         target_u = db.query(User).filter(User.id == target_user_id).first()
         target_role = target_u.role if target_u else user.role
 
-        if target_role == "PM":
-            p_query = db.query(Project).filter(Project.created_by == target_user_id)
-            team_ids = db.query(Team.id).join(Project).filter(Project.created_by == target_user_id).subquery()
-            t_query = db.query(Task).filter((Task.team_id.in_(team_ids)) | (Task.assigned_to == target_user_id))
+        if target_role in ("CEO", "CTO", "HR", "PM"):
+            p_query = db.query(Project)
+            t_query = db.query(Task)
         elif target_role == "TL":
-            my_teams = db.query(TeamMembership.team_id).filter(TeamMembership.user_id == target_user_id, TeamMembership.is_lead == True).subquery()
+            my_teams = db.query(TeamMembership.team_id).filter(
+                TeamMembership.user_id == target_user_id,
+                (TeamMembership.is_lead == True) | (target_u.role == "TL")
+            ).subquery()
             p_ids = db.query(Team.project_id).filter(Team.id.in_(my_teams)).subquery()
             p_query = db.query(Project).filter(Project.id.in_(p_ids))
-            t_query = db.query(Task).filter((Task.team_id.in_(my_teams)) | (Task.assigned_to == target_user_id))
+            t_query = db.query(Task).filter((Task.team_id.in_(my_teams)) | (Task.assigned_to == target_user_id) | (Task.assigned_by == target_user_id))
         else: # TM
             my_teams = db.query(TeamMembership.team_id).filter(TeamMembership.user_id == target_user_id).subquery()
             p_ids = db.query(Team.project_id).filter(Team.id.in_(my_teams)).subquery()
@@ -116,9 +118,9 @@ def get_projects_history(
             })
 
         if all_team_ids:
-            tasks = db.query(Task).filter(Task.team_id.in_(all_team_ids)).all()
+            tasks = db.query(Task).filter((Task.project_id == p.id) | (Task.team_id.in_(all_team_ids))).all()
         else:
-            tasks = []
+            tasks = db.query(Task).filter(Task.project_id == p.id).all()
 
         total_t = len(tasks)
         comp_t = sum(1 for t in tasks if t.status == "completed")
@@ -169,14 +171,15 @@ def get_tasks_history(
     if target_user_id:
         target_u = db.query(User).filter(User.id == target_user_id).first()
         target_role = target_u.role if target_u else user.role
-        if target_role == "PM":
-            team_ids = db.query(Team.id).join(Project).filter(Project.created_by == target_user_id).subquery()
-            p_ids = db.query(Project.id).filter(Project.created_by == target_user_id).subquery()
-            q = q.filter((Task.team_id.in_(team_ids)) | (Task.project_id.in_(p_ids)) | (Task.assigned_to == target_user_id))
+        if target_role in ("CEO", "CTO", "HR", "PM"):
+            pass  # Full visibility for leadership and PM
         elif target_role == "TL":
-            my_teams = db.query(TeamMembership.team_id).filter(TeamMembership.user_id == target_user_id, TeamMembership.is_lead == True).subquery()
-            q = q.filter((Task.team_id.in_(my_teams)) | (Task.assigned_to == target_user_id))
-        else: # TM
+            my_teams = db.query(TeamMembership.team_id).filter(
+                TeamMembership.user_id == target_user_id,
+                (TeamMembership.is_lead == True) | (target_u.role == "TL")
+            ).subquery()
+            q = q.filter((Task.team_id.in_(my_teams)) | (Task.assigned_to == target_user_id) | (Task.assigned_by == target_user_id))
+        else:  # TM
             q = q.filter(Task.assigned_to == target_user_id)
 
     if status and status != "all":
