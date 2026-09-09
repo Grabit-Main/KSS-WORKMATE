@@ -898,35 +898,37 @@ const ProjectsPage = () => {
                 paddingTop: '12px',
                 borderTop: '1px solid var(--border)',
                 display: 'flex',
-                justifyContent: 'space-between',
+                justifyContent: user?.role === 'TL' ? 'space-between' : 'flex-end',
                 alignItems: 'center',
                 gap: '8px',
                 minHeight: '44px'
               }}>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPlannerProject(p);
-                  }}
-                  className="btn btn-sm"
-                  style={{
-                    background: 'var(--brand-50)',
-                    border: '1px solid rgba(99, 102, 241, 0.25)',
-                    borderRadius: 'var(--radius-full)',
-                    padding: '5px 12px',
-                    color: 'var(--brand-700)',
-                    fontWeight: 600,
-                    fontSize: '11px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                  title="Open day-wise deliverables planner"
-                >
-                  <Calendar size={13} />
-                  <span>Day-Wise Tasks</span>
-                </button>
+                {user?.role === 'TL' && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPlannerProject(p);
+                    }}
+                    className="btn btn-sm"
+                    style={{
+                      background: 'var(--brand-50)',
+                      border: '1px solid rgba(99, 102, 241, 0.25)',
+                      borderRadius: 'var(--radius-full)',
+                      padding: '5px 12px',
+                      color: 'var(--brand-700)',
+                      fontWeight: 600,
+                      fontSize: '11px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                    title="Open day-wise deliverables planner"
+                  >
+                    <Calendar size={13} />
+                    <span>Day-Wise Tasks</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -1571,19 +1573,21 @@ const ProjectsPage = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const proj = selectedProject;
-                      setSelectedProject(null);
-                      setPlannerProject(proj);
-                    }}
-                    className="btn btn-primary"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', fontSize: '12px' }}
-                  >
-                    <Calendar size={13} />
-                    <span>Day-Wise Planner</span>
-                  </button>
+                  {user?.role === 'TL' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const proj = selectedProject;
+                        setSelectedProject(null);
+                        setPlannerProject(proj);
+                      }}
+                      className="btn btn-primary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', fontSize: '12px' }}
+                    >
+                      <Calendar size={13} />
+                      <span>Day-Wise Planner</span>
+                    </button>
+                  )}
                   {user?.role === 'PM' && (
                     <button
                       type="button"
@@ -1845,7 +1849,7 @@ const ProjectsPage = () => {
         );
       })()}
 
-      {plannerProject && (
+      {plannerProject && user?.role === 'TL' && (
         <DayWiseTaskPlanner
           project={plannerProject}
           currentUser={user}

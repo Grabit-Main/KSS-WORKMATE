@@ -111,10 +111,10 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [teamId, setTeamId] = useState(null);
 
-  // Role authorization: PMs, Team Leads, CEO, and CTO can allocate day-wise tasks
+  // Role authorization: Day-wise planner is strictly for Team Leads (TL) only
   const { dispatch, joinRoom, leaveRoom } = useWebSocket() || {};
   const isSquadLead = teamId && teamMembers.some(m => String(m.id) === String(currentUser?.id) && m.is_lead);
-  const canAllocate = ['PM', 'TL', 'CEO', 'CTO'].includes(currentUser?.role) || isSquadLead;
+  const canAllocate = currentUser?.role === 'TL' || isSquadLead;
 
   // Join the project room for persistent real-time event streaming
   useEffect(() => {
@@ -292,12 +292,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
 
       // Identify the squad(s) allocated to this project
       const allocatedTeams = teamsData.filter(t => String(t.project_id) === String(project.id));
-      if (currentUser?.role === 'PM') {
-        // PM can assign tasks to anyone across the organization without team/squad restriction
-        const eligibleUsers = usersData.filter(u => u.role !== 'CEO' && u.role !== 'CTO');
-        setTeamMembers(eligibleUsers.length > 0 ? eligibleUsers : usersData);
-        setTeamId(allocatedTeams.length > 0 ? allocatedTeams[0].id : null);
-      } else if (allocatedTeams.length > 0) {
+      if (allocatedTeams.length > 0) {
         const myTeam = allocatedTeams.find(t => t.memberships?.some(m => String(m.user_id) === String(currentUser?.id) && (m.is_lead || currentUser?.role === 'TL')));
         setTeamId(myTeam ? myTeam.id : allocatedTeams[0].id);
         const memberIds = new Set(allocatedTeams.flatMap(t => (t.memberships || []).map(m => String(m.user_id || m.user?.id))));
@@ -521,6 +516,11 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
       </span>
     );
   };
+
+  // Authorization guard: Day-wise planner is strictly for Team Leads (TL) only
+  if (currentUser?.role !== 'TL' && !isSquadLead) {
+    return null;
+  }
 
   return (
     <div
