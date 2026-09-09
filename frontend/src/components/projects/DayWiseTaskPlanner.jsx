@@ -931,8 +931,8 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {/* Start Action directly from card if not started */}
-                        {t.status === 'not_started' && (
+                        {/* Start Action directly from card: only the assigned user can start */}
+                        {t.status === 'not_started' && String(t.assigned_to) === String(currentUser?.id) && (
                           <button
                             type="button"
                             onClick={(e) => handleStartTaskDirect(e, t)}

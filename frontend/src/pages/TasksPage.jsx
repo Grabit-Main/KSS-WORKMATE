@@ -625,13 +625,14 @@ const TasksPage = () => {
                 </div>
               )}
 
-              {task.status === 'in_review' && ['CEO', 'CTO', 'PM', 'TL'].includes(user.role) && (
+              {/* Assigner / Leadership Actions: Reassign and Complete Task */}
+              {task.status !== 'completed' && (String(task.assigned_by) === String(user?.id) || ['CEO', 'CTO', 'PM', 'TL'].includes(user?.role)) && (
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setReassigningTask(task);
-                      setReassignCandidate('');
+                      setReassignCandidate(String(task.assigned_to) || '');
                       setReassignReason('');
                     }}
                     className="btn btn-secondary"
@@ -648,7 +649,7 @@ const TasksPage = () => {
                       borderColor: 'rgba(99, 102, 241, 0.3)',
                       background: 'var(--brand-50)'
                     }}
-                    title="Reassign to another squad member"
+                    title="Reassign this deliverable"
                   >
                     <UserCheck size={14} />
                     <span>Reassign</span>
@@ -671,7 +672,7 @@ const TasksPage = () => {
                     }}
                   >
                     <CheckCircle2 size={14} />
-                    <span>Confirm Complete</span>
+                    <span>Complete Task</span>
                   </button>
                 </div>
               )}
@@ -1056,13 +1057,11 @@ const TasksPage = () => {
                   required
                 >
                   <option value="">-- Select Member --</option>
-                  {eligibleOrgUsers
-                    .filter(m => String(m.id) !== String(reassigningTask.assigned_to))
-                    .map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.first_name} {m.last_name} ({m.role} - {m.department || 'Squad'})
-                      </option>
-                    ))}
+                  {eligibleOrgUsers.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.first_name} {m.last_name} ({m.role}{m.department ? ` · ${m.department}` : ''}){String(m.id) === String(reassigningTask?.assigned_to) ? ' (Current Assignee)' : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
 

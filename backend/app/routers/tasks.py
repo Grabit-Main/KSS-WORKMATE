@@ -295,16 +295,21 @@ async def complete_task(task_id: UUID, db: Session = Depends(get_db), user: User
 @router.put("/{task_id}/confirm", response_model=TaskResponse)
 async def confirm_task(task_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     task = db.query(Task).filter(Task.id == task_id).first()
-    if not task or task.status != "in_review":
-        raise HTTPException(400, "Task must be in review to confirm")
-    # Must be TL of team, or CEO/CTO/PM
-    lead = db.query(TeamMembership).filter(
-        TeamMembership.team_id == task.team_id,
-        TeamMembership.user_id == user.id,
-        (TeamMembership.is_lead == True) | (user.role == "TL")
-    ).first()
-    if not lead and user.role not in ("CEO", "CTO", "PM"):
-        raise HTTPException(403, "Only Team Leads can confirm tasks")
+    if not task:
+        raise HTTPException(404, "Task not found")
+    if task.status == "completed":
+        raise HTTPException(400, "Task is already completed")
+    # Must be assigner of task, or TL of team, or CEO/CTO/PM
+    is_assigner = str(task.assigned_by) == str(user.id)
+    lead = False
+    if task.team_id:
+        lead = db.query(TeamMembership).filter(
+            TeamMembership.team_id == task.team_id,
+            TeamMembership.user_id == user.id,
+            (TeamMembership.is_lead == True) | (user.role == "TL")
+        ).first() is not None
+    if not is_assigner and not lead and user.role not in ("CEO", "CTO", "PM"):
+        raise HTTPException(403, "Only the task assigner, Team Leads, or Project Managers can confirm tasks")
     _log_status(db, task, task.status, "completed", user.id)
     task.status = "completed"
     task.is_locked = True

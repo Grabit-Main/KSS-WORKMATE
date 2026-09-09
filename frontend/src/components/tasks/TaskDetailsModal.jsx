@@ -96,7 +96,6 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
 
         const filtered = pool.filter(u => {
           if (!u || !u.id) return false;
-          if (String(u.id) === String(currentTask.assigned_to)) return false;
           if (u.role === 'CEO' || u.role === 'CTO') return false;
           if (currentUser.role === 'TM' && u.role === 'PM') return false;
           return true;
@@ -525,8 +524,8 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
               </div>
 
               <div style={{ display: 'flex', gap: '10px' }}>
-                {/* START ACTION: Member or Lead starts task */}
-                {currentTask.status === 'not_started' && (isAssignee || isAssigner || canConfirm) && (
+                {/* START ACTION: Only assignee can start task */}
+                {currentTask.status === 'not_started' && isAssignee && (
                   <button
                     className="btn btn-primary"
                     onClick={handleStart}
@@ -538,10 +537,10 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                   </button>
                 )}
 
-                {/* IN PROGRESS -> SUBMIT FOR REVIEW */}
+                {/* IN PROGRESS -> SUBMIT FOR REVIEW (Assignee only) */}
                 {currentTask.status === 'in_progress' && isAssignee && (
                   <button
-                    className="btn btn-primary"
+                    className="btn btn-secondary"
                     onClick={handleComplete}
                     disabled={actionLoading}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
@@ -551,14 +550,15 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                   </button>
                 )}
 
-                {/* IN REVIEW -> REASSIGN & CONFIRM TASK */}
-                {currentTask.status === 'in_review' && (isAssigner || canConfirm) && (
+                {/* ASSIGNER ACTIONS: Reassign and Complete Task */}
+                {(isAssigner || canConfirm) && currentTask.status !== 'completed' && (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
                       className="btn btn-secondary"
                       onClick={() => {
                         setErrorMsg('');
+                        setReassignCandidate(String(currentTask.assigned_to) || '');
                         setShowReassignModal(true);
                       }}
                       disabled={actionLoading || reassignLoading}
@@ -572,7 +572,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                         color: 'var(--brand-700)',
                         border: '1px solid rgba(99, 102, 241, 0.3)'
                       }}
-                      title="Reassign this deliverable to another team member"
+                      title="Reassign this deliverable"
                     >
                       <UserCheck size={16} />
                       <span>Reassign</span>
@@ -593,7 +593,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                       }}
                     >
                       <CheckCircle2 size={16} />
-                      <span>{actionLoading ? 'Confirming...' : 'Confirm & Complete'}</span>
+                      <span>{actionLoading ? 'Completing...' : 'Complete Task'}</span>
                     </button>
                   </div>
                 )}
@@ -684,7 +684,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                   <option value="">-- Select Member --</option>
                   {eligibleMembers.map(m => (
                     <option key={m.id} value={m.id}>
-                      {m.first_name} {m.last_name} ({m.role} - {m.department || 'Squad'})
+                      {m.first_name} {m.last_name} ({m.role}{m.department ? ` · ${m.department}` : ''}){String(m.id) === String(currentTask.assigned_to) ? ' (Current Assignee)' : ''}
                     </option>
                   ))}
                 </select>
