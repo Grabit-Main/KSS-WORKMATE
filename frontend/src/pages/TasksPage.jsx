@@ -337,7 +337,13 @@ const TasksPage = () => {
     }
   };
 
-  const filteredTasks = tasks.filter(t => {
+  const userTasks = tasks.filter(t => {
+    const isAssignedToMe = String(t.assigned_to) === String(user?.id);
+    const isAssignedByMe = String(t.assigned_by) === String(user?.id);
+    return isAssignedToMe || isAssignedByMe;
+  });
+
+  const filteredTasks = userTasks.filter(t => {
     if (filterTab === 'mine') return String(t.assigned_to) === String(user?.id);
     if (filterTab === 'review') return t.status === 'in_review';
     if (filterTab === 'projects') return Boolean(t.project_id);
@@ -364,8 +370,8 @@ const TasksPage = () => {
             <p className="text-sm text-secondary mt-1">Track assignments, progress updates, and completion deadlines</p>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-          {[1,2,3,4,5,6].map(i => <div key={i} className="card skeleton" style={{ height: '170px' }}></div>)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+          {[1,2,3,4,5,6].map(i => <div key={i} className="card skeleton" style={{ height: '290px' }}></div>)}
         </div>
       </div>
     );
@@ -392,11 +398,11 @@ const TasksPage = () => {
       {/* Filter Tabs for Quick Access */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
         {[
-          { id: 'all', label: `All Tasks (${tasks.length})` },
-          { id: 'projects', label: `Project Tasks (${tasks.filter(t => Boolean(t.project_id)).length})` },
-          { id: 'standalone', label: `Standalone Tasks (${tasks.filter(t => !t.project_id).length})` },
-          { id: 'mine', label: `Assigned to Me (${tasks.filter(t => String(t.assigned_to) === String(user?.id)).length})` },
-          { id: 'review', label: `In Review (${tasks.filter(t => t.status === 'in_review').length})` }
+          { id: 'all', label: `All Tasks (${userTasks.length})` },
+          { id: 'projects', label: `Project Tasks (${userTasks.filter(t => Boolean(t.project_id)).length})` },
+          { id: 'standalone', label: `Standalone Tasks (${userTasks.filter(t => !t.project_id).length})` },
+          { id: 'mine', label: `Assigned to Me (${userTasks.filter(t => String(t.assigned_to) === String(user?.id)).length})` },
+          { id: 'review', label: `In Review (${userTasks.filter(t => t.status === 'in_review').length})` }
         ].map(tab => (
           <button
             key={tab.id}
@@ -431,10 +437,11 @@ const TasksPage = () => {
           <p className="text-secondary text-sm">There are no tasks matching your current view filter.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
           {filteredTasks.map(task => {
             const isAssignedToMe = String(task.assigned_to) === String(user?.id);
-            const isSelfAssigned = isAssignedToMe && String(task.assigned_by) === String(user?.id);
+            const isAssignedByMe = String(task.assigned_by) === String(user?.id);
+            const isSelfAssigned = isAssignedToMe && isAssignedByMe;
             const isOverdue = task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
 
             return (
@@ -446,6 +453,8 @@ const TasksPage = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
+                  minHeight: '295px',
+                  height: '100%',
                   cursor: 'pointer',
                   transition: 'all var(--transition-smooth)',
                   position: 'relative',
@@ -463,7 +472,7 @@ const TasksPage = () => {
                 }}
               >
                 <div>
-                  <div className="flex justify-between items-center mb-3">
+                  <div className="flex justify-between items-center mb-3" style={{ minHeight: '26px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <span style={{
                         fontSize: '11px',
@@ -561,157 +570,170 @@ const TasksPage = () => {
                     )}
                   </div>
 
-                  <h3 className="font-bold text-base mb-1.5" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
+                  <h3 className="font-bold text-base mb-1.5" style={{
+                    letterSpacing: '-0.015em',
+                    color: 'var(--text-primary)',
+                    minHeight: '42px',
+                    lineHeight: '1.35',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}>
                     {task.title}
                   </h3>
                   <p className="text-sm text-secondary mb-3" style={{
+                    minHeight: '38px',
                     display: '-webkit-box',
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
-                    lineHeight: '1.4'
+                    lineHeight: '1.45'
                   }}>
                     {task.description}
                   </p>
 
-                  {/* Attachments Display in small clickable boxes */}
+                  {/* Compact Attachments Chip if present */}
                   {task.attachments && task.attachments.length > 0 && (
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                        gap: '6px',
-                        marginBottom: '14px'
-                      }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      {task.attachments.map(att => (
-                        <AttachmentCard key={att.id || att.file_url} attachment={att} />
-                      ))}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '3px 8px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'var(--subtle)',
+                        border: '1px solid var(--border)',
+                        color: 'var(--brand-700)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <Paperclip size={11} /> {task.attachments.length} attachment{task.attachments.length === 1 ? '' : 's'}
+                      </span>
                     </div>
                   )}
                 </div>
 
-              {/* Quick Actions for Self-Assigned or Assigned Tasks */}
-              {isAssignedToMe && task.status === 'not_started' && (
-                <div style={{ marginBottom: '12px' }}>
-                  <button
-                    onClick={(e) => handleStartTask(task.id, e)}
-                    className="btn btn-primary"
-                    style={{ width: '100%', height: '32px', fontSize: '12px', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  >
-                    <span>▶</span> Start Task
-                  </button>
-                </div>
-              )}
+                {/* Quick Actions Slot with consistent height */}
+                <div style={{ marginTop: 'auto', paddingTop: '10px', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
+                  {isAssignedToMe && task.status === 'not_started' && (
+                    <button
+                      onClick={(e) => handleStartTask(task.id, e)}
+                      className="btn btn-primary"
+                      style={{ width: '100%', height: '32px', fontSize: '12px', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <span>▶</span> Start Task
+                    </button>
+                  )}
 
-              {isAssignedToMe && task.status === 'in_progress' && (
-                <div style={{ marginBottom: '12px' }}>
-                  <button
-                    onClick={(e) => handleCompleteTask(task.id, e)}
-                    className="btn btn-secondary"
-                    style={{
-                      width: '100%',
-                      height: '32px',
-                      fontSize: '12px',
-                      padding: '0 12px',
-                      color: 'var(--brand-700)',
-                      borderColor: 'rgba(99, 102, 241, 0.3)',
-                      background: 'var(--brand-50)'
-                    }}
-                  >
-                    Submit for Review
-                  </button>
-                </div>
-              )}
+                  {isAssignedToMe && task.status === 'in_progress' && (
+                    <button
+                      onClick={(e) => handleCompleteTask(task.id, e)}
+                      className="btn btn-secondary"
+                      style={{
+                        width: '100%',
+                        height: '32px',
+                        fontSize: '12px',
+                        padding: '0 12px',
+                        color: 'var(--brand-700)',
+                        borderColor: 'rgba(99, 102, 241, 0.3)',
+                        background: 'var(--brand-50)'
+                      }}
+                    >
+                      Submit for Review
+                    </button>
+                  )}
 
-              {/* Assigner / Leadership Actions: Reassign and Complete Task */}
-              {task.status !== 'completed' && (String(task.assigned_by) === String(user?.id) || ['CEO', 'CTO', 'PM', 'TL'].includes(user?.role)) && (
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setReassigningTask(task);
-                      setReassignCandidate(String(task.assigned_to) || '');
-                      setReassignReason('');
-                    }}
-                    className="btn btn-secondary"
-                    style={{
-                      flex: 1,
-                      height: '32px',
-                      fontSize: '12px',
-                      padding: '0 8px',
-                      display: 'inline-flex',
+                  {/* Assigner Actions: Strictly only who assigned the task gets Reassign & Complete */}
+                  {task.status !== 'completed' && isAssignedByMe && (
+                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReassigningTask(task);
+                          setReassignCandidate(String(task.assigned_to) || '');
+                          setReassignReason('');
+                        }}
+                        className="btn btn-secondary"
+                        style={{
+                          flex: 1,
+                          height: '32px',
+                          fontSize: '12px',
+                          padding: '0 8px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '5px',
+                          color: 'var(--brand-700)',
+                          borderColor: 'rgba(99, 102, 241, 0.3)',
+                          background: 'var(--brand-50)'
+                        }}
+                        title="Reassign this deliverable"
+                      >
+                        <UserCheck size={14} />
+                        <span>Reassign</span>
+                      </button>
+
+                      <button
+                        onClick={(e) => handleConfirmTask(task.id, e)}
+                        className="btn btn-primary"
+                        style={{
+                          flex: 1.3,
+                          height: '32px',
+                          fontSize: '12px',
+                          padding: '0 10px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '5px',
+                          background: 'var(--status-completed)',
+                          borderColor: 'var(--status-completed)'
+                        }}
+                      >
+                        <CheckCircle2 size={14} />
+                        <span>Complete Task</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: '10px',
+                  marginTop: '6px',
+                  borderTop: '1px solid var(--border)',
+                  minHeight: '38px'
+                }}>
+                  <div className="flex items-center gap-2">
+                    <div style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: 'var(--radius-full)',
+                      background: isAssignedToMe ? 'var(--brand-gradient)' : 'var(--subtle)',
+                      color: isAssignedToMe ? 'white' : 'var(--text-secondary)',
+                      display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '5px',
-                      color: 'var(--brand-700)',
-                      borderColor: 'rgba(99, 102, 241, 0.3)',
-                      background: 'var(--brand-50)'
-                    }}
-                    title="Reassign this deliverable"
-                  >
-                    <UserCheck size={14} />
-                    <span>Reassign</span>
-                  </button>
-
-                  <button
-                    onClick={(e) => handleConfirmTask(task.id, e)}
-                    className="btn btn-primary"
-                    style={{
-                      flex: 1.3,
-                      height: '32px',
-                      fontSize: '12px',
-                      padding: '0 10px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px',
-                      background: 'var(--status-completed)',
-                      borderColor: 'var(--status-completed)'
-                    }}
-                  >
-                    <CheckCircle2 size={14} />
-                    <span>Complete Task</span>
-                  </button>
-                </div>
-              )}
-              
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: '12px',
-                borderTop: '1px solid var(--border)'
-              }}>
-                <div className="flex items-center gap-2">
-                  <div style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: 'var(--radius-full)',
-                    background: isAssignedToMe ? 'var(--brand-gradient)' : 'var(--subtle)',
-                    color: isAssignedToMe ? 'white' : 'var(--text-secondary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    boxShadow: isAssignedToMe ? '0 2px 6px rgba(99, 102, 241, 0.25)' : 'none'
-                  }}>
-                    {task.assignee?.first_name?.[0]}{task.assignee?.last_name?.[0]}
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      boxShadow: isAssignedToMe ? '0 2px 6px rgba(99, 102, 241, 0.25)' : 'none'
+                    }}>
+                      {task.assignee?.first_name?.[0]}{task.assignee?.last_name?.[0]}
+                    </div>
+                    <span className="text-xs font-semibold text-secondary">
+                      {isAssignedToMe ? 'You' : `${task.assignee?.first_name} ${task.assignee?.last_name}`}
+                    </span>
                   </div>
-                  <span className="text-xs font-semibold text-secondary">
-                    {isAssignedToMe ? 'You' : `${task.assignee?.first_name} ${task.assignee?.last_name}`}
+                  <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    Details & Chat <ArrowRight size={12} strokeWidth={2} />
                   </span>
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  Details & Chat <ArrowRight size={12} strokeWidth={2} />
-                </span>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Task Assignment Modal (Available to CEO, CTO, PM, and TL) */}

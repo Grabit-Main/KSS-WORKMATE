@@ -1490,9 +1490,29 @@ const HistoryPage = () => {
 
           {/* Tasks List with Audit Logs */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {tasks.map(t => {
-              const badge = getStatusBadgeStyle(t.status);
-              const isExpanded = expandedTaskId === t.id;
+            {(() => {
+              const userVisibleHistoryTasks = tasks.filter(t => {
+                const isAssignee = String(t.assignee?.id || t.assigned_to) === String(user?.id);
+                const isAssigner = String(t.assigner?.id || t.assigned_by) === String(user?.id);
+                if (selectedUserId && isExecutive) {
+                  return String(t.assignee?.id || t.assigned_to) === String(selectedUserId) || String(t.assigner?.id || t.assigned_by) === String(selectedUserId);
+                }
+                return isAssignee || isAssigner;
+              });
+
+              if (userVisibleHistoryTasks.length === 0) {
+                return (
+                  <div className="card" style={{ padding: '48px 24px', textAlign: 'center' }}>
+                    <CheckSquare size={36} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
+                    <h4 className="font-bold text-base mb-1">No Tasks Found</h4>
+                    <p className="text-secondary text-sm">No tasks matching your current filter criteria were found.</p>
+                  </div>
+                );
+              }
+
+              return userVisibleHistoryTasks.map(t => {
+                const badge = getStatusBadgeStyle(t.status);
+                const isExpanded = expandedTaskId === t.id;
               return (
                 <div key={t.id} className="card" style={{ padding: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
@@ -1636,15 +1656,8 @@ const HistoryPage = () => {
                   )}
                 </div>
               );
-            })}
-
-            {tasks.length === 0 && (
-              <div className="card" style={{ padding: '48px 24px', textAlign: 'center' }}>
-                <CheckSquare size={36} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
-                <h4 className="font-bold text-base mb-1">No Tasks Found</h4>
-                <p className="text-secondary text-sm">No tasks matching your current filter criteria were found.</p>
-              </div>
-            )}
+            });
+          })()}
           </div>
         </div>
       )}

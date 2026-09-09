@@ -298,6 +298,8 @@ const TeamsPage = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
+                minHeight: '380px',
+                height: '100%',
                 transition: 'all var(--transition-smooth)'
               }}
             >
@@ -496,7 +498,7 @@ const TeamsPage = () => {
                   </div>
 
                   {otherMembers.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '120px', overflowY: 'auto' }}>
                       {otherMembers.map(m => (
                         <div
                           key={m.id}
@@ -532,9 +534,21 @@ const TeamsPage = () => {
                       ))}
                     </div>
                   ) : (
-                    <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-                      No additional members in this squad.
-                    </p>
+                    <div style={{
+                      height: '120px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'var(--subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px dashed var(--border)',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                        No additional members in this squad.
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -543,7 +557,7 @@ const TeamsPage = () => {
               {user.role === 'PM' && (
                 <div style={{
                   paddingTop: '12px',
-                  marginTop: '16px',
+                  marginTop: 'auto',
                   borderTop: '1px solid var(--border)',
                   display: 'flex',
                   alignItems: 'center',

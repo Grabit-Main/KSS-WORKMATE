@@ -186,7 +186,12 @@ const DashboardPage = () => {
           position: 'relative',
           overflow: 'hidden',
           background: 'linear-gradient(145deg, var(--surface) 0%, rgba(238, 242, 255, 0.4) 100%)',
-          border: '1px solid rgba(99, 102, 241, 0.15)'
+          border: '1px solid rgba(99, 102, 241, 0.15)',
+          minHeight: '135px',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -217,7 +222,12 @@ const DashboardPage = () => {
           position: 'relative',
           overflow: 'hidden',
           background: 'linear-gradient(145deg, var(--surface) 0%, rgba(209, 250, 229, 0.35) 100%)',
-          border: '1px solid rgba(16, 185, 129, 0.15)'
+          border: '1px solid rgba(16, 185, 129, 0.15)',
+          minHeight: '135px',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -248,7 +258,12 @@ const DashboardPage = () => {
           position: 'relative',
           overflow: 'hidden',
           background: 'linear-gradient(145deg, var(--surface) 0%, rgba(254, 243, 199, 0.35) 100%)',
-          border: '1px solid rgba(217, 119, 6, 0.15)'
+          border: '1px solid rgba(217, 119, 6, 0.15)',
+          minHeight: '135px',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -279,7 +294,12 @@ const DashboardPage = () => {
           position: 'relative',
           overflow: 'hidden',
           background: 'linear-gradient(145deg, var(--surface) 0%, rgba(254, 226, 226, 0.35) 100%)',
-          border: '1px solid rgba(239, 68, 68, 0.15)'
+          border: '1px solid rgba(239, 68, 68, 0.15)',
+          minHeight: '135px',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>

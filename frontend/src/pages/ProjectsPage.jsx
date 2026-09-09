@@ -702,6 +702,8 @@ const ProjectsPage = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
+                minHeight: '330px',
+                height: '100%',
                 cursor: 'pointer',
                 transition: 'all var(--transition-smooth)',
                 position: 'relative',
@@ -709,7 +711,7 @@ const ProjectsPage = () => {
               }}
             >
               <div>
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex justify-between items-center mb-3" style={{ minHeight: '26px' }}>
                   <div className="flex items-center gap-2">
                     <span style={{
                       fontSize: '11px',
@@ -771,49 +773,57 @@ const ProjectsPage = () => {
                   )}
                 </div>
 
-                <h3 className="font-bold text-base mb-2" style={{ letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
+                <h3 className="font-bold text-base mb-2" style={{
+                  letterSpacing: '-0.015em',
+                  color: 'var(--text-primary)',
+                  minHeight: '44px',
+                  lineHeight: '1.35',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
+                }}>
                   {p.name}
                 </h3>
 
                 <p className="text-sm text-secondary" style={{
+                  minHeight: '38px',
                   display: '-webkit-box',
-                  WebkitLineClamp: 3,
+                  WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
                   overflow: 'hidden',
-                  lineHeight: '1.5',
-                  marginBottom: '14px'
+                  lineHeight: '1.45',
+                  marginBottom: '12px'
                 }}>
                   {p.aim}
                 </p>
 
-                {/* Progress bar if tasks exist */}
-                {stats.total > 0 && (
-                  <div style={{ marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                        Progress ({stats.completed}/{stats.total} Tasks)
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 700 }}>
-                        {stats.percent}%
-                      </span>
-                    </div>
-                    <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
-                      <div style={{
-                        width: `${stats.percent}%`,
-                        height: '100%',
-                        background: 'var(--brand-gradient)',
-                        borderRadius: 'var(--radius-full)',
-                        transition: 'width 0.4s ease'
-                      }} />
-                    </div>
+                {/* Standardized Progress Bar */}
+                <div style={{ marginBottom: '12px', minHeight: '30px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                      Progress {stats.total > 0 ? `(${stats.completed}/${stats.total} Tasks)` : '(0 Tasks Scheduled)'}
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 700 }}>
+                      {stats.total > 0 ? `${stats.percent}%` : '0%'}
+                    </span>
                   </div>
-                )}
+                  <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${stats.percent || 0}%`,
+                      height: '100%',
+                      background: 'var(--brand-gradient)',
+                      borderRadius: 'var(--radius-full)',
+                      transition: 'width 0.4s ease'
+                    }} />
+                  </div>
+                </div>
 
                 {/* Allocated Squads Pill */}
-                <div style={{ marginBottom: '10px' }}>
+                <div style={{ marginBottom: '10px', minHeight: '26px', display: 'flex', alignItems: 'center' }}>
                   {allocatedTeams.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                      {allocatedTeams.map(t => (
+                      {allocatedTeams.slice(0, 2).map(t => (
                         <span
                           key={t.id}
                           style={{
@@ -833,6 +843,19 @@ const ProjectsPage = () => {
                           {t.name}
                         </span>
                       ))}
+                      {allocatedTeams.length > 2 && (
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          padding: '3px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          background: 'var(--subtle)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--text-secondary)'
+                        }}>
+                          +{allocatedTeams.length - 2} more
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <span style={{
@@ -847,35 +870,38 @@ const ProjectsPage = () => {
                   )}
                 </div>
 
-                {/* Attachments Section */}
+                {/* Compact Attachments Preview */}
                 {attachments.length > 0 && (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-                      gap: '8px',
-                      marginTop: '12px'
-                    }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {attachments.map(att => (
-                      <AttachmentCard key={att.id || att.file_url} attachment={att} />
-                    ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }} onClick={e => e.stopPropagation()}>
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '3px 8px',
+                      borderRadius: 'var(--radius-full)',
+                      background: 'var(--subtle)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--brand-700)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <Paperclip size={11} /> {attachments.length} attachment{attachments.length === 1 ? '' : 's'}
+                    </span>
                   </div>
                 )}
               </div>
 
-              {/* Functional Overview Action Button */}
               {/* Project Card Footer Actions */}
               <div style={{
                 width: '100%',
-                marginTop: '16px',
+                marginTop: 'auto',
                 paddingTop: '12px',
                 borderTop: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                minHeight: '44px'
               }}>
                 <button
                   type="button"

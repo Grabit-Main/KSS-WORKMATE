@@ -550,8 +550,8 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                   </button>
                 )}
 
-                {/* ASSIGNER ACTIONS: Reassign and Complete Task */}
-                {(isAssigner || canConfirm) && currentTask.status !== 'completed' && (
+                {/* ASSIGNER ACTIONS: Strictly only who assigned the task has Reassign and Complete Task */}
+                {isAssigner && currentTask.status !== 'completed' && (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
