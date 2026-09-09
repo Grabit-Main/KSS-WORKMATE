@@ -6,13 +6,14 @@ const WebSocketContext = createContext(null);
 
 const getWsUrl = () => {
   const envWsUrl = import.meta.env.VITE_WS_URL;
-  if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${window.location.hostname}:8000/ws`;
-    }
+  if (envWsUrl) {
+    return envWsUrl;
   }
-  return envWsUrl || (typeof window !== 'undefined' ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws` : '');
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${window.location.host}/ws`;
+  }
+  return '';
 };
 
 export const WebSocketProvider = ({ children }) => {
@@ -183,6 +184,13 @@ export const WebSocketProvider = ({ children }) => {
                 task_id: n.ref_id,
                 event_type: n.event_type
               });
+              if (n.event_type) {
+                dispatch(n.event_type, {
+                  id: n.ref_id,
+                  task_id: n.ref_id,
+                  ref_id: n.ref_id
+                });
+              }
             });
           }
           lastKnownNotifIdsRef.current = currentIds;

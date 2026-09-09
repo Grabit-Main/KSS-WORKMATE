@@ -134,9 +134,11 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
       if (String(t.id) === String(tId)) {
         return {
           ...t,
+          ...eventData,
           status: eventData.status || t.status,
           is_locked: eventData.is_locked !== undefined ? eventData.is_locked : t.is_locked,
-          deadline_exceeded: eventData.deadline_exceeded !== undefined ? eventData.deadline_exceeded : t.deadline_exceeded
+          deadline_exceeded: eventData.deadline_exceeded !== undefined ? eventData.deadline_exceeded : t.deadline_exceeded,
+          ...(eventData.assignee ? { assignee: eventData.assignee } : {})
         };
       }
       return t;
@@ -145,8 +147,11 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
       if (curr && String(curr.id) === String(tId)) {
         return {
           ...curr,
+          ...eventData,
           status: eventData.status || curr.status,
-          is_locked: eventData.is_locked !== undefined ? eventData.is_locked : curr.is_locked
+          is_locked: eventData.is_locked !== undefined ? eventData.is_locked : curr.is_locked,
+          deadline_exceeded: eventData.deadline_exceeded !== undefined ? eventData.deadline_exceeded : curr.deadline_exceeded,
+          ...(eventData.assignee ? { assignee: eventData.assignee } : {})
         };
       }
       return curr;
@@ -154,7 +159,20 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
   });
 
   useRealtime('task.created', (eventData) => {
-    if (!eventData?.project_id || String(eventData.project_id) === String(project?.id)) {
+    const pId = eventData?.project_id;
+    if (!pId || String(pId) === String(project?.id)) {
+      if (eventData?.id && eventData?.title) {
+        setTasks(prev => {
+          if (prev.some(t => String(t.id) === String(eventData.id))) return prev;
+          return [eventData, ...prev];
+        });
+        if (eventData.scheduled_date) {
+          const norm = normalizeToDDMMYYYY(eventData.scheduled_date);
+          if (norm) {
+            setDates(prev => prev.includes(norm) ? prev : [...prev, norm].sort((a, b) => parseDateStringToTimestamp(a) - parseDateStringToTimestamp(b)));
+          }
+        }
+      }
       loadData();
     }
   });
@@ -164,11 +182,34 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     if (!tId) return;
     setTasks(prev => prev.map(t => String(t.id) === String(tId) ? { ...t, ...eventData } : t));
     setSelectedTask(curr => (curr && String(curr.id) === String(tId)) ? { ...curr, ...eventData } : curr);
+    loadData();
   });
 
   useRealtime('task.reassigned', (eventData) => {
     const tId = eventData?.task_id || eventData?.id;
     if (!tId) return;
+    setTasks(prev => prev.map(t => {
+      if (String(t.id) === String(tId)) {
+        return {
+          ...t,
+          ...eventData,
+          status: 'not_started',
+          ...(eventData.assignee ? { assignee: eventData.assignee } : {})
+        };
+      }
+      return t;
+    }));
+    setSelectedTask(curr => {
+      if (curr && String(curr.id) === String(tId)) {
+        return {
+          ...curr,
+          ...eventData,
+          status: 'not_started',
+          ...(eventData.assignee ? { assignee: eventData.assignee } : {})
+        };
+      }
+      return curr;
+    });
     loadData();
   });
 
@@ -177,6 +218,20 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     if (!tId) return;
     setTasks(prev => prev.map(t => String(t.id) === String(tId) ? { ...t, is_locked: true, status: 'completed' } : t));
     setSelectedTask(curr => (curr && String(curr.id) === String(tId)) ? { ...curr, is_locked: true, status: 'completed' } : curr);
+  });
+
+  useRealtime('task.deadline_exceeded', (eventData) => {
+    const tId = eventData?.task_id || eventData?.id;
+    if (!tId) return;
+    setTasks(prev => prev.map(t => String(t.id) === String(tId) ? { ...t, deadline_exceeded: true } : t));
+    setSelectedTask(curr => (curr && String(curr.id) === String(tId)) ? { ...curr, deadline_exceeded: true } : curr);
+  });
+
+  useRealtime('notification.new', (eventData) => {
+    const tId = eventData?.task_id || eventData?.ref_id;
+    if (tId) {
+      loadData();
+    }
   });
 
   // Modal State for New Task
@@ -427,7 +482,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     e.stopPropagation();
     // 0 ms Optimistic UI update
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'in_progress' } : t));
-    if (dispatch) dispatch('task.status_changed', { id: task.id, status: 'in_progress' });
+    if (dispatch) dispatch('task.status_changed', { id: task.id, task_id: task.id, status: 'in_progress', project_id: project.id });
     try {
       const updated = await startTask(task.id);
       setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
@@ -1107,9 +1162,11 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                 status: updated.status,
                 project_id: project.id,
                 is_locked: updated.is_locked,
-                deadline_exceeded: updated.deadline_exceeded
+                deadline_exceeded: updated.deadline_exceeded,
+                assignee: updated.assignee
               });
             }
+            loadData();
           }}
         />
       )}
