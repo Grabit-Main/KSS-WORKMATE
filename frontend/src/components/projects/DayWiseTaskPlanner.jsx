@@ -1001,7 +1001,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                 <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
                   Allocate Task on {activeDate}
                 </h3>
-                <p className="text-xs text-secondary mt-0.5">Assign deliverable to a squad member</p>
+                <p className="text-xs text-secondary mt-0.5">Assign deliverable to a team member</p>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -1038,7 +1038,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">Assign To Member *</label>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Assign To User *</label>
                 <select
                   value={newTaskAssignee}
                   onChange={(e) => setNewTaskAssignee(e.target.value)}
@@ -1048,9 +1048,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                   <option value="">-- Select Member * --</option>
                   {teamMembers.map(m => (
                     <option key={m.id} value={m.id}>
-                      {currentUser?.role === 'PM'
-                        ? `${m.first_name} ${m.last_name} (${m.role}${m.department ? ' · ' + m.department : ''})`
-                        : `${m.first_name} ${m.last_name} (${m.role} - ${m.department || 'Squad'})`}
+                      {m.first_name} {m.last_name} ({m.role}{m.department ? ` · ${m.department}` : ''})
                     </option>
                   ))}
                 </select>
