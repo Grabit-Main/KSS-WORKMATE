@@ -692,7 +692,7 @@ const ProjectsPage = () => {
               key={p.id}
               className="card"
               onClick={() => {
-                if (user?.role === 'TL') {
+                if (['TL', 'TM'].includes(user?.role)) {
                   setPlannerProject(p);
                 } else {
                   setSelectedProject(p);
@@ -898,12 +898,12 @@ const ProjectsPage = () => {
                 paddingTop: '12px',
                 borderTop: '1px solid var(--border)',
                 display: 'flex',
-                justifyContent: user?.role === 'TL' ? 'space-between' : 'flex-end',
+                justifyContent: ['TL', 'TM'].includes(user?.role) ? 'space-between' : 'flex-end',
                 alignItems: 'center',
                 gap: '8px',
                 minHeight: '44px'
               }}>
-                {user?.role === 'TL' && (
+                {['TL', 'TM'].includes(user?.role) && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1573,7 +1573,7 @@ const ProjectsPage = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {user?.role === 'TL' && (
+                  {['TL', 'TM'].includes(user?.role) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1849,7 +1849,7 @@ const ProjectsPage = () => {
         );
       })()}
 
-      {plannerProject && user?.role === 'TL' && (
+      {plannerProject && ['TL', 'TM'].includes(user?.role) && (
         <DayWiseTaskPlanner
           project={plannerProject}
           currentUser={user}
