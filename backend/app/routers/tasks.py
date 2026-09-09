@@ -37,16 +37,35 @@ async def _broadcast_task(task, team_id, event_type):
             "title": task.title,
             "status": task.status,
             "project_id": str(task.project_id) if task.project_id else None,
-            "team_id": str(team_id) if team_id else None,
+            "team_id": str(team_id) if team_id else (str(task.team_id) if task.team_id else None),
             "assigned_to": str(task.assigned_to) if task.assigned_to else None,
             "assigned_by": str(task.assigned_by) if task.assigned_by else None,
             "is_locked": task.is_locked,
             "scheduled_date": task.scheduled_date,
             "deadline": task.deadline.isoformat() if task.deadline else None,
+            "deadline_exceeded": getattr(task, "deadline_exceeded", False),
+            "assignee": {
+                "id": str(task.assignee.id),
+                "first_name": task.assignee.first_name,
+                "last_name": task.assignee.last_name,
+                "email": task.assignee.email,
+                "role": task.assignee.role,
+                "avatar_url": getattr(task.assignee, "avatar_url", None)
+            } if getattr(task, "assignee", None) else None,
+            "assigner": {
+                "id": str(task.assigner.id),
+                "first_name": task.assigner.first_name,
+                "last_name": task.assigner.last_name,
+                "email": task.assigner.email,
+                "role": task.assigner.role,
+                "avatar_url": getattr(task.assigner, "avatar_url", None)
+            } if getattr(task, "assigner", None) else None,
         }
     }
     if team_id:
         await manager.broadcast(f"team:{team_id}", data)
+    elif task.team_id:
+        await manager.broadcast(f"team:{task.team_id}", data)
     if task.project_id:
         await manager.broadcast(f"project:{task.project_id}", data)
     await manager.broadcast(f"task:{task.id}", data)
@@ -186,8 +205,7 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
     _notify(db, req.assigned_to, "New Task Assigned", f"You have been allocated a new task: {req.title}", TASK_CREATED, str(task.id))
     db.commit()
     db.refresh(task)
-    if req.team_id:
-        await _broadcast_task(task, req.team_id, TASK_CREATED)
+    await _broadcast_task(task, task.team_id or req.team_id, TASK_CREATED)
     await manager.send_to_user(str(req.assigned_to), {
         "type": NOTIFICATION_NEW,
         "data": {
@@ -239,8 +257,7 @@ async def start_task(task_id: UUID, db: Session = Depends(get_db), user: User = 
 
     db.commit()
     db.refresh(task)
-    if task.team_id:
-        await _broadcast_task(task, task.team_id, TASK_STATUS_CHANGED)
+    await _broadcast_task(task, task.team_id, TASK_STATUS_CHANGED)
     return task
 
 
@@ -295,6 +312,7 @@ async def confirm_task(task_id: UUID, db: Session = Depends(get_db), user: User 
     db.commit()
     db.refresh(task)
     await _broadcast_task(task, task.team_id, TASK_LOCKED)
+    await _broadcast_task(task, task.team_id, TASK_STATUS_CHANGED)
     await manager.send_to_user(str(task.assigned_to), {"type": NOTIFICATION_NEW, "data": {"message": f"Task completed & locked: {task.title}"}})
     return task
 
@@ -377,5 +395,6 @@ async def reassign_task(task_id: UUID, req: ReassignRequest, db: Session = Depen
     db.commit()
     db.refresh(task)
     await _broadcast_task(task, task.team_id, TASK_REASSIGNED)
+    await _broadcast_task(task, task.team_id, TASK_STATUS_CHANGED)
     await manager.send_to_user(str(req.assigned_to), {"type": NOTIFICATION_NEW, "data": {"message": f"Reassigned task: {task.title}"}})
     return task
