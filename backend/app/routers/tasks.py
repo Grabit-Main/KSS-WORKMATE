@@ -12,7 +12,7 @@ from app.schemas.task import TaskCreate, TaskResponse, StatusUpdate, ReassignReq
 from app.dependencies import get_current_user
 from app.websocket.manager import manager
 from app.websocket.events import (
-    TASK_CREATED, TASK_STATUS_CHANGED, TASK_REASSIGNED, TASK_LOCKED, NOTIFICATION_NEW, ANALYTICS_REFRESH
+    TASK_CREATED, TASK_STATUS_CHANGED, TASK_REASSIGNED, TASK_LOCKED, TASK_DELETED, NOTIFICATION_NEW, ANALYTICS_REFRESH
 )
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -438,3 +438,44 @@ async def reassign_task(task_id: UUID, req: ReassignRequest, db: Session = Depen
     await _broadcast_task(task, task.team_id, TASK_STATUS_CHANGED)
     await manager.send_to_user(str(req.assigned_to), {"type": NOTIFICATION_NEW, "data": {"message": f"Reassigned task: {task.title}"}})
     return task
+
+
+@router.delete("/{task_id}")
+async def delete_task(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """
+    Those who assign the task can only delete the task.
+    """
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
+    if str(task.assigned_by) != str(user.id):
+        raise HTTPException(403, "Only the person who assigned the task can delete it")
+
+    team_id = task.team_id
+    project_id = task.project_id
+    assigned_to = task.assigned_to
+    title = task.title
+
+    db.delete(task)
+    db.commit()
+
+    # Broadcast task deletion
+    event = {"type": TASK_DELETED, "data": {"task_id": str(task_id), "team_id": str(team_id) if team_id else None}}
+    if team_id:
+        await manager.broadcast(f"team:{team_id}", event)
+    if project_id:
+        await manager.broadcast(f"project:{project_id}", event)
+    await manager.broadcast("global:admins", event)
+    if assigned_to and str(assigned_to) != str(user.id):
+        await manager.send_to_user(str(assigned_to), {
+            "type": NOTIFICATION_NEW,
+            "data": {"message": f"Task '{title}' was deleted by the assigner."}
+        })
+
+    return {"message": "Task deleted successfully", "task_id": str(task_id)}
+
