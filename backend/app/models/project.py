@@ -18,7 +18,7 @@ class Project(Base):
     status = Column(String, default="active")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    teams = relationship("Team", back_populates="project", cascade="all, delete-orphan")
+    teams = relationship("Team", back_populates="project")
     creator = relationship("User", foreign_keys=[created_by])
     status_logs = relationship("ProjectStatusLog", back_populates="project", cascade="all, delete-orphan")
     attachments = relationship("ProjectAttachment", back_populates="project", cascade="all, delete-orphan")
