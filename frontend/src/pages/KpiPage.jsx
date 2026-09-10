@@ -244,6 +244,7 @@ const KpiPage = () => {
   const [editingLog, setEditingLog] = useState(null);
   const [detailsLog, setDetailsLog] = useState(null);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [tableViewMode, setTableViewMode] = useState('detailed'); // 'detailed' | 'compact'
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [modalSuccess, setModalSuccess] = useState('');
@@ -926,140 +927,394 @@ const KpiPage = () => {
             </p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ padding: '14px 18px', fontWeight: 600, color: 'var(--text-secondary)' }}>Date</th>
-                  <th style={{ padding: '14px 18px', fontWeight: 600, color: 'var(--text-secondary)' }}>Employee</th>
-                  <th style={{ padding: '14px 18px', fontWeight: 600, color: 'var(--text-secondary)' }}>Daily KPI %</th>
-                  <th style={{ padding: '14px 18px', fontWeight: 600, color: 'var(--text-secondary)' }}>Status</th>
-                  <th style={{ padding: '14px 18px', fontWeight: 600, color: 'var(--text-secondary)' }}>Key Criteria (1-5)</th>
-                  <th style={{ padding: '14px 18px', fontWeight: 600, color: 'var(--text-secondary)' }}>Evaluator</th>
-                  <th style={{ padding: '14px 18px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map((log) => {
-                  const statusStyle = getStatusColor(log.status);
-                  const isOwnTeammate = isTL && teammates.some((t) => t.id === log.employee_id);
+          <div>
+            {/* View Mode & Horizontal Scroll Toolbar */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px',
+              padding: '12px 18px',
+              background: 'var(--bg)',
+              borderBottom: '1px solid var(--border)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  View Mode:
+                </span>
+                <div style={{
+                  display: 'inline-flex',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '2px'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setTableViewMode('detailed')}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      background: tableViewMode === 'detailed' ? 'var(--brand-50, #EEF2FF)' : 'transparent',
+                      color: tableViewMode === 'detailed' ? 'var(--brand-700, #4338CA)' : 'var(--text-secondary)',
+                      fontWeight: tableViewMode === 'detailed' ? 700 : 500,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      boxShadow: tableViewMode === 'detailed' ? 'var(--shadow-subtle)' : 'none',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    All 10 Criteria Columns
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTableViewMode('compact')}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      background: tableViewMode === 'compact' ? 'var(--brand-50, #EEF2FF)' : 'transparent',
+                      color: tableViewMode === 'compact' ? 'var(--brand-700, #4338CA)' : 'var(--text-secondary)',
+                      fontWeight: tableViewMode === 'compact' ? 700 : 500,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      boxShadow: tableViewMode === 'compact' ? 'var(--shadow-subtle)' : 'none',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    Compact Strip
+                  </button>
+                </div>
+              </div>
 
-                  return (
-                    <tr
-                      key={log.id}
-                      style={{
-                        borderBottom: '1px solid var(--border)',
-                        transition: 'background var(--transition-fast)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--subtle-glass)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      {/* Date */}
-                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Calendar size={14} style={{ color: 'var(--text-tertiary)' }} />
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {log.date}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                          {log.month}
-                        </span>
-                      </td>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                color: 'var(--brand-700, #4338CA)',
+                background: 'var(--brand-50, #EEF2FF)',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-full)',
+                fontWeight: 600
+              }}>
+                <span>↔ Scroll table horizontally to view all 10 criteria (1 to 5)</span>
+              </div>
+            </div>
 
-                      {/* Employee */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            background: 'var(--brand-100)',
-                            color: 'var(--brand-700)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 700,
-                            fontSize: '12px',
-                            flexShrink: 0
-                          }}>
-                            {log.employee?.first_name?.[0] || 'E'}
-                            {log.employee?.last_name?.[0] || ''}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                              {log.employee?.first_name} {log.employee?.last_name}
-                            </div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                              {log.employee?.department || log.employee?.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
+            <div
+              className="table-responsive"
+              style={{
+                width: '100%',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
+              <table
+                style={{
+                  width: '100%',
+                  minWidth: tableViewMode === 'detailed' ? '1720px' : '1080px',
+                  borderCollapse: 'collapse',
+                  textAlign: 'left',
+                  fontSize: '13px'
+                }}
+              >
+                <thead>
+                  <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{
+                      padding: '14px 18px',
+                      fontWeight: 700,
+                      color: 'var(--text-secondary)',
+                      whiteSpace: 'nowrap',
+                      position: 'sticky',
+                      left: 0,
+                      background: 'var(--bg)',
+                      zIndex: 3,
+                      borderRight: '1px solid var(--border)'
+                    }}>
+                      Date
+                    </th>
+                    <th style={{
+                      padding: '14px 18px',
+                      fontWeight: 700,
+                      color: 'var(--text-secondary)',
+                      whiteSpace: 'nowrap',
+                      position: 'sticky',
+                      left: '125px',
+                      background: 'var(--bg)',
+                      zIndex: 3,
+                      borderRight: '1px solid var(--border)'
+                    }}>
+                      Employee
+                    </th>
+                    <th style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      Daily KPI %
+                    </th>
+                    <th style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      Status
+                    </th>
 
-                      {/* Daily KPI % */}
-                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', minWidth: '46px' }}>
-                            {log.daily_kpi_percentage.toFixed(1)}%
-                          </span>
-                          <div style={{ width: '60px', height: '6px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
-                            <div style={{
-                              width: `${Math.min(log.daily_kpi_percentage, 100)}%`,
-                              height: '100%',
-                              background: statusStyle.bar,
-                              borderRadius: '999px'
-                            }} />
-                          </div>
-                        </div>
-                      </td>
+                    {/* All 10 Evaluation Criteria Columns (Scores 1 to 5) */}
+                    {tableViewMode === 'detailed' ? (
+                      <>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="1. Task Completion (Weight: 3, Max 15%)">
+                          1. Task (15%)
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="2. Quality (Weight: 3, Max 15%)">
+                          2. Quality (15%)
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="3. Productivity (Weight: 3, Max 15%)">
+                          3. Prod (15%)
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="4. Deadline Adherence (Weight: 2, Max 10%)">
+                          4. Deadline (10%)
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="5. Ownership (Weight: 2, Max 10%)">
+                          5. Ownership (10%)
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="6. Problem Solving (Weight: 2, Max 10%)">
+                          6. Problem (10%)
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="7. Communication (Weight: 2, Max 10%)">
+                          7. Comm (10%)
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="8. Team Collaboration (Weight: 1, Max 5%)">
+                          8. Collab (5%)
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="9. Learning / Improvement (Weight: 1, Max 5%)">
+                          9. Learn (5%)
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="10. Attendance & Discipline (Weight: 1, Max 5%)">
+                          10. Attend (5%)
+                        </th>
+                      </>
+                    ) : (
+                      <th style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        All 10 Criteria (Scores 1–5 • Scrollable)
+                      </th>
+                    )}
 
-                      {/* Status Badge */}
-                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '4px 10px',
-                          borderRadius: 'var(--radius-full)',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          background: statusStyle.bg,
-                          color: statusStyle.text,
-                          border: `1px solid ${statusStyle.border}`
+                    <th style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      Evaluator
+                    </th>
+                    <th style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-secondary)', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLogs.map((log) => {
+                    const statusStyle = getStatusColor(log.status);
+                    const isOwnTeammate = isTL && teammates.some((t) => t.id === log.employee_id);
+
+                    return (
+                      <tr
+                        key={log.id}
+                        style={{
+                          borderBottom: '1px solid var(--border)',
+                          transition: 'background var(--transition-fast)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--subtle-glass)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {/* Date - Sticky Column */}
+                        <td style={{
+                          padding: '14px 18px',
+                          whiteSpace: 'nowrap',
+                          position: 'sticky',
+                          left: 0,
+                          background: 'var(--surface)',
+                          zIndex: 2,
+                          borderRight: '1px solid var(--border)'
                         }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusStyle.bar }} />
-                          {log.status}
-                        </span>
-                      </td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Calendar size={14} style={{ color: 'var(--text-tertiary)' }} />
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {log.date}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                            {log.month}
+                          </span>
+                        </td>
 
-                      {/* Criteria Highlights */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                          <span title="Task Completion" style={{ fontSize: '11px', padding: '2px 6px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '4px' }}>
-                            Task: <strong>{log.task_completion}</strong>
-                          </span>
-                          <span title="Quality" style={{ fontSize: '11px', padding: '2px 6px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '4px' }}>
-                            Qual: <strong>{log.quality}</strong>
-                          </span>
-                          <span title="Productivity" style={{ fontSize: '11px', padding: '2px 6px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '4px' }}>
-                            Prod: <strong>{log.productivity}</strong>
-                          </span>
-                          <span title="Deadline Adherence" style={{ fontSize: '11px', padding: '2px 6px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '4px' }}>
-                            Deadl: <strong>{log.deadline_adherence}</strong>
-                          </span>
-                        </div>
-                      </td>
+                        {/* Employee - Sticky Column */}
+                        <td style={{
+                          padding: '14px 18px',
+                          whiteSpace: 'nowrap',
+                          position: 'sticky',
+                          left: '125px',
+                          background: 'var(--surface)',
+                          zIndex: 2,
+                          borderRight: '1px solid var(--border)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: 'var(--brand-100)',
+                              color: 'var(--brand-700)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              flexShrink: 0
+                            }}>
+                              {log.employee?.first_name?.[0] || 'E'}
+                              {log.employee?.last_name?.[0] || ''}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                {log.employee?.first_name} {log.employee?.last_name}
+                              </div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                                {log.employee?.department || log.employee?.email}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
 
-                      {/* Evaluator */}
-                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          {log.evaluator ? `${log.evaluator.first_name} ${log.evaluator.last_name}` : 'Team Lead'}
-                        </span>
-                      </td>
+                        {/* Daily KPI % */}
+                        <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', minWidth: '46px' }}>
+                              {log.daily_kpi_percentage.toFixed(1)}%
+                            </span>
+                            <div style={{ width: '56px', height: '6px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
+                              <div style={{
+                                width: `${Math.min(log.daily_kpi_percentage, 100)}%`,
+                                height: '100%',
+                                background: statusStyle.bar,
+                                borderRadius: '999px'
+                              }} />
+                            </div>
+                          </div>
+                        </td>
 
-                      {/* Actions */}
-                      <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {/* Status Badge */}
+                        <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-full)',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            background: statusStyle.bg,
+                            color: statusStyle.text,
+                            border: `1px solid ${statusStyle.border}`
+                          }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusStyle.bar }} />
+                            {log.status}
+                          </span>
+                        </td>
+
+                        {/* Detailed 10 Columns View */}
+                        {tableViewMode === 'detailed' ? (
+                          CRITERIA.map((crit) => {
+                            const score = log[crit.key] ?? 0;
+                            const tier = KPI_TIER_CONFIG.find((t) => t.level === score) || KPI_TIER_CONFIG[2];
+                            return (
+                              <td
+                                key={crit.key}
+                                style={{
+                                  padding: '12px 10px',
+                                  textAlign: 'center',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                <span
+                                  title={`${crit.num}. ${crit.label}: Score ${score}/5 (${score * crit.weight}%)\nLevel ${score} (${tier.name}): "${crit.rubric[score]}"`}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '30px',
+                                    height: '30px',
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    fontWeight: 800,
+                                    background: tier.bg,
+                                    color: tier.text,
+                                    border: `1px solid ${tier.border}`,
+                                    cursor: 'help',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                                  }}
+                                >
+                                  {score}
+                                </span>
+                              </td>
+                            );
+                          })
+                        ) : (
+                          /* Compact Strip with All 10 Criteria */
+                          <td style={{ padding: '12px 18px' }}>
+                            <div style={{
+                              display: 'flex',
+                              gap: '6px',
+                              overflowX: 'auto',
+                              maxWidth: '460px',
+                              padding: '4px 0',
+                              scrollbarWidth: 'thin'
+                            }}>
+                              {CRITERIA.map((crit) => {
+                                const score = log[crit.key] ?? 0;
+                                const tier = KPI_TIER_CONFIG.find((t) => t.level === score) || KPI_TIER_CONFIG[2];
+                                const shortLabel = {
+                                  task_completion: 'Task',
+                                  quality: 'Qual',
+                                  productivity: 'Prod',
+                                  deadline_adherence: 'Deadl',
+                                  ownership: 'Owner',
+                                  problem_solving: 'Prob',
+                                  communication: 'Comm',
+                                  team_collaboration: 'Collab',
+                                  learning_improvement: 'Learn',
+                                  attendance_discipline: 'Attend'
+                                }[crit.key] || crit.label;
+
+                                return (
+                                  <span
+                                    key={crit.key}
+                                    title={`${crit.num}. ${crit.label}: Score ${score}/5 (${score * crit.weight}%)\nLevel ${score} (${tier.name}): "${crit.rubric[score]}"`}
+                                    style={{
+                                      fontSize: '11px',
+                                      padding: '3px 8px',
+                                      background: tier.bg,
+                                      border: `1px solid ${tier.border}`,
+                                      color: tier.text,
+                                      borderRadius: '4px',
+                                      whiteSpace: 'nowrap',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      flexShrink: 0,
+                                      cursor: 'help'
+                                    }}
+                                  >
+                                    <span style={{ opacity: 0.85 }}>{shortLabel}:</span>
+                                    <strong style={{ fontWeight: 800 }}>{score}</strong>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Evaluator */}
+                        <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {log.evaluator ? `${log.evaluator.first_name} ${log.evaluator.last_name}` : 'Team Lead'}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                           <button
                             onClick={() => setDetailsLog(log)}
@@ -1107,7 +1362,8 @@ const KpiPage = () => {
               </tbody>
             </table>
           </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* Give / Edit Modal (Team Lead only) */}

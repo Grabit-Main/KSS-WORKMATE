@@ -516,6 +516,26 @@ input, select, textarea {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: var(--radius-sm);
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-300, #CBD5E1) var(--bg);
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: var(--brand-300, #CBD5E1);
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-500, #94A3B8);
 }
 
 .table-responsive table {
