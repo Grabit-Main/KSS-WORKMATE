@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getTasks, getTask, createTask, startTask, acceptTask, completeTask, confirmTask, reassignTask } from '../api/tasks';
+import { getTasks, getTask, createTask, startTask, acceptTask, completeTask, confirmTask, reassignTask, deleteTask } from '../api/tasks';
 import { getTeams } from '../api/teams';
 import { getUsers } from '../api/users';
 import { uploadFile } from '../api/upload';
@@ -13,7 +13,7 @@ import { AttachmentCard } from '../components/common/AttachmentCard';
 import { formatDeadlineWithTime, isUpcomingDate } from '../components/projects/DayWiseTaskPlanner';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
-  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2
+  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2, Trash2
 } from 'lucide-react';
 
 const TasksPage = () => {
@@ -182,6 +182,7 @@ const TasksPage = () => {
   useRealtime('task.status_changed', handleTaskUpdate);
   useRealtime('task.reassigned', handleTaskUpdate);
   useRealtime('task.locked', handleTaskUpdate);
+  useRealtime('task.deleted', handleTaskUpdate);
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -307,6 +308,25 @@ const TasksPage = () => {
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updated } : t));
     } catch (err) {
       console.error('Failed to confirm task:', err);
+      loadTasks();
+    }
+  };
+
+  const handleDeleteTask = async (taskId, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+      return;
+    }
+    // Optimistic UI update
+    setTasks(prev => prev.filter(t => String(t.id) !== String(taskId)));
+    if (selectedTask && String(selectedTask.id) === String(taskId)) {
+      setSelectedTask(null);
+    }
+    try {
+      await deleteTask(taskId);
+    } catch (err) {
+      console.error('Failed to delete task:', err);
+      alert(err.response?.data?.detail || 'Failed to delete task.');
       loadTasks();
     }
   };
@@ -547,33 +567,66 @@ const TasksPage = () => {
                       )}
                     </div>
 
-                    {task.deadline && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {isOverdue && (
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            padding: '2px 7px',
-                            borderRadius: 'var(--radius-full)',
-                            background: 'rgba(239, 68, 68, 0.12)',
-                            color: '#DC2626',
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {task.deadline && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {isOverdue && (
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              padding: '2px 7px',
+                              borderRadius: 'var(--radius-full)',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              color: '#DC2626',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.02em'
+                            }}>
+                              <AlertTriangle size={10} />
+                              Exceeded
+                            </span>
+                          )}
+                          <span className="text-xs font-medium" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isOverdue ? '#DC2626' : 'var(--text-secondary)' }}>
+                            <Clock size={13} strokeWidth={1.8} style={{ color: isOverdue ? '#DC2626' : 'var(--text-tertiary)' }} />
+                            {formatDeadlineWithTime(task.deadline)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Delete icon - Only who assigned the task can delete */}
+                      {isAssignedByMe && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteTask(task.id, e)}
+                          title="Delete Task (Only assigner can delete)"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--text-tertiary)',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRadius: 'var(--radius-xs)',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '3px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.02em'
-                          }}>
-                            <AlertTriangle size={10} />
-                            Exceeded
-                          </span>
-                        )}
-                        <span className="text-xs font-medium" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isOverdue ? '#DC2626' : 'var(--text-secondary)' }}>
-                          <Clock size={13} strokeWidth={1.8} style={{ color: isOverdue ? '#DC2626' : 'var(--text-tertiary)' }} />
-                          {formatDeadlineWithTime(task.deadline)}
-                        </span>
-                      </div>
-                    )}
+                            justifyContent: 'center',
+                            transition: 'all var(--transition-fast)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#EF4444';
+                            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-tertiary)';
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className="font-bold text-base mb-1.5" style={{

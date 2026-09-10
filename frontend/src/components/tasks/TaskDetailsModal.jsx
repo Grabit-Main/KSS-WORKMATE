@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TaskChat } from '../chat/TaskChat';
-import { startTask, completeTask, confirmTask, reassignTask } from '../../api/tasks';
+import { startTask, completeTask, confirmTask, reassignTask, deleteTask } from '../../api/tasks';
 import { getUsers } from '../../api/users';
 import { getTeams } from '../../api/teams';
 import { AttachmentCard } from '../common/AttachmentCard';
@@ -9,7 +9,7 @@ import { useWebSocket } from '../../context/WebSocketContext';
 import { formatDateTime, normalizeToDDMMYYYY, getDeadlineStatus } from '../../utils/dateUtils';
 import {
   X, Calendar, Clock, Play, CheckCircle2, User,
-  Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle, UserCheck
+  Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle, UserCheck, Trash2
 } from 'lucide-react';
 
 const formatScheduledDate = (val) => normalizeToDDMMYYYY(val);
@@ -221,6 +221,20 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
     return u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email;
   };
 
+  const handleDeleteTask = async () => {
+    if (!window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) return;
+    try {
+      setActionLoading(true);
+      await deleteTask(currentTask.id);
+      if (onTaskUpdated) onTaskUpdated();
+      onClose();
+    } catch (err) {
+      setErrorMsg(err.response?.data?.detail || 'Failed to delete task.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -291,19 +305,49 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
               )}
             </div>
 
-            <button
-              onClick={onClose}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-tertiary)',
-                padding: '4px',
-                borderRadius: 'var(--radius-full)'
-              }}
-            >
-              <X size={20} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {isAssigner && (
+                <button
+                  type="button"
+                  onClick={handleDeleteTask}
+                  disabled={actionLoading}
+                  title="Delete Task (Only assigner can delete)"
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    color: '#EF4444',
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    cursor: actionLoading ? 'not-allowed' : 'pointer',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.16)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'; }}
+                >
+                  <Trash2 size={14} />
+                  <span>Delete Task</span>
+                </button>
+              )}
+
+              <button
+                onClick={onClose}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-tertiary)',
+                  padding: '4px',
+                  borderRadius: 'var(--radius-full)'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Body Details */}

@@ -6,6 +6,7 @@ TASK_STATUS_CHANGED = "task.status_changed"
 TASK_REASSIGNED = "task.reassigned"
 TASK_LOCKED = "task.locked"
 TASK_DEADLINE_EXCEEDED = "task.deadline_exceeded"
+TASK_DELETED = "task.deleted"
 
 # Chat
 CHAT_NEW_MESSAGE = "chat.new_message"
