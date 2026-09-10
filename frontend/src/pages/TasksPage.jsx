@@ -13,7 +13,7 @@ import { AttachmentCard } from '../components/common/AttachmentCard';
 import { formatDeadlineWithTime, isUpcomingDate } from '../components/projects/DayWiseTaskPlanner';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
-  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2, Trash2
+  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2, Trash2, Shield
 } from 'lucide-react';
 
 const TasksPage = () => {
@@ -173,16 +173,67 @@ const TasksPage = () => {
     setShowModal(true);
   };
 
-  // Real-time handlers
-  const handleTaskUpdate = useCallback(() => {
+  // Real-time handlers with instant 0 ms state synchronization
+  const handleTaskCreated = useCallback((payload) => {
+    if (!payload) return;
+    const taskData = payload.task || payload.data || payload;
+    if (taskData && taskData.id) {
+      setTasks(prev => {
+        if (prev.some(t => String(t.id) === String(taskData.id))) {
+          return prev.map(t => String(t.id) === String(taskData.id) ? { ...t, ...taskData } : t);
+        }
+        return [taskData, ...prev];
+      });
+    }
     loadTasks();
   }, []);
 
-  useRealtime('task.created', handleTaskUpdate);
-  useRealtime('task.status_changed', handleTaskUpdate);
-  useRealtime('task.reassigned', handleTaskUpdate);
-  useRealtime('task.locked', handleTaskUpdate);
-  useRealtime('task.deleted', handleTaskUpdate);
+  const handleTaskStatusChanged = useCallback((payload) => {
+    if (!payload) return;
+    const taskData = payload.task || payload.data || payload;
+    const taskId = taskData?.task_id || taskData?.id;
+    if (taskId) {
+      setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, ...taskData, status: taskData.status || t.status } : t));
+      setSelectedTask(curr => (curr && String(curr.id) === String(taskId)) ? { ...curr, ...taskData, status: taskData.status || curr.status } : curr);
+    }
+  }, []);
+
+  const handleTaskReassigned = useCallback((payload) => {
+    if (!payload) return;
+    const taskData = payload.task || payload.data || payload;
+    const taskId = taskData?.task_id || taskData?.id;
+    if (taskId) {
+      setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, ...taskData, assigned_to: taskData.assigned_to || t.assigned_to } : t));
+      setSelectedTask(curr => (curr && String(curr.id) === String(taskId)) ? { ...curr, ...taskData, assigned_to: taskData.assigned_to || curr.assigned_to } : curr);
+    }
+    loadTasks();
+  }, []);
+
+  const handleTaskLocked = useCallback((payload) => {
+    if (!payload) return;
+    const taskData = payload.task || payload.data || payload;
+    const taskId = taskData?.task_id || taskData?.id;
+    if (taskId) {
+      setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, is_locked: true, status: 'completed' } : t));
+      setSelectedTask(curr => (curr && String(curr.id) === String(taskId)) ? { ...curr, is_locked: true, status: 'completed' } : curr);
+    }
+  }, []);
+
+  const handleTaskDeleted = useCallback((payload) => {
+    if (!payload) return;
+    const taskData = payload.task || payload.data || payload;
+    const taskId = taskData?.task_id || taskData?.id;
+    if (taskId) {
+      setTasks(prev => prev.filter(t => String(t.id) !== String(taskId)));
+      setSelectedTask(curr => (curr && String(curr.id) === String(taskId)) ? null : curr);
+    }
+  }, []);
+
+  useRealtime('task.created', handleTaskCreated);
+  useRealtime('task.status_changed', handleTaskStatusChanged);
+  useRealtime('task.reassigned', handleTaskReassigned);
+  useRealtime('task.locked', handleTaskLocked);
+  useRealtime('task.deleted', handleTaskDeleted);
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -233,25 +284,56 @@ const TasksPage = () => {
         scheduled_date: null
       });
 
-      // Upload attached files if any
-      if (attachedFiles.length > 0 && newTask?.id) {
-        for (const file of attachedFiles) {
-          const isDoc = !file.type?.startsWith('image/') && !file.type?.startsWith('video/');
-          try {
-            await uploadFile(file, newTask.id, null, isDoc ? googleToken : null);
-          } catch (uploadErr) {
-            console.error('Failed to upload file attachment:', file.name, uploadErr);
-          }
-        }
+      // Enrich newly created task with assigner & assignee user objects for instant rendering
+      const targetUser = usersList.find(u => String(u.id) === String(assignedTo));
+      const enrichedTask = {
+        ...newTask,
+        assigner: newTask.assigner || {
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          role: user.role,
+          avatar_url: user.avatar_url
+        },
+        assignee: newTask.assignee || (targetUser ? {
+          id: targetUser.id,
+          first_name: targetUser.first_name,
+          last_name: targetUser.last_name,
+          email: targetUser.email,
+          role: targetUser.role,
+          avatar_url: targetUser.avatar_url
+        } : null)
+      };
+
+      // 0 ms instant UI update: Prepend to tasks list immediately so it displays with NO delay
+      setTasks(prev => [enrichedTask, ...prev.filter(t => String(t.id) !== String(newTask.id))]);
+      if (dispatch) {
+        dispatch('task.created', enrichedTask);
       }
 
+      // Close modal and reset form immediately
       setShowModal(false);
       setTitle('');
       setDescription('');
       setPriority('normal');
       setDeadline('');
+
+      // Upload attached files asynchronously in the background so modal closing and task display are never blocked
+      const filesToUpload = [...attachedFiles];
       setAttachedFiles([]);
-      loadTasks();
+      if (filesToUpload.length > 0 && newTask?.id) {
+        Promise.all(filesToUpload.map(file => {
+          const isDoc = !file.type?.startsWith('image/') && !file.type?.startsWith('video/');
+          return uploadFile(file, newTask.id, null, isDoc ? googleToken : null).catch(uploadErr => {
+            console.error('Failed to upload file attachment:', file.name, uploadErr);
+          });
+        })).then(() => {
+          loadTasks();
+        });
+      } else {
+        loadTasks();
+      }
     } catch (err) {
       setFormError(err.response?.data?.detail || 'Failed to assign task.');
     } finally {
@@ -357,10 +439,13 @@ const TasksPage = () => {
     }
   };
 
+  const isLeadership = ['CEO', 'CTO', 'PM'].includes(user?.role);
+
   const userTasks = tasks.filter(t => {
     const isAssignedToMe = String(t.assigned_to) === String(user?.id);
     const isAssignedByMe = String(t.assigned_by) === String(user?.id);
-    if (!isAssignedToMe && !isAssignedByMe) return false;
+    // CEO, CTO, and PM can see ALL tasks company-wide in read-only observation mode
+    if (!isLeadership && !isAssignedToMe && !isAssignedByMe) return false;
 
     // The members can see current date tasks only; they can't access next upcoming days tasks
     if (user?.role === 'TM' && t.scheduled_date && isUpcomingDate(t.scheduled_date)) {
@@ -565,6 +650,26 @@ const TasksPage = () => {
                           {isSelfAssigned ? 'Self-Assigned' : 'Assigned to You'}
                         </span>
                       )}
+
+                      {/* Observing (Read-Only) badge for leadership */}
+                      {!isAssignedToMe && !isAssignedByMe && isLeadership && (
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          background: 'rgba(100, 116, 139, 0.12)',
+                          color: '#475569',
+                          border: '1px solid rgba(100, 116, 139, 0.25)',
+                          letterSpacing: '0.02em',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}>
+                          <Shield size={10} />
+                          Observing (Read-Only)
+                        </span>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -752,6 +857,40 @@ const TasksPage = () => {
                         <CheckCircle2 size={14} />
                         <span>Complete Task</span>
                       </button>
+                    </div>
+                  )}
+
+                  {/* Read-Only Observer Indicator for Leadership */}
+                  {!isAssignedToMe && !isAssignedByMe && isLeadership && (
+                    <div style={{
+                      width: '100%',
+                      padding: '5px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--subtle)',
+                      border: '1px solid var(--border)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '11px',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <Shield size={12} color="var(--brand-600)" />
+                        <span>Assigned by {task.assigner?.first_name || 'TL'}</span>
+                      </span>
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        color: 'var(--text-tertiary)',
+                        background: 'var(--surface)',
+                        padding: '2px 6px',
+                        borderRadius: 'var(--radius-xs)',
+                        border: '1px solid var(--border)'
+                      }}>
+                        View Only
+                      </span>
                     </div>
                   )}
                 </div>
