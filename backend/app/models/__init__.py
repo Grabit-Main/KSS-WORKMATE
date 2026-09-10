@@ -4,9 +4,10 @@ from app.models.task import Task, TaskAttachment, TaskStatusLog
 from app.models.chat import ChatMessage
 from app.models.review import Review
 from app.models.notification import Notification
+from app.models.kpi import DailyKPILog
 
 __all__ = [
     "User", "Project", "Team", "TeamMembership", "ProjectStatusLog",
     "Task", "TaskAttachment", "TaskStatusLog",
-    "ChatMessage", "Review", "Notification",
+    "ChatMessage", "Review", "Notification", "DailyKPILog",
 ]
