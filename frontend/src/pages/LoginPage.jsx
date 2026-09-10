@@ -7,6 +7,7 @@ import { SplashScreen } from '../components/layout/SplashScreen';
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showFpPass, setShowFpPass] = useState(false);
   const [error, setError] = useState('');
@@ -51,7 +52,7 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
     } catch (err) {
       const msg = err.response?.data?.detail || (err.response?.status ? `Server error (${err.response.status})` : (err.message || 'Login failed'));
       setError(msg);
@@ -129,185 +130,496 @@ const LoginPage = () => {
   return (
     <div style={{
       minHeight: '100vh',
+      width: '100vw',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'var(--bg-gradient)',
-      padding: '24px'
+      backgroundColor: '#050507',
+      backgroundImage: `
+        radial-gradient(ellipse at 10% 20%, rgba(224, 30, 132, 0.45) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 80%, rgba(138, 43, 226, 0.4) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 90%, rgba(0, 180, 216, 0.35) 0%, transparent 55%)
+      `,
+      backgroundAttachment: 'fixed',
+      padding: '24px',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      boxSizing: 'border-box',
+      position: 'relative',
+      overflow: 'auto'
     }}>
-      <div className="card modal-animate" style={{
-        maxWidth: '420px',
+      {/* Dynamic ribbon background visual frame */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        opacity: 0.35,
+        backgroundImage: 'url("/login_hero_waves.jpg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        filter: 'blur(35px) brightness(0.8)',
+        pointerEvents: 'none',
+        zIndex: 0
+      }} />
+
+      {/* Main Double Card Container */}
+      <div style={{
+        position: 'relative',
+        zIndex: 1,
         width: '100%',
-        padding: '36px',
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: 'var(--shadow-float)',
-        border: '1px solid var(--border)',
-        background: 'var(--surface)'
+        maxWidth: '1020px',
+        minHeight: '620px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+        borderRadius: '32px',
+        border: '2.5px solid rgba(255, 255, 255, 0.95)',
+        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255, 255, 255, 0.08)',
+        overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        margin: 'auto'
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <img
-            src="/logo.webp"
-            alt="Logo"
-            style={{
-              maxWidth: '220px',
-              width: '100%',
-              maxHeight: '60px',
-              objectFit: 'contain',
-              margin: '0 auto 12px',
-              display: 'block',
-              filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.04))'
-            }}
-          />
-          <p className="text-secondary text-sm">Sign in with your organization credentials</p>
+
+        {/* LEFT COLUMN: HERO ART & TYPOGRAPHY */}
+        <div style={{
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '40px 36px',
+          margin: '12px',
+          borderRadius: '24px',
+          overflow: 'hidden',
+          backgroundColor: '#09090b',
+          minHeight: '480px'
+        }}>
+          {/* Background image & gradient overlay */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: 'url("/login_hero_waves.jpg")',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center top',
+            opacity: 0.92,
+            zIndex: 0
+          }} />
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(180deg, rgba(5, 5, 10, 0.45) 0%, rgba(5, 5, 12, 0.85) 100%)',
+            zIndex: 1
+          }} />
+
+          {/* Top Header: Quote Accent */}
+          <div style={{
+            position: 'relative',
+            zIndex: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.22em',
+              color: 'rgba(255, 255, 255, 0.85)',
+              textTransform: 'uppercase',
+              fontFamily: "'Inter', sans-serif"
+            }}>
+              A WISE QUOTE
+            </span>
+            <div style={{
+              height: '1px',
+              width: '90px',
+              backgroundColor: 'rgba(255, 255, 255, 0.35)'
+            }} />
+          </div>
+
+          {/* Bottom Footer Quote & Display Title */}
+          <div style={{ position: 'relative', zIndex: 2, marginTop: 'auto' }}>
+            <h1 style={{
+              fontFamily: "'Playfair Display', 'DM Serif Display', Georgia, serif",
+              fontSize: 'clamp(36px, 4.5vw, 54px)',
+              fontWeight: 600,
+              lineHeight: 1.1,
+              color: '#FFFFFF',
+              letterSpacing: '-0.02em',
+              margin: '0 0 20px 0',
+              textShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+            }}>
+              Get<br />
+              Everything<br />
+              You Want
+            </h1>
+            <p style={{
+              fontSize: '13px',
+              lineHeight: 1.55,
+              color: 'rgba(255, 255, 255, 0.82)',
+              margin: 0,
+              maxWidth: '340px',
+              fontWeight: 400
+            }}>
+              You can get everything you want if you work hard, trust the process, and stick to the plan.
+            </p>
+          </div>
         </div>
 
-        {error && (
+        {/* RIGHT COLUMN: LOGIN FORM */}
+        <div style={{
+          padding: '48px 44px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          backgroundColor: '#FFFFFF',
+          position: 'relative',
+          zIndex: 2
+        }}>
+
+          {/* Top Logo */}
           <div style={{
-            padding: '12px 16px',
-            background: 'var(--status-blocked-bg)',
-            color: 'var(--status-blocked)',
-            borderRadius: 'var(--radius-sm)',
-            marginBottom: '24px',
-            fontSize: '13px',
-            fontWeight: 500,
-            border: '1px solid rgba(239, 68, 68, 0.2)'
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            marginBottom: '32px'
           }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex-col gap-4">
-          <div>
-            <label className="text-xs font-semibold text-secondary mb-1.5" style={{ display: 'block' }}>Email</label>
-            <input
-              type="email"
-              className="input"
-              placeholder="Enter Your Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onFocus={() => api.get('/auth/warmup').catch(() => { })}
-              required
-            />
+            {/* Custom SVG logo icon matching reference icon or user logo */}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#18181B" />
+              <path d="M8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16C9.79 16 8 14.21 8 12Z" fill="#18181B" />
+            </svg>
+            <span style={{
+              fontSize: '18px',
+              fontWeight: 700,
+              color: '#18181B',
+              letterSpacing: '-0.02em',
+              fontFamily: "'Inter', sans-serif"
+            }}>
+              Cogie
+            </span>
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-secondary mb-1.5" style={{ display: 'block' }}>Password</label>
-            <div style={{ position: 'relative' }}>
+          {/* Welcome Back Header */}
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <h2 style={{
+              fontFamily: "'Playfair Display', 'DM Serif Display', Georgia, serif",
+              fontSize: '34px',
+              fontWeight: 600,
+              color: '#09090B',
+              margin: '0 0 8px 0',
+              letterSpacing: '-0.02em'
+            }}>
+              Welcome Back
+            </h2>
+            <p style={{
+              fontSize: '13px',
+              color: '#6B7280',
+              margin: 0,
+              fontWeight: 400
+            }}>
+              Enter your email and password to access your account
+            </p>
+          </div>
+
+          {/* Error notification banner */}
+          {error && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#FEF2F2',
+              color: '#991B1B',
+              borderRadius: '10px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              fontWeight: 500,
+              border: '1px solid #FCA5A5'
+            }}>
+              {error}
+            </div>
+          )}
+
+          {/* Form Controls */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {/* Email field */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                Email
+              </label>
               <input
-                type={showPassword ? 'text' : 'password'}
-                className="input"
-                placeholder="Enter Your Password"
-                style={{ paddingRight: '42px' }}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 onFocus={() => api.get('/auth/warmup').catch(() => { })}
                 required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
                 style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  padding: '4px',
-                  cursor: 'pointer',
-                  color: 'var(--text-tertiary)',
+                  width: '100%',
+                  height: '46px',
+                  padding: '0 16px',
+                  backgroundColor: '#F3F4F6',
+                  border: '1px solid transparent',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  color: '#111827',
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                  boxSizing: 'border-box'
+                }}
+                onFocusCapture={(e) => {
+                  e.target.style.backgroundColor = '#FFFFFF';
+                  e.target.style.borderColor = '#18181B';
+                }}
+                onBlurCapture={(e) => {
+                  e.target.style.backgroundColor = '#F3F4F6';
+                  e.target.style.borderColor = 'transparent';
+                }}
+              />
+            </div>
+
+            {/* Password field */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => api.get('/auth/warmup').catch(() => { })}
+                  required
+                  style={{
+                    width: '100%',
+                    height: '46px',
+                    padding: '0 44px 0 16px',
+                    backgroundColor: '#F3F4F6',
+                    border: '1px solid transparent',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    color: '#111827',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocusCapture={(e) => {
+                    e.target.style.backgroundColor = '#FFFFFF';
+                    e.target.style.borderColor = '#18181B';
+                  }}
+                  onBlurCapture={(e) => {
+                    e.target.style.backgroundColor = '#F3F4F6';
+                    e.target.style.borderColor = 'transparent';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '6px',
+                    cursor: 'pointer',
+                    color: '#9CA3AF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '6px'
+                  }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              {/* Checkbox and Forgot Password Row */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: '12px'
+              }}>
+                <label style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'color var(--transition-fast)'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-              <button
-                type="button"
-                onClick={() => setShowForgot(true)}
-                className="text-xs font-medium"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--brand-600)',
+                  gap: '8px',
+                  fontSize: '13px',
+                  color: '#4B5563',
                   cursor: 'pointer',
-                  padding: 0,
-                  transition: 'color var(--transition-fast)'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--brand-700)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--brand-600)'}
-              >
-                Forgot password?
-              </button>
-            </div>
-          </div>
+                  userSelect: 'none'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '4px',
+                      accentColor: '#09090B',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  Remember me
+                </label>
 
-          <button
-            type="submit"
-            className="btn btn-primary w-full mt-2"
-            style={{ padding: '12px', borderRadius: 'var(--radius-sm)' }}
-            disabled={loading}
-          >
-            {loading ? (
-              <div className="dots-loader"><span></span><span></span><span></span></div>
-            ) : (
-              'Sign in'
-            )}
-          </button>
-        </form>
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#374151',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    padding: 0
+                  }}
+                >
+                  Forgot Password
+                </button>
+              </div>
+            </div>
+
+            {/* Primary CTA: Sign In */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                height: '48px',
+                backgroundColor: '#09090B',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                marginTop: '8px',
+                transition: 'opacity 0.2s ease, transform 0.1s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = '0.92'; }}
+              onMouseLeave={(e) => { if (!loading) e.currentTarget.style.opacity = '1'; }}
+            >
+              {loading ? (
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <span style={{ width: '6px', height: '6px', backgroundColor: '#FFF', borderRadius: '50%', animation: 'bounce 1s infinite 0s' }}></span>
+                  <span style={{ width: '6px', height: '6px', backgroundColor: '#FFF', borderRadius: '50%', animation: 'bounce 1s infinite 0.2s' }}></span>
+                  <span style={{ width: '6px', height: '6px', backgroundColor: '#FFF', borderRadius: '50%', animation: 'bounce 1s infinite 0.4s' }}></span>
+                </div>
+              ) : (
+                'Sign In'
+              )}
+            </button>
+
+            {/* Secondary CTA: Sign In with Google */}
+            <button
+              type="button"
+              style={{
+                width: '100%',
+                height: '46px',
+                backgroundColor: '#FFFFFF',
+                color: '#374151',
+                border: '1px solid #E5E7EB',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                transition: 'background-color 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFFFFF'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              Sign In with Google
+            </button>
+          </form>
+
+          {/* Footer Text */}
+          <p style={{
+            textAlign: 'center',
+            fontSize: '13px',
+            color: '#6B7280',
+            marginTop: '36px',
+            marginBottom: 0
+          }}>
+            Don't have an account?{' '}
+            <span style={{ color: '#09090B', fontWeight: 600, cursor: 'pointer' }}>
+              Sign Up
+            </span>
+          </p>
+        </div>
+
       </div>
 
+      {/* FORGOT PASSWORD MODAL */}
       {showForgot && (
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.45)',
-          backdropFilter: 'blur(12px) saturate(160%)',
-          WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           padding: '20px'
         }}>
-          <div className="card modal-animate" style={{
+          <div style={{
             width: '100%',
             maxWidth: '420px',
             padding: '32px 28px',
-            borderRadius: 'var(--radius-xl)',
-            boxShadow: 'var(--shadow-float)',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)'
+            borderRadius: '24px',
+            backgroundColor: '#FFFFFF',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid rgba(229, 231, 235, 0.8)',
+            position: 'relative'
           }}>
-            <div className="flex justify-between items-start" style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
               <div>
-                <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: '0 0 4px 0' }}>
                   Reset Password
                 </h3>
-                <p className="text-xs text-secondary" style={{ lineHeight: 1.4 }}>
+                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
                   We'll help you regain account access
                 </p>
               </div>
               <button
                 onClick={closeForgot}
                 style={{
-                  background: 'var(--subtle)',
-                  border: '1px solid var(--border)',
+                  background: '#F3F4F6',
+                  border: 'none',
                   cursor: 'pointer',
-                  padding: '6px',
-                  borderRadius: 'var(--radius-full)',
-                  color: 'var(--text-secondary)',
+                  padding: '8px',
+                  borderRadius: '50%',
+                  color: '#4B5563',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all var(--transition-fast)'
+                  justifyContent: 'center'
                 }}
               >
                 <X size={16} />
@@ -315,12 +627,12 @@ const LoginPage = () => {
             </div>
 
             {fpError && (
-              <div style={{ padding: '10px 14px', background: 'var(--status-blocked-bg)', color: 'var(--status-blocked)', borderRadius: 'var(--radius-sm)', marginBottom: '20px', fontSize: '13px' }}>
+              <div style={{ padding: '10px 14px', backgroundColor: '#FEF2F2', color: '#991B1B', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', border: '1px solid #FCA5A5' }}>
                 {fpError}
               </div>
             )}
             {fpMessage && (
-              <div style={{ padding: '10px 14px', background: 'var(--status-completed-bg)', color: 'var(--status-completed)', borderRadius: 'var(--radius-sm)', marginBottom: '20px', fontSize: '13px' }}>
+              <div style={{ padding: '10px 14px', backgroundColor: '#ECFDF5', color: '#065F46', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', border: '1px solid #A7F3D0' }}>
                 {fpMessage}
               </div>
             )}
@@ -329,41 +641,73 @@ const LoginPage = () => {
               <form onSubmit={handleForgotSubmit}>
                 {forgotStep === 1 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label className="text-xs font-semibold text-secondary block" style={{ marginBottom: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
                       Enter your registered email
                     </label>
                     <input
                       required
                       type="email"
-                      className="input"
-                      placeholder="Enter Your Email"
+                      placeholder="Enter your email"
                       value={fpEmail}
                       onChange={e => setFpEmail(e.target.value)}
                       disabled={fpLoading}
-                      style={{ width: '100%', height: '42px' }}
+                      style={{
+                        width: '100%',
+                        height: '44px',
+                        padding: '0 14px',
+                        backgroundColor: '#F3F4F6',
+                        border: '1px solid transparent',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        color: '#111827',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
                     />
                     <button
                       type="submit"
-                      className="btn btn-primary w-full"
-                      style={{ marginTop: '20px', padding: '12px', fontSize: '14px', fontWeight: 600, height: '44px' }}
+                      style={{
+                        marginTop: '20px',
+                        width: '100%',
+                        height: '44px',
+                        backgroundColor: '#09090B',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        cursor: fpLoading ? 'not-allowed' : 'pointer'
+                      }}
                       disabled={fpLoading}
                     >
-                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Send Reset Code'}
+                      {fpLoading ? 'Sending...' : 'Send Reset Code'}
                     </button>
                   </div>
                 )}
 
                 {forgotStep === 2 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label className="text-xs font-semibold text-secondary block" style={{ marginBottom: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
                       Enter 6-digit OTP code sent to your email
                     </label>
                     <input
                       required
                       type="text"
-                      className="input"
                       placeholder="_ _ _ _ _ _"
-                      style={{ letterSpacing: '8px', textAlign: 'center', fontSize: '20px', fontWeight: 700, fontFamily: 'monospace', height: '46px', width: '100%' }}
+                      style={{
+                        letterSpacing: '8px',
+                        textAlign: 'center',
+                        fontSize: '20px',
+                        fontWeight: 700,
+                        fontFamily: 'monospace',
+                        height: '48px',
+                        width: '100%',
+                        backgroundColor: '#F3F4F6',
+                        border: '1px solid transparent',
+                        borderRadius: '10px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
                       value={fpOtp}
                       onChange={e => setFpOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       maxLength={6}
@@ -371,13 +715,23 @@ const LoginPage = () => {
                     />
                     <button
                       type="submit"
-                      className="btn btn-primary w-full"
-                      style={{ marginTop: '20px', padding: '12px', fontSize: '14px', fontWeight: 600, height: '44px' }}
+                      style={{
+                        marginTop: '20px',
+                        width: '100%',
+                        height: '44px',
+                        backgroundColor: '#09090B',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        cursor: fpLoading ? 'not-allowed' : 'pointer'
+                      }}
                       disabled={fpLoading || fpOtp.trim().length !== 6}
                     >
-                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Verify Code'}
+                      {fpLoading ? 'Verifying...' : 'Verify Code'}
                     </button>
-                    <div style={{ textAlign: 'center', marginTop: '18px' }}>
+                    <div style={{ textAlign: 'center', marginTop: '16px' }}>
                       <button
                         type="button"
                         onClick={handleResend}
@@ -385,7 +739,7 @@ const LoginPage = () => {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: (fpLoading || resendTimer > 0) ? 'var(--text-disabled)' : 'var(--brand-600)',
+                          color: (fpLoading || resendTimer > 0) ? '#9CA3AF' : '#2563EB',
                           fontSize: '13px',
                           cursor: (fpLoading || resendTimer > 0) ? 'not-allowed' : 'pointer',
                           fontWeight: 500
@@ -400,16 +754,26 @@ const LoginPage = () => {
                 {forgotStep === 3 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div>
-                      <label className="text-xs font-semibold text-secondary block" style={{ marginBottom: '6px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px', display: 'block' }}>
                         New Password
                       </label>
                       <div style={{ position: 'relative' }}>
                         <input
                           required
                           type={showFpPass ? 'text' : 'password'}
-                          className="input"
                           placeholder="Enter New Password"
-                          style={{ paddingRight: '42px', height: '42px', width: '100%' }}
+                          style={{
+                            width: '100%',
+                            height: '44px',
+                            padding: '0 42px 0 14px',
+                            backgroundColor: '#F3F4F6',
+                            border: '1px solid transparent',
+                            borderRadius: '10px',
+                            fontSize: '14px',
+                            color: '#111827',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
                           value={fpNewPass}
                           onChange={e => setFpNewPass(e.target.value)}
                           disabled={fpLoading}
@@ -426,27 +790,33 @@ const LoginPage = () => {
                             border: 'none',
                             padding: '4px',
                             cursor: 'pointer',
-                            color: 'var(--text-tertiary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
+                            color: '#9CA3AF'
                           }}
-                          aria-label={showFpPass ? "Hide password" : "Show password"}
                         >
                           {showFpPass ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-secondary block" style={{ marginBottom: '6px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px', display: 'block' }}>
                         Confirm New Password
                       </label>
                       <input
                         required
                         type={showFpPass ? 'text' : 'password'}
-                        className="input"
                         placeholder="Confirm New Password"
-                        style={{ height: '42px', width: '100%' }}
+                        style={{
+                          width: '100%',
+                          height: '44px',
+                          padding: '0 14px',
+                          backgroundColor: '#F3F4F6',
+                          border: '1px solid transparent',
+                          borderRadius: '10px',
+                          fontSize: '14px',
+                          color: '#111827',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
                         value={fpConfirmPass}
                         onChange={e => setFpConfirmPass(e.target.value)}
                         disabled={fpLoading}
@@ -454,11 +824,21 @@ const LoginPage = () => {
                     </div>
                     <button
                       type="submit"
-                      className="btn btn-primary w-full"
-                      style={{ marginTop: '8px', padding: '12px', fontSize: '14px', fontWeight: 600, height: '44px' }}
+                      style={{
+                        marginTop: '8px',
+                        width: '100%',
+                        height: '44px',
+                        backgroundColor: '#09090B',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        cursor: fpLoading ? 'not-allowed' : 'pointer'
+                      }}
                       disabled={fpLoading}
                     >
-                      {fpLoading ? <div className="dots-loader"><span></span><span></span><span></span></div> : 'Update Password'}
+                      {fpLoading ? 'Updating...' : 'Update Password'}
                     </button>
                   </div>
                 )}
