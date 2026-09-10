@@ -135,173 +135,122 @@ const LoginPage = () => {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: '#050507',
-      backgroundImage: `
-        radial-gradient(ellipse at 10% 20%, rgba(224, 30, 132, 0.45) 0%, transparent 50%),
-        radial-gradient(ellipse at 90% 80%, rgba(138, 43, 226, 0.4) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 90%, rgba(0, 180, 216, 0.35) 0%, transparent 55%)
-      `,
-      backgroundAttachment: 'fixed',
-      padding: '20px',
+      backgroundImage: 'url("/login_hero_waves.jpg")',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      padding: '24px',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
       boxSizing: 'border-box',
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Dynamic ribbon background visual frame */}
+      {/* Dark semi-transparent backdrop overlay */}
       <div style={{
         position: 'absolute',
         inset: 0,
-        opacity: 0.35,
-        backgroundImage: 'url("/login_hero_waves.jpg")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        filter: 'blur(35px) brightness(0.8)',
+        backgroundColor: 'rgba(0, 0, 0, 0.25)',
         pointerEvents: 'none',
         zIndex: 0
       }} />
 
-      {/* Main Double Card Container */}
+      {/* Main Outer White Framed Container Card */}
       <div style={{
         position: 'relative',
         zIndex: 1,
         width: '100%',
-        maxWidth: '890px',
-        maxHeight: 'min(600px, 90vh)',
+        maxWidth: '920px',
+        height: 'min(580px, 90vh)',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        borderRadius: '28px',
-        border: '2.5px solid rgba(255, 255, 255, 0.95)',
-        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255, 255, 255, 0.08)',
-        overflow: 'hidden',
+        gridTemplateColumns: '1fr 1fr',
+        borderRadius: '36px',
         backgroundColor: '#FFFFFF',
-        margin: 'auto'
+        padding: '12px',
+        boxShadow: '0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.4)',
+        boxSizing: 'border-box',
+        margin: 'auto',
+        gap: '0px'
       }}>
 
-        {/* LEFT COLUMN: HERO ART & TYPOGRAPHY */}
+        {/* LEFT COLUMN: BLANK WITH VISIBLE BACKGROUND IMAGE */}
         <div style={{
           position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '30px 28px',
-          margin: '10px',
-          borderRadius: '20px',
+          borderRadius: '26px',
           overflow: 'hidden',
-          backgroundColor: '#09090b'
-        }}>
-          {/* Background image & gradient overlay */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: 'url("/login_hero_waves.jpg")',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center top',
-            opacity: 0.92,
-            zIndex: 0
-          }} />
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'linear-gradient(180deg, rgba(5, 5, 10, 0.45) 0%, rgba(5, 5, 12, 0.85) 100%)',
-            zIndex: 1
-          }} />
+          backgroundImage: 'url("/login_hero_waves.jpg")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'left center',
+          backgroundRepeat: 'no-repeat',
+          width: '100%',
+          height: '100%'
+        }} />
 
-          {/* Top Header: Quote Accent */}
-          <div style={{
-            position: 'relative',
-            zIndex: 2,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.2em',
-              color: 'rgba(255, 255, 255, 0.85)',
-              textTransform: 'uppercase',
-              fontFamily: "'Inter', sans-serif"
-            }}>
-              A WISE QUOTE
-            </span>
-            <div style={{
-              height: '1px',
-              width: '75px',
-              backgroundColor: 'rgba(255, 255, 255, 0.35)'
-            }} />
-          </div>
-
-          {/* Bottom Footer Quote & Display Title */}
-          <div style={{ position: 'relative', zIndex: 2, marginTop: 'auto' }}>
-            <h1 style={{
-              fontFamily: "'Playfair Display', 'DM Serif Display', Georgia, serif",
-              fontSize: 'clamp(30px, 3.8vw, 44px)',
-              fontWeight: 600,
-              lineHeight: 1.1,
-              color: '#FFFFFF',
-              letterSpacing: '-0.02em',
-              margin: '0 0 14px 0',
-              textShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-            }}>
-              Get<br />
-              Everything<br />
-              You Want
-            </h1>
-            <p style={{
-              fontSize: '12px',
-              lineHeight: 1.5,
-              color: 'rgba(255, 255, 255, 0.82)',
-              margin: 0,
-              maxWidth: '300px',
-              fontWeight: 400
-            }}>
-              You can get everything you want if you work hard, trust the process, and stick to the plan.
-            </p>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: LOGIN FORM */}
+        {/* RIGHT COLUMN: LOGIN FORM FIELDS */}
         <div style={{
-          padding: '28px 36px',
+          padding: '32px 40px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           backgroundColor: '#FFFFFF',
+          borderRadius: '0 26px 26px 0',
           position: 'relative',
           zIndex: 2,
           overflowY: 'auto'
         }}>
 
-
           {/* Company Logo */}
-          <img
-            src="/logo.webp"
-            alt="Company Logo"
-            style={{
-              maxWidth: '180px',
-              width: '100%',
-              maxHeight: '48px',
-              objectFit: 'contain',
-              margin: '0 auto 16px',
-              display: 'block',
-              filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.04))'
-            }}
-          />
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <img
+              src="/logo.webp"
+              alt="Company Logo"
+              style={{
+                maxWidth: '160px',
+                width: '100%',
+                maxHeight: '44px',
+                objectFit: 'contain',
+                margin: '0 auto',
+                display: 'block'
+              }}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                if (e.currentTarget.nextSibling) {
+                  e.currentTarget.nextSibling.style.display = 'flex';
+                }
+              }}
+            />
+            <div style={{
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontWeight: 700,
+              fontSize: '18px',
+              color: '#111827'
+            }}>
+              <div style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, #6366f1 0%, #a855f7 100%)'
+              }} />
+              <span>Cogie</span>
+            </div>
+          </div>
 
           {/* Welcome Back Header */}
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <h2 style={{
               fontFamily: "'Playfair Display', 'DM Serif Display', Georgia, serif",
-              fontSize: '28px',
+              fontSize: '32px',
               fontWeight: 600,
               color: '#09090B',
-              margin: '0 0 4px 0',
+              margin: '0 0 6px 0',
               letterSpacing: '-0.02em'
             }}>
               Welcome Back
             </h2>
             <p style={{
-              fontSize: '12px',
+              fontSize: '13px',
               color: '#6B7280',
               margin: 0,
               fontWeight: 400
@@ -313,11 +262,11 @@ const LoginPage = () => {
           {/* Error notification banner */}
           {error && (
             <div style={{
-              padding: '12px 16px',
+              padding: '10px 14px',
               backgroundColor: '#FEF2F2',
               color: '#991B1B',
               borderRadius: '10px',
-              marginBottom: '20px',
+              marginBottom: '16px',
               fontSize: '13px',
               fontWeight: 500,
               border: '1px solid #FCA5A5'
@@ -332,10 +281,10 @@ const LoginPage = () => {
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '12px',
+                fontSize: '13px',
                 fontWeight: 500,
                 color: '#374151',
-                marginBottom: '4px'
+                marginBottom: '6px'
               }}>
                 Email
               </label>
@@ -374,10 +323,10 @@ const LoginPage = () => {
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '12px',
+                fontSize: '13px',
                 fontWeight: 500,
                 color: '#374151',
-                marginBottom: '4px'
+                marginBottom: '6px'
               }}>
                 Password
               </label>
@@ -416,7 +365,7 @@ const LoginPage = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
-                    right: '10px',
+                    right: '12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'transparent',
@@ -426,8 +375,7 @@ const LoginPage = () => {
                     color: '#9CA3AF',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '6px'
+                    justifyContent: 'center'
                   }}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
@@ -491,20 +439,20 @@ const LoginPage = () => {
               style={{
                 width: '100%',
                 height: '44px',
-                backgroundColor: '#09090B',
+                backgroundColor: '#000000',
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: '10px',
-                fontSize: '13.5px',
+                fontSize: '14px',
                 fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 marginTop: '4px',
-                transition: 'opacity 0.2s ease, transform 0.1s ease',
+                transition: 'opacity 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
-              onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = '0.92'; }}
+              onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = '0.9'; }}
               onMouseLeave={(e) => { if (!loading) e.currentTarget.style.opacity = '1'; }}
             >
               {loading ? (
@@ -517,7 +465,61 @@ const LoginPage = () => {
                 'Sign In'
               )}
             </button>
+
+            {/* Secondary CTA: Sign In with Google */}
+            <button
+              type="button"
+              onClick={() => setError('Google Sign In is not configured for this environment.')}
+              style={{
+                width: '100%',
+                height: '44px',
+                backgroundColor: '#FFFFFF',
+                color: '#374151',
+                border: '1px solid #E5E7EB',
+                borderRadius: '10px',
+                fontSize: '13.5px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                transition: 'background-color 0.2s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              Sign In with Google
+            </button>
           </form>
+
+          {/* Footer Text */}
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <span style={{ fontSize: '12px', color: '#6B7280' }}>
+              Don't have an account?{' '}
+              <span style={{ fontWeight: 600, color: '#111827', cursor: 'pointer' }}>
+                Sign Up
+              </span>
+            </span>
+          </div>
         </div>
       </div>
 
