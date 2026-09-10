@@ -179,7 +179,8 @@ const LoginPage = () => {
           overflow: 'hidden',
           backgroundImage: 'url("/login_hero_waves.jpg")',
           backgroundSize: 'cover',
-          backgroundPosition: 'left center',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
           backgroundRepeat: 'no-repeat',
           width: '100%',
           height: '100%',
@@ -193,7 +194,7 @@ const LoginPage = () => {
           <div style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.75) 100%)',
+            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.65) 100%)',
             zIndex: 1
           }} />
 
@@ -226,17 +227,17 @@ const LoginPage = () => {
           <div style={{ position: 'relative', zIndex: 2, marginTop: 'auto' }}>
             <h1 style={{
               fontFamily: "'Playfair Display', 'DM Serif Display', Georgia, serif",
-              fontSize: 'clamp(32px, 3.5vw, 40px)',
+              fontSize: 'clamp(28px, 3.2vw, 36px)',
               fontWeight: 600,
-              lineHeight: 1.1,
+              lineHeight: 1.15,
               color: '#FFFFFF',
               letterSpacing: '-0.02em',
               margin: '0 0 14px 0',
               textShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
             }}>
-              Get<br />
-              Everything<br />
-              You Want
+              CODE,<br />
+              INNOVATE,<br />
+              ELEVATE
             </h1>
             <p style={{
               fontSize: '12px',
