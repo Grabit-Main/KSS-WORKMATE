@@ -82,14 +82,17 @@ def get_project(project_id: UUID, db: Session = Depends(get_db), user: User = De
 
 @router.put("/{project_id}", response_model=ProjectResponse)
 async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.models.project import Team
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(404, "Project not found")
     if user.role not in ("PM", "CEO", "CTO"):
         raise HTTPException(403, "Insufficient permissions to update project")
     old_status = project.status
-    for field, val in req.model_dump(exclude_none=True).items():
+    update_data = req.model_dump(exclude_none=True, exclude={"team_id", "team_ids"})
+    for field, val in update_data.items():
         setattr(project, field, val)
+
     if req.status and req.status != old_status:
         log = ProjectStatusLog(
             project_id=project.id,
@@ -99,6 +102,37 @@ async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Dep
             notes=f"Project status updated to {req.status}"
         )
         db.add(log)
+
+    # Handle multiple/single team allocation
+    if req.team_ids is not None or req.team_id is not None:
+        new_team_ids = list(req.team_ids or [])
+        if req.team_id and req.team_id not in new_team_ids:
+            new_team_ids.append(req.team_id)
+
+        # Unassign teams that are no longer assigned to this project
+        current_teams = db.query(Team).filter(Team.project_id == project.id).all()
+        for t in current_teams:
+            if t.id not in new_team_ids:
+                t.project_id = None
+
+        # Assign selected teams to this project
+        allocated_team_names = []
+        for tid in new_team_ids:
+            team = db.query(Team).filter(Team.id == tid).first()
+            if team:
+                team.project_id = project.id
+                allocated_team_names.append(team.name)
+
+        if allocated_team_names:
+            team_log = ProjectStatusLog(
+                project_id=project.id,
+                from_status=project.status,
+                to_status=project.status,
+                changed_by=user.id,
+                notes=f"Project teams updated to: {', '.join(allocated_team_names)}"
+            )
+            db.add(team_log)
+
     db.commit()
     db.refresh(project)
     event = {"type": PROJECT_UPDATED, "data": {"id": str(project.id), "name": project.name, "status": project.status}}

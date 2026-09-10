@@ -67,6 +67,8 @@ class ProjectUpdate(BaseModel):
     aim: Optional[str] = None
     deadline: Optional[datetime] = None
     status: Optional[str] = None
+    team_id: Optional[UUID] = None
+    team_ids: Optional[List[UUID]] = None
 
 
 class ProjectResponse(BaseModel):

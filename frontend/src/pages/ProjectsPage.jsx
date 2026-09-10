@@ -53,6 +53,7 @@ const ProjectsPage = () => {
   const [editAim, setEditAim] = useState('');
   const [editStatus, setEditStatus] = useState('active');
   const [editDeadline, setEditDeadline] = useState('');
+  const [editSelectedTeamIds, setEditSelectedTeamIds] = useState([]);
   const [editAttachedFiles, setEditAttachedFiles] = useState([]);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editFormError, setEditFormError] = useState('');
@@ -264,9 +265,19 @@ const ProjectsPage = () => {
     setEditAim(project.aim || '');
     setEditStatus(project.status || 'active');
     setEditDeadline(formatForDateTimeInput(project.deadline));
+    const currentTeamIds = (project.teams || []).map(t => t.id);
+    setEditSelectedTeamIds(currentTeamIds);
     setEditAttachedFiles([]);
     setEditFormError('');
     setShowEditModal(true);
+  };
+
+  const handleToggleEditTeam = (teamId) => {
+    setEditSelectedTeamIds(prev =>
+      prev.includes(teamId)
+        ? prev.filter(id => id !== teamId)
+        : [...prev, teamId]
+    );
   };
 
   const handleUpdateProject = async (e) => {
@@ -303,6 +314,7 @@ const ProjectsPage = () => {
         aim: editAim.trim(),
         status: editStatus,
         deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
+        team_ids: editSelectedTeamIds,
       });
 
       // Upload newly attached files if any
@@ -325,6 +337,7 @@ const ProjectsPage = () => {
 
       setShowEditModal(false);
       setEditingProject(null);
+      setEditSelectedTeamIds([]);
       setEditAttachedFiles([]);
       loadData();
     } catch (err) {
@@ -1449,6 +1462,107 @@ const ProjectsPage = () => {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Allocate Squads / Teams (Single or Multiple) */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label className="text-xs font-semibold text-secondary block">
+                    Assigned Squads / Teams
+                  </label>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-full)',
+                    background: editSelectedTeamIds.length > 0 ? 'var(--brand-50)' : 'var(--subtle)',
+                    color: editSelectedTeamIds.length > 0 ? 'var(--brand-700)' : 'var(--text-tertiary)',
+                    border: '1px solid var(--border)'
+                  }}>
+                    {editSelectedTeamIds.length} {editSelectedTeamIds.length === 1 ? 'team' : 'teams'} selected
+                  </span>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  maxHeight: '190px',
+                  overflowY: 'auto',
+                  padding: '10px',
+                  background: 'var(--bg)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)'
+                }}>
+                  {(Array.isArray(teams) ? teams : []).map(t => {
+                    const isSelected = editSelectedTeamIds.includes(t.id);
+                    const isAssignedOther = t.project_id && String(t.project_id) !== String(editingProject.id);
+                    const otherProjectName = isAssignedOther ? projects.find(p => String(p.id) === String(t.project_id))?.name : null;
+
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => handleToggleEditTeam(t.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: isSelected ? 'var(--brand-50)' : 'var(--surface)',
+                          border: isSelected ? '1px solid var(--brand-300)' : '1px solid var(--border)',
+                          cursor: 'pointer',
+                          transition: 'all var(--transition-fast)'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = 'var(--subtle)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = 'var(--surface)';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}} // Handled by container onClick
+                            style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--brand-600)' }}
+                          />
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '13px', color: isSelected ? 'var(--brand-700)' : 'var(--text-primary)' }}>
+                              {t.name}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                              {t.memberships?.length || 0} members
+                              {isAssignedOther && ` • Currently assigned to "${otherProjectName || 'Another Project'}"`}
+                            </div>
+                          </div>
+                        </div>
+
+                        {isSelected && (
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            background: 'var(--brand-100)',
+                            color: 'var(--brand-800)'
+                          }}>
+                            Assigned
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {(!teams || teams.length === 0) && (
+                    <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '12px' }}>
+                      No teams available.
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-secondary mt-1">
+                  Select single or multiple teams to assign to this project deliverable.
+                </p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
