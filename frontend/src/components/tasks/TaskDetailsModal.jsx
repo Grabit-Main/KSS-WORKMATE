@@ -121,7 +121,8 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
 
   const isAssignee = String(currentTask.assigned_to) === String(currentUser.id);
   const isAssigner = String(currentTask.assigned_by) === String(currentUser.id);
-  const canConfirm = currentUser.role in { CEO: 1, CTO: 1, PM: 1, TL: 1 };
+  const isLeadership = ['CEO', 'CTO', 'PM'].includes(currentUser.role);
+  const isReadOnlyObserver = isLeadership && !isAssignee && !isAssigner;
 
   const handleStart = async () => {
     setActionLoading(true);
@@ -301,6 +302,23 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                 }}>
                   <Calendar size={11} />
                   {formatScheduledDate(currentTask.scheduled_date)}
+                </span>
+              )}
+              {isReadOnlyObserver && (
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '2px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  background: 'rgba(100, 116, 139, 0.12)',
+                  color: '#475569',
+                  border: '1px solid rgba(100, 116, 139, 0.25)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <Shield size={11} />
+                  Read-Only View ({currentUser.role})
                 </span>
               )}
             </div>
@@ -565,9 +583,35 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                     ✓ This task has been confirmed as completed.
                   </p>
                 )}
+                {isReadOnlyObserver && (
+                  <p className="text-xs text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Shield size={14} color="var(--brand-600)" />
+                    <span>Viewing as {currentUser.role}. Actions are strictly reserved for the task assigner ({getUserFullName(currentTask.assigner)}) and assignee.</span>
+                  </p>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '10px' }}>
+                {isReadOnlyObserver && (
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: 'var(--text-tertiary)',
+                    background: 'var(--subtle)',
+                    padding: '8px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}>
+                    <Shield size={12} />
+                    Read-Only Mode
+                  </span>
+                )}
+
                 {/* START ACTION: Only assignee can start task */}
                 {currentTask.status === 'not_started' && isAssignee && (
                   <button

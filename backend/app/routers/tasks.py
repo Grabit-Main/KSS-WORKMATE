@@ -35,6 +35,8 @@ async def _broadcast_task(task, team_id, event_type):
             "id": str(task.id),
             "task_id": str(task.id),
             "title": task.title,
+            "description": task.description,
+            "priority": task.priority,
             "status": task.status,
             "project_id": str(task.project_id) if task.project_id else None,
             "team_id": str(team_id) if team_id else (str(task.team_id) if task.team_id else None),
@@ -44,6 +46,15 @@ async def _broadcast_task(task, team_id, event_type):
             "scheduled_date": task.scheduled_date,
             "deadline": task.deadline.isoformat() if task.deadline else None,
             "deadline_exceeded": getattr(task, "deadline_exceeded", False),
+            "attachments": [
+                {
+                    "id": str(a.id),
+                    "file_url": a.file_url,
+                    "file_name": a.file_name,
+                    "file_size": a.file_size,
+                    "file_type": a.file_type
+                } for a in getattr(task, "attachments", [])
+            ],
             "assignee": {
                 "id": str(task.assignee.id),
                 "first_name": task.assignee.first_name,
@@ -73,7 +84,9 @@ async def _broadcast_task(task, team_id, event_type):
         await manager.send_to_user(str(task.assigned_to), data)
     if task.assigned_by and str(task.assigned_by) != str(task.assigned_to):
         await manager.send_to_user(str(task.assigned_by), data)
+    await manager.broadcast("global:admins", data)
     await manager.broadcast("global:admins", {"type": ANALYTICS_REFRESH, "data": {}})
+    await manager.broadcast("global:all", data)
     await manager.broadcast("global:all", {"type": ANALYTICS_REFRESH, "data": {}})
 
 
@@ -84,8 +97,12 @@ def list_tasks(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    # Visibility rule: strictly only show for the user who assigned the task and the user assigned to do it
-    q = db.query(Task).filter((Task.assigned_to == user.id) | (Task.assigned_by == user.id))
+    # Visibility rule: CEO, CTO, and PM can see all assigned tasks company-wide in read-only mode;
+    # Other users (TL, TM) can strictly only see tasks assigned to them or by them.
+    if user.role in ("CEO", "CTO", "PM"):
+        q = db.query(Task)
+    else:
+        q = db.query(Task).filter((Task.assigned_to == user.id) | (Task.assigned_by == user.id))
 
     if project_id:
         # Match strictly tasks assigned directly to this project.
@@ -236,8 +253,9 @@ def get_task(task_id: UUID, db: Session = Depends(get_db), user: User = Depends(
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
-    if str(task.assigned_to) != str(user.id) and str(task.assigned_by) != str(user.id):
-        raise HTTPException(403, "Not authorized to view this task. Only the assigner and assignee can access.")
+    if user.role not in ("CEO", "CTO", "PM"):
+        if str(task.assigned_to) != str(user.id) and str(task.assigned_by) != str(user.id):
+            raise HTTPException(403, "Not authorized to view this task. Only the assigner, assignee, or leadership can access.")
     if user.role == "TM" and task.scheduled_date:
         from datetime import datetime
         import re
@@ -367,13 +385,9 @@ async def decline_task(task_id: UUID, req: StatusUpdate, db: Session = Depends(g
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task or task.status != "in_review":
         raise HTTPException(400, "Task must be in review to decline")
-    lead = db.query(TeamMembership).filter(
-        TeamMembership.team_id == task.team_id,
-        TeamMembership.user_id == user.id,
-        (TeamMembership.is_lead == True) | (user.role == "TL")
-    ).first()
-    if not lead and user.role not in ("CEO", "CTO", "PM"):
-        raise HTTPException(403, "Only Team Leads can decline tasks")
+    is_assigner = str(task.assigned_by) == str(user.id)
+    if not is_assigner:
+        raise HTTPException(403, "Only the task assigner can decline tasks")
     _log_status(db, task, task.status, "in_progress", user.id, req.reason)
     task.status = "in_progress"
     task.decline_reason = req.reason
@@ -465,12 +479,13 @@ async def delete_task(
     db.commit()
 
     # Broadcast task deletion
-    event = {"type": TASK_DELETED, "data": {"task_id": str(task_id), "team_id": str(team_id) if team_id else None}}
+    event = {"type": TASK_DELETED, "data": {"task_id": str(task_id), "id": str(task_id), "team_id": str(team_id) if team_id else None}}
     if team_id:
         await manager.broadcast(f"team:{team_id}", event)
     if project_id:
         await manager.broadcast(f"project:{project_id}", event)
     await manager.broadcast("global:admins", event)
+    await manager.broadcast("global:all", event)
     if assigned_to and str(assigned_to) != str(user.id):
         await manager.send_to_user(str(assigned_to), {
             "type": NOTIFICATION_NEW,

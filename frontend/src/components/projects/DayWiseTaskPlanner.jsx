@@ -259,6 +259,13 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     setSelectedTask(curr => (curr && String(curr.id) === String(tId)) ? { ...curr, deadline_exceeded: true } : curr);
   });
 
+  useRealtime('task.deleted', (eventData) => {
+    const tId = eventData?.task_id || eventData?.id;
+    if (!tId) return;
+    setTasks(prev => prev.filter(t => String(t.id) !== String(tId)));
+    setSelectedTask(curr => (curr && String(curr.id) === String(tId)) ? null : curr);
+  });
+
   useRealtime('notification.new', (eventData) => {
     const tId = eventData?.task_id || eventData?.ref_id;
     if (tId) {
@@ -527,9 +534,10 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     }
   };
 
+  const isLeadership = ['CEO', 'CTO', 'PM'].includes(currentUser?.role);
   const userVisibleTasks = tasks.filter(t => {
     const isParty = String(t.assigned_to) === String(currentUser?.id) || String(t.assigned_by) === String(currentUser?.id);
-    if (!isParty) return false;
+    if (!isLeadership && !isParty) return false;
     // The members can see current date tasks only; they can't access next upcoming days tasks
     if (currentUser?.role === 'TM' && t.scheduled_date && isUpcomingDate(t.scheduled_date)) {
       return false;
