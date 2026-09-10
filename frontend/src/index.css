@@ -544,32 +544,49 @@ input, select, textarea {
   min-width: 660px;
 }
 
-/* Custom Scrollbars for Modals & KPI Rules */
+/* Custom Scrollbars for Modals & KPI Rules - Always Visible & Enabled */
 .kpi-rules-modal-body {
   overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto !important;
+  scrollbar-color: #6366F1 #E2E8F0 !important;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: var(--brand-500, #6366F1) var(--bg);
 }
 
 .kpi-rules-modal-body::-webkit-scrollbar {
-  width: 12px;
-  height: 10px;
+  width: 14px !important;
+  height: 14px !important;
+  display: block !important;
 }
 
 .kpi-rules-modal-body::-webkit-scrollbar-track {
-  background: var(--bg);
-  border-radius: 6px;
+  background: #E2E8F0 !important;
+  border-radius: 8px !important;
 }
 
 .kpi-rules-modal-body::-webkit-scrollbar-thumb {
-  background: var(--brand-500, #6366F1);
-  border-radius: 6px;
-  border: 2px solid var(--bg);
+  background: #6366F1 !important;
+  border-radius: 8px !important;
+  border: 3px solid #E2E8F0 !important;
+  min-height: 50px !important;
 }
 
 .kpi-rules-modal-body::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-600, #4F46E5);
+  background: #4F46E5 !important;
+}
+
+[data-theme="dark"] .kpi-rules-modal-body {
+  scrollbar-color: #6366F1 #1E293B !important;
+}
+
+[data-theme="dark"] .kpi-rules-modal-body::-webkit-scrollbar-track {
+  background: #1E293B !important;
+}
+
+[data-theme="dark"] .kpi-rules-modal-body::-webkit-scrollbar-thumb {
+  background: #6366F1 !important;
+  border-color: #1E293B !important;
 }
 
 /* Mobile Sidebar Drawer System */
