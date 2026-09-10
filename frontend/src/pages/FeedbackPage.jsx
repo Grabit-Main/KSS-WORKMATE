@@ -185,11 +185,11 @@ const FeedbackPage = () => {
 
       {/* Cards Grid */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
           {[1,2,3,4].map(i => <div key={i} className="card skeleton" style={{ height: '160px' }}></div>)}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
           {feedbackList.map(r => {
             const displayUser = activeTab === 'received' ? r.reviewer : r.reviewee;
             const roleLabel = activeTab === 'received' ? 'Reviewer' : 'Reviewee';

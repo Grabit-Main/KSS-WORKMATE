@@ -592,7 +592,7 @@ const HistoryPage = () => {
                       <p className="text-sm">No project task activities found matching your criteria.</p>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
                       {filteredProjectActivities.map(group => {
                         const badge = getStatusBadgeStyle(group.latest_status);
                         return (
@@ -796,7 +796,7 @@ const HistoryPage = () => {
                       <p className="text-sm">No normally assigned task activities found matching your criteria.</p>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
                       {filteredNormalTaskActivities.map(group => {
                         const badge = getStatusBadgeStyle(group.latest_status);
                         return (

@@ -246,6 +246,11 @@ const KpiPage = () => {
       setModalError('Please select a date.');
       return;
     }
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (formData.date > todayStr) {
+      setModalError('Cannot allocate KPI for future dates. Only present and previous dates are allowed.');
+      return;
+    }
 
     setSubmitting(true);
     setModalError('');
@@ -286,7 +291,7 @@ const KpiPage = () => {
   const liveMetrics = useMemo(() => calculateLiveMetrics(formData), [formData]);
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1440px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '1440px', margin: '0 auto' }}>
       {/* Top Header */}
       <div style={{
         display: 'flex',
@@ -393,7 +398,7 @@ const KpiPage = () => {
       {/* Summary Scoreboard Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
         gap: '16px',
         marginBottom: '28px'
       }}>
@@ -636,6 +641,65 @@ const KpiPage = () => {
           </select>
         )}
 
+        {/* Calendar Date Filter (Present & Previous Dates Only) */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '7px 12px',
+          borderRadius: 'var(--radius-sm)',
+          border: selectedDate ? '1.5px solid var(--brand-500)' : '1px solid var(--border)',
+          background: 'var(--bg)',
+          boxShadow: selectedDate ? '0 0 0 2px rgba(99, 102, 241, 0.15)' : 'none',
+          transition: 'all var(--transition-fast)'
+        }}>
+          <Calendar size={15} style={{ color: selectedDate ? 'var(--brand-600)' : 'var(--text-tertiary)', flexShrink: 0 }} />
+          <input
+            type="date"
+            title="Filter by evaluation date (previous and present dates only)"
+            max={new Date().toISOString().split('T')[0]}
+            value={selectedDate}
+            onChange={(e) => {
+              const val = e.target.value;
+              const maxDate = new Date().toISOString().split('T')[0];
+              if (val && val > maxDate) {
+                alert("Future dates are not allowed. You can only view present and previous dates.");
+                setSelectedDate(maxDate);
+                return;
+              }
+              setSelectedDate(val);
+            }}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              fontSize: '13px',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              cursor: 'pointer',
+              fontFamily: 'inherit'
+            }}
+          />
+          {selectedDate && (
+            <button
+              type="button"
+              onClick={() => setSelectedDate('')}
+              title="Clear date filter"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-tertiary)',
+                cursor: 'pointer',
+                padding: '2px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                borderRadius: '50%'
+              }}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
         {/* Reset Filter Button */}
         {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || selectedDate) && (
           <button
@@ -686,8 +750,8 @@ const KpiPage = () => {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <div className="table-responsive">
+            <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '14px 18px', fontWeight: 600, color: 'var(--text-secondary)' }}>Date</th>
@@ -1003,8 +1067,19 @@ const KpiPage = () => {
                     <input
                       type="date"
                       value={formData.date}
+                      max={new Date().toISOString().split('T')[0]}
                       disabled={!!editingLog}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const maxDate = new Date().toISOString().split('T')[0];
+                        if (val && val > maxDate) {
+                          setModalError('Future dates are not allowed. You can only evaluate for present or previous dates.');
+                          setFormData((prev) => ({ ...prev, date: maxDate }));
+                          return;
+                        }
+                        setModalError('');
+                        setFormData((prev) => ({ ...prev, date: val }));
+                      }}
                       style={{
                         width: '100%',
                         padding: '9px 12px',

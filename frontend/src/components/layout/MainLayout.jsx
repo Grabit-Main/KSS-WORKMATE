@@ -1,16 +1,23 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 
 export const MainLayout = () => {
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
   const getTitle = () => {
     const path = location.pathname;
     if (path === '/') return 'Dashboard';
     if (path.startsWith('/projects')) return 'Projects';
     if (path.startsWith('/tasks')) return 'Tasks';
+    if (path.startsWith('/kpi')) return 'KPI Tracker';
     if (path.startsWith('/teams')) return 'Teams';
     if (path.startsWith('/users')) return 'Users';
     if (path.startsWith('/feedback') || path.startsWith('/reviews')) return 'Feedback';
@@ -33,7 +40,16 @@ export const MainLayout = () => {
       background: 'var(--bg)',
       overscrollBehavior: 'none'
     }}>
-      <Sidebar />
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className={`sidebar-backdrop ${sidebarOpen ? 'active' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Sidebar (Desktop Side-by-side & Mobile Slide Drawer) */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       <div style={{
         flex: 1,
         display: 'flex',
@@ -43,15 +59,8 @@ export const MainLayout = () => {
         overflow: 'hidden',
         overscrollBehavior: 'none'
       }}>
-        <Header title={getTitle()} />
-        <main style={{
-          padding: '32px',
-          flex: 1,
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          overscrollBehaviorY: 'contain',
-          WebkitOverflowScrolling: 'touch'
-        }}>
+        <Header title={getTitle()} onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
+        <main className="app-main-content">
           <Outlet />
         </main>
       </div>

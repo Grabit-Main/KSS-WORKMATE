@@ -592,7 +592,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 999,
-        padding: '24px'
+        padding: '12px'
       }}
     >
       <div className="card modal-animate" style={{

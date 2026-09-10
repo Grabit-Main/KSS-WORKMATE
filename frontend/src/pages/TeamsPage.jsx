@@ -261,7 +261,7 @@ const TeamsPage = () => {
       {/* Overview Metric Row */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
         gap: '16px',
         marginBottom: '24px'
       }}>
@@ -284,7 +284,7 @@ const TeamsPage = () => {
       </div>
 
       {/* Teams Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
         {teams.map(team => {
           const allocatedProject = projects.find(p => String(p.id) === String(team.project_id));
           const leadMembership = (team.memberships || []).find(m => m.is_lead);

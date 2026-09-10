@@ -438,7 +438,7 @@ const ProjectsPage = () => {
       {/* Interactive Analytics Metric Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
         gap: '16px',
         marginBottom: '24px'
       }}>
@@ -644,7 +644,7 @@ const ProjectsPage = () => {
         flexWrap: 'wrap',
         marginBottom: '20px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch', maxWidth: '100%', paddingBottom: '4px' }}>
           {[
             { id: 'all', label: 'All Projects', count: totalProjects },
             { id: 'active', label: 'Active', count: activeProjects },
@@ -694,7 +694,7 @@ const ProjectsPage = () => {
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
         {filteredProjects.map(p => {
           const stats = getProjectTaskStats(p.id);
           const allocatedTeams = stats.allocatedTeams.length > 0 ? stats.allocatedTeams : (p.teams || []);

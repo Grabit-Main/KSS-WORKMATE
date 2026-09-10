@@ -87,7 +87,17 @@ def list_kpis(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
+    today = date.today()
+    if date_val and date_val > today:
+        raise HTTPException(400, "Future dates are not allowed. Only present and previous dates can be viewed.")
+    if start_date and start_date > today:
+        raise HTTPException(400, "Future dates are not allowed. Only present and previous dates can be viewed.")
+    if end_date and end_date > today:
+        end_date = today
+
     q = get_base_kpi_query(db, user)
+    # Strictly forbid future dates - only present and previous dates can be viewed
+    q = q.filter(DailyKPILog.date <= today)
 
     if date_val:
         q = q.filter(DailyKPILog.date == date_val)
@@ -115,7 +125,8 @@ def get_kpi_summary(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    q = get_base_kpi_query(db, user)
+    today = date.today()
+    q = get_base_kpi_query(db, user).filter(DailyKPILog.date <= today)
     if month:
         q = q.filter(DailyKPILog.month == month)
     if employee_id:
@@ -193,6 +204,10 @@ async def create_or_update_kpi(
     """
     if not is_team_lead(db, user):
         raise HTTPException(403, "Only Team Leads can give or edit KPIs")
+
+    today = date.today()
+    if req.date > today:
+        raise HTTPException(400, "Cannot allocate KPI for future dates. Only present and previous dates are allowed.")
 
     # Verify employee is a teammate of this lead
     teammate_ids = get_teammate_ids_for_lead(db, user)
@@ -388,7 +403,13 @@ def export_kpi_csv(
     if not can_download:
         raise HTTPException(403, "Only CEO, CTO, PM and Team Leads can download KPI logs as CSV")
 
-    q = get_base_kpi_query(db, user)
+    today = date.today()
+    if start_date and start_date > today:
+        raise HTTPException(400, "Future dates are not allowed.")
+    if end_date and end_date > today:
+        end_date = today
+
+    q = get_base_kpi_query(db, user).filter(DailyKPILog.date <= today)
     if month:
         q = q.filter(DailyKPILog.month == month)
     if status:

@@ -507,7 +507,7 @@ const TasksPage = () => {
       </div>
 
       {/* Filter Tabs for Quick Access */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch', maxWidth: '100%', paddingBottom: '4px' }}>
         {[
           { id: 'all', label: `All Tasks (${userTasks.length})` },
           { id: 'projects', label: `Project Tasks (${userTasks.filter(t => Boolean(t.project_id)).length})` },
@@ -528,7 +528,9 @@ const TasksPage = () => {
               background: filterTab === tab.id ? 'var(--brand-50)' : 'var(--surface)',
               color: filterTab === tab.id ? 'var(--brand-700)' : 'var(--text-secondary)',
               cursor: 'pointer',
-              transition: 'all var(--transition-fast)'
+              transition: 'all var(--transition-fast)',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
             {tab.label}
@@ -538,7 +540,7 @@ const TasksPage = () => {
 
       {/* Task List Grid */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
           {[1, 2, 3, 4].map(i => <div key={i} className="card skeleton" style={{ height: '220px' }} />)}
         </div>
       ) : filteredTasks.length === 0 ? (
@@ -548,7 +550,7 @@ const TasksPage = () => {
           <p className="text-secondary text-sm">There are no tasks matching your current view filter.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
           {filteredTasks.map(task => {
             const isAssignedToMe = String(task.assigned_to) === String(user?.id);
             const isAssignedByMe = String(task.assigned_by) === String(user?.id);
