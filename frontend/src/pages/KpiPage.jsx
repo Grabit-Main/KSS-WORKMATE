@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   getKPIs,
@@ -22,6 +22,9 @@ import {
   Clock,
   Award,
   ChevronDown,
+  ChevronUp,
+  ArrowDown,
+  ArrowUp,
   X,
   Edit2,
   Eye,
@@ -244,10 +247,26 @@ const KpiPage = () => {
   const [editingLog, setEditingLog] = useState(null);
   const [detailsLog, setDetailsLog] = useState(null);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [rulesTab, setRulesTab] = useState('all'); // 'all' | 'part1' | 'part2'
   const [tableViewMode, setTableViewMode] = useState('detailed'); // 'detailed' | 'compact'
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [modalSuccess, setModalSuccess] = useState('');
+
+  const rulesModalBodyRef = useRef(null);
+
+  const scrollRulesTo = (direction) => {
+    if (!rulesModalBodyRef.current) return;
+    if (direction === 'top') {
+      rulesModalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (direction === 'bottom') {
+      rulesModalBodyRef.current.scrollTo({ top: rulesModalBodyRef.current.scrollHeight, behavior: 'smooth' });
+    } else if (direction === 'down') {
+      rulesModalBodyRef.current.scrollBy({ top: 380, behavior: 'smooth' });
+    } else if (direction === 'up') {
+      rulesModalBodyRef.current.scrollBy({ top: -380, behavior: 'smooth' });
+    }
+  };
 
   // Form state
   const initialForm = {
@@ -1426,8 +1445,8 @@ const KpiPage = () => {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmitModal} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-              <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <form onSubmit={handleSubmitModal} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: '1 1 0%', minHeight: 0 }}>
+              <div style={{ padding: '24px', overflowY: 'auto', flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {modalError && (
                   <div style={{
                     padding: '10px 14px',
@@ -1821,7 +1840,7 @@ const KpiPage = () => {
               </button>
             </div>
 
-            <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ padding: '24px', overflowY: 'auto', flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Score header */}
               <div style={{
                 padding: '16px',
@@ -1990,34 +2009,37 @@ const KpiPage = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(6px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1100,
-          padding: '16px'
+          padding: '16px',
+          overflowY: 'auto'
         }}>
           <div style={{
             background: 'var(--surface)',
             borderRadius: 'var(--radius-lg)',
             width: '100%',
-            maxWidth: '1050px',
-            maxHeight: '92vh',
+            maxWidth: '1120px',
+            height: '90vh',
+            maxHeight: '90vh',
             display: 'flex',
             flexDirection: 'column',
             boxShadow: 'var(--shadow-modal)',
             border: '1px solid var(--border)',
             overflow: 'hidden'
           }}>
-            {/* Modal Header */}
+            {/* Modal Header (Fixed) */}
             <div style={{
               padding: '18px 24px',
               borderBottom: '1px solid var(--border)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: 'var(--bg)'
+              background: 'var(--bg)',
+              flexShrink: 0
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
@@ -2037,7 +2059,7 @@ const KpiPage = () => {
                     Official KPI Scoring Rules & Evaluation Rubric
                   </h2>
                   <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '2px 0 0 0' }}>
-                    Standardized 10-criteria evaluation rules (Scores 1–5) so grading is clear, objective, and transparent.
+                    All 10 performance criteria & scoring guidelines (Scores 1 to 5). Scroll down to review all rules.
                   </p>
                 </div>
               </div>
@@ -2057,8 +2079,147 @@ const KpiPage = () => {
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Modal Body - Guaranteed Scrollable with minHeight: 0, ref, and flex: 1 */}
+            <div
+              ref={rulesModalBodyRef}
+              className="kpi-rules-modal-body"
+              style={{
+                padding: '20px 24px',
+                overflowY: 'scroll',
+                overflowX: 'hidden',
+                flex: '1 1 0%',
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '18px',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
+              {/* Scroll Notice & Quick Jump Tabs */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+                padding: '12px 16px',
+                background: 'var(--bg)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Filter Criteria:
+                  </span>
+                  <div style={{
+                    display: 'inline-flex',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '2px'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => { setRulesTab('all'); scrollRulesTo('top'); }}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        background: rulesTab === 'all' ? 'var(--brand-gradient)' : 'transparent',
+                        color: rulesTab === 'all' ? '#FFFFFF' : 'var(--text-secondary)',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      All 10 Criteria (1–10)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setRulesTab('part1'); scrollRulesTo('top'); }}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        background: rulesTab === 'part1' ? 'var(--brand-gradient)' : 'transparent',
+                        color: rulesTab === 'part1' ? '#FFFFFF' : 'var(--text-secondary)',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      Criteria 1–5: Execution
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setRulesTab('part2'); scrollRulesTo('top'); }}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        background: rulesTab === 'part2' ? 'var(--brand-gradient)' : 'transparent',
+                        color: rulesTab === 'part2' ? '#FFFFFF' : 'var(--text-secondary)',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      Criteria 6–10: Behavior & Collab
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Scroll Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => scrollRulesTo('down')}
+                    title="Scroll down through rules"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '5px 11px',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    <ArrowDown size={14} />
+                    <span>Scroll Down</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollRulesTo('bottom')}
+                    title="Jump straight to formula & summary at bottom"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '5px 11px',
+                      background: 'var(--brand-50, #EEF2FF)',
+                      border: '1px solid var(--brand-200, #C7D2FE)',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      color: 'var(--brand-700, #4338CA)',
+                      cursor: 'pointer',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    <span>Jump to Bottom ↓</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Tier Overview Badges */}
               <div style={{
                 display: 'grid',
@@ -2103,10 +2264,23 @@ const KpiPage = () => {
               </div>
 
               {/* Master Rubric Table */}
-              <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                <div className="table-responsive">
+              <div style={{
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+                overflow: 'hidden',
+                background: 'var(--surface)'
+              }}>
+                <div
+                  className="table-responsive"
+                  style={{
+                    width: '100%',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    WebkitOverflowScrolling: 'touch'
+                  }}
+                >
                   <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', fontSize: '12px' }}>
-                    <thead>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg)' }}>
                       <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
                         <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: 'var(--text-primary)', width: '180px' }}>
                           KPI Criteria & Weight
@@ -2129,44 +2303,50 @@ const KpiPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {CRITERIA.map((crit, idx) => (
-                        <tr
-                          key={crit.key}
-                          style={{
-                            borderBottom: '1px solid var(--border)',
-                            background: idx % 2 === 0 ? 'var(--surface)' : 'rgba(248, 250, 252, 0.5)'
-                          }}
-                        >
-                          <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
-                              {crit.num}. {crit.label}
-                            </div>
-                            <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                              <span style={{ fontSize: '10px', fontWeight: 700, background: '#E0E7FF', color: '#4338CA', padding: '1px 5px', borderRadius: '4px' }}>
-                                Wt: {crit.weight}
-                              </span>
-                              <span style={{ fontSize: '10px', fontWeight: 600, background: '#F1F5F9', color: '#475569', padding: '1px 5px', borderRadius: '4px' }}>
-                                Max {crit.maxContrib}%
-                              </span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            {crit.rubric[1]}
-                          </td>
-                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            {crit.rubric[2]}
-                          </td>
-                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            {crit.rubric[3]}
-                          </td>
-                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            {crit.rubric[4]}
-                          </td>
-                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            {crit.rubric[5]}
-                          </td>
-                        </tr>
-                      ))}
+                      {CRITERIA
+                        .filter((crit) => {
+                          if (rulesTab === 'part1') return crit.num <= 5;
+                          if (rulesTab === 'part2') return crit.num >= 6;
+                          return true;
+                        })
+                        .map((crit, idx) => (
+                          <tr
+                            key={crit.key}
+                            style={{
+                              borderBottom: '1px solid var(--border)',
+                              background: idx % 2 === 0 ? 'var(--surface)' : 'rgba(248, 250, 252, 0.5)'
+                            }}
+                          >
+                            <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
+                                {crit.num}. {crit.label}
+                              </div>
+                              <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: 700, background: '#E0E7FF', color: '#4338CA', padding: '1px 5px', borderRadius: '4px' }}>
+                                  Wt: {crit.weight}
+                                </span>
+                                <span style={{ fontSize: '10px', fontWeight: 600, background: '#F1F5F9', color: '#475569', padding: '1px 5px', borderRadius: '4px' }}>
+                                  Max {crit.maxContrib}%
+                                </span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                              {crit.rubric[1]}
+                            </td>
+                            <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                              {crit.rubric[2]}
+                            </td>
+                            <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                              {crit.rubric[3]}
+                            </td>
+                            <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                              {crit.rubric[4]}
+                            </td>
+                            <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                              {crit.rubric[5]}
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>
@@ -2226,29 +2406,64 @@ const KpiPage = () => {
               </div>
             </div>
 
-            {/* Modal Footer */}
+            {/* Modal Footer (Fixed) */}
             <div style={{
               padding: '14px 24px',
               borderTop: '1px solid var(--border)',
               display: 'flex',
-              justifyContent: 'flex-end',
-              background: 'var(--bg)'
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'var(--bg)',
+              flexShrink: 0,
+              gap: '12px',
+              flexWrap: 'wrap'
             }}>
-              <button
-                onClick={() => setShowRulesModal(false)}
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  color: 'var(--text-primary)',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  cursor: 'pointer'
-                }}
-              >
-                Got it, Close
-              </button>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                {rulesTab === 'part1'
+                  ? 'Showing Criteria 1 to 5 (Execution & Output)'
+                  : rulesTab === 'part2'
+                  ? 'Showing Criteria 6 to 10 (Behavior & Collaboration)'
+                  : 'Showing all 10 criteria (1 to 10) • Scores 1 to 5'}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => scrollRulesTo('top')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '8px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ArrowUp size={14} />
+                  <span>Back to Top</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRulesModal(false)}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    background: 'var(--brand-gradient)',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    boxShadow: 'var(--shadow-subtle)'
+                  }}
+                >
+                  Got it, Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
