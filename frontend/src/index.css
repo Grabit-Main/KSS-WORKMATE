@@ -544,6 +544,34 @@ input, select, textarea {
   min-width: 660px;
 }
 
+/* Custom Scrollbars for Modals & KPI Rules */
+.kpi-rules-modal-body {
+  overflow-y: scroll !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-500, #6366F1) var(--bg);
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar {
+  width: 12px;
+  height: 10px;
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-radius: 6px;
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar-thumb {
+  background: var(--brand-500, #6366F1);
+  border-radius: 6px;
+  border: 2px solid var(--bg);
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-600, #4F46E5);
+}
+
 /* Mobile Sidebar Drawer System */
 .mobile-nav-toggle {
   display: none;
