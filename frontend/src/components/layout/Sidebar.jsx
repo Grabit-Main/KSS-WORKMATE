@@ -2,11 +2,11 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  LayoutDashboard, CheckSquare, Users, MessageSquare, Folders,
-  Star, Settings, History, UserCog, TrendingUp
+  LayoutDashboard, CheckSquare, Users, Folders,
+  Star, History, UserCog, TrendingUp, X
 } from 'lucide-react';
 
-export const Sidebar = () => {
+export const Sidebar = ({ isOpen = false, onClose }) => {
   const { user } = useAuth();
 
   if (!user) return null;
@@ -26,29 +26,55 @@ export const Sidebar = () => {
   }
 
   return (
-    <aside style={{
-      width: '260px',
-      flexShrink: 0,
-      background: 'var(--surface-glass)',
-      backdropFilter: 'blur(24px) saturate(180%)',
-      WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-      borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      position: 'relative',
-      zIndex: 20,
-      userSelect: 'none',
-      overscrollBehavior: 'none'
-    }}>
+    <aside
+      className={`sidebar-responsive ${isOpen ? 'sidebar-open' : ''}`}
+      style={{
+        width: '260px',
+        flexShrink: 0,
+        background: 'var(--surface-glass)',
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        borderRight: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        position: 'relative',
+        zIndex: 20,
+        userSelect: 'none',
+        overscrollBehavior: 'none'
+      }}
+    >
       <div style={{
-        padding: '36px 24px 16px 24px',
+        padding: '28px 20px 16px 20px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: '36px'
+        justifyContent: 'space-between',
+        marginBottom: '20px'
       }}>
-        <img src="/logo.webp" alt="Logo" style={{ width: '100%', maxHeight: '54px', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.04))' }} />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img
+            src="/logo.webp"
+            alt="Logo"
+            style={{ width: '100%', maxHeight: '48px', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.04))' }}
+          />
+        </div>
+
+        {/* Mobile Close Button */}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="mobile-nav-toggle"
+            style={{
+              padding: '6px',
+              marginLeft: '8px',
+              color: 'var(--text-secondary)'
+            }}
+            aria-label="Close Sidebar"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
       
       <nav style={{
@@ -64,6 +90,9 @@ export const Sidebar = () => {
           <NavLink
             key={link.to}
             to={link.to}
+            onClick={() => {
+              if (onClose) onClose();
+            }}
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',

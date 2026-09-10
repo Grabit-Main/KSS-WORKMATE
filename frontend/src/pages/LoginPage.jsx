@@ -155,25 +155,10 @@ const LoginPage = () => {
       }} />
 
       {/* Main Outer White Framed Container Card */}
-      <div style={{
-        position: 'relative',
-        zIndex: 1,
-        width: '100%',
-        maxWidth: '920px',
-        height: 'min(580px, 90vh)',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        borderRadius: '36px',
-        backgroundColor: '#FFFFFF',
-        padding: '12px',
-        boxShadow: '0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.4)',
-        boxSizing: 'border-box',
-        margin: 'auto',
-        gap: '0px'
-      }}>
+      <div className="login-card-container">
 
         {/* LEFT COLUMN: HERO ART WITH QUOTE TEXT */}
-        <div style={{
+        <div className="login-hero-column" style={{
           position: 'relative',
           borderRadius: '26px',
           overflow: 'hidden',
@@ -253,7 +238,7 @@ const LoginPage = () => {
         </div>
 
         {/* RIGHT COLUMN: LOGIN FORM FIELDS */}
-        <div style={{
+        <div className="login-form-column" style={{
           padding: '32px 40px',
           display: 'flex',
           flexDirection: 'column',

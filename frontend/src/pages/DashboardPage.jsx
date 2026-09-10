@@ -181,7 +181,7 @@ const DashboardPage = () => {
       </div>
 
       {/* KPI Widgets */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', marginBottom: '32px' }}>
         <div className="card" style={{
           position: 'relative',
           overflow: 'hidden',
@@ -339,7 +339,7 @@ const DashboardPage = () => {
           </div>
 
           {/* Row 1: Pie / Donut Chart & Trend Line Area Graph */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '24px' }}>
             <PieChart
               data={statusDist}
               totalTasks={kpi.total_tasks}
@@ -353,7 +353,7 @@ const DashboardPage = () => {
           </div>
 
           {/* Row 2: Department Workload Bar Graph & Team Contribution Bar Graph */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '24px' }}>
             <BarChart
               data={data?.departments || []}
               title="Department Workload & Delivery"
@@ -439,8 +439,8 @@ const DashboardPage = () => {
             </span>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="table-responsive">
+            <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: 'var(--surface)', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>Team Member</th>

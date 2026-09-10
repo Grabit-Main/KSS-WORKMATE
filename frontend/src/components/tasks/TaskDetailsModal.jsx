@@ -255,27 +255,9 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
         padding: '24px'
       }}
     >
-      <div className="card modal-animate" style={{
-        width: '100%',
-        maxWidth: '1080px',
-        height: '85vh',
-        display: 'flex',
-        padding: 0,
-        overflow: 'hidden',
-        boxShadow: 'var(--shadow-float)',
-        borderRadius: 'var(--radius-xl)',
-        background: 'var(--surface)'
-      }}>
-        {/* Left Side: Complete Task Details (60%) */}
-        <div style={{
-          flex: '1 1 58%',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          overflowY: 'auto',
-          overscrollBehavior: 'contain',
-          WebkitOverflowScrolling: 'touch'
-        }}>
+      <div className="card modal-animate task-details-modal-box">
+        {/* Left Side: Complete Task Details (60% Desktop, Stacks on Mobile) */}
+        <div className="task-details-left-panel">
           {/* Header Bar */}
           <div style={{
             padding: '20px 28px',
@@ -690,13 +672,8 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
           </div>
         </div>
 
-        {/* Right Side: Dedicated Task Chat (42%) */}
-        <div style={{
-          flex: '1 1 42%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
+        {/* Right Side: Dedicated Task Chat (42% Desktop, Stacks on Mobile) */}
+        <div className="task-details-right-panel">
           <TaskChat task={currentTask} currentUser={currentUser} />
         </div>
       </div>

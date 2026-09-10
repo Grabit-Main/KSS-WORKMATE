@@ -323,7 +323,7 @@ const ProfilePage = () => {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 360px) 1fr', gap: '28px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '28px', alignItems: 'start' }}>
         
         {/* Left Column: Avatar & Quick Info Card */}
         <div className="card" style={{

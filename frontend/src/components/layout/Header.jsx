@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useRealtime } from '../../realtime/useRealtime';
 import { formatRelativeTime } from '../../utils/dateUtils';
-import { Bell, LogOut, Check, User, ChevronRight, X } from 'lucide-react';
+import { Bell, LogOut, Check, User, ChevronRight, X, Menu } from 'lucide-react';
 import { getNotifications, markRead, markAllRead } from '../../api/notifications';
 
-export const Header = ({ title }) => {
+export const Header = ({ title, onToggleSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
@@ -135,9 +135,21 @@ export const Header = ({ title }) => {
       zIndex: 15,
       userSelect: 'none'
     }}>
-      <h1 className="font-bold text-xl" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-        {title || 'Dashboard'}
-      </h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+        {onToggleSidebar && (
+          <button
+            type="button"
+            className="mobile-nav-toggle"
+            onClick={onToggleSidebar}
+            aria-label="Toggle Navigation Menu"
+          >
+            <Menu size={22} />
+          </button>
+        )}
+        <h1 className="font-bold text-xl" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {title || 'Dashboard'}
+        </h1>
+      </div>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div ref={menuRef} style={{ position: 'relative' }}>
@@ -190,7 +202,7 @@ export const Header = ({ title }) => {
               position: 'absolute',
               top: 'calc(100% + 10px)',
               right: 0,
-              width: '340px',
+              width: 'min(340px, calc(100vw - 32px))',
               padding: 0,
               overflow: 'hidden',
               borderRadius: 'var(--radius-lg)',
@@ -409,7 +421,7 @@ export const Header = ({ title }) => {
                   position: 'absolute',
                   top: 'calc(100% + 10px)',
                   right: 0,
-                  width: '300px',
+                  width: 'min(300px, calc(100vw - 32px))',
                   padding: '12px',
                   borderRadius: 'var(--radius-lg)',
                   boxShadow: 'var(--shadow-float)',
