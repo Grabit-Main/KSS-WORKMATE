@@ -172,7 +172,7 @@ const LoginPage = () => {
         gap: '0px'
       }}>
 
-        {/* LEFT COLUMN: BLANK WITH VISIBLE BACKGROUND IMAGE */}
+        {/* LEFT COLUMN: HERO ART WITH QUOTE TEXT */}
         <div style={{
           position: 'relative',
           borderRadius: '26px',
@@ -182,8 +182,74 @@ const LoginPage = () => {
           backgroundPosition: 'left center',
           backgroundRepeat: 'no-repeat',
           width: '100%',
-          height: '100%'
-        }} />
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '36px 32px',
+          boxSizing: 'border-box'
+        }}>
+          {/* Subtle gradient overlay to ensure text readability */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.75) 100%)',
+            zIndex: 1
+          }} />
+
+          {/* Top Header: Quote Accent */}
+          <div style={{
+            position: 'relative',
+            zIndex: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.2em',
+              color: 'rgba(255, 255, 255, 0.9)',
+              textTransform: 'uppercase',
+              fontFamily: "'Inter', sans-serif"
+            }}>
+              A WISE QUOTE
+            </span>
+            <div style={{
+              height: '1px',
+              width: '75px',
+              backgroundColor: 'rgba(255, 255, 255, 0.4)'
+            }} />
+          </div>
+
+          {/* Bottom Footer Quote & Display Title */}
+          <div style={{ position: 'relative', zIndex: 2, marginTop: 'auto' }}>
+            <h1 style={{
+              fontFamily: "'Playfair Display', 'DM Serif Display', Georgia, serif",
+              fontSize: 'clamp(32px, 3.5vw, 40px)',
+              fontWeight: 600,
+              lineHeight: 1.1,
+              color: '#FFFFFF',
+              letterSpacing: '-0.02em',
+              margin: '0 0 14px 0',
+              textShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
+            }}>
+              Get<br />
+              Everything<br />
+              You Want
+            </h1>
+            <p style={{
+              fontSize: '12px',
+              lineHeight: 1.5,
+              color: 'rgba(255, 255, 255, 0.85)',
+              margin: 0,
+              maxWidth: '300px',
+              fontWeight: 400
+            }}>
+              You can get everything you want if you work hard, trust the process, and stick to the plan.
+            </p>
+          </div>
+        </div>
 
         {/* RIGHT COLUMN: LOGIN FORM FIELDS */}
         <div style={{
