@@ -26,20 +26,169 @@ import {
   Edit2,
   Eye,
   BarChart3,
-  HelpCircle
+  HelpCircle,
+  BookOpen
 } from 'lucide-react';
 
-const CRITERIA = [
-  { key: 'task_completion', label: 'Task Completion', weight: 3, maxContrib: 15, desc: 'Completion rate & execution accuracy' },
-  { key: 'quality', label: 'Quality', weight: 3, maxContrib: 15, desc: 'High standard of deliverable & low error rate' },
-  { key: 'productivity', label: 'Productivity', weight: 3, maxContrib: 15, desc: 'Output volume & effective time management' },
-  { key: 'deadline_adherence', label: 'Deadline Adherence', weight: 2, maxContrib: 10, desc: 'Timely submission of milestones & tasks' },
-  { key: 'ownership', label: 'Ownership', weight: 2, maxContrib: 10, desc: 'Proactive responsibility & accountability' },
-  { key: 'problem_solving', label: 'Problem Solving', weight: 2, maxContrib: 10, desc: 'Critical thinking & overcoming blockers' },
-  { key: 'communication', label: 'Communication', weight: 2, maxContrib: 10, desc: 'Clear, timely & transparent updates' },
-  { key: 'team_collaboration', label: 'Team Collaboration', weight: 1, maxContrib: 5, desc: 'Supportive teamwork & peer coordination' },
-  { key: 'learning_improvement', label: 'Learning / Improvement', weight: 1, maxContrib: 5, desc: 'Adaptability & skill advancement' },
-  { key: 'attendance_discipline', label: 'Attendance & Discipline', weight: 1, maxContrib: 5, desc: 'Punctuality, presence & work ethics' },
+export const KPI_TIER_CONFIG = [
+  { level: 1, name: 'Poor', short: '1 – Poor', bg: '#FEF2F2', text: '#991B1B', border: '#FECACA' },
+  { level: 2, name: 'Below Standard', short: '2 – Below Standard', bg: '#FFFBEB', text: '#92400E', border: '#FDE68A' },
+  { level: 3, name: 'Meets Standard', short: '3 – Meets Standard', bg: '#EFF6FF', text: '#1E40AF', border: '#BFDBFE' },
+  { level: 4, name: 'Strong', short: '4 – Strong', bg: '#EEF2FF', text: '#3730A3', border: '#C7D2FE' },
+  { level: 5, name: 'Exceptional', short: '5 – Exceptional', bg: '#ECFDF5', text: '#065F46', border: '#A7F3D0' }
+];
+
+export const CRITERIA = [
+  {
+    key: 'task_completion',
+    num: 1,
+    label: 'Task Completion',
+    weight: 3,
+    maxContrib: 15,
+    desc: 'Completion rate & execution accuracy',
+    rubric: {
+      1: '<50% committed work completed',
+      2: '50–79% completed',
+      3: '80–99% completed',
+      4: '100% completed',
+      5: '100% + meaningful additional work'
+    }
+  },
+  {
+    key: 'quality',
+    num: 2,
+    label: 'Quality',
+    weight: 3,
+    maxContrib: 15,
+    desc: 'High standard of deliverable & low error rate',
+    rubric: {
+      1: 'Major errors / unusable output',
+      2: 'Multiple errors / significant rework',
+      3: 'Acceptable output with normal corrections',
+      4: 'Very few minor corrections',
+      5: 'Excellent output; no significant rework required'
+    }
+  },
+  {
+    key: 'productivity',
+    num: 3,
+    label: 'Productivity',
+    weight: 3,
+    maxContrib: 15,
+    desc: 'Output volume & effective time management',
+    rubric: {
+      1: 'Very low useful output',
+      2: 'Output significantly below expected',
+      3: 'Expected output for available time',
+      4: 'Above expected useful output',
+      5: 'Significantly above expected output without quality loss'
+    }
+  },
+  {
+    key: 'deadline_adherence',
+    num: 4,
+    label: 'Deadline Adherence',
+    weight: 2,
+    maxContrib: 10,
+    desc: 'Timely submission of milestones & tasks',
+    rubric: {
+      1: 'Major/repeated missed deadlines',
+      2: 'Multiple delays',
+      3: 'Generally meets deadlines',
+      4: 'Consistently meets deadlines',
+      5: 'Consistently early/on-time + proactively manages risks'
+    }
+  },
+  {
+    key: 'ownership',
+    num: 5,
+    label: 'Ownership',
+    weight: 2,
+    maxContrib: 10,
+    desc: 'Proactive responsibility & accountability',
+    rubric: {
+      1: 'Avoids responsibility / leaves work incomplete',
+      2: 'Frequent reminders required',
+      3: 'Completes assigned work with normal supervision',
+      4: 'Independently drives assigned work',
+      5: 'Fully owns work, identifies risks and closes issues proactively'
+    }
+  },
+  {
+    key: 'problem_solving',
+    num: 6,
+    label: 'Problem Solving',
+    weight: 2,
+    maxContrib: 10,
+    desc: 'Critical thinking & overcoming blockers',
+    rubric: {
+      1: 'Cannot resolve routine issues',
+      2: 'Requires substantial assistance',
+      3: 'Solves normal issues with reasonable guidance',
+      4: 'Solves issues independently',
+      5: 'Finds root cause + effective solution + prevents recurrence'
+    }
+  },
+  {
+    key: 'communication',
+    num: 7,
+    label: 'Communication',
+    weight: 2,
+    maxContrib: 10,
+    desc: 'Clear, timely & transparent updates',
+    rubric: {
+      1: 'Critical communication failures',
+      2: 'Repeated unclear/delayed updates',
+      3: 'Required communication provided',
+      4: 'Clear and timely communication',
+      5: 'Proactive, clear communication that prevents problems'
+    }
+  },
+  {
+    key: 'team_collaboration',
+    num: 8,
+    label: 'Team Collaboration',
+    weight: 1,
+    maxContrib: 5,
+    desc: 'Supportive teamwork & peer coordination',
+    rubric: {
+      1: 'Causes significant team obstruction',
+      2: 'Repeated collaboration/dependency issues',
+      3: 'Cooperates as required',
+      4: 'Consistently effective team collaboration',
+      5: 'Proactively unblocks/help others and improves team output'
+    }
+  },
+  {
+    key: 'learning_improvement',
+    num: 9,
+    label: 'Learning / Improvement',
+    weight: 1,
+    maxContrib: 5,
+    desc: 'Adaptability & skill advancement',
+    rubric: {
+      1: 'Ignores required improvement',
+      2: 'Little improvement despite feedback',
+      3: 'Applies feedback and maintains required skills',
+      4: 'Actively improves skills/process',
+      5: 'Applies new knowledge and creates measurable improvement'
+    }
+  },
+  {
+    key: 'attendance_discipline',
+    num: 10,
+    label: 'Attendance & Discipline',
+    weight: 1,
+    maxContrib: 5,
+    desc: 'Punctuality, presence & work ethics',
+    rubric: {
+      1: 'Serious/repeated violations',
+      2: 'Frequent attendance/discipline issues',
+      3: 'Meets company expectations',
+      4: 'Very consistent attendance & discipline',
+      5: 'Excellent consistency + exemplary adherence to policies'
+    }
+  }
 ];
 
 const getStatusColor = (status) => {
@@ -94,6 +243,7 @@ const KpiPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
   const [detailsLog, setDetailsLog] = useState(null);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [modalSuccess, setModalSuccess] = useState('');
@@ -342,6 +492,32 @@ const KpiPage = () => {
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Scoring Rules & Rubric Button */}
+          <button
+            onClick={() => setShowRulesModal(true)}
+            title="View official KPI evaluation rules & scoring rubric"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--surface)',
+              color: 'var(--brand-700, #4338CA)',
+              border: '1px solid var(--brand-300, #C7D2FE)',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+              boxShadow: 'var(--shadow-subtle)',
+              transition: 'all var(--transition-fast)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--brand-600)'}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--brand-300, #C7D2FE)'}
+          >
+            <BookOpen size={16} />
+            <span>Scoring Rules</span>
+          </button>
+
           {canDownload && (
             <button
               onClick={handleDownloadCSV}
@@ -1137,14 +1313,33 @@ const KpiPage = () => {
                     <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                       Performance Criteria (Scores 1 to 5)
                     </h4>
-                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                      Sum of weights = 100%
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowRulesModal(true)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--brand-600, #4F46E5)',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 6px',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      <BookOpen size={13} />
+                      <span>View Rules Table</span>
+                    </button>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {CRITERIA.map((crit) => {
-                      const currentVal = formData[crit.key];
+                      const currentVal = formData[crit.key] || 1;
+                      const contrib = currentVal * crit.weight;
+                      const activeTier = KPI_TIER_CONFIG.find((t) => t.level === currentVal) || KPI_TIER_CONFIG[2];
                       return (
                         <div
                           key={crit.key}
@@ -1154,59 +1349,89 @@ const KpiPage = () => {
                             border: '1px solid var(--border)',
                             background: 'var(--bg)',
                             display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            flexWrap: 'wrap',
-                            gap: '10px'
+                            flexDirection: 'column',
+                            gap: '8px'
                           }}
                         >
-                          <div style={{ flex: '1 1 200px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>
-                                {crit.label}
-                              </span>
-                              <span style={{
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                background: '#E0E7FF',
-                                color: '#4338CA'
-                              }}>
-                                Wt: {crit.weight} ({crit.maxContrib}%)
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                            <div style={{ flex: '1 1 200px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>
+                                  {crit.num}. {crit.label}
+                                </span>
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  background: '#E0E7FF',
+                                  color: '#4338CA'
+                                }}>
+                                  Wt: {crit.weight} ({crit.maxContrib}%)
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                                {crit.desc}
                               </span>
                             </div>
-                            <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                              {crit.desc}
-                            </span>
+
+                            {/* 1-5 Rating Selector */}
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              {[1, 2, 3, 4, 5].map((num) => {
+                                const isSelected = currentVal === num;
+                                const tier = KPI_TIER_CONFIG.find((t) => t.level === num);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={num}
+                                    onClick={() => handleScoreChange(crit.key, num)}
+                                    title={`Level ${num} (${tier?.name}): ${crit.rubric[num]}`}
+                                    style={{
+                                      width: '36px',
+                                      height: '34px',
+                                      borderRadius: 'var(--radius-xs)',
+                                      border: isSelected ? '2px solid var(--brand-600)' : '1px solid var(--border)',
+                                      background: isSelected ? tier?.bg : 'var(--surface)',
+                                      color: isSelected ? tier?.text : 'var(--text-secondary)',
+                                      fontWeight: 800,
+                                      fontSize: '13px',
+                                      cursor: 'pointer',
+                                      transition: 'all var(--transition-fast)',
+                                      boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                                    }}
+                                  >
+                                    {num}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
 
-                          {/* 1-5 Rating Selector */}
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            {[1, 2, 3, 4, 5].map((num) => {
-                              const isSelected = currentVal === num;
-                              return (
-                                <button
-                                  type="button"
-                                  key={num}
-                                  onClick={() => handleScoreChange(crit.key, num)}
-                                  style={{
-                                    width: '34px',
-                                    height: '34px',
-                                    borderRadius: 'var(--radius-xs)',
-                                    border: isSelected ? '1px solid var(--brand-600)' : '1px solid var(--border)',
-                                    background: isSelected ? 'var(--brand-gradient)' : 'var(--surface)',
-                                    color: isSelected ? '#FFFFFF' : 'var(--text-secondary)',
-                                    fontWeight: 700,
-                                    fontSize: '13px',
-                                    cursor: 'pointer',
-                                    transition: 'all var(--transition-fast)'
-                                  }}
-                                >
-                                  {num}
-                                </button>
-                              );
-                            })}
+                          {/* Dynamic Active Rubric Rule Definition */}
+                          <div style={{
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            background: activeTier.bg,
+                            border: `1px solid ${activeTier.border}`,
+                            display: 'flex',
+                            alignItems: 'baseline',
+                            gap: '8px',
+                            fontSize: '12px',
+                            lineHeight: 1.4
+                          }}>
+                            <span style={{
+                              fontWeight: 700,
+                              color: activeTier.text,
+                              whiteSpace: 'nowrap'
+                            }}>
+                              Level {currentVal} ({activeTier.name}):
+                            </span>
+                            <span style={{ color: activeTier.text, fontWeight: 500 }}>
+                              {crit.rubric[currentVal]}
+                            </span>
+                            <span style={{ marginLeft: 'auto', fontSize: '11px', color: activeTier.text, opacity: 0.85, whiteSpace: 'nowrap' }}>
+                              {currentVal}/5 × {crit.weight} = {contrib}%
+                            </span>
                           </div>
                         </div>
                       );
@@ -1371,41 +1596,86 @@ const KpiPage = () => {
                 </span>
               </div>
 
-              {/* Criteria List */}
+              {/* Criteria List with Rubric Explanations */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-                  Criteria Breakdown
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+                    Criteria Breakdown & Rubric
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowRulesModal(true)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--brand-600, #4F46E5)',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 6px',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    <BookOpen size={13} />
+                    <span>View Rules Table</span>
+                  </button>
+                </div>
                 {CRITERIA.map((crit) => {
-                  const val = detailsLog[crit.key];
+                  const val = detailsLog[crit.key] || 1;
                   const contrib = val * crit.weight;
+                  const tier = KPI_TIER_CONFIG.find((t) => t.level === val) || KPI_TIER_CONFIG[2];
                   return (
                     <div
                       key={crit.key}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '8px 12px',
+                        padding: '10px 14px',
                         background: 'var(--bg)',
-                        borderRadius: 'var(--radius-xs)',
-                        fontSize: '13px'
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px'
                       }}
                     >
-                      <span style={{ color: 'var(--text-primary)' }}>{crit.label}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                          ({val}/5 × {crit.weight} = {contrib}%)
-                        </span>
-                        <span style={{
-                          fontWeight: 700,
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          background: val >= 4 ? '#ECFDF5' : val === 3 ? '#EFF6FF' : '#FEF2F2',
-                          color: val >= 4 ? '#065F46' : val === 3 ? '#1E40AF' : '#991B1B'
-                        }}>
-                          {val}
-                        </span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
+                            {crit.num}. {crit.label}
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                            (Weight: {crit.weight})
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                            {val}/5 × {crit.weight} = <strong>{contrib}%</strong>
+                          </span>
+                          <span style={{
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            background: tier.bg,
+                            color: tier.text,
+                            border: `1px solid ${tier.border}`,
+                            fontSize: '12px'
+                          }}>
+                            {val} – {tier.name}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: '12px',
+                        color: 'var(--text-secondary)',
+                        background: 'var(--surface)',
+                        padding: '6px 10px',
+                        borderRadius: '4px',
+                        borderLeft: `3px solid ${tier.text}`,
+                        lineHeight: 1.4
+                      }}>
+                        "{crit.rubric[val]}"
                       </div>
                     </div>
                   );
@@ -1450,6 +1720,278 @@ const KpiPage = () => {
                 }}
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Official KPI Scoring Rules & Evaluation Rubric Modal */}
+      {showRulesModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius-lg)',
+            width: '100%',
+            maxWidth: '1050px',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: 'var(--shadow-modal)',
+            border: '1px solid var(--border)',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'var(--bg)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'var(--brand-50, #EEF2FF)',
+                  color: 'var(--brand-600, #4F46E5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <BookOpen size={20} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                    Official KPI Scoring Rules & Evaluation Rubric
+                  </h2>
+                  <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '2px 0 0 0' }}>
+                    Standardized 10-criteria evaluation rules (Scores 1–5) so grading is clear, objective, and transparent.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRulesModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: 'var(--radius-xs)',
+                  display: 'flex'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Tier Overview Badges */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                gap: '10px'
+              }}>
+                {KPI_TIER_CONFIG.map((t) => (
+                  <div
+                    key={t.level}
+                    style={{
+                      background: t.bg,
+                      border: `1px solid ${t.border}`,
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 800, fontSize: '14px', color: t.text }}>Level {t.level}</span>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: '#FFFFFF',
+                        color: t.text
+                      }}>
+                        {t.name}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: t.text, opacity: 0.9 }}>
+                      {t.level === 1 && 'Critical issues / <50% completed'}
+                      {t.level === 2 && 'Below expectations / delays & rework'}
+                      {t.level === 3 && 'Expected output / meets standards'}
+                      {t.level === 4 && 'Consistently exceeds / proactive'}
+                      {t.level === 5 && 'Exemplary impact / solves root causes'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Master Rubric Table */}
+              <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                <div className="table-responsive">
+                  <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
+                        <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: 'var(--text-primary)', width: '180px' }}>
+                          KPI Criteria & Weight
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#991B1B', background: '#FEF2F2', width: '16%' }}>
+                          1 – Poor
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#92400E', background: '#FFFBEB', width: '16%' }}>
+                          2 – Below Standard
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#1E40AF', background: '#EFF6FF', width: '16%' }}>
+                          3 – Meets Standard
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#3730A3', background: '#EEF2FF', width: '16%' }}>
+                          4 – Strong
+                        </th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#065F46', background: '#ECFDF5', width: '18%' }}>
+                          5 – Exceptional
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {CRITERIA.map((crit, idx) => (
+                        <tr
+                          key={crit.key}
+                          style={{
+                            borderBottom: '1px solid var(--border)',
+                            background: idx % 2 === 0 ? 'var(--surface)' : 'rgba(248, 250, 252, 0.5)'
+                          }}
+                        >
+                          <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
+                              {crit.num}. {crit.label}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                              <span style={{ fontSize: '10px', fontWeight: 700, background: '#E0E7FF', color: '#4338CA', padding: '1px 5px', borderRadius: '4px' }}>
+                                Wt: {crit.weight}
+                              </span>
+                              <span style={{ fontSize: '10px', fontWeight: 600, background: '#F1F5F9', color: '#475569', padding: '1px 5px', borderRadius: '4px' }}>
+                                Max {crit.maxContrib}%
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[1]}
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[2]}
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[3]}
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[4]}
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[5]}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Formula & Status Guidelines */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '14px',
+                background: 'var(--bg)',
+                padding: '16px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border)'
+              }}>
+                <div>
+                  <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Formula & Weighting Logic
+                  </h4>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                    Daily KPI % is calculated by multiplying each criterion score (1–5) by its assigned weight (Sum of weights = 20), yielding a direct percentage out of 100%.
+                    <br />
+                    <strong>Weight 3 (15% Max):</strong> Task Completion, Quality, Productivity
+                    <br />
+                    <strong>Weight 2 (10% Max):</strong> Deadline Adherence, Ownership, Problem Solving, Communication
+                    <br />
+                    <strong>Weight 1 (5% Max):</strong> Team Collaboration, Learning / Improvement, Attendance & Discipline
+                  </p>
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Overall Daily Status Thresholds
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#065F46', fontWeight: 600 }}>● Excellent:</span>
+                      <span style={{ fontWeight: 700 }}>≥ 90.0%</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#3730A3', fontWeight: 600 }}>● Very Good:</span>
+                      <span style={{ fontWeight: 700 }}>80.0% – 89.9%</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#1E40AF', fontWeight: 600 }}>● Meets Expectation:</span>
+                      <span style={{ fontWeight: 700 }}>70.0% – 79.9%</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#92400E', fontWeight: 600 }}>● Needs Improvement:</span>
+                      <span style={{ fontWeight: 700 }}>60.0% – 69.9%</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#991B1B', fontWeight: 600 }}>● Needs Attention:</span>
+                      <span style={{ fontWeight: 700 }}>&lt; 60.0%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '14px 24px',
+              borderTop: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              background: 'var(--bg)'
+            }}>
+              <button
+                onClick={() => setShowRulesModal(false)}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-primary)',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                Got it, Close
               </button>
             </div>
           </div>
