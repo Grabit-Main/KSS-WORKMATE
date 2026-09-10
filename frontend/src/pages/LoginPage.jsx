@@ -129,7 +129,7 @@ const LoginPage = () => {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
       width: '100vw',
       display: 'flex',
       alignItems: 'center',
@@ -141,11 +141,11 @@ const LoginPage = () => {
         radial-gradient(ellipse at 50% 90%, rgba(0, 180, 216, 0.35) 0%, transparent 55%)
       `,
       backgroundAttachment: 'fixed',
-      padding: '24px',
+      padding: '20px',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
       boxSizing: 'border-box',
       position: 'relative',
-      overflow: 'auto'
+      overflow: 'hidden'
     }}>
       {/* Dynamic ribbon background visual frame */}
       <div style={{
@@ -165,11 +165,11 @@ const LoginPage = () => {
         position: 'relative',
         zIndex: 1,
         width: '100%',
-        maxWidth: '1020px',
-        minHeight: '620px',
+        maxWidth: '890px',
+        maxHeight: 'min(600px, 90vh)',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-        borderRadius: '32px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        borderRadius: '28px',
         border: '2.5px solid rgba(255, 255, 255, 0.95)',
         boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255, 255, 255, 0.08)',
         overflow: 'hidden',
@@ -183,12 +183,11 @@ const LoginPage = () => {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: '40px 36px',
-          margin: '12px',
-          borderRadius: '24px',
+          padding: '30px 28px',
+          margin: '10px',
+          borderRadius: '20px',
           overflow: 'hidden',
-          backgroundColor: '#09090b',
-          minHeight: '480px'
+          backgroundColor: '#09090b'
         }}>
           {/* Background image & gradient overlay */}
           <div style={{
@@ -213,12 +212,12 @@ const LoginPage = () => {
             zIndex: 2,
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            gap: '10px'
           }}>
             <span style={{
               fontSize: '11px',
               fontWeight: 600,
-              letterSpacing: '0.22em',
+              letterSpacing: '0.2em',
               color: 'rgba(255, 255, 255, 0.85)',
               textTransform: 'uppercase',
               fontFamily: "'Inter', sans-serif"
@@ -227,7 +226,7 @@ const LoginPage = () => {
             </span>
             <div style={{
               height: '1px',
-              width: '90px',
+              width: '75px',
               backgroundColor: 'rgba(255, 255, 255, 0.35)'
             }} />
           </div>
@@ -236,12 +235,12 @@ const LoginPage = () => {
           <div style={{ position: 'relative', zIndex: 2, marginTop: 'auto' }}>
             <h1 style={{
               fontFamily: "'Playfair Display', 'DM Serif Display', Georgia, serif",
-              fontSize: 'clamp(36px, 4.5vw, 54px)',
+              fontSize: 'clamp(30px, 3.8vw, 44px)',
               fontWeight: 600,
               lineHeight: 1.1,
               color: '#FFFFFF',
               letterSpacing: '-0.02em',
-              margin: '0 0 20px 0',
+              margin: '0 0 14px 0',
               textShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
             }}>
               Get<br />
@@ -249,11 +248,11 @@ const LoginPage = () => {
               You Want
             </h1>
             <p style={{
-              fontSize: '13px',
-              lineHeight: 1.55,
+              fontSize: '12px',
+              lineHeight: 1.5,
               color: 'rgba(255, 255, 255, 0.82)',
               margin: 0,
-              maxWidth: '340px',
+              maxWidth: '300px',
               fontWeight: 400
             }}>
               You can get everything you want if you work hard, trust the process, and stick to the plan.
@@ -263,13 +262,14 @@ const LoginPage = () => {
 
         {/* RIGHT COLUMN: LOGIN FORM */}
         <div style={{
-          padding: '48px 44px',
+          padding: '28px 36px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           backgroundColor: '#FFFFFF',
           position: 'relative',
-          zIndex: 2
+          zIndex: 2,
+          overflowY: 'auto'
         }}>
 
           {/* Top Logo */}
@@ -278,15 +278,15 @@ const LoginPage = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            marginBottom: '32px'
+            marginBottom: '16px'
           }}>
             {/* Custom SVG logo icon matching reference icon or user logo */}
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#18181B" />
               <path d="M8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16C9.79 16 8 14.21 8 12Z" fill="#18181B" />
             </svg>
             <span style={{
-              fontSize: '18px',
+              fontSize: '17px',
               fontWeight: 700,
               color: '#18181B',
               letterSpacing: '-0.02em',
@@ -297,19 +297,19 @@ const LoginPage = () => {
           </div>
 
           {/* Welcome Back Header */}
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <h2 style={{
               fontFamily: "'Playfair Display', 'DM Serif Display', Georgia, serif",
-              fontSize: '34px',
+              fontSize: '28px',
               fontWeight: 600,
               color: '#09090B',
-              margin: '0 0 8px 0',
+              margin: '0 0 4px 0',
               letterSpacing: '-0.02em'
             }}>
               Welcome Back
             </h2>
             <p style={{
-              fontSize: '13px',
+              fontSize: '12px',
               color: '#6B7280',
               margin: 0,
               fontWeight: 400
@@ -335,15 +335,15 @@ const LoginPage = () => {
           )}
 
           {/* Form Controls */}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {/* Email field */}
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: 500,
                 color: '#374151',
-                marginBottom: '6px'
+                marginBottom: '4px'
               }}>
                 Email
               </label>
@@ -356,12 +356,12 @@ const LoginPage = () => {
                 required
                 style={{
                   width: '100%',
-                  height: '46px',
-                  padding: '0 16px',
+                  height: '42px',
+                  padding: '0 14px',
                   backgroundColor: '#F3F4F6',
                   border: '1px solid transparent',
                   borderRadius: '10px',
-                  fontSize: '14px',
+                  fontSize: '13px',
                   color: '#111827',
                   outline: 'none',
                   transition: 'all 0.2s ease',
@@ -382,10 +382,10 @@ const LoginPage = () => {
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: 500,
                 color: '#374151',
-                marginBottom: '6px'
+                marginBottom: '4px'
               }}>
                 Password
               </label>
@@ -399,12 +399,12 @@ const LoginPage = () => {
                   required
                   style={{
                     width: '100%',
-                    height: '46px',
-                    padding: '0 44px 0 16px',
+                    height: '42px',
+                    padding: '0 40px 0 14px',
                     backgroundColor: '#F3F4F6',
                     border: '1px solid transparent',
                     borderRadius: '10px',
-                    fontSize: '14px',
+                    fontSize: '13px',
                     color: '#111827',
                     outline: 'none',
                     transition: 'all 0.2s ease',
@@ -424,12 +424,12 @@ const LoginPage = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
-                    right: '12px',
+                    right: '10px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'transparent',
                     border: 'none',
-                    padding: '6px',
+                    padding: '4px',
                     cursor: 'pointer',
                     color: '#9CA3AF',
                     display: 'flex',
@@ -439,7 +439,7 @@ const LoginPage = () => {
                   }}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
 
@@ -448,13 +448,13 @@ const LoginPage = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginTop: '12px'
+                marginTop: '10px'
               }}>
                 <label style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  fontSize: '13px',
+                  fontSize: '12px',
                   color: '#4B5563',
                   cursor: 'pointer',
                   userSelect: 'none'
@@ -464,8 +464,8 @@ const LoginPage = () => {
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     style={{
-                      width: '16px',
-                      height: '16px',
+                      width: '15px',
+                      height: '15px',
                       borderRadius: '4px',
                       accentColor: '#09090B',
                       cursor: 'pointer'
@@ -481,7 +481,7 @@ const LoginPage = () => {
                     background: 'none',
                     border: 'none',
                     color: '#374151',
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: 500,
                     cursor: 'pointer',
                     padding: 0
@@ -498,15 +498,15 @@ const LoginPage = () => {
               disabled={loading}
               style={{
                 width: '100%',
-                height: '48px',
+                height: '44px',
                 backgroundColor: '#09090B',
                 color: '#FFFFFF',
                 border: 'none',
-                borderRadius: '12px',
-                fontSize: '14px',
+                borderRadius: '10px',
+                fontSize: '13.5px',
                 fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                marginTop: '8px',
+                marginTop: '4px',
                 transition: 'opacity 0.2s ease, transform 0.1s ease',
                 display: 'flex',
                 alignItems: 'center',
@@ -517,9 +517,9 @@ const LoginPage = () => {
             >
               {loading ? (
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <span style={{ width: '6px', height: '6px', backgroundColor: '#FFF', borderRadius: '50%', animation: 'bounce 1s infinite 0s' }}></span>
-                  <span style={{ width: '6px', height: '6px', backgroundColor: '#FFF', borderRadius: '50%', animation: 'bounce 1s infinite 0.2s' }}></span>
-                  <span style={{ width: '6px', height: '6px', backgroundColor: '#FFF', borderRadius: '50%', animation: 'bounce 1s infinite 0.4s' }}></span>
+                  <span style={{ width: '5px', height: '5px', backgroundColor: '#FFF', borderRadius: '50%', animation: 'bounce 1s infinite 0s' }}></span>
+                  <span style={{ width: '5px', height: '5px', backgroundColor: '#FFF', borderRadius: '50%', animation: 'bounce 1s infinite 0.2s' }}></span>
+                  <span style={{ width: '5px', height: '5px', backgroundColor: '#FFF', borderRadius: '50%', animation: 'bounce 1s infinite 0.4s' }}></span>
                 </div>
               ) : (
                 'Sign In'
@@ -531,24 +531,24 @@ const LoginPage = () => {
               type="button"
               style={{
                 width: '100%',
-                height: '46px',
+                height: '42px',
                 backgroundColor: '#FFFFFF',
                 color: '#374151',
                 border: '1px solid #E5E7EB',
-                borderRadius: '12px',
-                fontSize: '14px',
+                borderRadius: '10px',
+                fontSize: '13px',
                 fontWeight: 500,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '10px',
+                gap: '8px',
                 transition: 'background-color 0.2s ease'
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFFFFF'}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24">
+              <svg width="17" height="17" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
@@ -561,9 +561,9 @@ const LoginPage = () => {
           {/* Footer Text */}
           <p style={{
             textAlign: 'center',
-            fontSize: '13px',
+            fontSize: '12px',
             color: '#6B7280',
-            marginTop: '36px',
+            marginTop: '20px',
             marginBottom: 0
           }}>
             Don't have an account?{' '}
