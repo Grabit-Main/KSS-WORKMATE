@@ -55,7 +55,7 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
           <img
             src="/logo.webp"
             alt="Logo"
-            style={{ width: '100%', maxHeight: '48px', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.04))' }}
+            style={{ width: '100%', maxHeight: '35px', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.04))' }}
           />
         </div>
 
@@ -76,7 +76,7 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
           </button>
         )}
       </div>
-      
+
       <nav style={{
         flex: 1,
         padding: '0 14px 24px 14px',
