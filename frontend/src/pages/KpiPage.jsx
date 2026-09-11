@@ -2079,7 +2079,8 @@ const KpiPage = () => {
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-                gap: '10px'
+                gap: '10px',
+                flexShrink: 0
               }}>
                 {KPI_TIER_CONFIG.map((t) => (
                   <div
@@ -2123,18 +2124,16 @@ const KpiPage = () => {
                 border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
-                background: 'var(--surface)'
+                background: 'var(--surface)',
+                flexShrink: 0
               }}>
                 <div
                   className="table-responsive kpi-rubric-table-wrapper"
                   style={{
                     width: '100%',
-                    maxHeight: '420px',
                     overflowX: 'auto',
-                    overflowY: 'auto',
-                    WebkitOverflowScrolling: 'touch',
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: 'var(--brand-400, #818CF8) var(--bg, #F8FAFC)'
+                    overflowY: 'visible',
+                    WebkitOverflowScrolling: 'touch'
                   }}
                 >
                   <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', fontSize: '12px' }}>
@@ -2212,7 +2211,8 @@ const KpiPage = () => {
                 background: 'var(--bg)',
                 padding: '16px',
                 borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border)'
+                border: '1px solid var(--border)',
+                flexShrink: 0
               }}>
                 <div>
                   <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>

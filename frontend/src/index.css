@@ -781,6 +781,31 @@ input, select, textarea {
 }
 
 /* KPI Rubric Table & Modal Custom Scrollbars */
+.kpi-rules-modal-body {
+  scrollbar-width: auto !important;
+  scrollbar-color: var(--brand-500, #6366F1) var(--bg, #F8FAFC) !important;
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar-track {
+  background: #F1F5F9 !important;
+  border-radius: 6px !important;
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar-thumb {
+  background: var(--brand-500, #6366F1) !important;
+  border-radius: 6px !important;
+  border: 2px solid #F1F5F9 !important;
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-700, #4338CA) !important;
+}
+
 .kpi-rubric-table-wrapper::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -800,21 +825,4 @@ input, select, textarea {
   background: var(--brand-600, #4F46E5);
 }
 
-.kpi-rules-modal-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.kpi-rules-modal-body::-webkit-scrollbar-track {
-  background: var(--bg, #F8FAFC);
-  border-radius: 4px;
-}
-
-.kpi-rules-modal-body::-webkit-scrollbar-thumb {
-  background: var(--brand-300, #A5B4FC);
-  border-radius: 4px;
-}
-
-.kpi-rules-modal-body::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-500, #6366F1);
-}
 
