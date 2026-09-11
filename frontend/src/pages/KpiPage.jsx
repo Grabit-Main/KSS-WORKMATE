@@ -2126,33 +2126,36 @@ const KpiPage = () => {
                 background: 'var(--surface)'
               }}>
                 <div
-                  className="table-responsive"
+                  className="table-responsive kpi-rubric-table-wrapper"
                   style={{
                     width: '100%',
+                    maxHeight: '420px',
                     overflowX: 'auto',
-                    overflowY: 'hidden',
-                    WebkitOverflowScrolling: 'touch'
+                    overflowY: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'var(--brand-400, #818CF8) var(--bg, #F8FAFC)'
                   }}
                 >
                   <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', fontSize: '12px' }}>
                     <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg)' }}>
                       <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
-                        <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: 'var(--text-primary)', width: '180px' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: 'var(--text-primary)', width: '180px', background: 'var(--bg)' }}>
                           KPI Criteria & Weight
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#991B1B', background: '#FEF2F2', width: '16%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#991B1B', background: '#FEF2F2', width: '16%' }}>
                           1 – Poor
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#92400E', background: '#FFFBEB', width: '16%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#92400E', background: '#FFFBEB', width: '16%' }}>
                           2 – Below Standard
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#1E40AF', background: '#EFF6FF', width: '16%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#1E40AF', background: '#EFF6FF', width: '16%' }}>
                           3 – Meets Standard
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#3730A3', background: '#EEF2FF', width: '16%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#3730A3', background: '#EEF2FF', width: '16%' }}>
                           4 – Strong
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#065F46', background: '#ECFDF5', width: '18%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#065F46', background: '#ECFDF5', width: '18%' }}>
                           5 – Exceptional
                         </th>
                       </tr>
