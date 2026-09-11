@@ -125,33 +125,67 @@ const DashboardPage = () => {
     completed: m.kpi.completed
   }));
 
-  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.first_name || 'User';
+  const fullName = user?.full_name || [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'User';
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-      <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
-        <div>
-          <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>
+      {/* Welcome Hero Banner Section for all Dashboards */}
+      <div className="card mb-8" style={{
+        background: 'linear-gradient(135deg, var(--brand-600) 0%, #4f46e5 50%, #3b82f6 100%)',
+        color: '#ffffff',
+        padding: '24px 28px',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.25)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Decorative background glow circles */}
+        <div style={{
+          position: 'absolute',
+          top: '-40px',
+          right: '-30px',
+          width: '180px',
+          height: '180px',
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.1)',
+          pointerEvents: 'none'
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: '-50px',
+          right: '120px',
+          width: '140px',
+          height: '140px',
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.06)',
+          pointerEvents: 'none'
+        }} />
+
+        <div style={{ zIndex: 1 }}>
+          <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em', color: '#ffffff', marginBottom: '4px' }}>
             Welcome back, {fullName} !
           </h2>
-          <p className="text-sm text-secondary mt-1">
-            {isLeadership
-              ? user.role === 'PM'
-                ? 'Project Management & Deliverables Graph Analytics Portal'
-                : 'Executive Leadership & Operational Graph Analytics Portal'
-              : 'Your Personal Performance Dashboard'}
+          <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.88)', fontWeight: 500 }}>
+            Your Personal Performance Dashboard
           </p>
         </div>
 
-        {/* Apple Segmented Pill Control */}
+        {/* Period Selector Control */}
         <div style={{
+          zIndex: 1,
           display: 'flex',
-          background: 'var(--subtle)',
+          background: 'rgba(255, 255, 255, 0.18)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
           padding: '4px',
           borderRadius: 'var(--radius-full)',
-          border: '1px solid var(--border)',
-          gap: '2px',
-          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)'
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          gap: '2px'
         }}>
           {[
             { id: 'daily', label: 'Daily' },
@@ -164,13 +198,13 @@ const DashboardPage = () => {
               style={{
                 padding: '7px 18px',
                 fontSize: '13px',
-                fontWeight: period === p.id ? 600 : 500,
+                fontWeight: period === p.id ? 700 : 500,
                 border: 'none',
                 borderRadius: 'var(--radius-full)',
                 cursor: 'pointer',
-                background: period === p.id ? 'var(--surface)' : 'transparent',
-                color: period === p.id ? 'var(--brand-600)' : 'var(--text-secondary)',
-                boxShadow: period === p.id ? 'var(--shadow-subtle)' : 'none',
+                background: period === p.id ? '#ffffff' : 'transparent',
+                color: period === p.id ? 'var(--brand-700)' : 'rgba(255, 255, 255, 0.9)',
+                boxShadow: period === p.id ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
                 transition: 'all var(--transition-fast)'
               }}
             >
