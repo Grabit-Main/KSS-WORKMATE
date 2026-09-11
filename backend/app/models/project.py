@@ -18,10 +18,25 @@ class Project(Base):
     status = Column(String, default="active")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    teams = relationship("Team", back_populates="project")
+    teams_legacy = relationship("Team", back_populates="project")
+    project_teams = relationship("ProjectTeam", back_populates="project", cascade="all, delete-orphan")
     creator = relationship("User", foreign_keys=[created_by])
     status_logs = relationship("ProjectStatusLog", back_populates="project", cascade="all, delete-orphan")
     attachments = relationship("ProjectAttachment", back_populates="project", cascade="all, delete-orphan")
+
+    @property
+    def teams(self):
+        pt_teams = [pt.team for pt in self.project_teams if pt.team]
+        if pt_teams:
+            # Deduplicate by team ID while maintaining list
+            seen = set()
+            unique_teams = []
+            for t in pt_teams:
+                if t.id not in seen:
+                    seen.add(t.id)
+                    unique_teams.append(t)
+            return unique_teams
+        return self.teams_legacy or []
 
 
 class Team(Base):
@@ -33,9 +48,35 @@ class Team(Base):
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    project = relationship("Project", back_populates="teams")
+    project = relationship("Project", back_populates="teams_legacy")
+    project_teams = relationship("ProjectTeam", back_populates="team", cascade="all, delete-orphan")
     memberships = relationship("TeamMembership", back_populates="team", cascade="all, delete-orphan")
     creator = relationship("User", foreign_keys=[created_by])
+
+    @property
+    def projects(self):
+        pts = [pt.project for pt in self.project_teams if pt.project]
+        if pts:
+            seen = set()
+            unique_projects = []
+            for p in pts:
+                if p.id not in seen:
+                    seen.add(p.id)
+                    unique_projects.append(p)
+            return unique_projects
+        return [self.project] if self.project else []
+
+
+class ProjectTeam(Base):
+    __tablename__ = "project_teams"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    assigned_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project", back_populates="project_teams")
+    team = relationship("Team", back_populates="project_teams")
 
 
 class TeamMembership(Base):
