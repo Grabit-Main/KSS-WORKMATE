@@ -376,11 +376,17 @@ const ProjectsPage = () => {
   };
 
   // Helper to compute tasks and progress for a project
-  const getProjectTaskStats = (projectId) => {
+  const getProjectTaskStats = (projectInput) => {
+    const projId = typeof projectInput === 'object' ? projectInput?.id : projectInput;
+    const projectObj = typeof projectInput === 'object' ? projectInput : (projects.find(p => String(p.id) === String(projId)) || {});
     const safeTeamsList = Array.isArray(teams) ? teams : [];
     const safeTasksList = Array.isArray(tasks) ? tasks : [];
-    const allocatedTeams = safeTeamsList.filter(t => String(t.project_id) === String(projectId));
-    const projectTasks = safeTasksList.filter(t => String(t.project_id) === String(projectId));
+
+    const allocatedTeams = (projectObj.teams && projectObj.teams.length > 0)
+      ? projectObj.teams
+      : safeTeamsList.filter(t => String(t.project_id) === String(projId));
+
+    const projectTasks = safeTasksList.filter(t => String(t.project_id) === String(projId));
     const total = projectTasks.length;
     const completed = projectTasks.filter(t => t.status === 'completed').length;
     const inReview = projectTasks.filter(t => t.status === 'in_review').length;
@@ -713,8 +719,8 @@ const ProjectsPage = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
         {filteredProjects.map(p => {
-          const stats = getProjectTaskStats(p.id);
-          const allocatedTeams = stats.allocatedTeams.length > 0 ? stats.allocatedTeams : (p.teams || []);
+          const stats = getProjectTaskStats(p);
+          const allocatedTeams = stats.allocatedTeams;
           const attachments = p.attachments || [];
 
           return (
@@ -1536,8 +1542,10 @@ const ProjectsPage = () => {
                 }}>
                   {(Array.isArray(teams) ? teams : []).map(t => {
                     const isSelected = editSelectedTeamIds.includes(t.id);
-                    const isAssignedOther = t.project_id && String(t.project_id) !== String(editingProject.id);
-                    const otherProjectName = isAssignedOther ? projects.find(p => String(p.id) === String(t.project_id))?.name : null;
+                    const assignedProjs = projects.filter(proj =>
+                      (proj.teams || []).some(tm => String(tm.id) === String(t.id)) || String(t.project_id) === String(proj.id)
+                    );
+                    const otherProjects = assignedProjs.filter(proj => String(proj.id) !== String(editingProject?.id));
 
                     return (
                       <div
@@ -1574,7 +1582,7 @@ const ProjectsPage = () => {
                             </div>
                             <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
                               {t.memberships?.length || 0} members
-                              {isAssignedOther && ` • Currently assigned to "${otherProjectName || 'Another Project'}"`}
+                              {otherProjects.length > 0 && ` • Also assigned to ${otherProjects.map(op => `"${op.name}"`).join(', ')}`}
                             </div>
                           </div>
                         </div>

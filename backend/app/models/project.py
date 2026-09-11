@@ -1,9 +1,17 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Table
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, engine
+
+# Many-to-many junction table for multi-project team allocations
+project_teams = Table(
+    "project_teams",
+    Base.metadata,
+    Column("project_id", UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
+    Column("team_id", UUID(as_uuid=True), ForeignKey("teams.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class Project(Base):
@@ -18,7 +26,7 @@ class Project(Base):
     status = Column(String, default="active")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    teams = relationship("Team", back_populates="project")
+    teams = relationship("Team", secondary=project_teams, back_populates="projects", lazy="subquery")
     creator = relationship("User", foreign_keys=[created_by])
     status_logs = relationship("ProjectStatusLog", back_populates="project", cascade="all, delete-orphan")
     attachments = relationship("ProjectAttachment", back_populates="project", cascade="all, delete-orphan")
@@ -33,9 +41,17 @@ class Team(Base):
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    project = relationship("Project", back_populates="teams")
+    projects = relationship("Project", secondary=project_teams, back_populates="teams", lazy="subquery")
+    project = relationship("Project", foreign_keys=[project_id])
     memberships = relationship("TeamMembership", back_populates="team", cascade="all, delete-orphan")
     creator = relationship("User", foreign_keys=[created_by])
+
+
+# Ensure tables exist
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception:
+    pass
 
 
 class TeamMembership(Base):
