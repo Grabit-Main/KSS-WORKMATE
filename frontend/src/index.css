@@ -779,3 +779,42 @@ input, select, textarea {
     border-top: 1px solid var(--border) !important;
   }
 }
+
+/* KPI Rubric Table & Modal Custom Scrollbars */
+.kpi-rubric-table-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.kpi-rubric-table-wrapper::-webkit-scrollbar-track {
+  background: var(--bg, #F8FAFC);
+  border-radius: 4px;
+}
+
+.kpi-rubric-table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--brand-400, #818CF8);
+  border-radius: 4px;
+}
+
+.kpi-rubric-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-600, #4F46E5);
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar-track {
+  background: var(--bg, #F8FAFC);
+  border-radius: 4px;
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar-thumb {
+  background: var(--brand-300, #A5B4FC);
+  border-radius: 4px;
+}
+
+.kpi-rules-modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-500, #6366F1);
+}
+
