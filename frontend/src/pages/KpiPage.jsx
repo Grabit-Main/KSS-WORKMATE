@@ -2125,88 +2125,37 @@ const KpiPage = () => {
                 overflow: 'hidden',
                 background: 'var(--surface)'
               }}>
-                {/* Navigation Jump Controls */}
-                <div style={{
-                  padding: '10px 14px',
-                  background: 'var(--bg)',
-                  borderBottom: '1px solid var(--border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '8px'
-                }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                    Master Rubric • All 10 Rules
-                  </span>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        document.getElementById('rule-row-1')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                      }}
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: 'var(--radius-xs)',
-                        border: '1px solid var(--brand-200, #C7D2FE)',
-                        background: 'var(--brand-50, #EEF2FF)',
-                        color: 'var(--brand-700, #4338CA)',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Top (Rules 1–7)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        document.getElementById('rule-row-8')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                      }}
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: 'var(--radius-xs)',
-                        border: '1px solid #A7F3D0',
-                        background: '#ECFDF5',
-                        color: '#065F46',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Jump to Rules 8–10 (Collab, Learning, Attendance) ↓
-                    </button>
-                  </div>
-                </div>
-
                 <div
                   className="table-responsive kpi-rubric-table-wrapper"
                   style={{
                     width: '100%',
+                    maxHeight: '420px',
                     overflowX: 'auto',
-                    overflowY: 'visible',
-                    WebkitOverflowScrolling: 'touch'
+                    overflowY: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'var(--brand-400, #818CF8) var(--bg, #F8FAFC)'
                   }}
                 >
                   <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', fontSize: '12px' }}>
                     <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg)' }}>
                       <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
-                        <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: 'var(--text-primary)', width: '180px', background: 'var(--bg)' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: 'var(--text-primary)', width: '180px', background: 'var(--bg)' }}>
                           KPI Criteria & Weight
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#991B1B', background: '#FEF2F2', width: '16%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#991B1B', background: '#FEF2F2', width: '16%' }}>
                           1 – Poor
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#92400E', background: '#FFFBEB', width: '16%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#92400E', background: '#FFFBEB', width: '16%' }}>
                           2 – Below Standard
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#1E40AF', background: '#EFF6FF', width: '16%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#1E40AF', background: '#EFF6FF', width: '16%' }}>
                           3 – Meets Standard
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#3730A3', background: '#EEF2FF', width: '16%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#3730A3', background: '#EEF2FF', width: '16%' }}>
                           4 – Strong
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#065F46', background: '#ECFDF5', width: '18%' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#065F46', background: '#ECFDF5', width: '18%' }}>
                           5 – Exceptional
                         </th>
                       </tr>
@@ -2215,7 +2164,6 @@ const KpiPage = () => {
                       {CRITERIA.map((crit, idx) => (
                         <tr
                           key={crit.key}
-                          id={`rule-row-${crit.num}`}
                           style={{
                             borderBottom: '1px solid var(--border)',
                             background: idx % 2 === 0 ? 'var(--surface)' : 'rgba(248, 250, 252, 0.5)'
