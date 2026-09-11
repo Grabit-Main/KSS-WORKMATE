@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { getProjects, createProject, updateProject } from '../api/projects';
+import { getProjects, createProject, updateProject, deleteProject } from '../api/projects';
 import { getTeams, updateTeam } from '../api/teams';
 import { getTasks } from '../api/tasks';
 import { uploadFile } from '../api/upload';
@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   Plus, Calendar, ArrowRight, FolderKanban, X, Users,
   Paperclip, Image as ImageIcon, Film, FileText,
-  Clock, AlertCircle, Pencil, AlertTriangle, CheckCircle2
+  Clock, AlertCircle, Pencil, AlertTriangle, CheckCircle2, Trash2
 } from 'lucide-react';
 import { AttachmentCard } from '../components/common/AttachmentCard';
 import { DayWiseTaskPlanner, formatDeadlineWithTime } from '../components/projects/DayWiseTaskPlanner';
@@ -105,6 +105,7 @@ const ProjectsPage = () => {
 
   useRealtime('project.created', handleUpdate);
   useRealtime('project.updated', handleUpdate);
+  useRealtime('project.deleted', handleUpdate);
   useRealtime('team.created', handleUpdate);
   useRealtime('task.created', handleUpdate);
   useRealtime('task.status_changed', handleUpdate);
@@ -355,6 +356,22 @@ const ProjectsPage = () => {
       loadData();
     } catch (err) {
       console.error('Failed to allocate team to project:', err);
+    }
+  };
+
+  const handleDeleteProject = async (projectId, projectName, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete project "${projectName}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteProject(projectId);
+      if (selectedProject && String(selectedProject.id) === String(projectId)) {
+        setSelectedProject(null);
+      }
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to delete project.');
     }
   };
 
@@ -762,27 +779,50 @@ const ProjectsPage = () => {
                     })()}
                   </div>
 
-                  {user?.role === 'PM' && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleOpenEditModal(p, e)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        borderRadius: 'var(--radius-sm)',
-                        color: 'var(--text-secondary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        transition: 'all var(--transition-fast)'
-                      }}
-                      title="Edit Project"
-                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--brand-600)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <Pencil size={14} />
-                    </button>
+                  {['PM', 'CEO', 'CTO'].includes(user?.role) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEditModal(p, e)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          transition: 'all var(--transition-fast)'
+                        }}
+                        title="Edit Project"
+                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--brand-600)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <Pencil size={14} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteProject(p.id, p.name, e)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-tertiary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          transition: 'all var(--transition-fast)'
+                        }}
+                        title="Delete Project"
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -1702,16 +1742,27 @@ const ProjectsPage = () => {
                       <span>Day-Wise Planner</span>
                     </button>
                   )}
-                  {user?.role === 'PM' && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleOpenEditModal(selectedProject, e)}
-                      className="btn btn-secondary"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', fontSize: '12px' }}
-                    >
-                      <Pencil size={13} />
-                      <span>Edit Project</span>
-                    </button>
+                  {['PM', 'CEO', 'CTO'].includes(user?.role) && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEditModal(selectedProject, e)}
+                        className="btn btn-secondary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', fontSize: '12px' }}
+                      >
+                        <Pencil size={13} />
+                        <span>Edit Project</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteProject(selectedProject.id, selectedProject.name, e)}
+                        className="btn btn-secondary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', fontSize: '12px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                      >
+                        <Trash2 size={13} />
+                        <span>Delete Project</span>
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={() => setSelectedProject(null)}

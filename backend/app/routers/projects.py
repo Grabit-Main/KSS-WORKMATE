@@ -8,7 +8,7 @@ from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from app.dependencies import get_current_user
 from app.websocket.manager import manager
-from app.websocket.events import PROJECT_CREATED, PROJECT_UPDATED
+from app.websocket.events import PROJECT_CREATED, PROJECT_UPDATED, PROJECT_DELETED
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -140,3 +140,31 @@ async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Dep
     await manager.broadcast("global:admins", event)
     await manager.broadcast("global:all", event)
     return project
+
+
+@router.delete("/{project_id}")
+async def delete_project(project_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(404, "Project not found")
+    if user.role not in ("PM", "CEO", "CTO"):
+        raise HTTPException(403, "Only Project Managers, CEO, and CTO can delete projects")
+
+    from app.models.project import Team
+    from app.models.task import Task
+
+    # Unlink teams from this project
+    db.query(Team).filter(Team.project_id == project.id).update({"project_id": None})
+
+    # Unlink tasks from this project
+    db.query(Task).filter(Task.project_id == project.id).update({"project_id": None})
+
+    db.delete(project)
+    db.commit()
+
+    event = {"type": PROJECT_DELETED, "data": {"id": str(project_id)}}
+    await manager.broadcast(f"project:{project_id}", event)
+    await manager.broadcast("global:admins", event)
+    await manager.broadcast("global:all", event)
+    return {"message": "Project deleted successfully"}
+
