@@ -14,6 +14,7 @@ CHAT_NEW_MESSAGE = "chat.new_message"
 # Projects
 PROJECT_CREATED = "project.created"
 PROJECT_UPDATED = "project.updated"
+PROJECT_DELETED = "project.deleted"
 
 # Teams
 TEAM_CREATED = "team.created"
