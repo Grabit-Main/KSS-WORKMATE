@@ -18,14 +18,16 @@ def list_projects(db: Session = Depends(get_db), user: User = Depends(get_curren
     q = db.query(Project)
     # TM/TL only see projects they're part of via team membership
     if user.role in ("TM", "TL"):
-        from app.models.project import Team, TeamMembership
-        project_ids = (
-            db.query(Team.project_id)
-            .join(TeamMembership, TeamMembership.team_id == Team.id)
+        from app.models.project import Team, TeamMembership, project_teams
+        user_team_ids = (
+            db.query(TeamMembership.team_id)
             .filter(TeamMembership.user_id == user.id)
             .subquery()
         )
-        q = q.filter(Project.id.in_(project_ids))
+        pt_project_ids = db.query(project_teams.c.project_id).filter(project_teams.c.team_id.in_(user_team_ids))
+        legacy_project_ids = db.query(Team.project_id).filter(Team.id.in_(user_team_ids)).filter(Team.project_id.isnot(None))
+        all_project_ids = pt_project_ids.union(legacy_project_ids)
+        q = q.filter(Project.id.in_(all_project_ids))
     elif user.role == "PM":
         q = q.filter(Project.created_by == user.id)
     # CEO and CTO have company-wide visibility to oversee projects
@@ -52,6 +54,8 @@ async def create_project(req: ProjectCreate, db: Session = Depends(get_db), user
     for tid in allocated_ids:
         team = db.query(Team).filter(Team.id == tid).first()
         if team:
+            if team not in project.teams:
+                project.teams.append(team)
             team.project_id = project.id
             allocated_team_names.append(team.name)
 
@@ -109,17 +113,16 @@ async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Dep
         if req.team_id and req.team_id not in new_team_ids:
             new_team_ids.append(req.team_id)
 
-        # Unassign teams that are no longer assigned to this project
-        current_teams = db.query(Team).filter(Team.project_id == project.id).all()
-        for t in current_teams:
-            if t.id not in new_team_ids:
-                t.project_id = None
+        # Clear existing team associations for this project
+        project.teams.clear()
 
         # Assign selected teams to this project
         allocated_team_names = []
         for tid in new_team_ids:
             team = db.query(Team).filter(Team.id == tid).first()
             if team:
+                if team not in project.teams:
+                    project.teams.append(team)
                 team.project_id = project.id
                 allocated_team_names.append(team.name)
 
@@ -150,8 +153,14 @@ async def delete_project(project_id: UUID, db: Session = Depends(get_db), user: 
     if user.role not in ("PM", "CEO", "CTO"):
         raise HTTPException(403, "Only Project Managers, CEO, and CTO can delete projects")
 
-    from app.models.project import Team
+    from app.models.project import Team, project_teams
     from app.models.task import Task
+
+    # Remove entries from project_teams junction table for this project
+    try:
+        db.execute(project_teams.delete().where(project_teams.c.project_id == project.id))
+    except Exception:
+        pass
 
     # Unlink teams from this project
     db.query(Team).filter(Team.project_id == project.id).update({"project_id": None})
@@ -167,4 +176,5 @@ async def delete_project(project_id: UUID, db: Session = Depends(get_db), user: 
     await manager.broadcast("global:admins", event)
     await manager.broadcast("global:all", event)
     return {"message": "Project deleted successfully"}
+
 
