@@ -183,11 +183,18 @@ def get_teammates(
     - TM: returns empty list
     """
     if user.role in ("CEO", "CTO", "PM"):
-        users = db.query(User).filter(User.is_active == True).order_by(User.first_name, User.last_name).all()
+        users = db.query(User).filter(User.is_active == True, User.id != user.id).order_by(User.first_name, User.last_name).all()
         return users
     elif is_team_lead(db, user):
         teammate_ids = get_teammate_ids_for_lead(db, user)
-        users = db.query(User).filter(User.id.in_(teammate_ids), User.is_active == True).order_by(User.first_name, User.last_name).all()
+        users = db.query(User).filter(
+            User.is_active == True,
+            User.id != user.id,
+            or_(
+                User.id.in_(teammate_ids),
+                User.role == "TM"
+            )
+        ).order_by(User.first_name, User.last_name).all()
         return users
     return []
 
@@ -209,14 +216,10 @@ async def create_or_update_kpi(
     if req.date > today:
         raise HTTPException(400, "Cannot allocate KPI for future dates. Only present and previous dates are allowed.")
 
-    # Verify employee is a teammate of this lead
-    teammate_ids = get_teammate_ids_for_lead(db, user)
-    if req.employee_id not in teammate_ids:
-        raise HTTPException(403, "You can only give KPI to your assigned team mates")
-
+    # Verify employee exists and is active
     employee = db.query(User).filter(User.id == req.employee_id, User.is_active == True).first()
     if not employee:
-        raise HTTPException(404, "Employee not found")
+        raise HTTPException(404, "Target employee not found or inactive")
 
     pct, month_str, status_str = DailyKPILog.calculate_metrics(
         req.task_completion,
