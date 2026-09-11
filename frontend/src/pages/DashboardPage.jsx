@@ -127,22 +127,61 @@ const DashboardPage = () => {
 
   const fullName = user?.full_name || [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || 'User';
 
+  const getDashboardBannerTheme = (role) => {
+    switch (role) {
+      case 'CEO':
+      case 'CTO':
+        // Executive Dashboard Theme - Royal Purple / Indigo Gradient
+        return {
+          background: 'linear-gradient(135deg, #3730a3 0%, #581c87 50%, #312e81 100%)',
+          boxShadow: '0 10px 25px -5px rgba(88, 28, 135, 0.35)',
+          activeTabColor: '#581c87'
+        };
+      case 'PM':
+        // Project Manager Dashboard Theme - Ocean Blue / Cyan Gradient
+        return {
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #0284c7 100%)',
+          boxShadow: '0 10px 25px -5px rgba(29, 78, 216, 0.35)',
+          activeTabColor: '#1d4ed8'
+        };
+      case 'TL':
+        // Team Lead Dashboard Theme - Emerald Teal / Forest Gradient
+        return {
+          background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #0f766e 100%)',
+          boxShadow: '0 10px 25px -5px rgba(4, 120, 87, 0.35)',
+          activeTabColor: '#047857'
+        };
+      case 'TM':
+      case 'HR':
+      default:
+        // Developer / Team Member Dashboard Theme - Sunset Magenta / Violet Gradient
+        return {
+          background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #c026d3 100%)',
+          boxShadow: '0 10px 25px -5px rgba(124, 58, 237, 0.35)',
+          activeTabColor: '#7c3aed'
+        };
+    }
+  };
+
+  const bannerTheme = getDashboardBannerTheme(user?.role);
+
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
       {/* Welcome Hero Banner Section for all Dashboards */}
-      <div className="card mb-8" style={{
-        background: 'linear-gradient(135deg, var(--brand-600) 0%, #4f46e5 50%, #3b82f6 100%)',
+      <div className="card" style={{
+        background: bannerTheme.background,
         color: '#ffffff',
         padding: '24px 28px',
         borderRadius: 'var(--radius-lg)',
-        boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.25)',
+        boxShadow: bannerTheme.boxShadow,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '16px',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        marginBottom: '28px'
       }}>
         {/* Decorative background glow circles */}
         <div style={{
@@ -203,7 +242,7 @@ const DashboardPage = () => {
                 borderRadius: 'var(--radius-full)',
                 cursor: 'pointer',
                 background: period === p.id ? '#ffffff' : 'transparent',
-                color: period === p.id ? 'var(--brand-700)' : 'rgba(255, 255, 255, 0.9)',
+                color: period === p.id ? bannerTheme.activeTabColor : 'rgba(255, 255, 255, 0.9)',
                 boxShadow: period === p.id ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
                 transition: 'all var(--transition-fast)'
               }}
