@@ -25,7 +25,11 @@ export const formatDateDDMMYYYY = (date) => {
 // Format deadline with time (e.g. "08-09-2026 at 06:00 PM")
 export const formatDeadlineWithTime = (dateVal) => {
   if (!dateVal) return '';
-  const d = new Date(dateVal);
+  let str = String(dateVal).trim();
+  if (str.includes('T') && !str.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(str)) {
+    str += 'Z';
+  }
+  const d = new Date(str);
   if (isNaN(d.getTime())) return String(dateVal);
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');

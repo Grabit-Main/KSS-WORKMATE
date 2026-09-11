@@ -155,12 +155,27 @@ const ProjectsPage = () => {
     setEditAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const parseIsoDate = (isoStr) => {
+    if (!isoStr) return null;
+    if (isoStr instanceof Date) return isNaN(isoStr.getTime()) ? null : isoStr;
+    let str = String(isoStr).trim();
+    if (!str) return null;
+    if (str.includes('T') && !str.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(str)) {
+      str += 'Z';
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   const formatForDateTimeInput = (isoStr) => {
-    if (!isoStr) return '';
-    const d = new Date(isoStr);
-    if (isNaN(d.getTime())) return '';
-    const offset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+    const d = parseIsoDate(isoStr);
+    if (!d) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   const formatFileSize = (bytes) => {
@@ -762,7 +777,9 @@ const ProjectsPage = () => {
                       {p.status?.toUpperCase() || 'ACTIVE'}
                     </span>
                     {p.deadline && (() => {
-                      const isOverdue = new Date(p.deadline).getTime() < Date.now() && p.status !== 'completed';
+                      const d = parseIsoDate(p.deadline);
+                      if (!d) return null;
+                      const isOverdue = d.getTime() < Date.now() && p.status !== 'completed';
                       return (
                         <span
                           className="text-xs font-medium"
@@ -778,7 +795,7 @@ const ProjectsPage = () => {
                           }}
                         >
                           {isOverdue ? <AlertTriangle size={13} color="#DC2626" /> : <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />}
-                          <span>{new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(p.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           {isOverdue && <strong style={{ color: '#DC2626', fontSize: '11px' }}>Exceeded</strong>}
                         </span>
                       );
@@ -1711,7 +1728,9 @@ const ProjectsPage = () => {
                     {selectedProject.status?.toUpperCase() || 'ACTIVE'}
                   </span>
                   {selectedProject.deadline && (() => {
-                    const isProjOverdue = new Date(selectedProject.deadline).getTime() < Date.now() && selectedProject.status !== 'completed';
+                    const d = parseIsoDate(selectedProject.deadline);
+                    if (!d) return null;
+                    const isProjOverdue = d.getTime() < Date.now() && selectedProject.status !== 'completed';
                     return (
                       <span
                         className="text-xs font-medium"
@@ -1727,7 +1746,7 @@ const ProjectsPage = () => {
                         }}
                       >
                         {isProjOverdue ? <AlertTriangle size={13} color="#DC2626" /> : <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />}
-                        <span>Target: {new Date(selectedProject.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(selectedProject.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>Target: {d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         {isProjOverdue && <strong style={{ color: '#DC2626', fontSize: '11px' }}>Exceeded</strong>}
                       </span>
                     );
