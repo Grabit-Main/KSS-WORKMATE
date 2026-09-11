@@ -5,7 +5,6 @@ import { getTasks } from '../api/tasks';
 import { uploadFile } from '../api/upload';
 import { getStoredGoogleToken, requestGoogleAccessToken, isGoogleDriveConnected } from '../services/googleDriveAuth';
 import { useRealtime } from '../realtime/useRealtime';
-import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
 import {
   Plus, Calendar, ArrowRight, FolderKanban, X, Users,
@@ -17,7 +16,6 @@ import { DayWiseTaskPlanner, formatDeadlineWithTime } from '../components/projec
 
 const ProjectsPage = () => {
   const { user } = useAuth();
-  const wsContext = useWebSocket();
   const cacheKey = user ? `cache_projects_${user.id}` : 'cache_projects';
   const [plannerProject, setPlannerProject] = useState(null);
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
@@ -42,7 +40,6 @@ const ProjectsPage = () => {
   const [aim, setAim] = useState('');
   const [deadline, setDeadline] = useState('');
   const [selectedTeamId, setSelectedTeamId] = useState('');
-  const [selectedTeamIds, setSelectedTeamIds] = useState([]);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitStatusText, setSubmitStatusText] = useState('');
@@ -188,23 +185,14 @@ const ProjectsPage = () => {
     );
   };
 
-  const handleToggleCreateTeam = (teamId) => {
-    setSelectedTeamIds(prev =>
-      prev.includes(teamId)
-        ? prev.filter(id => id !== teamId)
-        : [...prev, teamId]
-    );
-  };
-
   const handleCreateProject = async (e) => {
     e.preventDefault();
     if (!name.trim() || !aim.trim()) {
       setFormError('Please provide both a project name and project aim/objective.');
       return;
     }
-    const activeTeamIds = selectedTeamIds.length > 0 ? selectedTeamIds : (selectedTeamId ? [selectedTeamId] : []);
-    if (activeTeamIds.length === 0) {
-      setFormError('Please select at least one squad/team to allocate to this project.');
+    if (!selectedTeamId) {
+      setFormError('Please allocate this project to a team.');
       return;
     }
     // Check if user has attached document files that require Google Drive OAuth
@@ -228,15 +216,14 @@ const ProjectsPage = () => {
     }
 
     setSubmitting(true);
-    setSubmitStatusText('Creating project and allocating teams...');
+    setSubmitStatusText('Creating project...');
     setFormError('');
     try {
       const payload = {
         name: name.trim(),
         aim: aim.trim(),
         deadline: deadline ? new Date(deadline).toISOString() : null,
-        team_id: activeTeamIds[0],
-        team_ids: activeTeamIds,
+        team_id: selectedTeamId,
       };
 
       const createdProject = await createProject(payload);
@@ -255,18 +242,11 @@ const ProjectsPage = () => {
         }
       }
 
-      // Dispatch real-time WebSocket event for 0 ms instant cross-tab / cross-client update
-      if (wsContext?.dispatch) {
-        wsContext.dispatch('project.created', createdProject);
-        wsContext.dispatch('analytics.refresh', {});
-      }
-
       setShowModal(false);
       setName('');
       setAim('');
       setDeadline('');
       setSelectedTeamId('');
-      setSelectedTeamIds([]);
       setAttachedFiles([]);
       setSubmitStatusText('');
       loadData();
@@ -355,12 +335,6 @@ const ProjectsPage = () => {
         setSelectedProject(prev => ({ ...prev, ...updated }));
       }
 
-      // Dispatch real-time WebSocket event for 0 ms instant cross-tab / cross-client update
-      if (wsContext?.dispatch) {
-        wsContext.dispatch('project.updated', updated);
-        wsContext.dispatch('analytics.refresh', {});
-      }
-
       setShowEditModal(false);
       setEditingProject(null);
       setEditSelectedTeamIds([]);
@@ -376,12 +350,7 @@ const ProjectsPage = () => {
   const handleAllocateTeamFromOverview = async () => {
     if (!overviewTeamToAllocate || !selectedProject) return;
     try {
-      const existingTeamIds = (selectedProject.teams || []).map(t => t.id);
-      const newTeamIds = Array.from(new Set([...existingTeamIds, overviewTeamToAllocate]));
-      const updated = await updateProject(selectedProject.id, { team_ids: newTeamIds });
-      if (wsContext?.dispatch) {
-        wsContext.dispatch('project.updated', updated);
-      }
+      await updateTeam(overviewTeamToAllocate, { project_id: selectedProject.id });
       setOverviewTeamToAllocate('');
       loadData();
     } catch (err) {
@@ -389,102 +358,11 @@ const ProjectsPage = () => {
     }
   };
 
-  // Live real-time ticker to refresh relative deadline countdowns every 10 seconds
-  const [ticker, setTicker] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setTicker(t => t + 1), 10000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const getLiveDeadlineBadge = (deadlineStr, status) => {
-    if (!deadlineStr) return null;
-    const deadlineDate = new Date(deadlineStr);
-    const now = new Date();
-    const diffMs = deadlineDate.getTime() - now.getTime();
-    const isCompleted = status === 'completed';
-
-    const formattedTimeStr = `${deadlineDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, ${deadlineDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-
-    if (isCompleted) {
-      return (
-        <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          <CheckCircle2 size={13} color="#059669" />
-          <span>{formattedTimeStr}</span>
-        </span>
-      );
-    }
-
-    if (diffMs < 0) {
-      const absDiffMins = Math.floor(Math.abs(diffMs) / (1000 * 60));
-      const hours = Math.floor(absDiffMins / 60);
-      const days = Math.floor(hours / 24);
-      let timeAgoStr = '';
-      if (days > 0) timeAgoStr = `${days}d ${hours % 24}h overdue`;
-      else if (hours > 0) timeAgoStr = `${hours}h ${absDiffMins % 60}m overdue`;
-      else timeAgoStr = `${absDiffMins}m overdue`;
-
-      return (
-        <span
-          className="text-xs font-medium"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            color: '#DC2626',
-            background: 'rgba(239, 68, 68, 0.1)',
-            padding: '2px 8px',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid rgba(239, 68, 68, 0.25)'
-          }}
-          title={`Target Deadline: ${formattedTimeStr}`}
-        >
-          <AlertTriangle size={13} color="#DC2626" />
-          <span>{formattedTimeStr}</span>
-          <strong style={{ color: '#DC2626', fontSize: '11px' }}>({timeAgoStr})</strong>
-        </span>
-      );
-    }
-
-    // Remaining time in real time
-    const mins = Math.floor(diffMs / (1000 * 60));
-    const hours = Math.floor(mins / 60);
-    const days = Math.floor(hours / 24);
-    let timeRemainingStr = '';
-    if (days > 0) timeRemainingStr = `${days}d ${hours % 24}h left`;
-    else if (hours > 0) timeRemainingStr = `${hours}h ${mins % 60}m left`;
-    else timeRemainingStr = `${mins}m left`;
-
-    return (
-      <span
-        className="text-xs font-medium"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '5px',
-          color: '#2563EB',
-          background: 'rgba(37, 99, 235, 0.08)',
-          padding: '2px 8px',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px solid rgba(37, 99, 235, 0.2)'
-        }}
-        title={`Target Deadline: ${formattedTimeStr}`}
-      >
-        <Clock size={13} color="#2563EB" />
-        <span>{formattedTimeStr}</span>
-        <strong style={{ color: '#1D4ED8', fontSize: '11px' }}>({timeRemainingStr})</strong>
-      </span>
-    );
-  };
-
   // Helper to compute tasks and progress for a project
   const getProjectTaskStats = (projectId) => {
     const safeTeamsList = Array.isArray(teams) ? teams : [];
     const safeTasksList = Array.isArray(tasks) ? tasks : [];
-    const proj = (projects || []).find(p => String(p.id) === String(projectId));
-    const allocatedTeams = (proj?.teams && proj.teams.length > 0)
-      ? proj.teams
-      : safeTeamsList.filter(t => String(t.project_id) === String(projectId));
-
+    const allocatedTeams = safeTeamsList.filter(t => String(t.project_id) === String(projectId));
     const projectTasks = safeTasksList.filter(t => String(t.project_id) === String(projectId));
     const total = projectTasks.length;
     const completed = projectTasks.filter(t => t.status === 'completed').length;
@@ -860,7 +738,28 @@ const ProjectsPage = () => {
                     }}>
                       {p.status?.toUpperCase() || 'ACTIVE'}
                     </span>
-                    {getLiveDeadlineBadge(p.deadline, p.status)}
+                    {p.deadline && (() => {
+                      const isOverdue = new Date(p.deadline).getTime() < Date.now() && p.status !== 'completed';
+                      return (
+                        <span
+                          className="text-xs font-medium"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            color: isOverdue ? '#DC2626' : 'var(--text-secondary)',
+                            background: isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                            padding: isOverdue ? '2px 8px' : '0',
+                            borderRadius: isOverdue ? 'var(--radius-sm)' : '0',
+                            border: isOverdue ? '1px solid rgba(239, 68, 68, 0.25)' : 'none'
+                          }}
+                        >
+                          {isOverdue ? <AlertTriangle size={13} color="#DC2626" /> : <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />}
+                          <span>{new Date(p.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(p.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          {isOverdue && <strong style={{ color: '#DC2626', fontSize: '11px' }}>Exceeded</strong>}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {user?.role === 'PM' && (
@@ -1304,105 +1203,24 @@ const ProjectsPage = () => {
                 </div>
               </div>
 
-              {/* Allocate Squads / Teams (Single or Multiple) */}
+              {/* Allocate to Team Dropdown (Required) */}
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <label className="text-xs font-semibold text-secondary block">
-                    Allocate Squads / Teams *
-                  </label>
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    borderRadius: 'var(--radius-full)',
-                    background: selectedTeamIds.length > 0 ? 'var(--brand-50)' : 'var(--subtle)',
-                    color: selectedTeamIds.length > 0 ? 'var(--brand-700)' : 'var(--text-tertiary)',
-                    border: '1px solid var(--border)'
-                  }}>
-                    {selectedTeamIds.length} {selectedTeamIds.length === 1 ? 'team' : 'teams'} selected
-                  </span>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  maxHeight: '190px',
-                  overflowY: 'auto',
-                  padding: '10px',
-                  background: 'var(--bg)',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border)'
-                }}>
-                  {(Array.isArray(teams) ? teams : []).map(t => {
-                    const isSelected = selectedTeamIds.includes(t.id);
-                    // Find all projects this team is involved in
-                    const teamProjects = (projects || []).filter(p => (p.teams || []).some(pt => String(pt.id) === String(t.id)));
-                    const projNames = teamProjects.map(p => p.name).join(', ');
-
-                    return (
-                      <div
-                        key={t.id}
-                        onClick={() => handleToggleCreateTeam(t.id)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          borderRadius: 'var(--radius-sm)',
-                          background: isSelected ? 'var(--brand-50)' : 'var(--surface)',
-                          border: isSelected ? '1px solid var(--brand-300)' : '1px solid var(--border)',
-                          cursor: 'pointer',
-                          transition: 'all var(--transition-fast)'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = 'var(--subtle)';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = 'var(--surface)';
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}}
-                            style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--brand-600)' }}
-                          />
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: '13px', color: isSelected ? 'var(--brand-700)' : 'var(--text-primary)' }}>
-                              {t.name}
-                            </div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                              {t.memberships?.length || 0} members
-                              {projNames && ` • Currently in ${teamProjects.length} project(s): ${projNames}`}
-                            </div>
-                          </div>
-                        </div>
-
-                        {isSelected && (
-                          <span style={{
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 'var(--radius-full)',
-                            background: 'var(--brand-100)',
-                            color: 'var(--brand-800)'
-                          }}>
-                            Allocated
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {(!teams || teams.length === 0) && (
-                    <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '12px' }}>
-                      No teams available.
-                    </div>
-                  )}
-                </div>
+                <label className="text-xs font-semibold text-secondary mb-1.5 block">Allocate to Team *</label>
+                <select
+                  value={selectedTeamId}
+                  onChange={(e) => setSelectedTeamId(e.target.value)}
+                  className="input"
+                  required
+                >
+                  <option value="">-- Select Team * --</option>
+                  {(Array.isArray(teams) ? teams : []).map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.memberships?.length || 0} members)
+                    </option>
+                  ))}
+                </select>
                 <p className="text-xs text-secondary mt-1">
-                  Teams can be involved in multiple projects simultaneously. Select one or more squads.
+                  Select an active squad to allocate and take ownership of this project deliverable.
                 </p>
               </div>
 

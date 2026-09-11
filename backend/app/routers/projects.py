@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 from app.database import get_db
-from app.models.project import Project, ProjectStatusLog, Team, ProjectTeam, TeamMembership
+from app.models.project import Project, ProjectStatusLog
 from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from app.dependencies import get_current_user
@@ -16,25 +16,17 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 @router.get("", response_model=List[ProjectResponse])
 def list_projects(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     q = db.query(Project)
-    # TM/TL only see projects they're part of via team membership (ProjectTeam join or legacy project_id)
+    # TM/TL only see projects they're part of via team membership
     if user.role in ("TM", "TL"):
-        pt_project_ids = (
-            db.query(ProjectTeam.project_id)
-            .join(TeamMembership, TeamMembership.team_id == ProjectTeam.team_id)
-            .filter(TeamMembership.user_id == user.id)
-            .subquery()
-        )
-        legacy_project_ids = (
+        from app.models.project import Team, TeamMembership
+        project_ids = (
             db.query(Team.project_id)
             .join(TeamMembership, TeamMembership.team_id == Team.id)
             .filter(TeamMembership.user_id == user.id)
             .subquery()
         )
-        q = q.filter(
-            (Project.id.in_(pt_project_ids)) | (Project.id.in_(legacy_project_ids))
-        )
+        q = q.filter(Project.id.in_(project_ids))
     elif user.role == "PM":
-        # PM sees projects created by them or associated with any team
         q = q.filter(Project.created_by == user.id)
     # CEO and CTO have company-wide visibility to oversee projects
     return q.order_by(Project.created_at.desc()).all()
@@ -45,13 +37,13 @@ async def create_project(req: ProjectCreate, db: Session = Depends(get_db), user
     # Restrict project creation to PM only (CEO and CTO do not assign projects)
     if user.role != "PM":
         raise HTTPException(403, "Only Project Managers (PM) can create and assign projects. CEO and CTO oversee and assign tasks.")
-
+    from app.models.project import Team
     project_data = req.model_dump(exclude={"team_id", "team_ids"})
     project = Project(**project_data, created_by=user.id)
     db.add(project)
     db.flush()
 
-    # Allocate to teams if specified (A team can belong to multiple projects)
+    # Allocate to teams if specified
     allocated_ids = list(req.team_ids or [])
     if req.team_id and req.team_id not in allocated_ids:
         allocated_ids.append(req.team_id)
@@ -60,15 +52,7 @@ async def create_project(req: ProjectCreate, db: Session = Depends(get_db), user
     for tid in allocated_ids:
         team = db.query(Team).filter(Team.id == tid).first()
         if team:
-            # Create ProjectTeam link if not already exists
-            existing_pt = db.query(ProjectTeam).filter(
-                ProjectTeam.project_id == project.id,
-                ProjectTeam.team_id == tid
-            ).first()
-            if not existing_pt:
-                db.add(ProjectTeam(project_id=project.id, team_id=tid))
-            if not team.project_id:
-                team.project_id = project.id
+            team.project_id = project.id
             allocated_team_names.append(team.name)
 
     notes = f"Project created and allocated to {', '.join(allocated_team_names)}" if allocated_team_names else "Project created and assigned by PM"
@@ -82,17 +66,7 @@ async def create_project(req: ProjectCreate, db: Session = Depends(get_db), user
     db.add(log)
     db.commit()
     db.refresh(project)
-
-    event = {
-        "type": PROJECT_CREATED,
-        "data": {
-            "id": str(project.id),
-            "name": project.name,
-            "status": project.status,
-            "deadline": project.deadline.isoformat() if project.deadline else None,
-            "created_at": project.created_at.isoformat() if project.created_at else None
-        }
-    }
+    event = {"type": PROJECT_CREATED, "data": {"id": str(project.id), "name": project.name}}
     await manager.broadcast("global:admins", event)
     await manager.broadcast("global:all", event)
     return project
@@ -108,6 +82,7 @@ def get_project(project_id: UUID, db: Session = Depends(get_db), user: User = De
 
 @router.put("/{project_id}", response_model=ProjectResponse)
 async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.models.project import Team
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(404, "Project not found")
@@ -128,31 +103,24 @@ async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Dep
         )
         db.add(log)
 
-    # Handle multiple/single team allocation for this project
+    # Handle multiple/single team allocation
     if req.team_ids is not None or req.team_id is not None:
         new_team_ids = list(req.team_ids or [])
         if req.team_id and req.team_id not in new_team_ids:
             new_team_ids.append(req.team_id)
 
-        # Unassign teams from THIS project that are no longer selected
-        existing_pts = db.query(ProjectTeam).filter(ProjectTeam.project_id == project.id).all()
-        for pt in existing_pts:
-            if pt.team_id not in new_team_ids:
-                db.delete(pt)
+        # Unassign teams that are no longer assigned to this project
+        current_teams = db.query(Team).filter(Team.project_id == project.id).all()
+        for t in current_teams:
+            if t.id not in new_team_ids:
+                t.project_id = None
 
-        # Add new team links for THIS project
+        # Assign selected teams to this project
         allocated_team_names = []
         for tid in new_team_ids:
             team = db.query(Team).filter(Team.id == tid).first()
             if team:
-                existing_pt = db.query(ProjectTeam).filter(
-                    ProjectTeam.project_id == project.id,
-                    ProjectTeam.team_id == tid
-                ).first()
-                if not existing_pt:
-                    db.add(ProjectTeam(project_id=project.id, team_id=tid))
-                if not team.project_id:
-                    team.project_id = project.id
+                team.project_id = project.id
                 allocated_team_names.append(team.name)
 
         if allocated_team_names:
@@ -167,16 +135,7 @@ async def update_project(project_id: UUID, req: ProjectUpdate, db: Session = Dep
 
     db.commit()
     db.refresh(project)
-
-    event = {
-        "type": PROJECT_UPDATED,
-        "data": {
-            "id": str(project.id),
-            "name": project.name,
-            "status": project.status,
-            "deadline": project.deadline.isoformat() if project.deadline else None
-        }
-    }
+    event = {"type": PROJECT_UPDATED, "data": {"id": str(project.id), "name": project.name, "status": project.status}}
     await manager.broadcast(f"project:{project_id}", event)
     await manager.broadcast("global:admins", event)
     await manager.broadcast("global:all", event)
