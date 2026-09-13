@@ -549,13 +549,18 @@ const ProjectsPage = () => {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Header Title Section */}
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>Projects</h2>
-          <p className="text-sm text-secondary mt-1">Active company deliverables, squad allocations, and milestone timelines</p>
+          <h2 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', color: '#1E293B', fontFamily: 'serif, Georgia, Inter, sans-serif', marginBottom: '4px' }}>
+            Projects
+          </h2>
+          <p style={{ fontSize: '14px', color: '#64748B', margin: 0 }}>
+            Active company deliverables, squad allocations, and milestone timelines.
+          </p>
         </div>
 
-        {/* PM has ability to create and assign project deliverables */}
+        {/* PM Has ability to create new projects */}
         {user?.role === 'PM' && (
           <button
             className="btn btn-primary"
@@ -563,7 +568,7 @@ const ProjectsPage = () => {
               setFormError('');
               setShowModal(true);
             }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', background: '#5551FF', borderRadius: '8px', padding: '10px 18px', fontWeight: 600 }}
           >
             <Plus size={16} />
             <span>New Project</span>
@@ -571,203 +576,167 @@ const ProjectsPage = () => {
         )}
       </div>
 
-      {/* Interactive Analytics Metric Cards */}
+      {/* 4 Stat Cards Grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
         gap: '16px',
-        marginBottom: '24px'
+        marginBottom: '16px'
       }}>
-        {/* Total Projects */}
+        {/* Total projects */}
         <div
-          className="card"
           onClick={() => setFilterStatus('all')}
           style={{
-            padding: '18px 20px',
+            background: filterStatus === 'all' ? '#EEF2FF' : '#EEF2FF',
+            border: filterStatus === 'all' ? '2px solid #5551FF' : '1px solid rgba(85, 81, 255, 0.2)',
+            borderRadius: '16px',
+            padding: '20px 22px',
             cursor: 'pointer',
-            border: filterStatus === 'all' ? '2px solid var(--brand-500)' : '1px solid var(--border)',
-            background: filterStatus === 'all' ? 'var(--brand-50)' : 'var(--surface)',
-            transition: 'all var(--transition-fast)',
-            boxShadow: filterStatus === 'all' ? '0 4px 12px rgba(99, 102, 241, 0.12)' : 'none'
+            transition: 'all 0.2s ease',
+            boxShadow: filterStatus === 'all' ? '0 4px 14px rgba(85, 81, 255, 0.12)' : 'none'
           }}
         >
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-semibold text-secondary uppercase tracking-wider" style={{ fontSize: '11px' }}>
-              Total Projects
-            </span>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'rgba(99, 102, 241, 0.1)',
-              color: 'var(--brand-600)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <FolderKanban size={16} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#4F46E5' }}>Total projects</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <FolderKanban size={16} color="#5551FF" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              {totalProjects}
-            </h3>
-            <span className="text-xs text-secondary">All initiatives</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <span style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A' }}>{totalProjects}</span>
+            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>All initiatives</span>
           </div>
         </div>
 
-        {/* Active Projects */}
+        {/* Active */}
         <div
-          className="card"
           onClick={() => setFilterStatus('active')}
           style={{
-            padding: '18px 20px',
+            background: '#EBF5FF',
+            border: filterStatus === 'active' ? '2px solid #2563EB' : '1px solid rgba(37, 99, 235, 0.18)',
+            borderRadius: '16px',
+            padding: '20px 22px',
             cursor: 'pointer',
-            border: filterStatus === 'active' ? '2px solid #3b82f6' : '1px solid var(--border)',
-            background: filterStatus === 'active' ? 'rgba(59, 130, 246, 0.08)' : 'var(--surface)',
-            transition: 'all var(--transition-fast)',
-            boxShadow: filterStatus === 'active' ? '0 4px 12px rgba(59, 130, 246, 0.12)' : 'none'
+            transition: 'all 0.2s ease',
+            boxShadow: filterStatus === 'active' ? '0 4px 14px rgba(37, 99, 235, 0.12)' : 'none'
           }}
         >
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ fontSize: '11px', color: '#2563eb' }}>
-              Active
-            </span>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'rgba(59, 130, 246, 0.12)',
-              color: '#2563eb',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Clock size={16} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#2563EB' }}>Active</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <Clock size={16} color="#2563EB" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold" style={{ color: '#1d4ed8', letterSpacing: '-0.02em' }}>
-              {activeProjects}
-            </h3>
-            <span className="text-xs text-secondary">In progress</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <span style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A' }}>{activeProjects}</span>
+            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>In progress</span>
           </div>
         </div>
 
-        {/* In Review */}
+        {/* In review */}
         <div
-          className="card"
           onClick={() => setFilterStatus('in_review')}
           style={{
-            padding: '18px 20px',
+            background: '#FFF7ED',
+            border: filterStatus === 'in_review' ? '2px solid #D97706' : '1px solid rgba(217, 119, 6, 0.18)',
+            borderRadius: '16px',
+            padding: '20px 22px',
             cursor: 'pointer',
-            border: filterStatus === 'in_review' ? '2px solid #f59e0b' : '1px solid var(--border)',
-            background: filterStatus === 'in_review' ? 'rgba(245, 158, 11, 0.08)' : 'var(--surface)',
-            transition: 'all var(--transition-fast)',
-            boxShadow: filterStatus === 'in_review' ? '0 4px 12px rgba(245, 158, 11, 0.12)' : 'none'
+            transition: 'all 0.2s ease',
+            boxShadow: filterStatus === 'in_review' ? '0 4px 14px rgba(217, 119, 6, 0.12)' : 'none'
           }}
         >
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ fontSize: '11px', color: '#d97706' }}>
-              In Review
-            </span>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'rgba(245, 158, 11, 0.12)',
-              color: '#d97706',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <AlertCircle size={16} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#D97706' }}>In review</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <AlertCircle size={16} color="#D97706" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold" style={{ color: '#b45309', letterSpacing: '-0.02em' }}>
-              {inReviewProjects}
-            </h3>
-            <span className="text-xs text-secondary">Awaiting verification</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <span style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A' }}>{inReviewProjects}</span>
+            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>Awaiting verification</span>
           </div>
         </div>
 
-        {/* Completed Projects */}
+        {/* Completed */}
         <div
-          className="card"
           onClick={() => setFilterStatus('completed')}
           style={{
-            padding: '18px 20px',
+            background: '#ECFDF5',
+            border: filterStatus === 'completed' ? '2px solid #059669' : '1px solid rgba(5, 150, 105, 0.18)',
+            borderRadius: '16px',
+            padding: '20px 22px',
             cursor: 'pointer',
-            border: filterStatus === 'completed' ? '2px solid #10b981' : '1px solid var(--border)',
-            background: filterStatus === 'completed' ? 'rgba(16, 185, 129, 0.08)' : 'var(--surface)',
-            transition: 'all var(--transition-fast)',
-            boxShadow: filterStatus === 'completed' ? '0 4px 12px rgba(16, 185, 129, 0.12)' : 'none'
+            transition: 'all 0.2s ease',
+            boxShadow: filterStatus === 'completed' ? '0 4px 14px rgba(5, 150, 105, 0.12)' : 'none'
           }}
         >
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ fontSize: '11px', color: '#059669' }}>
-              Completed
-            </span>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'rgba(16, 185, 129, 0.12)',
-              color: '#059669',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <CheckCircle2 size={16} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#059669' }}>Completed</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <CheckCircle2 size={16} color="#059669" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold" style={{ color: '#047857', letterSpacing: '-0.02em' }}>
-              {completedProjects}
-            </h3>
-            <span className="text-xs text-secondary">Shipped & delivered</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <span style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A' }}>{completedProjects}</span>
+            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>Shipped & delivered</span>
           </div>
         </div>
+      </div>
 
-        {/* Overall Completion Rate */}
-        <div
-          className="card"
-          style={{
-            padding: '18px 20px',
-            background: 'var(--surface)'
-          }}
-        >
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-semibold text-secondary uppercase tracking-wider" style={{ fontSize: '11px' }}>
-              Completion Rate
-            </span>
-            <span style={{
-              fontSize: '11px',
+      {/* Completion rate Banner with Segmented Bar */}
+      <div
+        style={{
+          background: '#EEF2FF',
+          borderRadius: '16px',
+          padding: '20px 24px',
+          marginBottom: '24px'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+            Completion rate
+          </span>
+          <span
+            style={{
+              background: '#FFFFFF',
+              color: '#5551FF',
+              padding: '4px 12px',
+              borderRadius: '9999px',
+              fontSize: '12px',
               fontWeight: 700,
-              color: 'var(--brand-600)',
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--brand-50)'
-            }}>
-              {completedProjects}/{totalProjects} Done
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2 mb-2">
-            <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              {overallCompletionRate}%
-            </h3>
-            <span className="text-xs text-secondary">delivered</span>
-          </div>
-          <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
-            <div style={{
-              width: `${overallCompletionRate}%`,
-              height: '100%',
-              background: 'var(--brand-gradient)',
-              borderRadius: 'var(--radius-full)',
-              transition: 'width 0.4s ease'
-            }} />
-          </div>
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            }}
+          >
+            {completedProjects}/{totalProjects} done
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' }}>
+          <span style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A' }}>
+            {overallCompletionRate}%
+          </span>
+          <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 500 }}>delivered</span>
+        </div>
+
+        {/* Dashed Segmented Bar */}
+        <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+          {Array.from({ length: 24 }).map((_, idx) => {
+            const segPercent = ((idx + 1) / 24) * 100;
+            const isFilled = overallCompletionRate > 0 && segPercent <= overallCompletionRate;
+            return (
+              <div
+                key={idx}
+                style={{
+                  flex: 1,
+                  height: '8px',
+                  borderRadius: '4px',
+                  background: isFilled ? '#5551FF' : '#FFFFFF',
+                  transition: 'background 0.3s ease'
+                }}
+              />
+            );
+          })}
         </div>
       </div>
 
