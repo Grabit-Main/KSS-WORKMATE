@@ -832,77 +832,158 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
             </div>
 
             {trend.length > 0 ? (
-              <div style={{ padding: '10px 0' }}>
+              <div style={{ padding: '12px 0' }}>
                 <div style={{ width: '100%', overflowX: 'auto' }}>
-                  <div style={{ minWidth: '480px', height: '180px', position: 'relative' }}>
-                    <svg width="100%" height="150" viewBox="0 0 500 150" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-                      <line x1="0" y1="20" x2="500" y2="20" stroke="var(--border)" strokeDasharray="4 4" strokeWidth="1" />
-                      <line x1="0" y1="60" x2="500" y2="60" stroke="var(--border)" strokeDasharray="4 4" strokeWidth="1" />
-                      <line x1="0" y1="100" x2="500" y2="100" stroke="var(--border)" strokeDasharray="4 4" strokeWidth="1" />
-                      <line x1="0" y1="140" x2="500" y2="140" stroke="var(--border)" strokeWidth="1" />
+                  <div style={{ minWidth: '560px', padding: '10px 10px 0 10px', position: 'relative' }}>
+                    <svg width="100%" height="170" viewBox="0 0 540 170" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                      <defs>
+                        <linearGradient id="trendAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#6366F1" stopOpacity="0.4" />
+                          <stop offset="60%" stopColor="#818CF8" stopOpacity="0.12" />
+                          <stop offset="100%" stopColor="#C7D2FE" stopOpacity="0.0" />
+                        </linearGradient>
+                        <linearGradient id="trendLineGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#4F46E5" />
+                          <stop offset="50%" stopColor="#6366F1" />
+                          <stop offset="100%" stopColor="#10B981" />
+                        </linearGradient>
+                        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#6366F1" floodOpacity="0.35" />
+                        </filter>
+                      </defs>
+
+                      {/* Subtle horizontal grid lines */}
+                      <line x1="10" y1="25" x2="530" y2="25" stroke="var(--border)" strokeDasharray="5 5" strokeWidth="1" opacity="0.7" />
+                      <line x1="10" y1="65" x2="530" y2="65" stroke="var(--border)" strokeDasharray="5 5" strokeWidth="1" opacity="0.7" />
+                      <line x1="10" y1="105" x2="530" y2="105" stroke="var(--border)" strokeDasharray="5 5" strokeWidth="1" opacity="0.7" />
+                      <line x1="10" y1="145" x2="530" y2="145" stroke="var(--border)" strokeWidth="1.5" opacity="0.9" />
 
                       {(() => {
                         const validPoints = trend.map((pt, idx) => {
-                          const x = (idx / (trend.length - 1 || 1)) * 460 + 20;
+                          const x = (idx / (trend.length - 1 || 1)) * 500 + 20;
                           const pct = pt.percentage != null ? pt.percentage : 0;
-                          const y = 130 - ((pct - 50) / 50) * 110;
-                          return { x, y: Math.max(15, Math.min(135, y)), pt, idx };
+                          // Map 50% to 100% to Y 135 down to 25
+                          const y = 135 - ((pct - 50) / 50) * 110;
+                          return { x, y: Math.max(20, Math.min(140, y)), pt, idx };
                         });
 
-                        const pathStr = validPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                        // Smooth Cubic Bezier path
+                        let linePath = '';
+                        if (validPoints.length > 0) {
+                          linePath = `M ${validPoints[0].x} ${validPoints[0].y}`;
+                          for (let i = 0; i < validPoints.length - 1; i++) {
+                            const p0 = validPoints[i];
+                            const p1 = validPoints[i + 1];
+                            const cp1x = p0.x + (p1.x - p0.x) * 0.45;
+                            const cp1y = p0.y;
+                            const cp2x = p0.x + (p1.x - p0.x) * 0.55;
+                            const cp2y = p1.y;
+                            linePath += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+                          }
+                        }
+
+                        const firstX = validPoints[0]?.x || 20;
+                        const lastX = validPoints[validPoints.length - 1]?.x || 520;
+                        const areaPath = `${linePath} L ${lastX} 145 L ${firstX} 145 Z`;
 
                         return (
                           <>
-                            <path d={pathStr} fill="none" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                            {validPoints.map((p) => (
-                              <g key={p.idx}>
-                                <circle
-                                  cx={p.x}
-                                  cy={p.y}
-                                  r={p.pt.is_current ? "7" : "5"}
-                                  fill={p.pt.is_current ? "#4338CA" : "#6366F1"}
-                                  stroke="#FFFFFF"
-                                  strokeWidth="2"
-                                />
-                                {p.pt.percentage != null && (
-                                  <text
-                                    x={p.x}
-                                    y={p.y - 12}
-                                    textAnchor="middle"
-                                    fontSize="12"
-                                    fontWeight="800"
-                                    fill={p.pt.is_current ? "#4338CA" : "var(--text-primary)"}
-                                  >
-                                    {p.pt.percentage}%
-                                  </text>
-                                )}
-                              </g>
-                            ))}
+                            {/* Gradient Area Fill */}
+                            <path d={areaPath} fill="url(#trendAreaGradient)" />
+
+                            {/* Smooth Curved Line */}
+                            <path d={linePath} fill="none" stroke="url(#trendLineGradient)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow)" />
+
+                            {/* Data Point Markers & Floating Glass Badges */}
+                            {validPoints.map((p) => {
+                              const isCurrent = p.pt.is_current;
+                              return (
+                                <g key={p.idx} style={{ cursor: 'pointer' }} onClick={() => setOffset(p.pt.offset)}>
+                                  {/* Outer pulse ring for current selection */}
+                                  {isCurrent && (
+                                    <circle cx={p.x} cy={p.y} r="12" fill="none" stroke="#4F46E5" strokeWidth="2" opacity="0.4" />
+                                  )}
+
+                                  {/* Data Marker Node */}
+                                  <circle
+                                    cx={p.x}
+                                    cy={p.y}
+                                    r={isCurrent ? "7" : "5"}
+                                    fill={isCurrent ? "#4F46E5" : "#6366F1"}
+                                    stroke="#FFFFFF"
+                                    strokeWidth="2.5"
+                                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
+                                  />
+
+                                  {/* Percentage Pill Callout */}
+                                  {p.pt.percentage != null && (
+                                    <g transform={`translate(${p.x}, ${p.y - 20})`}>
+                                      <rect
+                                        x="-20"
+                                        y="-12"
+                                        width="40"
+                                        height="18"
+                                        rx="9"
+                                        fill={isCurrent ? "#4338CA" : "var(--surface)"}
+                                        stroke={isCurrent ? "#312E81" : "var(--border)"}
+                                        strokeWidth="1"
+                                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
+                                      />
+                                      <text
+                                        x="0"
+                                        y="0"
+                                        textAnchor="middle"
+                                        fontSize="11"
+                                        fontWeight="800"
+                                        fill={isCurrent ? "#FFFFFF" : "var(--text-primary)"}
+                                      >
+                                        {p.pt.percentage}%
+                                      </text>
+                                    </g>
+                                  )}
+                                </g>
+                              );
+                            })}
                           </>
                         );
                       })()}
                     </svg>
+                  </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 10px', marginTop: '10px' }}>
-                      {trend.map((pt) => (
+                  {/* Interactive Period Cards Bar */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${trend.length || 1}, 1fr)`,
+                    gap: '8px',
+                    marginTop: '16px'
+                  }}>
+                    {trend.map((pt) => {
+                      const isCurrent = pt.is_current;
+                      return (
                         <div
                           key={pt.offset}
                           onClick={() => setOffset(pt.offset)}
                           style={{
-                            fontSize: '12px',
-                            fontWeight: pt.is_current ? 800 : 600,
-                            color: pt.is_current ? 'var(--brand-700, #4338CA)' : 'var(--text-secondary)',
-                            background: pt.is_current ? 'var(--brand-50, #EEF2FF)' : 'transparent',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
+                            padding: '10px 12px',
+                            borderRadius: 'var(--radius-sm)',
+                            border: isCurrent ? '1.5px solid var(--brand-500, #6366F1)' : '1px solid var(--border)',
+                            background: isCurrent ? 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)' : 'var(--bg)',
+                            color: isCurrent ? '#312E81' : 'var(--text-primary)',
                             cursor: 'pointer',
-                            textAlign: 'center'
+                            textAlign: 'center',
+                            transition: 'all var(--transition-fast)',
+                            boxShadow: isCurrent ? '0 2px 8px rgba(99, 102, 241, 0.15)' : 'none'
                           }}
                         >
-                          {pt.label}
+                          <div style={{ fontSize: '11px', fontWeight: 600, color: isCurrent ? '#4338CA' : 'var(--text-tertiary)', marginBottom: '2px' }}>
+                            {pt.label}
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: 800 }}>
+                            {pt.percentage != null ? `${pt.percentage}%` : '--'}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
