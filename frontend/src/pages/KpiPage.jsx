@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   getKPIs,
   getKPISummary,
+  getMyKPI,
   getKPITeammates,
   createOrUpdateKPI,
   updateKPI,
@@ -27,7 +28,15 @@ import {
   Eye,
   BarChart3,
   HelpCircle,
-  BookOpen
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Info,
+  ArrowUpRight,
+  ArrowDownRight,
+  Target,
+  Minus
 } from 'lucide-react';
 
 export const KPI_TIER_CONFIG = [
@@ -223,6 +232,821 @@ const calculateLiveMetrics = (scores) => {
   return { pct, status };
 };
 
+const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToManagement, isManagementUser }) => {
+  const [periodType, setPeriodType] = useState('week');
+  const [offset, setOffset] = useState(0);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchDeveloperKPI = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await getMyKPI({ period_type: periodType, offset });
+      setData(res);
+    } catch (err) {
+      console.error('Failed to load personal KPI data:', err);
+      setError('Unable to load your KPI data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [periodType, offset]);
+
+  useEffect(() => {
+    fetchDeveloperKPI();
+  }, [fetchDeveloperKPI]);
+
+  useRealtime('kpi.logged', fetchDeveloperKPI);
+  useRealtime('notification.new', fetchDeveloperKPI);
+
+  const handlePeriodTypeChange = (type) => {
+    if (type !== periodType) {
+      setPeriodType(type);
+      setOffset(0);
+    }
+  };
+
+  const summary = data?.summary;
+  const kpis = data?.kpis || [];
+  const trend = data?.trend || [];
+  const strengths = data?.strengths || [];
+  const focusAreas = data?.focus_areas || [];
+  const hasData = data?.has_data;
+
+  return (
+    <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+      {/* Top Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              My Performance Overview
+            </h1>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '3px 8px',
+              borderRadius: '999px',
+              background: '#EEF2FF',
+              color: '#4F46E5',
+              border: '1px solid #C7D2FE'
+            }}>
+              Personal KPI View
+            </span>
+          </div>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+            Weekly & monthly performance overview across all 10 KPI categories.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {isManagementUser && (
+            <button
+              onClick={onSwitchToManagement}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--surface)',
+                color: 'var(--brand-700, #4338CA)',
+                border: '1px solid var(--brand-300, #C7D2FE)',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              <BarChart3 size={15} />
+              <span>Switch to Management View</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowRulesModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border)',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
+            <BookOpen size={15} />
+            <span>Scoring Rules</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Period Filter & Navigation Bar */}
+      <div style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-md)',
+        padding: '12px 18px',
+        marginBottom: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '14px',
+        boxShadow: 'var(--shadow-subtle)'
+      }}>
+        {/* Week / Month Toggle Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Period:</span>
+          <div style={{
+            display: 'inline-flex',
+            background: 'var(--bg)',
+            padding: '3px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)'
+          }}>
+            <button
+              type="button"
+              onClick={() => handlePeriodTypeChange('week')}
+              style={{
+                padding: '5px 14px',
+                borderRadius: '4px',
+                border: 'none',
+                background: periodType === 'week' ? 'var(--surface)' : 'transparent',
+                color: periodType === 'week' ? 'var(--brand-600, #4F46E5)' : 'var(--text-secondary)',
+                fontWeight: periodType === 'week' ? 700 : 500,
+                fontSize: '13px',
+                cursor: 'pointer',
+                boxShadow: periodType === 'week' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              Week
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePeriodTypeChange('month')}
+              style={{
+                padding: '5px 14px',
+                borderRadius: '4px',
+                border: 'none',
+                background: periodType === 'month' ? 'var(--surface)' : 'transparent',
+                color: periodType === 'month' ? 'var(--brand-600, #4F46E5)' : 'var(--text-secondary)',
+                fontWeight: periodType === 'month' ? 700 : 500,
+                fontSize: '13px',
+                cursor: 'pointer',
+                boxShadow: periodType === 'month' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              Month
+            </button>
+          </div>
+        </div>
+
+        {/* Period Navigation Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => setOffset((prev) => prev - 1)}
+            title={`Previous ${periodType}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <ChevronLeft size={16} />
+            <span>Previous {periodType === 'week' ? 'Week' : 'Month'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setOffset(0)}
+            disabled={offset === 0}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-sm)',
+              border: offset === 0 ? '1px solid var(--brand-300)' : '1px solid var(--border)',
+              background: offset === 0 ? 'var(--brand-50, #EEF2FF)' : 'var(--surface)',
+              color: offset === 0 ? 'var(--brand-700, #4338CA)' : 'var(--text-secondary)',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: offset === 0 ? 'default' : 'pointer'
+            }}
+          >
+            Current {periodType === 'week' ? 'Week' : 'Month'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setOffset((prev) => prev + 1)}
+            disabled={offset >= 0}
+            title={`Next ${periodType}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: offset >= 0 ? 'var(--text-tertiary)' : 'var(--text-primary)',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: offset >= 0 ? 'not-allowed' : 'pointer',
+              opacity: offset >= 0 ? 0.6 : 1
+            }}
+          >
+            <span>Next {periodType === 'week' ? 'Week' : 'Month'}</span>
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
+        {/* Selected Period Badge Label */}
+        <div style={{
+          fontSize: '13px',
+          fontWeight: 700,
+          color: 'var(--text-primary)',
+          background: 'var(--bg)',
+          padding: '6px 12px',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid var(--border)'
+        }}>
+          {data?.period?.label || 'Loading...'}
+        </div>
+      </div>
+
+      {/* Loading Skeleton State */}
+      {loading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} style={{ height: '120px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: '20px' }}>
+              <div style={{ width: '60%', height: '14px', background: 'var(--border)', borderRadius: '4px', marginBottom: '16px' }} />
+              <div style={{ width: '40%', height: '28px', background: 'var(--border)', borderRadius: '4px' }} />
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        /* Error State */
+        <div style={{
+          background: '#FEF2F2',
+          border: '1px solid #FECACA',
+          borderRadius: 'var(--radius-md)',
+          padding: '32px',
+          textAlign: 'center',
+          marginBottom: '24px'
+        }}>
+          <AlertCircle size={36} style={{ color: '#DC2626', marginBottom: '12px' }} />
+          <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#991B1B', margin: '0 0 8px 0' }}>
+            Unable to load your KPI data
+          </h3>
+          <p style={{ fontSize: '13px', color: '#7F1D1D', marginBottom: '16px' }}>
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={fetchDeveloperKPI}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-sm)',
+              background: '#DC2626',
+              color: '#FFFFFF',
+              border: 'none',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
+            <RefreshCw size={14} />
+            <span>Try Again</span>
+          </button>
+        </div>
+      ) : !hasData ? (
+        /* Empty State */
+        <div style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          padding: '48px 24px',
+          textAlign: 'center',
+          marginBottom: '24px',
+          boxShadow: 'var(--shadow-card)'
+        }}>
+          <Award size={48} style={{ color: 'var(--brand-300)', marginBottom: '12px' }} />
+          <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            No KPI data available yet
+          </h3>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '460px', margin: '0 auto 16px auto', lineHeight: 1.5 }}>
+            Your performance summary will appear here once your first KPI evaluation for this period is recorded.
+          </p>
+          <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', background: 'var(--bg)', padding: '6px 12px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)' }}>
+            Selected Period: {data?.period?.label}
+          </span>
+        </div>
+      ) : (
+        /* Loaded Content */
+        <>
+          {/* Top 4 Summary Cards */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
+            gap: '16px',
+            marginBottom: '28px'
+          }}>
+            {/* Card 1: Overall KPI */}
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '20px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Overall KPI</span>
+                  <span title="Average KPI performance for the selected period based on the company's 1-5 KPI scoring system." style={{ cursor: 'help', color: 'var(--text-tertiary)' }}>
+                    <Info size={14} />
+                  </span>
+                </div>
+                <div style={{ padding: '6px', borderRadius: '8px', background: getStatusColor(summary?.status).bg, color: getStatusColor(summary?.status).text }}>
+                  <Target size={18} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
+                  {summary?.overall_percentage != null ? `${summary.overall_percentage}%` : '--'}
+                </span>
+              </div>
+              <div>
+                <span style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-full)',
+                  background: getStatusColor(summary?.status).bg,
+                  color: getStatusColor(summary?.status).text,
+                  border: `1px solid ${getStatusColor(summary?.status).border}`
+                }}>
+                  {summary?.status || 'No Evaluation'}
+                </span>
+              </div>
+            </div>
+
+            {/* Card 2: KPI Score */}
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '20px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>KPI Score</span>
+                  <span title="Average score across evaluated KPI categories for the selected period." style={{ cursor: 'help', color: 'var(--text-tertiary)' }}>
+                    <Info size={14} />
+                  </span>
+                </div>
+                <div style={{ padding: '6px', borderRadius: '8px', background: '#EEF2FF', color: '#4F46E5' }}>
+                  <BarChart3 size={18} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
+                  {summary?.average_score != null ? summary.average_score : '--'}
+                </span>
+                <span style={{ fontSize: '14px', color: 'var(--text-tertiary)', fontWeight: 600 }}>/ 5</span>
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                {summary?.average_score >= 4.5 ? 'Exceptional' : summary?.average_score >= 4.0 ? 'Strong' : summary?.average_score >= 3.5 ? 'Good' : summary?.average_score >= 3.0 ? 'Meets Expectation' : 'Focus Required'}
+              </span>
+            </div>
+
+            {/* Card 3: Performance Trend */}
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '20px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Performance Trend</span>
+                  <span title="Change compared with the previous equivalent period." style={{ cursor: 'help', color: 'var(--text-tertiary)' }}>
+                    <Info size={14} />
+                  </span>
+                </div>
+                <div style={{
+                  padding: '6px',
+                  borderRadius: '8px',
+                  background: summary?.trend_direction === 'up' ? '#ECFDF5' : summary?.trend_direction === 'down' ? '#FEF2F2' : '#F1F5F9',
+                  color: summary?.trend_direction === 'up' ? '#059669' : summary?.trend_direction === 'down' ? '#DC2626' : '#64748B'
+                }}>
+                  <TrendingUp size={18} />
+                </div>
+              </div>
+
+              {summary?.trend_percentage != null ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                    {summary.trend_direction === 'up' ? (
+                      <ArrowUpRight size={22} style={{ color: '#059669' }} />
+                    ) : summary.trend_direction === 'down' ? (
+                      <ArrowDownRight size={22} style={{ color: '#DC2626' }} />
+                    ) : (
+                      <Minus size={22} style={{ color: '#64748B' }} />
+                    )}
+                    <span style={{
+                      fontSize: '26px',
+                      fontWeight: 800,
+                      color: summary.trend_direction === 'up' ? '#059669' : summary.trend_direction === 'down' ? '#DC2626' : 'var(--text-primary)'
+                    }}>
+                      {summary.trend_percentage > 0 ? `+${summary.trend_percentage}%` : `${summary.trend_percentage}%`}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: summary.trend_direction === 'up' ? '#059669' : summary.trend_direction === 'down' ? '#DC2626' : 'var(--text-secondary)' }}>
+                    {summary.trend_direction === 'up' ? 'Improving' : summary.trend_direction === 'down' ? 'Declining' : 'Stable'} vs previous {periodType}
+                  </span>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    No previous data
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                    First period on record
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Card 4: Days Evaluated */}
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '20px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Days Evaluated</span>
+                  <span title="Number of evaluated working days in this period." style={{ cursor: 'help', color: 'var(--text-tertiary)' }}>
+                    <Info size={14} />
+                  </span>
+                </div>
+                <div style={{ padding: '6px', borderRadius: '8px', background: '#F1F5F9', color: '#475569' }}>
+                  <Calendar size={18} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
+                  {summary?.days_evaluated != null ? summary.days_evaluated : 0}
+                </span>
+                <span style={{ fontSize: '14px', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                  / {summary?.expected_days || 5}
+                </span>
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                {data?.period?.label} Coverage ({Math.round(((summary?.days_evaluated || 0) / (summary?.expected_days || 1)) * 100)}%)
+              </span>
+            </div>
+          </div>
+
+          {/* MAIN SECTION 1: KPI PERFORMANCE (Horizontal Progress Bars) */}
+          <div style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '24px',
+            marginBottom: '28px',
+            boxShadow: 'var(--shadow-card)'
+          }}>
+            <div style={{ marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                KPI Performance
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                Aggregated score and percentage across all 10 performance categories for {data?.period?.label}.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {kpis.map((kpi) => {
+                const pct = kpi.percentage;
+                const barColor = pct >= 90 ? '#10B981' : pct >= 80 ? '#6366F1' : pct >= 70 ? '#3B82F6' : pct >= 60 ? '#F59E0B' : '#EF4444';
+                return (
+                  <div key={kpi.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {kpi.name}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          {kpi.score.toFixed(1)} / 5
+                        </span>
+                        <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', minWidth: '42px', textAlign: 'right' }}>
+                          {pct}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      width: '100%',
+                      height: '10px',
+                      background: 'var(--bg)',
+                      borderRadius: '999px',
+                      overflow: 'hidden',
+                      border: '1px solid var(--border)'
+                    }}>
+                      <div style={{
+                        width: `${Math.min(pct, 100)}%`,
+                        height: '100%',
+                        background: barColor,
+                        borderRadius: '999px',
+                        transition: 'width 0.6s ease-in-out'
+                      }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* MAIN SECTION 2: PERFORMANCE TREND CHART */}
+          <div style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '24px',
+            marginBottom: '28px',
+            boxShadow: 'var(--shadow-card)'
+          }}>
+            <div style={{ marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                Performance Trend
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                Period-level aggregated performance over time ({periodType === 'week' ? 'Weekly' : 'Monthly'} aggregation).
+              </p>
+            </div>
+
+            {trend.length > 0 ? (
+              <div style={{ padding: '10px 0' }}>
+                <div style={{ width: '100%', overflowX: 'auto' }}>
+                  <div style={{ minWidth: '480px', height: '180px', position: 'relative' }}>
+                    <svg width="100%" height="150" viewBox="0 0 500 150" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                      <line x1="0" y1="20" x2="500" y2="20" stroke="var(--border)" strokeDasharray="4 4" strokeWidth="1" />
+                      <line x1="0" y1="60" x2="500" y2="60" stroke="var(--border)" strokeDasharray="4 4" strokeWidth="1" />
+                      <line x1="0" y1="100" x2="500" y2="100" stroke="var(--border)" strokeDasharray="4 4" strokeWidth="1" />
+                      <line x1="0" y1="140" x2="500" y2="140" stroke="var(--border)" strokeWidth="1" />
+
+                      {(() => {
+                        const validPoints = trend.map((pt, idx) => {
+                          const x = (idx / (trend.length - 1 || 1)) * 460 + 20;
+                          const pct = pt.percentage != null ? pt.percentage : 0;
+                          const y = 130 - ((pct - 50) / 50) * 110;
+                          return { x, y: Math.max(15, Math.min(135, y)), pt, idx };
+                        });
+
+                        const pathStr = validPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+                        return (
+                          <>
+                            <path d={pathStr} fill="none" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                            {validPoints.map((p) => (
+                              <g key={p.idx}>
+                                <circle
+                                  cx={p.x}
+                                  cy={p.y}
+                                  r={p.pt.is_current ? "7" : "5"}
+                                  fill={p.pt.is_current ? "#4338CA" : "#6366F1"}
+                                  stroke="#FFFFFF"
+                                  strokeWidth="2"
+                                />
+                                {p.pt.percentage != null && (
+                                  <text
+                                    x={p.x}
+                                    y={p.y - 12}
+                                    textAnchor="middle"
+                                    fontSize="12"
+                                    fontWeight="800"
+                                    fill={p.pt.is_current ? "#4338CA" : "var(--text-primary)"}
+                                  >
+                                    {p.pt.percentage}%
+                                  </text>
+                                )}
+                              </g>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </svg>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 10px', marginTop: '10px' }}>
+                      {trend.map((pt) => (
+                        <div
+                          key={pt.offset}
+                          onClick={() => setOffset(pt.offset)}
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: pt.is_current ? 800 : 600,
+                            color: pt.is_current ? 'var(--brand-700, #4338CA)' : 'var(--text-secondary)',
+                            background: pt.is_current ? 'var(--brand-50, #EEF2FF)' : 'transparent',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {pt.label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '30px' }}>
+                No historical trend data available yet.
+              </div>
+            )}
+          </div>
+
+          {/* MAIN SECTION 3: STRENGTHS & FOCUS AREAS (2 Column Grid) */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+            gap: '20px'
+          }}>
+            {/* Strengths Card */}
+            <div style={{
+              background: '#F0FDF4',
+              border: '1px solid #A7F3D0',
+              borderRadius: 'var(--radius-md)',
+              padding: '20px',
+              boxShadow: 'var(--shadow-subtle)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <span style={{ fontSize: '18px' }}>🌟</span>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#065F46', margin: 0 }}>
+                  Strengths
+                </h3>
+              </div>
+              <p style={{ fontSize: '12px', color: '#047857', margin: '0 0 14px 0' }}>
+                Your highest-performing KPI categories for this period.
+              </p>
+
+              {strengths.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {strengths.map((item) => {
+                    const catObj = kpis.find((k) => k.name === item);
+                    return (
+                      <div
+                        key={item}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          background: '#FFFFFF',
+                          padding: '10px 14px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid #6EE7B7'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <CheckCircle2 size={16} style={{ color: '#059669' }} />
+                          <span style={{ fontWeight: 700, fontSize: '13px', color: '#065F46' }}>
+                            {item}
+                          </span>
+                        </div>
+                        {catObj && (
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            background: '#ECFDF5',
+                            color: '#065F46',
+                            padding: '2px 8px',
+                            borderRadius: '4px'
+                          }}>
+                            {catObj.percentage}% ({catObj.score.toFixed(1)}/5)
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontSize: '12px', color: '#047857', fontStyle: 'italic' }}>
+                  No categories recorded yet.
+                </div>
+              )}
+            </div>
+
+            {/* Focus Areas Card */}
+            <div style={{
+              background: '#FFFBEB',
+              border: '1px solid #FDE68A',
+              borderRadius: 'var(--radius-md)',
+              padding: '20px',
+              boxShadow: 'var(--shadow-subtle)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <span style={{ fontSize: '18px' }}>🎯</span>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#92400E', margin: 0 }}>
+                  Focus Areas
+                </h3>
+              </div>
+              <p style={{ fontSize: '12px', color: '#B45309', margin: '0 0 14px 0' }}>
+                Categories where continuous improvement will provide the highest value.
+              </p>
+
+              {focusAreas.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {focusAreas.map((item) => {
+                    const catObj = kpis.find((k) => k.name === item);
+                    return (
+                      <div
+                        key={item}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          background: '#FFFFFF',
+                          padding: '10px 14px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid #FCD34D'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Target size={16} style={{ color: '#D97706' }} />
+                          <span style={{ fontWeight: 700, fontSize: '13px', color: '#92400E' }}>
+                            {item}
+                          </span>
+                        </div>
+                        {catObj && (
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            background: '#FFFBEB',
+                            color: '#92400E',
+                            padding: '2px 8px',
+                            borderRadius: '4px'
+                          }}>
+                            {catObj.percentage}% ({catObj.score.toFixed(1)}/5)
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontSize: '12px', color: '#B45309', fontStyle: 'italic' }}>
+                  No categories recorded yet.
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const KpiPage = () => {
   const { user } = useAuth();
 
@@ -272,6 +1096,15 @@ const KpiPage = () => {
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
   const canGiveOrEdit = isTL;
+
+  const [viewMode, setViewMode] = useState(isTM ? 'personal' : 'management');
+
+  // Sync viewMode if user role updates
+  useEffect(() => {
+    if (isTM) {
+      setViewMode('personal');
+    }
+  }, [isTM]);
 
   const loadData = useCallback(async () => {
     try {
@@ -441,8 +1274,64 @@ const KpiPage = () => {
 
   const liveMetrics = useMemo(() => calculateLiveMetrics(formData), [formData]);
 
+  if (isTM || viewMode === 'personal') {
+    return (
+      <DeveloperDashboardView
+        showRulesModal={showRulesModal}
+        setShowRulesModal={setShowRulesModal}
+        onSwitchToManagement={() => setViewMode('management')}
+        isManagementUser={!isTM}
+      />
+    );
+  }
+
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto' }}>
+      {/* View Mode Switching Tabs for Management Users */}
+      {!isTM && (
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '20px',
+          background: 'var(--surface)',
+          padding: '6px 10px',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border)',
+          width: 'fit-content'
+        }}>
+          <button
+            onClick={() => setViewMode('management')}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              background: viewMode === 'management' ? 'var(--brand-gradient)' : 'transparent',
+              color: viewMode === 'management' ? '#FFFFFF' : 'var(--text-secondary)',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
+            Management KPI View
+          </button>
+          <button
+            onClick={() => setViewMode('personal')}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              background: viewMode === 'personal' ? 'var(--brand-gradient)' : 'transparent',
+              color: viewMode === 'personal' ? '#FFFFFF' : 'var(--text-secondary)',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
+            My Performance Overview
+          </button>
+        </div>
+      )}
+
       {/* Top Header */}
       <div style={{
         display: 'flex',
