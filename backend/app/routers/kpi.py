@@ -1,6 +1,7 @@
 import csv
 import io
-from datetime import date, datetime
+import calendar
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 from uuid import UUID
 
@@ -169,6 +170,255 @@ def get_kpi_summary(
         average_kpi=avg_pct,
         status_counts=status_counts
     )
+
+
+def get_prev_period_logs(db: Session, employee_id: UUID, period_type: str, offset: int, today: date):
+    prev_offset = offset - 1
+    if period_type == "week":
+        current_start = today - timedelta(days=today.weekday())
+        start_date = current_start + timedelta(weeks=prev_offset)
+        end_date = start_date + timedelta(days=6)
+    else:
+        total_months = today.year * 12 + (today.month - 1) + prev_offset
+        target_year = total_months // 12
+        target_month = (total_months % 12) + 1
+        start_date = date(target_year, target_month, 1)
+        last_day = calendar.monthrange(target_year, target_month)[1]
+        end_date = date(target_year, target_month, last_day)
+
+    return db.query(DailyKPILog).filter(
+        DailyKPILog.employee_id == employee_id,
+        DailyKPILog.date >= start_date,
+        DailyKPILog.date <= min(end_date, today)
+    ).all()
+
+
+def get_trend_history(db: Session, employee_id: UUID, period_type: str, current_offset: int):
+    today = date.today()
+    points = []
+    # Return 5 historical points ending at current_offset
+    for i in range(4, -1, -1):
+        off = current_offset - i
+        if period_type == "week":
+            current_start = today - timedelta(days=today.weekday())
+            start_date = current_start + timedelta(weeks=off)
+            end_date = start_date + timedelta(days=6)
+            if off == 0:
+                short_label = "This Wk"
+            elif off == -1:
+                short_label = "Prev Wk"
+            else:
+                short_label = start_date.strftime("%b %d")
+        else:
+            total_months = today.year * 12 + (today.month - 1) + off
+            target_year = total_months // 12
+            target_month = (total_months % 12) + 1
+            start_date = date(target_year, target_month, 1)
+            last_day = calendar.monthrange(target_year, target_month)[1]
+            end_date = date(target_year, target_month, last_day)
+            short_label = start_date.strftime("%b %y")
+
+        period_logs = db.query(DailyKPILog).filter(
+            DailyKPILog.employee_id == employee_id,
+            DailyKPILog.date >= start_date,
+            DailyKPILog.date <= min(end_date, today)
+        ).all()
+
+        if period_logs:
+            avg_pct = round(sum(l.daily_kpi_percentage for l in period_logs) / len(period_logs), 1)
+        else:
+            avg_pct = None
+
+        points.append({
+            "label": short_label,
+            "percentage": avg_pct,
+            "offset": off,
+            "is_current": (off == current_offset)
+        })
+    return points
+
+
+@router.get("/my-kpi")
+def get_my_kpi(
+    period_type: str = Query("week", regex="^(week|month)$"),
+    offset: int = Query(0),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """
+    Developer Dashboard API (Personal Aggregated KPI View).
+    Provides aggregated weekly/monthly KPI performance for the authenticated user only.
+    Excludes raw daily records, evaluator identity, internal notes, and peer data.
+    """
+    today = date.today()
+
+    if period_type == "week":
+        current_start = today - timedelta(days=today.weekday())
+        start_date = current_start + timedelta(weeks=offset)
+        end_date = start_date + timedelta(days=6)
+
+        if offset == 0:
+            period_label = "This Week"
+        elif offset == -1:
+            period_label = "Previous Week"
+        else:
+            period_label = f"Week of {start_date.strftime('%b %d')} - {end_date.strftime('%b %d')}"
+
+        eval_until = min(end_date, today)
+        expected_days = 0
+        if start_date <= eval_until:
+            cur = start_date
+            while cur <= eval_until:
+                if cur.weekday() < 5:
+                    expected_days += 1
+                cur += timedelta(days=1)
+        else:
+            expected_days = 5
+    else:
+        total_months = today.year * 12 + (today.month - 1) + offset
+        target_year = total_months // 12
+        target_month = (total_months % 12) + 1
+
+        start_date = date(target_year, target_month, 1)
+        last_day = calendar.monthrange(target_year, target_month)[1]
+        end_date = date(target_year, target_month, last_day)
+
+        period_label = start_date.strftime("%B %Y")
+
+        eval_until = min(end_date, today)
+        expected_days = 0
+        if start_date <= eval_until:
+            cur = start_date
+            while cur <= eval_until:
+                if cur.weekday() < 5:
+                    expected_days += 1
+                cur += timedelta(days=1)
+        else:
+            expected_days = sum(1 for d in range(1, last_day + 1) if date(target_year, target_month, d).weekday() < 5)
+
+    logs = db.query(DailyKPILog).filter(
+        DailyKPILog.employee_id == user.id,
+        DailyKPILog.date >= start_date,
+        DailyKPILog.date <= min(end_date, today)
+    ).order_by(DailyKPILog.date.asc()).all()
+
+    days_evaluated = len(logs)
+
+    categories_meta = [
+        ("task_completion", "Task Completion", 3),
+        ("quality", "Quality", 3),
+        ("productivity", "Productivity", 3),
+        ("deadline_adherence", "Deadline Adherence", 2),
+        ("ownership", "Ownership", 2),
+        ("problem_solving", "Problem Solving", 2),
+        ("communication", "Communication", 2),
+        ("team_collaboration", "Team Collaboration", 1),
+        ("learning_improvement", "Learning / Improvement", 1),
+        ("attendance_discipline", "Attendance & Discipline", 1)
+    ]
+
+    trend_history = get_trend_history(db, user.id, period_type, offset)
+
+    if days_evaluated == 0:
+        return {
+            "period": {
+                "type": period_type,
+                "label": period_label,
+                "start": start_date.isoformat(),
+                "end": end_date.isoformat(),
+                "offset": offset
+            },
+            "summary": {
+                "overall_percentage": None,
+                "average_score": None,
+                "status": None,
+                "trend_percentage": None,
+                "trend_direction": None,
+                "days_evaluated": 0,
+                "expected_days": max(expected_days, 1)
+            },
+            "kpis": [],
+            "trend": trend_history,
+            "strengths": [],
+            "focus_areas": [],
+            "has_data": False
+        }
+
+    total_pct = sum(l.daily_kpi_percentage for l in logs)
+    overall_percentage = round(total_pct / days_evaluated, 1)
+    average_score = round((overall_percentage / 100.0) * 5.0, 1)
+
+    if overall_percentage >= 90.0:
+        status = "Excellent"
+    elif overall_percentage >= 80.0:
+        status = "Very Good"
+    elif overall_percentage >= 70.0:
+        status = "Meets Expectation"
+    elif overall_percentage >= 60.0:
+        status = "Needs Improvement"
+    else:
+        status = "Requires Attention"
+
+    kpis_list = []
+    category_items = []
+    for key, name, weight in categories_meta:
+        scores = [getattr(l, key) for l in logs]
+        cat_score = round(sum(scores) / len(scores), 2)
+        cat_pct = round((cat_score / 5.0) * 100)
+        kpis_list.append({
+            "name": name,
+            "key": key,
+            "score": cat_score,
+            "percentage": cat_pct
+        })
+        category_items.append((name, cat_pct, cat_score))
+
+    sorted_cats = sorted(category_items, key=lambda x: x[1], reverse=True)
+    strengths = [item[0] for item in sorted_cats[:3]]
+    focus_areas = [item[0] for item in sorted_cats[-3:]][::-1]
+
+    prev_logs = get_prev_period_logs(db, user.id, period_type, offset, today)
+    if prev_logs and len(prev_logs) > 0:
+        prev_pct = sum(l.daily_kpi_percentage for l in prev_logs) / len(prev_logs)
+        if prev_pct > 0:
+            raw_diff = overall_percentage - prev_pct
+            trend_percentage = round((raw_diff / prev_pct) * 100, 1)
+            if trend_percentage > 0:
+                trend_direction = "up"
+            elif trend_percentage < 0:
+                trend_direction = "down"
+            else:
+                trend_direction = "flat"
+        else:
+            trend_percentage = None
+            trend_direction = None
+    else:
+        trend_percentage = None
+        trend_direction = None
+
+    return {
+        "period": {
+            "type": period_type,
+            "label": period_label,
+            "start": start_date.isoformat(),
+            "end": end_date.isoformat(),
+            "offset": offset
+        },
+        "summary": {
+            "overall_percentage": overall_percentage,
+            "average_score": average_score,
+            "status": status,
+            "trend_percentage": trend_percentage,
+            "trend_direction": trend_direction,
+            "days_evaluated": days_evaluated,
+            "expected_days": max(expected_days, days_evaluated)
+        },
+        "kpis": kpis_list,
+        "trend": trend_history,
+        "strengths": strengths,
+        "focus_areas": focus_areas,
+        "has_data": True
+    }
 
 
 @router.get("/teammates", response_model=List[KPIUserSummary])

@@ -10,6 +10,11 @@ export const getKPISummary = async (params = {}) => {
   return res.data;
 };
 
+export const getMyKPI = async (params = {}) => {
+  const res = await api.get('/kpi/my-kpi', { params });
+  return res.data;
+};
+
 export const getKPITeammates = async () => {
   const res = await api.get('/kpi/teammates');
   return res.data;
