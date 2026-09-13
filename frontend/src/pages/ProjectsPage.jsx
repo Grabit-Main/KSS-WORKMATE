@@ -14,6 +14,104 @@ import {
 import { AttachmentCard } from '../components/common/AttachmentCard';
 import { DayWiseTaskPlanner, formatDeadlineWithTime } from '../components/projects/DayWiseTaskPlanner';
 
+const PROJECT_THEMES = [
+  {
+    headerBg: '#5551FF',      // Purple / Indigo (City 360 Nagara)
+    headerText: '#FFFFFF',
+    tagBg: '#FFFFFF',
+    tagText: '#5551FF',
+    codeBg: 'rgba(255, 255, 255, 0.25)',
+    codeText: '#FFFFFF',
+    teamBg: '#EEF2FF',
+    teamText: '#4338CA',
+    teamIcon: '#4F46E5',
+    btnBg: '#5551FF',
+    btnHover: '#4338CA',
+    defaultCode: 'CTY'
+  },
+  {
+    headerBg: '#E17842',      // Warm Orange / Rust (Life OS)
+    headerText: '#FFFFFF',
+    tagBg: '#FFFFFF',
+    tagText: '#E17842',
+    codeBg: 'rgba(255, 255, 255, 0.25)',
+    codeText: '#FFFFFF',
+    teamBg: '#FFF7ED',
+    teamText: '#C2410C',
+    teamIcon: '#EA580C',
+    btnBg: '#E17842',
+    btnHover: '#C2410C',
+    defaultCode: 'LOS'
+  },
+  {
+    headerBg: '#1EA566',      // Vibrant Emerald Green (Blinkit)
+    headerText: '#FFFFFF',
+    tagBg: '#FFFFFF',
+    tagText: '#1EA566',
+    codeBg: 'rgba(255, 255, 255, 0.25)',
+    codeText: '#FFFFFF',
+    teamBg: '#ECFDF5',
+    teamText: '#047857',
+    teamIcon: '#059669',
+    btnBg: '#1EA566',
+    btnHover: '#047857',
+    defaultCode: 'BLK'
+  },
+  {
+    headerBg: '#0284C7',      // Sky / Royal Blue
+    headerText: '#FFFFFF',
+    tagBg: '#FFFFFF',
+    tagText: '#0284C7',
+    codeBg: 'rgba(255, 255, 255, 0.25)',
+    codeText: '#FFFFFF',
+    teamBg: '#F0F9FF',
+    teamText: '#0369A1',
+    teamIcon: '#0284C7',
+    btnBg: '#0284C7',
+    btnHover: '#0369A1',
+    defaultCode: 'PRJ'
+  },
+  {
+    headerBg: '#8B5CF6',      // Violet / Purple
+    headerText: '#FFFFFF',
+    tagBg: '#FFFFFF',
+    tagText: '#8B5CF6',
+    codeBg: 'rgba(255, 255, 255, 0.25)',
+    codeText: '#FFFFFF',
+    teamBg: '#F5F3FF',
+    teamText: '#6D28D9',
+    teamIcon: '#7C3AED',
+    btnBg: '#8B5CF6',
+    btnHover: '#6D28D9',
+    defaultCode: 'APP'
+  }
+];
+
+const getProjectTheme = (project, index) => {
+  const name = (project.name || '').toLowerCase();
+  if (name.includes('city') || name.includes('nagara')) {
+    return { ...PROJECT_THEMES[0], code: 'CTY' };
+  }
+  if (name.includes('life os') || name.includes('life')) {
+    return { ...PROJECT_THEMES[1], code: 'LOS' };
+  }
+  if (name.includes('blinkit')) {
+    return { ...PROJECT_THEMES[2], code: 'BLK' };
+  }
+  
+  const theme = PROJECT_THEMES[index % PROJECT_THEMES.length];
+  const words = project.name ? project.name.split(/[\s\-()]+/).filter(Boolean) : [];
+  let code = theme.defaultCode;
+  if (words.length >= 3) {
+    code = (words[0][0] + words[1][0] + words[2][0]).toUpperCase();
+  } else if (words.length === 2) {
+    code = (words[0].substring(0, 2) + words[1][0]).toUpperCase();
+  } else if (words.length === 1 && words[0].length >= 3) {
+    code = words[0].substring(0, 3).toUpperCase();
+  }
+  return { ...theme, code };
+};
+
 const ProjectsPage = () => {
   const { user } = useAuth();
   const cacheKey = user ? `cache_projects_${user.id}` : 'cache_projects';
@@ -733,15 +831,26 @@ const ProjectsPage = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
-        {filteredProjects.map(p => {
+        {filteredProjects.map((p, index) => {
           const stats = getProjectTaskStats(p);
           const allocatedTeams = stats.allocatedTeams;
           const attachments = p.attachments || [];
+          const theme = getProjectTheme(p, index);
+
+          // Deadline calculation
+          let deadlineText = 'No deadline set';
+          let isOverdue = false;
+          if (p.deadline) {
+            const d = parseIsoDate(p.deadline);
+            if (d) {
+              isOverdue = d.getTime() < Date.now() && p.status !== 'completed';
+              deadlineText = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            }
+          }
 
           return (
             <div
               key={p.id}
-              className="card"
               onClick={() => {
                 if (['TL', 'TM'].includes(user?.role)) {
                   setPlannerProject(p);
@@ -750,281 +859,340 @@ const ProjectsPage = () => {
                 }
               }}
               style={{
+                background: '#FFFFFF',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03)',
+                border: '1px solid #E2E8F0',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between',
-                minHeight: '330px',
-                height: '100%',
                 cursor: 'pointer',
-                transition: 'all var(--transition-smooth)',
-                position: 'relative',
-                padding: '22px'
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                position: 'relative'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.09)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03)';
               }}
             >
-              <div>
-                <div className="flex justify-between items-center mb-3" style={{ minHeight: '26px' }}>
-                  <div className="flex items-center gap-2">
-                    <span style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '3px 10px',
-                      borderRadius: 'var(--radius-full)',
-                      background: 'var(--brand-50)',
-                      color: 'var(--brand-700)',
-                      border: '1px solid rgba(99, 102, 241, 0.15)',
-                      letterSpacing: '0.03em'
-                    }}>
-                      {p.status?.toUpperCase() || 'ACTIVE'}
+              {/* Colored Top Header Banner */}
+              <div
+                style={{
+                  background: theme.headerBg,
+                  color: theme.headerText,
+                  padding: '20px 22px 18px 22px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}
+              >
+                {/* Header Top Meta Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span
+                      style={{
+                        background: theme.tagBg,
+                        color: theme.tagText,
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '3px 10px',
+                        borderRadius: '9999px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      {p.status ? p.status.toUpperCase() : 'ACTIVE'}
                     </span>
-                    {p.deadline && (() => {
-                      const d = parseIsoDate(p.deadline);
-                      if (!d) return null;
-                      const isOverdue = d.getTime() < Date.now() && p.status !== 'completed';
-                      return (
-                        <span
-                          className="text-xs font-medium"
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            color: isOverdue ? '#DC2626' : 'var(--text-secondary)',
-                            background: isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-                            padding: isOverdue ? '2px 8px' : '0',
-                            borderRadius: isOverdue ? 'var(--radius-sm)' : '0',
-                            border: isOverdue ? '1px solid rgba(239, 68, 68, 0.25)' : 'none'
-                          }}
-                        >
-                          {isOverdue ? <AlertTriangle size={13} color="#DC2626" /> : <Calendar size={13} strokeWidth={1.8} style={{ color: 'var(--text-tertiary)' }} />}
-                          <span>{d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          {isOverdue && <strong style={{ color: '#DC2626', fontSize: '11px' }}>Exceeded</strong>}
-                        </span>
-                      );
-                    })()}
+                    <span
+                      style={{
+                        background: theme.codeBg,
+                        color: theme.codeText,
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '3px 10px',
+                        borderRadius: '6px',
+                        letterSpacing: '0.06em'
+                      }}
+                    >
+                      {theme.code}
+                    </span>
                   </div>
 
+                  {/* Management Edit/Delete Buttons */}
                   {['PM', 'CEO', 'CTO'].includes(user?.role) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={e => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={(e) => handleOpenEditModal(p, e)}
                         style={{
-                          background: 'transparent',
+                          background: 'rgba(255, 255, 255, 0.18)',
                           border: 'none',
                           cursor: 'pointer',
-                          padding: '4px',
-                          borderRadius: 'var(--radius-sm)',
-                          color: 'var(--text-secondary)',
+                          padding: '5px',
+                          borderRadius: '6px',
+                          color: '#FFFFFF',
                           display: 'flex',
                           alignItems: 'center',
-                          transition: 'all var(--transition-fast)'
+                          justifyContent: 'center',
+                          transition: 'all 0.15s ease'
                         }}
                         title="Edit Project"
-                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--brand-600)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'; }}
                       >
-                        <Pencil size={14} />
+                        <Pencil size={13} />
                       </button>
 
                       <button
                         type="button"
                         onClick={(e) => handleDeleteProject(p.id, p.name, e)}
                         style={{
-                          background: 'transparent',
+                          background: 'rgba(255, 255, 255, 0.18)',
                           border: 'none',
                           cursor: 'pointer',
-                          padding: '4px',
-                          borderRadius: 'var(--radius-sm)',
-                          color: 'var(--text-tertiary)',
+                          padding: '5px',
+                          borderRadius: '6px',
+                          color: '#FFFFFF',
                           display: 'flex',
                           alignItems: 'center',
-                          transition: 'all var(--transition-fast)'
+                          justifyContent: 'center',
+                          transition: 'all 0.15s ease'
                         }}
                         title="Delete Project"
-                        onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#EF4444'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'; }}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   )}
                 </div>
 
-                <h3 className="font-bold text-base mb-2" style={{
-                  letterSpacing: '-0.015em',
-                  color: 'var(--text-primary)',
-                  minHeight: '44px',
-                  lineHeight: '1.35',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden'
-                }}>
+                {/* Project Title */}
+                <h3
+                  style={{
+                    color: '#FFFFFF',
+                    fontSize: '19px',
+                    fontWeight: 700,
+                    margin: 0,
+                    lineHeight: '1.3',
+                    letterSpacing: '-0.01em',
+                    fontFamily: 'serif, Georgia, Inter, sans-serif',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}
+                >
                   {p.name}
                 </h3>
+              </div>
 
-                <p className="text-sm text-secondary" style={{
-                  minHeight: '38px',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  lineHeight: '1.45',
-                  marginBottom: '12px'
-                }}>
-                  {p.aim}
+              {/* White Card Body Container */}
+              <div
+                style={{
+                  padding: '20px 22px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flex: 1,
+                  background: '#FFFFFF'
+                }}
+              >
+                {/* Aim / Description */}
+                <p
+                  style={{
+                    fontSize: '13px',
+                    color: '#475569',
+                    lineHeight: '1.5',
+                    marginBottom: '16px',
+                    minHeight: '38px',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {p.aim || 'No description provided for this project.'}
                 </p>
 
-                {/* Standardized Progress Bar */}
-                <div style={{ marginBottom: '12px', minHeight: '30px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                      Progress {stats.total > 0 ? `(${stats.completed}/${stats.total} Tasks)` : '(0 Tasks Scheduled)'}
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--brand-600)', fontWeight: 700 }}>
-                      {stats.total > 0 ? `${stats.percent}%` : '0%'}
-                    </span>
+                {/* Soft Red / Alert Box for Deadline */}
+                <div
+                  style={{
+                    background: isOverdue ? '#FEF2F2' : '#F8FAFC',
+                    border: isOverdue ? '1px solid #FEE2E2' : '1px solid #E2E8F0',
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: isOverdue ? '#B91C1C' : '#475569', fontWeight: 500 }}>
+                    <Calendar size={14} color={isOverdue ? '#DC2626' : '#64748B'} />
+                    <span>{deadlineText}</span>
                   </div>
-                  <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${stats.percent || 0}%`,
-                      height: '100%',
-                      background: 'var(--brand-gradient)',
-                      borderRadius: 'var(--radius-full)',
-                      transition: 'width 0.4s ease'
-                    }} />
-                  </div>
-                </div>
 
-                {/* Allocated Squads Pill */}
-                <div style={{ marginBottom: '10px', minHeight: '26px', display: 'flex', alignItems: 'center' }}>
-                  {allocatedTeams.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                      {allocatedTeams.slice(0, 2).map(t => (
-                        <span
-                          key={t.id}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            padding: '3px 9px',
-                            borderRadius: 'var(--radius-full)',
-                            background: 'rgba(99, 102, 241, 0.08)',
-                            color: 'var(--brand-700)',
-                            border: '1px solid rgba(99, 102, 241, 0.2)',
-                            fontSize: '11px',
-                            fontWeight: 600
-                          }}
-                        >
-                          <Users size={11} />
-                          {t.name}
-                        </span>
-                      ))}
-                      {allocatedTeams.length > 2 && (
-                        <span style={{
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          padding: '3px 8px',
-                          borderRadius: 'var(--radius-full)',
-                          background: 'var(--subtle)',
-                          border: '1px solid var(--border)',
-                          color: 'var(--text-secondary)'
-                        }}>
-                          +{allocatedTeams.length - 2} more
-                        </span>
-                      )}
-                    </div>
-                  ) : (
+                  {p.deadline && (
                     <span style={{
                       fontSize: '11px',
-                      color: 'var(--text-tertiary)',
-                      display: 'inline-flex',
+                      fontWeight: 700,
+                      color: isOverdue ? '#DC2626' : '#16A34A',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '3px'
                     }}>
-                      <Users size={11} /> Unallocated Squad
+                      {isOverdue ? '⚠️ Exceeded' : '✓ On Track'}
                     </span>
                   )}
                 </div>
 
-                {/* Compact Attachments Preview */}
-                {attachments.length > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }} onClick={e => e.stopPropagation()}>
-                    <span style={{
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      padding: '3px 8px',
-                      borderRadius: 'var(--radius-full)',
-                      background: 'var(--subtle)',
-                      border: '1px solid var(--border)',
-                      color: 'var(--brand-700)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <Paperclip size={11} /> {attachments.length} attachment{attachments.length === 1 ? '' : 's'}
+                {/* Progress Header & Bar */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>
+                      Progress · {stats.total > 0 ? `${stats.total} tasks scheduled` : '0 tasks scheduled'}
+                    </span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: theme.headerBg }}>
+                      {stats.percent}%
                     </span>
                   </div>
-                )}
-              </div>
+                  <div style={{ width: '100%', height: '7px', background: '#E2E8F0', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${stats.percent || 0}%`,
+                        height: '100%',
+                        background: theme.headerBg,
+                        borderRadius: '9999px',
+                        transition: 'width 0.4s ease'
+                      }}
+                    />
+                  </div>
+                </div>
 
-              {/* Project Card Footer Actions */}
-              <div style={{
-                width: '100%',
-                marginTop: 'auto',
-                paddingTop: '12px',
-                borderTop: '1px solid var(--border)',
-                display: 'flex',
-                justifyContent: ['TL', 'TM'].includes(user?.role) ? 'space-between' : 'flex-end',
-                alignItems: 'center',
-                gap: '8px',
-                minHeight: '44px'
-              }}>
-                {['TL', 'TM'].includes(user?.role) && (
+                {/* Squad Pill & Attachments row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                  {allocatedTeams.length > 0 ? (
+                    allocatedTeams.slice(0, 2).map(t => (
+                      <span
+                        key={t.id}
+                        style={{
+                          background: theme.teamBg,
+                          color: theme.teamText,
+                          padding: '4px 11px',
+                          borderRadius: '9999px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <Users size={12} color={theme.teamIcon} />
+                        {t.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span
+                      style={{
+                        background: '#F1F5F9',
+                        color: '#64748B',
+                        padding: '4px 11px',
+                        borderRadius: '9999px',
+                        fontSize: '11px',
+                        fontWeight: 500,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <Users size={12} />
+                      Unallocated Squad
+                    </span>
+                  )}
+
+                  {allocatedTeams.length > 2 && (
+                    <span style={{ background: '#F1F5F9', color: '#475569', fontSize: '11px', fontWeight: 600, padding: '4px 8px', borderRadius: '9999px' }}>
+                      +{allocatedTeams.length - 2}
+                    </span>
+                  )}
+
+                  {attachments.length > 0 && (
+                    <span style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#475569', fontSize: '11px', fontWeight: 500, padding: '3px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Paperclip size={11} /> {attachments.length}
+                    </span>
+                  )}
+                </div>
+
+                {/* Grid 2-Column Action Buttons */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: ['TL', 'TM'].includes(user?.role) ? '1fr 1fr' : '1fr',
+                    gap: '10px',
+                    marginTop: 'auto',
+                    paddingTop: '12px'
+                  }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {['TL', 'TM'].includes(user?.role) && (
+                    <button
+                      type="button"
+                      onClick={() => setPlannerProject(p)}
+                      style={{
+                        background: '#FFFFFF',
+                        border: '1px solid #CBD5E1',
+                        color: '#1E293B',
+                        borderRadius: '8px',
+                        padding: '9px 12px',
+                        fontWeight: 600,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.borderColor = '#94A3B8'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
+                    >
+                      <Calendar size={13} color="#475569" />
+                      <span>Day-wise tasks</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPlannerProject(p);
-                    }}
-                    className="btn btn-sm"
+                    onClick={() => setSelectedProject(p)}
                     style={{
-                      background: 'var(--brand-50)',
-                      border: '1px solid rgba(99, 102, 241, 0.25)',
-                      borderRadius: 'var(--radius-full)',
-                      padding: '5px 12px',
-                      color: 'var(--brand-700)',
+                      background: theme.btnBg,
+                      border: 'none',
+                      color: '#FFFFFF',
+                      borderRadius: '8px',
+                      padding: '9px 12px',
                       fontWeight: 600,
-                      fontSize: '11px',
-                      display: 'inline-flex',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: '5px'
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      transition: 'all 0.15s ease'
                     }}
-                    title="Open day-wise deliverables planner"
+                    onMouseEnter={(e) => { e.currentTarget.style.background = theme.btnHover; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = theme.btnBg; }}
                   >
-                    <Calendar size={13} />
-                    <span>Day-Wise Tasks</span>
+                    <span>Overview</span>
+                    <ArrowRight size={13} strokeWidth={2.2} />
                   </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedProject(p);
-                  }}
-                  className="btn btn-sm btn-secondary"
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '11px',
-                    borderRadius: 'var(--radius-full)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                >
-                  <span>Overview</span>
-                  <ArrowRight size={12} strokeWidth={2} />
-                </button>
+                </div>
               </div>
             </div>
           );
