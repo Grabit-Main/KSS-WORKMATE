@@ -490,19 +490,101 @@ const TasksPage = () => {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Page Title Section */}
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>Tasks</h2>
-          <p className="text-sm text-secondary mt-1">Track assignments, self-assigned workload, and delivery milestones</p>
+          <h2 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', color: '#1E293B', fontFamily: 'serif, Georgia, Inter, sans-serif', marginBottom: '4px' }}>
+            Tasks & Deliverables
+          </h2>
+          <p style={{ fontSize: '14px', color: '#64748B', margin: 0 }}>
+            Track assignments, self-assigned workload, and delivery milestones.
+          </p>
         </div>
 
         {/* Leadership actions: CEO, CTO, PM, TL can assign tasks */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           {['CEO', 'CTO', 'PM', 'TL'].includes(user.role) && (
-            <button className="btn btn-primary" onClick={() => openNewTaskModal()}>
-              <Plus size={16} /> New Task
+            <button
+              className="btn btn-primary"
+              onClick={() => openNewTaskModal()}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', background: '#5551FF', borderRadius: '8px', padding: '10px 18px', fontWeight: 600 }}
+            >
+              <Plus size={16} />
+              <span>New Task</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Top Metric Cards Row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+        gap: '16px',
+        marginBottom: '20px'
+      }}>
+        {/* Total Tasks */}
+        <div style={{
+          background: '#EEF2FF',
+          border: '1px solid rgba(85, 81, 255, 0.2)',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Total Workload
+          </span>
+          <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
+            {userTasks.length}
+          </h3>
+        </div>
+
+        {/* Completed */}
+        <div style={{
+          background: '#ECFDF5',
+          border: '1px solid rgba(16, 185, 129, 0.2)',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Completed
+          </span>
+          <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
+            {userTasks.filter(t => t.status === 'completed').length}
+          </h3>
+        </div>
+
+        {/* In Progress */}
+        <div style={{
+          background: '#EBF5FF',
+          border: '1px solid rgba(37, 99, 235, 0.2)',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            In Progress
+          </span>
+          <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
+            {userTasks.filter(t => t.status === 'in_progress').length}
+          </h3>
+        </div>
+
+        {/* In Review */}
+        <div style={{
+          background: '#FFF7ED',
+          border: '1px solid rgba(217, 119, 6, 0.2)',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            In Review
+          </span>
+          <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
+            {userTasks.filter(t => t.status === 'in_review').length}
+          </h3>
         </div>
       </div>
 
@@ -519,18 +601,19 @@ const TasksPage = () => {
             key={tab.id}
             onClick={() => setFilterTab(tab.id)}
             style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
+              padding: '7px 16px',
+              borderRadius: '9999px',
               fontSize: '12px',
-              fontWeight: filterTab === tab.id ? 600 : 500,
+              fontWeight: filterTab === tab.id ? 700 : 500,
               border: '1px solid',
-              borderColor: filterTab === tab.id ? 'var(--brand-600)' : 'var(--border)',
-              background: filterTab === tab.id ? 'var(--brand-50)' : 'var(--surface)',
-              color: filterTab === tab.id ? 'var(--brand-700)' : 'var(--text-secondary)',
+              borderColor: filterTab === tab.id ? '#5551FF' : '#E2E8F0',
+              background: filterTab === tab.id ? '#5551FF' : '#FFFFFF',
+              color: filterTab === tab.id ? '#FFFFFF' : '#475569',
               cursor: 'pointer',
-              transition: 'all var(--transition-fast)',
+              transition: 'all 0.15s ease',
               whiteSpace: 'nowrap',
-              flexShrink: 0
+              flexShrink: 0,
+              boxShadow: filterTab === tab.id ? '0 2px 6px rgba(85, 81, 255, 0.2)' : 'none'
             }}
           >
             {tab.label}

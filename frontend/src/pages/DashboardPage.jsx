@@ -253,150 +253,178 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* KPI Widgets */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', marginBottom: '32px' }}>
-        <div className="card" style={{
-          position: 'relative',
-          overflow: 'hidden',
-          background: 'linear-gradient(145deg, var(--surface) 0%, rgba(238, 242, 255, 0.4) 100%)',
-          border: '1px solid rgba(99, 102, 241, 0.15)',
-          minHeight: '135px',
-          height: '100%',
+      {/* KPI Widgets - Pastel Colored Metric Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '16px', marginBottom: '24px' }}>
+        {/* Total Tasks */}
+        <div style={{
+          background: '#EEF2FF',
+          border: '1px solid rgba(85, 81, 255, 0.2)',
+          borderRadius: '16px',
+          padding: '20px 22px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
+          justifyContent: 'space-between',
+          minHeight: '135px',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          cursor: 'default'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(85, 81, 255, 0.12)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)'; }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div className="text-xs font-semibold text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Total Tasks
               </div>
-              <div className="text-3xl font-bold mt-2 mb-1" style={{ color: 'var(--brand-600)', letterSpacing: '-0.03em' }}>
+              <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '6px', marginBottom: '2px' }}>
                 {kpi.total_tasks}
               </div>
             </div>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--brand-100)',
-              color: 'var(--brand-600)',
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              background: '#FFFFFF',
+              color: '#5551FF',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
             }}>
-              <CheckSquare size={19} strokeWidth={2} />
+              <CheckSquare size={17} strokeWidth={2} />
             </div>
           </div>
-          <div className="text-xs text-secondary mt-2">Active workload volume</div>
+          <div style={{ fontSize: '12px', color: '#475569', fontWeight: 500 }}>Active workload volume</div>
         </div>
 
-        <div className="card" style={{
-          position: 'relative',
-          overflow: 'hidden',
-          background: 'linear-gradient(145deg, var(--surface) 0%, rgba(209, 250, 229, 0.35) 100%)',
-          border: '1px solid rgba(16, 185, 129, 0.15)',
-          minHeight: '135px',
-          height: '100%',
+        {/* Completed */}
+        <div style={{
+          background: '#ECFDF5',
+          border: '1px solid rgba(16, 185, 129, 0.2)',
+          borderRadius: '16px',
+          padding: '20px 22px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
+          justifyContent: 'space-between',
+          minHeight: '135px',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          cursor: 'default'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.12)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)'; }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div className="text-xs font-semibold text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Completed
               </div>
-              <div className="text-3xl font-bold mt-2 mb-1" style={{ color: 'var(--status-completed)', letterSpacing: '-0.03em' }}>
+              <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '6px', marginBottom: '2px' }}>
                 {kpi.completed}
               </div>
             </div>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--status-completed-bg)',
-              color: 'var(--status-completed)',
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              background: '#FFFFFF',
+              color: '#059669',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
             }}>
-              <CheckCircle2 size={19} strokeWidth={2} />
+              <CheckCircle2 size={17} strokeWidth={2} />
             </div>
           </div>
-          <div className="text-xs text-secondary mt-2">Successfully closed</div>
+          <div style={{ fontSize: '12px', color: '#475569', fontWeight: 500 }}>Successfully closed</div>
         </div>
 
-        <div className="card" style={{
-          position: 'relative',
-          overflow: 'hidden',
-          background: 'linear-gradient(145deg, var(--surface) 0%, rgba(254, 243, 199, 0.35) 100%)',
-          border: '1px solid rgba(217, 119, 6, 0.15)',
-          minHeight: '135px',
-          height: '100%',
+        {/* In Progress */}
+        <div style={{
+          background: '#EBF5FF',
+          border: '1px solid rgba(37, 99, 235, 0.2)',
+          borderRadius: '16px',
+          padding: '20px 22px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
+          justifyContent: 'space-between',
+          minHeight: '135px',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          cursor: 'default'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(37, 99, 235, 0.12)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)'; }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div className="text-xs font-semibold text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 In Progress
               </div>
-              <div className="text-3xl font-bold mt-2 mb-1" style={{ color: 'var(--status-in-progress)', letterSpacing: '-0.03em' }}>
+              <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '6px', marginBottom: '2px' }}>
                 {kpi.in_progress}
               </div>
             </div>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--status-in-progress-bg)',
-              color: 'var(--status-in-progress)',
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              background: '#FFFFFF',
+              color: '#2563EB',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
             }}>
-              <Clock size={19} strokeWidth={2} />
+              <Clock size={17} strokeWidth={2} />
             </div>
           </div>
-          <div className="text-xs text-secondary mt-2">Currently being executed</div>
+          <div style={{ fontSize: '12px', color: '#475569', fontWeight: 500 }}>Currently being executed</div>
         </div>
 
-        <div className="card" style={{
-          position: 'relative',
-          overflow: 'hidden',
-          background: 'linear-gradient(145deg, var(--surface) 0%, rgba(254, 226, 226, 0.35) 100%)',
-          border: '1px solid rgba(239, 68, 68, 0.15)',
-          minHeight: '135px',
-          height: '100%',
+        {/* Blocked */}
+        <div style={{
+          background: '#FEF2F2',
+          border: '1px solid rgba(239, 68, 68, 0.2)',
+          borderRadius: '16px',
+          padding: '20px 22px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
+          justifyContent: 'space-between',
+          minHeight: '135px',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          cursor: 'default'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(239, 68, 68, 0.12)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)'; }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div className="text-xs font-semibold text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Blocked
               </div>
-              <div className="text-3xl font-bold mt-2 mb-1" style={{ color: 'var(--status-blocked)', letterSpacing: '-0.03em' }}>
+              <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '6px', marginBottom: '2px' }}>
                 {kpi.blocked}
               </div>
             </div>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--status-blocked-bg)',
-              color: 'var(--status-blocked)',
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              background: '#FFFFFF',
+              color: '#DC2626',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
             }}>
-              <AlertCircle size={19} strokeWidth={2} />
+              <AlertCircle size={17} strokeWidth={2} />
             </div>
           </div>
-          <div className="text-xs text-secondary mt-2">Action required / impediment</div>
+          <div style={{ fontSize: '12px', color: '#475569', fontWeight: 500 }}>Action required / impediment</div>
         </div>
       </div>
 
@@ -405,8 +433,8 @@ const DashboardPage = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '32px' }}>
           {/* Section Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BarChart3 size={20} color="var(--brand-600)" />
-            <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            <BarChart3 size={20} color="#5551FF" />
+            <h3 style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', letterSpacing: '-0.01em', color: '#0F172A', margin: 0 }}>
               Interactive Visual Graph Analytics ({period.toUpperCase()})
             </h3>
           </div>
@@ -445,39 +473,44 @@ const DashboardPage = () => {
         </div>
       )}
 
-      {/* Overall Progress Velocity */}
-      <div className="card mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-base flex items-center gap-2" style={{ letterSpacing: '-0.015em' }}>
-            <TrendingUp size={20} color="var(--brand-600)" />
+      {/* Overall Progress Velocity Banner */}
+      <div style={{
+        background: '#EEF2FF',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        marginBottom: '32px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+            <TrendingUp size={18} color="#5551FF" />
             {isLeadership ? `${period.charAt(0).toUpperCase() + period.slice(1)} Performance Velocity` : 'Progress Velocity'}
           </h3>
           <span style={{
-            fontSize: '13px',
+            fontSize: '12px',
             fontWeight: 700,
-            color: 'var(--brand-700)',
-            background: 'var(--brand-50)',
+            color: '#5551FF',
+            background: '#FFFFFF',
             padding: '4px 12px',
-            borderRadius: 'var(--radius-full)',
-            border: '1px solid rgba(99, 102, 241, 0.15)'
+            borderRadius: '9999px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
           }}>
             {kpi.completion_rate}% Completed
           </span>
         </div>
         <div style={{
           width: '100%',
-          height: '14px',
-          background: 'var(--subtle)',
-          borderRadius: 'var(--radius-full)',
+          height: '12px',
+          background: '#FFFFFF',
+          borderRadius: '9999px',
           overflow: 'hidden',
           display: 'flex',
           boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)'
         }}>
-          <div style={{ width: `${(kpi.completed / Math.max(kpi.total_tasks, 1)) * 100}%`, background: 'var(--status-completed)', transition: 'width 0.4s var(--ease-apple)' }} />
-          <div style={{ width: `${(kpi.in_progress / Math.max(kpi.total_tasks, 1)) * 100}%`, background: 'var(--status-in-progress)', transition: 'width 0.4s var(--ease-apple)' }} />
-          <div style={{ width: `${(kpi.blocked / Math.max(kpi.total_tasks, 1)) * 100}%`, background: 'var(--status-blocked)', transition: 'width 0.4s var(--ease-apple)' }} />
+          <div style={{ width: `${(kpi.completed / Math.max(kpi.total_tasks, 1)) * 100}%`, background: '#10B981', transition: 'width 0.4s ease' }} />
+          <div style={{ width: `${(kpi.in_progress / Math.max(kpi.total_tasks, 1)) * 100}%`, background: '#3B82F6', transition: 'width 0.4s ease' }} />
+          <div style={{ width: `${(kpi.blocked / Math.max(kpi.total_tasks, 1)) * 100}%`, background: '#EF4444', transition: 'width 0.4s ease' }} />
         </div>
-        <div className="flex justify-between mt-3 text-xs text-secondary font-medium">
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
           <span>0%</span>
           <span>50%</span>
           <span>100%</span>

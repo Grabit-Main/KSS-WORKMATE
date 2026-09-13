@@ -250,11 +250,11 @@ const HistoryPage = () => {
       {/* Top Header */}
       <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <History size={26} color="var(--brand-600)" />
+          <h2 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', color: '#1E293B', fontFamily: 'serif, Georgia, Inter, sans-serif', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <History size={26} color="#5551FF" />
             History & Audit Logs
           </h2>
-          <p className="text-sm text-secondary mt-1">
+          <p style={{ fontSize: '14px', color: '#64748B', margin: 0 }}>
             {isExecutive
               ? 'Complete company-wide historical trail and audit lifecycle of all projects, tasks, and updates'
               : (user?.role === 'PM'
@@ -266,16 +266,14 @@ const HistoryPage = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-
           {/* Tab Selection */}
           <div style={{
             display: 'flex',
-            background: 'var(--subtle)',
+            background: '#F1F5F9',
             padding: '4px',
-            borderRadius: 'var(--radius-full)',
-            border: '1px solid var(--border)',
-            gap: '2px',
-            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)'
+            borderRadius: '9999px',
+            border: '1px solid #E2E8F0',
+            gap: '3px'
           }}>
             {[
               { id: 'activity', label: 'All Activity' },
@@ -286,16 +284,16 @@ const HistoryPage = () => {
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
                 style={{
-                  padding: '7px 18px',
-                  fontSize: '13px',
-                  fontWeight: activeTab === t.id ? 600 : 500,
+                  padding: '7px 16px',
+                  fontSize: '12px',
+                  fontWeight: activeTab === t.id ? 700 : 500,
                   border: 'none',
-                  borderRadius: 'var(--radius-full)',
+                  borderRadius: '9999px',
                   cursor: 'pointer',
-                  background: activeTab === t.id ? 'var(--surface)' : 'transparent',
-                  color: activeTab === t.id ? 'var(--brand-600)' : 'var(--text-secondary)',
-                  boxShadow: activeTab === t.id ? 'var(--shadow-subtle)' : 'none',
-                  transition: 'all var(--transition-fast)'
+                  background: activeTab === t.id ? '#5551FF' : 'transparent',
+                  color: activeTab === t.id ? '#FFFFFF' : '#475569',
+                  boxShadow: activeTab === t.id ? '0 2px 6px rgba(85, 81, 255, 0.25)' : 'none',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 {t.label}
@@ -305,37 +303,43 @@ const HistoryPage = () => {
         </div>
       </div>
 
-      {/* KPI Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-        <div className="card" style={{
-          position: 'relative',
-          overflow: 'hidden',
-          background: 'linear-gradient(145deg, var(--surface) 0%, rgba(238, 242, 255, 0.4) 100%)',
-          border: '1px solid rgba(99, 102, 241, 0.15)'
+      {/* Metric Summary Cards Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '16px', marginBottom: '24px' }}>
+        {/* All Projects */}
+        <div style={{
+          background: '#EEF2FF',
+          border: '1px solid rgba(85, 81, 255, 0.2)',
+          borderRadius: '16px',
+          padding: '18px 22px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div className="text-xs font-semibold text-secondary" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 All Projects
               </div>
-              <div className="text-3xl font-bold mt-2 mb-1" style={{ color: 'var(--brand-600)', letterSpacing: '-0.03em' }}>
+              <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
                 {summary?.total_projects || projects.length}
               </div>
             </div>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--brand-100)',
-              color: 'var(--brand-600)',
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              background: '#FFFFFF',
+              color: '#5551FF',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
             }}>
-              <Folders size={19} strokeWidth={2} />
+              <Folders size={17} strokeWidth={2} />
             </div>
           </div>
-          <div className="text-xs text-secondary mt-2">
+          <div style={{ fontSize: '12px', color: '#475569', fontWeight: 500, marginTop: '8px' }}>
             {summary?.completed_projects || 0} completed · {summary?.active_projects || 0} active
           </div>
         </div>
