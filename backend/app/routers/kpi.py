@@ -374,8 +374,14 @@ def get_my_kpi(
         category_items.append((name, cat_pct, cat_score))
 
     sorted_cats = sorted(category_items, key=lambda x: x[1], reverse=True)
-    strengths = [item[0] for item in sorted_cats[:3]]
-    focus_areas = [item[0] for item in sorted_cats[-3:]][::-1]
+    strengths = [
+        {"name": item[0], "percentage": item[1], "score": item[2]}
+        for item in sorted_cats[:3]
+    ]
+    focus_areas = [
+        {"name": item[0], "percentage": item[1], "score": item[2]}
+        for item in sorted_cats[-3:][::-1]
+    ]
 
     prev_logs = get_prev_period_logs(db, user.id, period_type, offset, today)
     if prev_logs and len(prev_logs) > 0:
