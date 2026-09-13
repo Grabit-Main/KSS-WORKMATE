@@ -16,8 +16,8 @@ const DashboardPage = () => {
   });
   const [loading, setLoading] = useState(() => !localStorage.getItem(`cache_dashboard_${period}`));
 
-  // CEO, CTO, PM, and HR have leadership graph analytics
-  const isLeadership = ['CEO', 'CTO', 'PM', 'HR'].includes(user?.role);
+  // CEO, CTO, PM, TL, and HR have leadership graph analytics
+  const isLeadership = ['CEO', 'CTO', 'PM', 'TL', 'HR'].includes(user?.role);
 
   const loadData = async (selectedPeriod = period) => {
     try {
@@ -497,7 +497,7 @@ const DashboardPage = () => {
           }}>
             <h3 className="font-bold text-base flex items-center gap-2" style={{ letterSpacing: '-0.015em' }}>
               <Users size={20} color="var(--brand-600)" />
-              {user.role === 'PM' ? 'Project Team Members Ledger' : 'Organization Performance Ledger'} ({period})
+              {['PM', 'TL'].includes(user?.role) ? 'Project Team Members Ledger' : 'Organization Performance Ledger'} ({period})
             </h3>
             <span style={{
               fontSize: '12px',
