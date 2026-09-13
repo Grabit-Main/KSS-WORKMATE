@@ -861,22 +861,25 @@ const ProjectsPage = () => {
               >
                 {/* Header Top Meta Row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span
-                      style={{
-                        background: theme.tagBg,
-                        color: theme.tagText,
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        padding: '3px 10px',
-                        borderRadius: '9999px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                      }}
-                    >
-                      {p.status ? p.status.toUpperCase() : 'ACTIVE'}
-                    </span>
+                  {/* Left: Status Badge */}
+                  <span
+                    style={{
+                      background: theme.tagBg,
+                      color: theme.tagText,
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: '9999px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {p.status ? p.status.toUpperCase() : 'ACTIVE'}
+                  </span>
+
+                  {/* Right: Code Badge & Management Edit/Delete Buttons */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span
                       style={{
                         background: theme.codeBg,
@@ -890,56 +893,55 @@ const ProjectsPage = () => {
                     >
                       {theme.code}
                     </span>
+
+                    {['PM', 'CEO', 'CTO'].includes(user?.role) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenEditModal(p, e)}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.18)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '5px',
+                            borderRadius: '6px',
+                            color: '#FFFFFF',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.15s ease'
+                          }}
+                          title="Edit Project"
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'; }}
+                        >
+                          <Pencil size={13} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteProject(p.id, p.name, e)}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.18)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '5px',
+                            borderRadius: '6px',
+                            color: '#FFFFFF',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.15s ease'
+                          }}
+                          title="Delete Project"
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#EF4444'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'; }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    )}
                   </div>
-
-                  {/* Management Edit/Delete Buttons */}
-                  {['PM', 'CEO', 'CTO'].includes(user?.role) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={e => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={(e) => handleOpenEditModal(p, e)}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.18)',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '5px',
-                          borderRadius: '6px',
-                          color: '#FFFFFF',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.15s ease'
-                        }}
-                        title="Edit Project"
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'; }}
-                      >
-                        <Pencil size={13} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteProject(p.id, p.name, e)}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.18)',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '5px',
-                          borderRadius: '6px',
-                          color: '#FFFFFF',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.15s ease'
-                        }}
-                        title="Delete Project"
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#EF4444'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'; }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 {/* Project Title */}
