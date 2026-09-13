@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 def get_team_analytics(team_id: UUID, period: str = "monthly", db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if period not in ("daily", "weekly", "monthly"):
         raise HTTPException(400, "Invalid period")
-    if user.role not in ("CEO", "CTO", "HR", "PM"):
+    if user.role not in ("CEO", "CTO", "HR", "PM", "TL"):
         raise HTTPException(403, "Access denied")
     return analytics_service.get_team_analytics(db, str(team_id), period)
 
@@ -23,7 +23,7 @@ def get_team_analytics(team_id: UUID, period: str = "monthly", db: Session = Dep
 def get_user_analytics(user_id: UUID, period: str = "monthly", db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if period not in ("daily", "weekly", "monthly"):
         raise HTTPException(400, "Invalid period")
-    if user.role not in ("CEO", "CTO", "HR", "PM") and str(user.id) != str(user_id):
+    if user.role not in ("CEO", "CTO", "HR", "PM", "TL") and str(user.id) != str(user_id):
         raise HTTPException(403, "Access denied")
     return analytics_service.get_user_analytics(db, str(user_id), period)
 
@@ -32,7 +32,7 @@ def get_user_analytics(user_id: UUID, period: str = "monthly", db: Session = Dep
 def get_daily_me(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user.role in ("CEO", "CTO", "HR"):
         return analytics_service.get_organization_analytics(db, "daily")
-    if user.role == "PM":
+    if user.role in ("PM", "TL"):
         return analytics_service.get_pm_analytics(db, str(user.id), "daily")
     return analytics_service.get_user_analytics(db, str(user.id), "daily")
 
@@ -41,7 +41,7 @@ def get_daily_me(db: Session = Depends(get_db), user: User = Depends(get_current
 def get_weekly_me(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user.role in ("CEO", "CTO", "HR"):
         return analytics_service.get_organization_analytics(db, "weekly")
-    if user.role == "PM":
+    if user.role in ("PM", "TL"):
         return analytics_service.get_pm_analytics(db, str(user.id), "weekly")
     return analytics_service.get_user_analytics(db, str(user.id), "weekly")
 
@@ -50,6 +50,7 @@ def get_weekly_me(db: Session = Depends(get_db), user: User = Depends(get_curren
 def get_monthly_me(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user.role in ("CEO", "CTO", "HR"):
         return analytics_service.get_organization_analytics(db, "monthly")
-    if user.role == "PM":
+    if user.role in ("PM", "TL"):
         return analytics_service.get_pm_analytics(db, str(user.id), "monthly")
     return analytics_service.get_user_analytics(db, str(user.id), "monthly")
+
