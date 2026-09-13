@@ -934,10 +934,11 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
               {strengths.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {strengths.map((item) => {
-                    const catObj = kpis.find((k) => k.name === item);
+                    const name = typeof item === 'object' ? item.name : item;
+                    const catObj = typeof item === 'object' ? item : kpis.find((k) => k.name === item);
                     return (
                       <div
-                        key={item}
+                        key={name}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -951,10 +952,10 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <CheckCircle2 size={16} style={{ color: '#059669' }} />
                           <span style={{ fontWeight: 700, fontSize: '13px', color: '#065F46' }}>
-                            {item}
+                            {name}
                           </span>
                         </div>
-                        {catObj && (
+                        {catObj && catObj.percentage != null && (
                           <span style={{
                             fontSize: '12px',
                             fontWeight: 800,
@@ -963,7 +964,7 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
                             padding: '2px 8px',
                             borderRadius: '4px'
                           }}>
-                            {catObj.percentage}% ({catObj.score.toFixed(1)}/5)
+                            {catObj.percentage}% ({Number(catObj.score).toFixed(1)}/5)
                           </span>
                         )}
                       </div>
@@ -998,10 +999,11 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
               {focusAreas.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {focusAreas.map((item) => {
-                    const catObj = kpis.find((k) => k.name === item);
+                    const name = typeof item === 'object' ? item.name : item;
+                    const catObj = typeof item === 'object' ? item : kpis.find((k) => k.name === item);
                     return (
                       <div
-                        key={item}
+                        key={name}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -1015,10 +1017,10 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Target size={16} style={{ color: '#D97706' }} />
                           <span style={{ fontWeight: 700, fontSize: '13px', color: '#92400E' }}>
-                            {item}
+                            {name}
                           </span>
                         </div>
-                        {catObj && (
+                        {catObj && catObj.percentage != null && (
                           <span style={{
                             fontSize: '12px',
                             fontWeight: 800,
@@ -1027,7 +1029,7 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
                             padding: '2px 8px',
                             borderRadius: '4px'
                           }}>
-                            {catObj.percentage}% ({catObj.score.toFixed(1)}/5)
+                            {catObj.percentage}% ({Number(catObj.score).toFixed(1)}/5)
                           </span>
                         )}
                       </div>
@@ -1042,6 +1044,316 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
             </div>
           </div>
         </>
+      )}
+
+      {/* Official KPI Scoring Rules & Evaluation Rubric Modal */}
+      {showRulesModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          padding: '16px',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius-lg)',
+            width: '100%',
+            maxWidth: '1120px',
+            height: '90vh',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: 'var(--shadow-modal)',
+            border: '1px solid var(--border)',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header (Fixed) */}
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'var(--bg)',
+              flexShrink: 0
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'var(--brand-50, #EEF2FF)',
+                  color: 'var(--brand-600, #4F46E5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <BookOpen size={20} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                    Official KPI Scoring Rules & Evaluation Rubric
+                  </h2>
+                  <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '2px 0 0 0' }}>
+                    All 10 performance criteria & scoring guidelines (Scores 1 to 5). Scroll down to review all rules.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRulesModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: 'var(--radius-xs)',
+                  display: 'flex'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body - Guaranteed Scrollable with all 10 criteria */}
+            <div
+              className="kpi-rules-modal-body"
+              style={{
+                padding: '24px',
+                overflowY: 'scroll',
+                overflowX: 'hidden',
+                flex: '1 1 0%',
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '20px',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
+              {/* Tier Overview Badges */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                gap: '10px',
+                flexShrink: 0
+              }}>
+                {KPI_TIER_CONFIG.map((t) => (
+                  <div
+                    key={t.level}
+                    style={{
+                      background: t.bg,
+                      border: `1px solid ${t.border}`,
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 800, fontSize: '14px', color: t.text }}>Level {t.level}</span>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: '#FFFFFF',
+                        color: t.text
+                      }}>
+                        {t.name}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: t.text, opacity: 0.9 }}>
+                      {t.level === 1 && 'Critical issues / <50% completed'}
+                      {t.level === 2 && 'Below expectations / delays & rework'}
+                      {t.level === 3 && 'Expected output / meets standards'}
+                      {t.level === 4 && 'Consistently exceeds / proactive'}
+                      {t.level === 5 && 'Exemplary impact / solves root causes'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Master Rubric Table - All 10 Criteria */}
+              <div style={{
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+                overflow: 'hidden',
+                background: 'var(--surface)',
+                flexShrink: 0
+              }}>
+                <div
+                  className="table-responsive kpi-rubric-table-wrapper"
+                  style={{
+                    width: '100%',
+                    overflowX: 'auto',
+                    overflowY: 'visible',
+                    WebkitOverflowScrolling: 'touch'
+                  }}
+                >
+                  <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg)' }}>
+                      <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: 'var(--text-primary)', width: '180px', background: 'var(--bg)' }}>
+                          KPI Criteria & Weight
+                        </th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#991B1B', background: '#FEF2F2', width: '16%' }}>
+                          1 – Poor
+                        </th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#92400E', background: '#FFFBEB', width: '16%' }}>
+                          2 – Below Standard
+                        </th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#1E40AF', background: '#EFF6FF', width: '16%' }}>
+                          3 – Meets Standard
+                        </th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#3730A3', background: '#EEF2FF', width: '16%' }}>
+                          4 – Strong
+                        </th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 10px', textAlign: 'left', fontWeight: 700, color: '#065F46', background: '#ECFDF5', width: '18%' }}>
+                          5 – Exceptional
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {CRITERIA.map((crit, idx) => (
+                        <tr
+                          key={crit.key}
+                          style={{
+                            borderBottom: '1px solid var(--border)',
+                            background: idx % 2 === 0 ? 'var(--surface)' : 'rgba(248, 250, 252, 0.5)'
+                          }}
+                        >
+                          <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
+                              {crit.num}. {crit.label}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                              <span style={{ fontSize: '10px', fontWeight: 700, background: '#E0E7FF', color: '#4338CA', padding: '1px 5px', borderRadius: '4px' }}>
+                                Wt: {crit.weight}
+                              </span>
+                              <span style={{ fontSize: '10px', fontWeight: 600, background: '#F1F5F9', color: '#475569', padding: '1px 5px', borderRadius: '4px' }}>
+                                Max {crit.maxContrib}%
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[1]}
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[2]}
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[3]}
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[4]}
+                          </td>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            {crit.rubric[5]}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Formula & Status Guidelines */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '14px',
+                background: 'var(--bg)',
+                padding: '16px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border)',
+                flexShrink: 0
+              }}>
+                <div>
+                  <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Formula & Weighting Logic
+                  </h4>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                    Daily KPI % is calculated by multiplying each criterion score (1–5) by its assigned weight (Sum of weights = 20), yielding a direct percentage out of 100%.
+                    <br />
+                    <strong>Weight 3 (15% Max):</strong> Task Completion, Quality, Productivity
+                    <br />
+                    <strong>Weight 2 (10% Max):</strong> Deadline Adherence, Ownership, Problem Solving, Communication
+                    <br />
+                    <strong>Weight 1 (5% Max):</strong> Team Collaboration, Learning / Improvement, Attendance & Discipline
+                  </p>
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Overall Daily Status Thresholds
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#065F46', fontWeight: 600 }}>● Excellent:</span>
+                      <span style={{ fontWeight: 700 }}>≥ 90.0%</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#3730A3', fontWeight: 600 }}>● Very Good:</span>
+                      <span style={{ fontWeight: 700 }}>80.0% – 89.9%</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#1E40AF', fontWeight: 600 }}>● Meets Expectation:</span>
+                      <span style={{ fontWeight: 700 }}>70.0% – 79.9%</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#92400E', fontWeight: 600 }}>● Needs Improvement:</span>
+                      <span style={{ fontWeight: 700 }}>60.0% – 69.9%</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#991B1B', fontWeight: 600 }}>● Needs Attention:</span>
+                      <span style={{ fontWeight: 700 }}>&lt; 60.0%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer (Fixed) */}
+            <div style={{
+              padding: '14px 24px',
+              borderTop: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'var(--bg)',
+              flexShrink: 0
+            }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                Official Master Rubric • All 10 Evaluation Criteria (Scores 1 to 5)
+              </span>
+              <button
+                onClick={() => setShowRulesModal(false)}
+                style={{
+                  padding: '9px 24px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  background: 'var(--brand-gradient)',
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-subtle)'
+                }}
+              >
+                Got it, Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
