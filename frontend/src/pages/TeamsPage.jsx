@@ -237,10 +237,15 @@ const TeamsPage = () => {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Page Title Section */}
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.025em' }}>Teams & Squads</h2>
-          <p className="text-sm text-secondary mt-1">Active company squads, designated leads, and deliverable ownership</p>
+          <h2 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', color: '#1E293B', fontFamily: 'serif, Georgia, Inter, sans-serif', marginBottom: '4px' }}>
+            Teams & Squads
+          </h2>
+          <p style={{ fontSize: '14px', color: '#64748B', margin: 0 }}>
+            Active company squads, designated leads, and deliverable ownership.
+          </p>
         </div>
 
         {user.role === 'PM' && (
@@ -250,7 +255,7 @@ const TeamsPage = () => {
               setFormError('');
               setShowModal(true);
             }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', background: '#5551FF', borderRadius: '8px', padding: '10px 18px', fontWeight: 600 }}
           >
             <Plus size={16} />
             <span>Create Team</span>
@@ -265,19 +270,50 @@ const TeamsPage = () => {
         gap: '16px',
         marginBottom: '24px'
       }}>
-        <div className="card" style={{ padding: '16px 20px' }}>
-          <span className="text-xs text-secondary font-semibold uppercase">Total Squads</span>
-          <h3 className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{teams.length}</h3>
+        {/* Total Squads */}
+        <div style={{
+          background: '#EEF2FF',
+          border: '1px solid rgba(85, 81, 255, 0.2)',
+          borderRadius: '16px',
+          padding: '18px 22px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Total Squads
+          </span>
+          <h3 style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
+            {teams.length}
+          </h3>
         </div>
-        <div className="card" style={{ padding: '16px 20px' }}>
-          <span className="text-xs text-secondary font-semibold uppercase">Allocated to Projects</span>
-          <h3 className="text-2xl font-bold mt-1" style={{ color: 'var(--brand-600)' }}>
+
+        {/* Allocated to Projects */}
+        <div style={{
+          background: '#ECFDF5',
+          border: '1px solid rgba(16, 185, 129, 0.2)',
+          borderRadius: '16px',
+          padding: '18px 22px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Allocated to Projects
+          </span>
+          <h3 style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
             {teams.filter(t => t.project_id).length}
           </h3>
         </div>
-        <div className="card" style={{ padding: '16px 20px' }}>
-          <span className="text-xs text-secondary font-semibold uppercase">Standalone Squads</span>
-          <h3 className="text-2xl font-bold mt-1" style={{ color: 'var(--text-secondary)' }}>
+
+        {/* Standalone Squads */}
+        <div style={{
+          background: '#FFF7ED',
+          border: '1px solid rgba(217, 119, 6, 0.2)',
+          borderRadius: '16px',
+          padding: '18px 22px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Standalone Squads
+          </span>
+          <h3 style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
             {teams.filter(t => !t.project_id).length}
           </h3>
         </div>
@@ -285,31 +321,53 @@ const TeamsPage = () => {
 
       {/* Teams Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
-        {teams.map(team => {
+        {teams.map((team, index) => {
           const allocatedProject = projects.find(p => String(p.id) === String(team.project_id));
           const leadMembership = (team.memberships || []).find(m => m.is_lead);
           const otherMembers = (team.memberships || []).filter(m => !m.is_lead);
+          const themeBgs = ['#5551FF', '#E17842', '#1EA566', '#0284C7', '#8B5CF6'];
+          const headerBg = themeBgs[index % themeBgs.length];
 
           return (
             <div
               key={team.id}
-              className="card"
               style={{
+                background: '#FFFFFF',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03)',
+                border: '1px solid #E2E8F0',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 minHeight: '380px',
                 height: '100%',
-                transition: 'all var(--transition-smooth)'
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.09)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03)';
               }}
             >
               <div>
-                <div className="flex justify-between items-start mb-3">
+                {/* Team Top Header Banner */}
+                <div style={{
+                  background: headerBg,
+                  color: '#FFFFFF',
+                  padding: '18px 20px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
                   <div>
-                    <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)', letterSpacing: '-0.015em' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#FFFFFF', margin: 0, lineHeight: 1.2 }}>
                       {team.name}
                     </h3>
-                    <span className="text-xs text-secondary">
+                    <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 500 }}>
                       {team.memberships?.length || 0} member{(team.memberships?.length || 0) === 1 ? '' : 's'}
                     </span>
                   </div>
@@ -319,26 +377,26 @@ const TeamsPage = () => {
                     {allocatedProject ? (
                       <span style={{
                         fontSize: '11px',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         padding: '3px 10px',
-                        borderRadius: 'var(--radius-full)',
-                        background: 'rgba(99, 102, 241, 0.08)',
-                        color: 'var(--brand-700)',
-                        border: '1px solid rgba(99, 102, 241, 0.2)',
+                        borderRadius: '9999px',
+                        background: '#FFFFFF',
+                        color: headerBg,
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '5px',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                       }}>
                         <FolderKanban size={11} /> {allocatedProject.name}
                       </span>
                     ) : (
                       <span style={{
                         fontSize: '11px',
-                        color: 'var(--text-tertiary)',
-                        background: 'var(--subtle)',
+                        fontWeight: 600,
+                        color: '#FFFFFF',
+                        background: 'rgba(255, 255, 255, 0.2)',
                         padding: '3px 8px',
-                        borderRadius: 'var(--radius-full)',
-                        border: '1px solid var(--border)'
+                        borderRadius: '6px'
                       }}>
                         Standalone
                       </span>
@@ -350,33 +408,34 @@ const TeamsPage = () => {
                         type="button"
                         onClick={() => handleDeleteTeam(team.id, team.name)}
                         style={{
-                          background: 'transparent',
+                          background: 'rgba(255, 255, 255, 0.18)',
                           border: 'none',
                           cursor: 'pointer',
-                          color: 'var(--text-tertiary)',
-                          padding: '4px',
-                          borderRadius: 'var(--radius-xs)',
+                          color: '#FFFFFF',
+                          padding: '5px',
+                          borderRadius: '6px',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          transition: 'all var(--transition-fast)'
+                          transition: 'all 0.15s ease'
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--status-blocked)'; e.currentTarget.style.background = 'var(--status-blocked-bg)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#EF4444'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'; }}
                         title="Delete Team"
                       >
-                        <Trash2 size={15} />
+                        <Trash2 size={13} />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Team Lead Section */}
-                <div style={{
-                  padding: '10px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'var(--surface-hover)',
-                  border: '1px solid var(--border)',
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  {/* Team Lead Section */}
+                  <div style={{
+                    padding: '10px 12px',
+                  borderRadius: '10px',
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
                   marginBottom: '14px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -552,6 +611,7 @@ const TeamsPage = () => {
                   )}
                 </div>
               </div>
+            </div>
 
               {/* PM Project Allocation Selector */}
               {user.role === 'PM' && (

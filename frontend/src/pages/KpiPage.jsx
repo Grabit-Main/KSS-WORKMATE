@@ -293,22 +293,24 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+            <h1 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', color: '#1E293B', fontFamily: 'serif, Georgia, Inter, sans-serif', margin: 0 }}>
               My Performance Overview
             </h1>
             <span style={{
               fontSize: '11px',
               fontWeight: 700,
-              padding: '3px 8px',
-              borderRadius: '999px',
+              padding: '3px 10px',
+              borderRadius: '9999px',
               background: '#EEF2FF',
-              color: '#4F46E5',
-              border: '1px solid #C7D2FE'
+              color: '#5551FF',
+              border: '1px solid rgba(85, 81, 255, 0.2)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em'
             }}>
-              Personal KPI View
+              Personal KPI
             </span>
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '14px', color: '#64748B', margin: '4px 0 0 0' }}>
             Weekly & monthly performance overview across all 10 KPI categories.
           </p>
         </div>
@@ -321,14 +323,15 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--surface)',
-                color: 'var(--brand-700, #4338CA)',
-                border: '1px solid var(--brand-300, #C7D2FE)',
+                padding: '9px 14px',
+                borderRadius: '8px',
+                background: '#FFFFFF',
+                color: '#5551FF',
+                border: '1px solid #CBD5E1',
                 fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer'
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
               }}
             >
               <BarChart3 size={15} />
@@ -342,14 +345,16 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--surface)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border)',
+              padding: '9px 16px',
+              borderRadius: '8px',
+              background: '#5551FF',
+              color: '#FFFFFF',
+              border: 'none',
               fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer'
+              fontSize: '12px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(85, 81, 255, 0.25)',
+              transition: 'all 0.15s ease'
             }}
           >
             <BookOpen size={15} />
