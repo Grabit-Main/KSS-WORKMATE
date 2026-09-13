@@ -271,7 +271,13 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
   const kpis = data?.kpis || [];
   const trend = data?.trend || [];
   const strengths = data?.strengths || [];
-  const focusAreas = data?.focus_areas || [];
+  const focusAreas = useMemo(() => {
+    const rawFocus = data?.focus_areas || [];
+    return rawFocus.filter((item) => {
+      const pct = typeof item === 'object' ? item.percentage : kpis.find((k) => k.name === item)?.percentage;
+      return pct != null && pct < 100;
+    });
+  }, [data, kpis]);
   const hasData = data?.has_data;
 
   return (
@@ -1038,7 +1044,7 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
                 </div>
               ) : (
                 <div style={{ fontSize: '12px', color: '#B45309', fontStyle: 'italic' }}>
-                  No categories recorded yet.
+                  {kpis.length > 0 ? 'All evaluated categories achieved 100%! Excellent performance.' : 'No categories recorded yet.'}
                 </div>
               )}
             </div>

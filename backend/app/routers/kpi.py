@@ -378,9 +378,13 @@ def get_my_kpi(
         {"name": item[0], "percentage": item[1], "score": item[2]}
         for item in sorted_cats[:3]
     ]
+
+    # Focus Areas must ONLY contain categories that are NOT 100% (< 100%)
+    below_100_cats = [item for item in category_items if item[1] < 100]
+    below_100_sorted = sorted(below_100_cats, key=lambda x: x[1])
     focus_areas = [
         {"name": item[0], "percentage": item[1], "score": item[2]}
-        for item in sorted_cats[-3:][::-1]
+        for item in below_100_sorted[:3]
     ]
 
     prev_logs = get_prev_period_logs(db, user.id, period_type, offset, today)
