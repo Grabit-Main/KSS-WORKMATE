@@ -27,6 +27,7 @@ const TasksPage = () => {
   });
   const [loading, setLoading] = useState(() => !(localStorage.getItem(cacheKey) || localStorage.getItem('cache_tasks')));
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'projects', 'standalone', 'mine', 'review'
+  const [selectedDateFilter, setSelectedDateFilter] = useState('all'); // 'all' or 'YYYY-MM-DD'
   const [selectedTask, setSelectedTask] = useState(null);
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const { joinRoom, dispatch } = useWebSocket();
@@ -441,6 +442,13 @@ const TasksPage = () => {
 
   const isLeadership = ['CEO', 'CTO', 'PM'].includes(user?.role);
 
+  const getTaskDateKey = useCallback((t) => {
+    if (t.scheduled_date) return String(t.scheduled_date).split('T')[0];
+    if (t.deadline) return String(t.deadline).split('T')[0];
+    if (t.created_at) return String(t.created_at).split('T')[0];
+    return null;
+  }, []);
+
   const userTasks = tasks.filter(t => {
     const isAssignedToMe = String(t.assigned_to) === String(user?.id);
     const isAssignedByMe = String(t.assigned_by) === String(user?.id);
@@ -454,11 +462,41 @@ const TasksPage = () => {
     return true;
   });
 
+  const availableDates = useMemo(() => {
+    const dateSet = new Set();
+    userTasks.forEach(t => {
+      const dKey = getTaskDateKey(t);
+      if (dKey && /^\d{4}-\d{2}-\d{2}$/.test(dKey)) {
+        dateSet.add(dKey);
+      }
+    });
+
+    const sorted = Array.from(dateSet).sort((a, b) => b.localeCompare(a));
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    return sorted.map(dStr => {
+      const [y, m, d] = dStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      let dateFormatted = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      if (dStr === todayStr) {
+        dateFormatted = `Today (${dateFormatted})`;
+      }
+      return { key: dStr, label: dateFormatted };
+    });
+  }, [userTasks, getTaskDateKey]);
+
   const filteredTasks = userTasks.filter(t => {
-    if (filterTab === 'mine') return String(t.assigned_to) === String(user?.id);
-    if (filterTab === 'review') return t.status === 'in_review';
-    if (filterTab === 'projects') return Boolean(t.project_id);
-    if (filterTab === 'standalone') return !t.project_id;
+    if (filterTab === 'mine' && String(t.assigned_to) !== String(user?.id)) return false;
+    if (filterTab === 'review' && t.status !== 'in_review') return false;
+    if (filterTab === 'projects' && !t.project_id) return false;
+    if (filterTab === 'standalone' && t.project_id) return false;
+
+    if (selectedDateFilter !== 'all') {
+      const taskDateKey = getTaskDateKey(t);
+      if (!taskDateKey || taskDateKey !== selectedDateFilter) return false;
+    }
+
     return true;
   });
 
@@ -588,37 +626,95 @@ const TasksPage = () => {
         </div>
       </div>
 
-      {/* Filter Tabs for Quick Access */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch', maxWidth: '100%', paddingBottom: '4px' }}>
-        {[
-          { id: 'all', label: `All Tasks (${userTasks.length})` },
-          { id: 'projects', label: `Project Tasks (${userTasks.filter(t => Boolean(t.project_id)).length})` },
-          { id: 'standalone', label: `Standalone Tasks (${userTasks.filter(t => !t.project_id).length})` },
-          { id: 'mine', label: `Assigned to Me (${userTasks.filter(t => String(t.assigned_to) === String(user?.id)).length})` },
-          { id: 'review', label: `In Review (${userTasks.filter(t => t.status === 'in_review').length})` }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setFilterTab(tab.id)}
+      {/* Filter Tabs & Daily Date-wise Dropdown Row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
+        marginBottom: '24px',
+        flexWrap: 'wrap'
+      }}>
+        {/* Left: Filter Tabs */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          flexWrap: 'nowrap',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          maxWidth: '100%',
+          paddingBottom: '4px',
+          flex: 1
+        }}>
+          {[
+            { id: 'all', label: `All Tasks (${userTasks.length})` },
+            { id: 'projects', label: `Project Tasks (${userTasks.filter(t => Boolean(t.project_id)).length})` },
+            { id: 'standalone', label: `Standalone Tasks (${userTasks.filter(t => !t.project_id).length})` },
+            { id: 'mine', label: `Assigned to Me (${userTasks.filter(t => String(t.assigned_to) === String(user?.id)).length})` },
+            { id: 'review', label: `In Review (${userTasks.filter(t => t.status === 'in_review').length})` }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setFilterTab(tab.id)}
+              style={{
+                padding: '7px 16px',
+                borderRadius: '9999px',
+                fontSize: '12px',
+                fontWeight: filterTab === tab.id ? 700 : 500,
+                border: '1px solid',
+                borderColor: filterTab === tab.id ? '#5551FF' : '#E2E8F0',
+                background: filterTab === tab.id ? '#5551FF' : '#FFFFFF',
+                color: filterTab === tab.id ? '#FFFFFF' : '#475569',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                boxShadow: filterTab === tab.id ? '0 2px 6px rgba(85, 81, 255, 0.2)' : 'none'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Right: Daily Date-wise Dropdown Filter */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          flexShrink: 0,
+          background: '#FFFFFF',
+          padding: '3px 6px',
+          borderRadius: '9999px',
+          border: selectedDateFilter !== 'all' ? '1px solid #5551FF' : '1px solid #E2E8F0',
+          boxShadow: selectedDateFilter !== 'all' ? '0 2px 6px rgba(85, 81, 255, 0.15)' : 'none',
+          transition: 'all 0.15s ease'
+        }}>
+          <Calendar size={14} color={selectedDateFilter !== 'all' ? '#5551FF' : '#64748B'} style={{ marginLeft: '8px' }} />
+          <select
+            value={selectedDateFilter}
+            onChange={(e) => setSelectedDateFilter(e.target.value)}
             style={{
-              padding: '7px 16px',
+              padding: '6px 12px 6px 4px',
               borderRadius: '9999px',
               fontSize: '12px',
-              fontWeight: filterTab === tab.id ? 700 : 500,
-              border: '1px solid',
-              borderColor: filterTab === tab.id ? '#5551FF' : '#E2E8F0',
-              background: filterTab === tab.id ? '#5551FF' : '#FFFFFF',
-              color: filterTab === tab.id ? '#FFFFFF' : '#475569',
+              fontWeight: 600,
+              border: 'none',
+              background: 'transparent',
+              color: selectedDateFilter !== 'all' ? '#5551FF' : '#334155',
               cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-              boxShadow: filterTab === tab.id ? '0 2px 6px rgba(85, 81, 255, 0.2)' : 'none'
+              outline: 'none'
             }}
           >
-            {tab.label}
-          </button>
-        ))}
+            <option value="all">All Dates</option>
+            {availableDates.map(d => (
+              <option key={d.key} value={d.key}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Task List Grid */}
