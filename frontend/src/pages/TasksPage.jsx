@@ -28,6 +28,7 @@ const TasksPage = () => {
   const [loading, setLoading] = useState(() => !(localStorage.getItem(cacheKey) || localStorage.getItem('cache_tasks')));
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'projects', 'standalone', 'mine', 'review'
   const [selectedDateFilter, setSelectedDateFilter] = useState('all'); // 'all' or 'YYYY-MM-DD'
+  const dateInputRef = useRef(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const { joinRoom, dispatch } = useWebSocket();
@@ -678,42 +679,81 @@ const TasksPage = () => {
           ))}
         </div>
 
-        {/* Right: Daily Date-wise Dropdown Filter */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          flexShrink: 0,
-          background: '#FFFFFF',
-          padding: '3px 6px',
-          borderRadius: '9999px',
-          border: selectedDateFilter !== 'all' ? '1px solid #5551FF' : '1px solid #E2E8F0',
-          boxShadow: selectedDateFilter !== 'all' ? '0 2px 6px rgba(85, 81, 255, 0.15)' : 'none',
-          transition: 'all 0.15s ease'
-        }}>
-          <Calendar size={14} color={selectedDateFilter !== 'all' ? '#5551FF' : '#64748B'} style={{ marginLeft: '8px' }} />
-          <select
-            value={selectedDateFilter}
-            onChange={(e) => setSelectedDateFilter(e.target.value)}
-            style={{
-              padding: '6px 12px 6px 4px',
-              borderRadius: '9999px',
-              fontSize: '12px',
-              fontWeight: 600,
-              border: 'none',
-              background: 'transparent',
-              color: selectedDateFilter !== 'all' ? '#5551FF' : '#334155',
-              cursor: 'pointer',
-              outline: 'none'
-            }}
-          >
-            <option value="all">All Dates</option>
-            {availableDates.map(d => (
-              <option key={d.key} value={d.key}>
-                {d.label}
-              </option>
-            ))}
-          </select>
+        {/* Right: Daily Date-wise Pill Input Filter matching exact UI image */}
+        <div 
+          onClick={() => {
+            if (dateInputRef.current?.showPicker) {
+              dateInputRef.current.showPicker();
+            } else {
+              dateInputRef.current?.focus();
+            }
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            background: '#F8FAFC',
+            border: selectedDateFilter !== 'all' ? '1.5px solid #5551FF' : '1px solid #E2E8F0',
+            borderRadius: '9999px',
+            padding: '6px 16px',
+            boxShadow: selectedDateFilter !== 'all' ? '0 2px 8px rgba(85, 81, 255, 0.12)' : '0 1px 2px rgba(0,0,0,0.02)',
+            transition: 'all 0.15s ease',
+            flexShrink: 0,
+            cursor: 'pointer',
+            height: '38px'
+          }}
+        >
+          {/* Far Left Calendar Icon */}
+          <Calendar size={18} style={{ color: selectedDateFilter !== 'all' ? '#5551FF' : '#94A3B8', flexShrink: 0 }} />
+
+          {/* Date Input displaying dd - mm - yyyy or selected date */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              type="date"
+              ref={dateInputRef}
+              className="custom-date-pill-input"
+              value={selectedDateFilter === 'all' ? '' : selectedDateFilter}
+              onChange={(e) => setSelectedDateFilter(e.target.value ? e.target.value : 'all')}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: selectedDateFilter !== 'all' ? '#1E293B' : '#475569',
+                fontFamily: 'inherit',
+                letterSpacing: '0.02em',
+                cursor: 'pointer',
+                width: '135px'
+              }}
+            />
+          </div>
+
+          {/* Far Right Calendar / Clear Icon */}
+          {selectedDateFilter !== 'all' ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedDateFilter('all');
+              }}
+              title="Clear date filter"
+              style={{
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: 0,
+                color: '#64748B'
+              }}
+            >
+              <X size={16} />
+            </button>
+          ) : (
+            <Calendar size={16} style={{ color: '#0F172A', flexShrink: 0 }} />
+          )}
         </div>
       </div>
 
