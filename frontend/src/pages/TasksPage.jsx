@@ -16,6 +16,41 @@ import {
   Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2, Trash2, Shield
 } from 'lucide-react';
 
+const normalizeToYYYYMMDD = (val) => {
+  if (!val) return '';
+  const str = String(val).trim();
+  if (!str) return '';
+
+  // Match DD-MM-YYYY or DD/MM/YYYY (e.g. 15-09-2026 or 15/09/2026)
+  const ddmmyyyy = str.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
+  if (ddmmyyyy) {
+    const [, day, month, year] = ddmmyyyy;
+    return `${year}-${month}-${day}`;
+  }
+
+  // Match YYYY-MM-DD or YYYY/MM/DD (e.g. 2026-09-15)
+  const yyyymmdd = str.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
+  if (yyyymmdd) {
+    const [, year, month, day] = yyyymmdd;
+    return `${year}-${month}-${day}`;
+  }
+
+  // Fallback: JS Date parsing
+  let cleanStr = str;
+  if (cleanStr.includes('T') && !cleanStr.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(cleanStr)) {
+    cleanStr += 'Z';
+  }
+  const d = new Date(cleanStr);
+  if (!isNaN(d.getTime())) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  return '';
+};
+
 const TasksPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const targetTaskId = searchParams.get('taskId');
@@ -444,9 +479,19 @@ const TasksPage = () => {
   const isLeadership = ['CEO', 'CTO', 'PM'].includes(user?.role);
 
   const getTaskDateKey = useCallback((t) => {
-    if (t.scheduled_date) return String(t.scheduled_date).split('T')[0];
-    if (t.deadline) return String(t.deadline).split('T')[0];
-    if (t.created_at) return String(t.created_at).split('T')[0];
+    if (!t) return null;
+    if (t.scheduled_date) {
+      const k = normalizeToYYYYMMDD(t.scheduled_date);
+      if (k) return k;
+    }
+    if (t.deadline) {
+      const k = normalizeToYYYYMMDD(t.deadline);
+      if (k) return k;
+    }
+    if (t.created_at) {
+      const k = normalizeToYYYYMMDD(t.created_at);
+      if (k) return k;
+    }
     return null;
   }, []);
 
