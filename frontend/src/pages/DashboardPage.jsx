@@ -210,7 +210,7 @@ const DashboardPage = () => {
             Welcome back, {fullName} !
           </h2>
           <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.88)', fontWeight: 500 }}>
-            Your Personal Performance Dashboard
+            {['CEO', 'CTO'].includes(user?.role) ? 'Executive Leadership Dashboard' : 'Your Personal Performance Dashboard'}
           </p>
         </div>
 

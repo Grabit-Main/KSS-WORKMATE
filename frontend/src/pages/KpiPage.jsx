@@ -1496,19 +1496,22 @@ const KpiPage = () => {
   const [formData, setFormData] = useState(initialForm);
 
   const isExecutive = ['CEO', 'CTO', 'PM'].includes(user?.role);
+  const isCeoOrCto = ['CEO', 'CTO'].includes(user?.role);
   const isTL = user?.role === 'TL';
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
   const canGiveOrEdit = isTL;
 
-  const [viewMode, setViewMode] = useState(isTM ? 'personal' : 'management');
+  const [viewMode, setViewMode] = useState(isCeoOrCto ? 'management' : (isTM ? 'personal' : 'management'));
 
   // Sync viewMode if user role updates
   useEffect(() => {
-    if (isTM) {
+    if (isCeoOrCto) {
+      setViewMode('management');
+    } else if (isTM) {
       setViewMode('personal');
     }
-  }, [isTM]);
+  }, [isCeoOrCto, isTM]);
 
   const loadData = useCallback(async () => {
     try {
@@ -1678,7 +1681,7 @@ const KpiPage = () => {
 
   const liveMetrics = useMemo(() => calculateLiveMetrics(formData), [formData]);
 
-  if (isTM || viewMode === 'personal') {
+  if (!isCeoOrCto && (isTM || viewMode === 'personal')) {
     return (
       <DeveloperDashboardView
         showRulesModal={showRulesModal}
@@ -1691,8 +1694,8 @@ const KpiPage = () => {
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto' }}>
-      {/* View Mode Switching Tabs for Management Users */}
-      {!isTM && (
+      {/* View Mode Switching Tabs for Management Users (Except CEO & CTO) */}
+      {!isTM && !isCeoOrCto && (
         <div style={{
           display: 'flex',
           gap: '8px',
