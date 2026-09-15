@@ -97,13 +97,26 @@ const HistoryPage = () => {
     setExpandedTaskId(prev => (prev === taskId ? null : taskId));
   };
 
-  const getStatusBadgeStyle = (status) => {
+  const getStatusTheme = (status) => {
     const s = (status || '').toLowerCase();
-    if (s === 'completed') return { bg: 'rgba(16, 185, 129, 0.12)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)' };
-    if (s === 'in_progress' || s === 'active') return { bg: 'rgba(217, 119, 6, 0.12)', color: '#D97706', border: 'rgba(217, 119, 6, 0.25)' };
-    if (s === 'in_review') return { bg: 'rgba(99, 102, 241, 0.12)', color: '#4F46E5', border: 'rgba(99, 102, 241, 0.25)' };
-    if (s === 'blocked') return { bg: 'rgba(239, 68, 68, 0.12)', color: '#DC2626', border: 'rgba(239, 68, 68, 0.25)' };
-    return { bg: 'var(--subtle)', color: 'var(--text-secondary)', border: 'var(--border)' };
+    if (s === 'completed') {
+      return { bg: '#ECFDF5', color: '#047857', border: '#A7F3D0', dot: '#10B981', label: 'COMPLETED' };
+    }
+    if (s === 'in_progress' || s === 'active') {
+      return { bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE', dot: '#3B82F6', label: 'ACTIVE' };
+    }
+    if (s === 'in_review') {
+      return { bg: '#F3E8FF', color: '#6D28D9', border: '#DDD6FE', dot: '#7C3AED', label: 'IN REVIEW' };
+    }
+    if (s === 'blocked') {
+      return { bg: '#FEF2F2', color: '#B91C1C', border: '#FECACA', dot: '#EF4444', label: 'BLOCKED' };
+    }
+    return { bg: '#FEF2F2', color: '#991B1B', border: '#FCA5A5', dot: '#EF4444', label: 'NOT STARTED' };
+  };
+
+  const getStatusBadgeStyle = (status) => {
+    const theme = getStatusTheme(status);
+    return { bg: theme.bg, color: theme.color, border: theme.border };
   };
 
   // Separate activities into Project Tasks and Normally Assigned Tasks
@@ -596,13 +609,12 @@ const HistoryPage = () => {
                       <p className="text-sm">No project task activities found matching your criteria.</p>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
                       {filteredProjectActivities.map(group => {
-                        const badge = getStatusBadgeStyle(group.latest_status);
+                        const statusTheme = getStatusTheme(group.latest_status);
                         return (
                           <div
                             key={group.key}
-                            className="card"
                             onClick={() => setSelectedActivityGroup(group)}
                             style={{
                               cursor: 'pointer',
@@ -610,147 +622,173 @@ const HistoryPage = () => {
                               flexDirection: 'column',
                               justifyContent: 'space-between',
                               padding: '22px',
-                              transition: 'all var(--transition-fast)',
+                              borderRadius: '16px',
+                              background: '#FFFFFF',
+                              border: '1px solid #E2E8F0',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                               position: 'relative',
-                              border: '1px solid var(--border)'
+                              overflow: 'hidden'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.borderColor = 'var(--brand-400)';
+                              e.currentTarget.style.borderColor = '#A5B4FC';
                               e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = 'var(--shadow-float)';
+                              e.currentTarget.style.boxShadow = '0 12px 24px -6px rgba(0,0,0,0.06)';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.borderColor = 'var(--border)';
+                              e.currentTarget.style.borderColor = '#E2E8F0';
                               e.currentTarget.style.transform = 'none';
-                              e.currentTarget.style.boxShadow = 'var(--shadow-card)';
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)';
                             }}
                           >
                             <div>
-                              <div className="flex justify-between items-start mb-3">
-                                <div className="flex items-center gap-2.5">
+                              {/* Header Row */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
                                   <div style={{
-                                    width: '38px',
-                                    height: '38px',
-                                    borderRadius: '10px',
-                                    background: 'rgba(99, 102, 241, 0.1)',
-                                    color: 'var(--brand-600)',
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: '12px',
+                                    background: 'rgba(85, 81, 255, 0.08)',
+                                    color: '#5551FF',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     flexShrink: 0
                                   }}>
-                                    <Folders size={18} />
+                                    <Folders size={20} />
                                   </div>
-                                  <div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
                                     <span style={{
                                       fontSize: '10px',
                                       fontWeight: 700,
                                       textTransform: 'uppercase',
                                       letterSpacing: '0.05em',
-                                      color: 'var(--brand-600)'
+                                      color: '#5551FF',
+                                      display: 'block',
+                                      marginBottom: '2px'
                                     }}>
                                       Project Deliverables Feed
                                     </span>
-                                    <h4 className="font-bold text-base" style={{ color: 'var(--text-primary)', letterSpacing: '-0.015em', marginTop: '1px' }}>
+                                    <h4 style={{
+                                      fontSize: '16px',
+                                      fontWeight: 700,
+                                      color: '#0F172A',
+                                      letterSpacing: '-0.015em',
+                                      lineHeight: '1.3',
+                                      margin: 0,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }} title={group.title}>
                                       {group.title}
                                     </h4>
                                   </div>
                                 </div>
 
-                                <span style={{
-                                  padding: '3px 10px',
-                                  borderRadius: 'var(--radius-full)',
-                                  fontSize: '10px',
+                                <div style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '4px 12px',
+                                  borderRadius: '9999px',
+                                  background: statusTheme.bg,
+                                  color: statusTheme.color,
+                                  border: `1px solid ${statusTheme.border}`,
+                                  fontSize: '11px',
                                   fontWeight: 700,
-                                  background: badge.bg,
-                                  color: badge.color,
-                                  border: `1px solid ${badge.border}`,
-                                  textTransform: 'uppercase',
                                   letterSpacing: '0.02em',
-                                  flexShrink: 0
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0,
+                                  alignSelf: 'flex-start'
                                 }}>
-                                  {group.latest_status?.replace('_', ' ') || 'ACTIVE'}
-                                </span>
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusTheme.dot }} />
+                                  <span>{statusTheme.label}</span>
+                                </div>
                               </div>
 
                               {group.aim && (
-                                <p className="text-xs text-secondary" style={{
+                                <p style={{
+                                  fontSize: '13px',
+                                  color: '#475569',
+                                  lineHeight: '1.5',
+                                  marginBottom: '14px',
                                   display: '-webkit-box',
                                   WebkitLineClamp: 2,
                                   WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  lineHeight: '1.5',
-                                  marginBottom: '12px'
+                                  overflow: 'hidden'
                                 }}>
                                   {group.aim}
                                 </p>
                               )}
 
                               {group.team_name && (
-                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                                  <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Squad: </span>
-                                  <span>{group.team_name}</span>
+                                <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontWeight: 600, color: '#94A3B8' }}>Squad:</span>
+                                  <span style={{ fontWeight: 600, color: '#1E293B', background: '#F1F5F9', padding: '2px 8px', borderRadius: '6px' }}>{group.team_name}</span>
                                 </div>
                               )}
 
+                              {/* Recent Activity Highlight Box */}
                               <div style={{
-                                background: 'var(--subtle)',
-                                borderRadius: 'var(--radius-sm)',
-                                padding: '10px 12px',
-                                border: '1px solid var(--border)',
-                                marginBottom: '14px'
+                                background: '#F8FAFC',
+                                borderRadius: '12px',
+                                padding: '12px 14px',
+                                border: '1px solid #E2E8F0',
+                                marginBottom: '16px'
                               }}>
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="text-xs font-semibold text-secondary" style={{ fontSize: '11px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                     Recent Activity
                                   </span>
-                                  <span className="text-xs text-secondary flex items-center gap-1 font-medium" style={{ fontSize: '11px' }}>
-                                    <Clock size={11} />
+                                  <span style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                                    <Clock size={12} />
                                     {group.latest_created_at ? formatDateTime(group.latest_created_at) : 'Recent'}
                                   </span>
                                 </div>
-                                <p style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
+                                <p style={{ fontSize: '13px', color: '#0F172A', fontWeight: 600, margin: '0 0 4px 0', lineHeight: '1.4' }}>
                                   {group.latest_action}
                                 </p>
                                 {group.latest_actor && (
-                                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
-                                    Actor: {group.latest_actor.first_name} {group.latest_actor.last_name} ({group.latest_actor.role})
+                                  <span style={{ fontSize: '11px', color: '#64748B', display: 'block' }}>
+                                    Actor: <strong style={{ color: '#334155' }}>{group.latest_actor.first_name} {group.latest_actor.last_name} ({group.latest_actor.role})</strong>
                                   </span>
                                 )}
                               </div>
                             </div>
 
+                            {/* Card Footer */}
                             <div style={{
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center',
-                              paddingTop: '12px',
-                              borderTop: '1px solid var(--border)',
+                              paddingTop: '14px',
+                              borderTop: '1px solid #F1F5F9',
                               fontSize: '12px'
                             }}>
                               <span style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '5px',
+                                gap: '6px',
                                 fontWeight: 600,
-                                color: 'var(--brand-600)',
-                                background: 'var(--brand-50)',
-                                padding: '2px 8px',
-                                borderRadius: 'var(--radius-full)'
+                                color: '#4F46E5',
+                                background: '#EEF2FF',
+                                padding: '4px 12px',
+                                borderRadius: '9999px'
                               }}>
-                                <Activity size={12} />
+                                <Activity size={13} />
                                 {group.events.length} event{group.events.length === 1 ? '' : 's'} recorded
                               </span>
 
                               <span style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px',
-                                color: 'var(--brand-600)',
-                                fontWeight: 600
+                                gap: '5px',
+                                color: '#5551FF',
+                                fontWeight: 700
                               }}>
                                 <span>View Audit Dialogue</span>
-                                <ArrowRight size={13} strokeWidth={2.2} />
+                                <ArrowRight size={14} strokeWidth={2.2} />
                               </span>
                             </div>
                           </div>
@@ -800,13 +838,12 @@ const HistoryPage = () => {
                       <p className="text-sm">No normally assigned task activities found matching your criteria.</p>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
                       {filteredNormalTaskActivities.map(group => {
-                        const badge = getStatusBadgeStyle(group.latest_status);
+                        const statusTheme = getStatusTheme(group.latest_status);
                         return (
                           <div
                             key={group.key}
-                            className="card"
                             onClick={() => setSelectedActivityGroup(group)}
                             style={{
                               cursor: 'pointer',
@@ -814,28 +851,33 @@ const HistoryPage = () => {
                               flexDirection: 'column',
                               justifyContent: 'space-between',
                               padding: '22px',
-                              transition: 'all var(--transition-fast)',
+                              borderRadius: '16px',
+                              background: '#FFFFFF',
+                              border: '1px solid #E2E8F0',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                               position: 'relative',
-                              border: '1px solid var(--border)'
+                              overflow: 'hidden'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.borderColor = '#10B981';
+                              e.currentTarget.style.borderColor = '#A7F3D0';
                               e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = 'var(--shadow-float)';
+                              e.currentTarget.style.boxShadow = '0 12px 24px -6px rgba(0,0,0,0.06)';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.borderColor = 'var(--border)';
+                              e.currentTarget.style.borderColor = '#E2E8F0';
                               e.currentTarget.style.transform = 'none';
-                              e.currentTarget.style.boxShadow = 'var(--shadow-card)';
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)';
                             }}
                           >
                             <div>
-                              <div className="flex justify-between items-start mb-3">
-                                <div className="flex items-center gap-2.5">
+                              {/* Header Row */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
                                   <div style={{
-                                    width: '38px',
-                                    height: '38px',
-                                    borderRadius: '10px',
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: '12px',
                                     background: 'rgba(16, 185, 129, 0.1)',
                                     color: '#059669',
                                     display: 'flex',
@@ -843,38 +885,55 @@ const HistoryPage = () => {
                                     justifyContent: 'center',
                                     flexShrink: 0
                                   }}>
-                                    <CheckSquare size={18} />
+                                    <CheckSquare size={20} />
                                   </div>
-                                  <div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
                                     <span style={{
                                       fontSize: '10px',
                                       fontWeight: 700,
                                       textTransform: 'uppercase',
                                       letterSpacing: '0.05em',
-                                      color: '#059669'
+                                      color: '#059669',
+                                      display: 'block',
+                                      marginBottom: '2px'
                                     }}>
                                       Normally Assigned Task
                                     </span>
-                                    <h4 className="font-bold text-base" style={{ color: 'var(--text-primary)', letterSpacing: '-0.015em', marginTop: '1px' }}>
+                                    <h4 style={{
+                                      fontSize: '16px',
+                                      fontWeight: 700,
+                                      color: '#0F172A',
+                                      letterSpacing: '-0.015em',
+                                      lineHeight: '1.3',
+                                      margin: 0,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }} title={group.title}>
                                       {group.title}
                                     </h4>
                                   </div>
                                 </div>
 
-                                <span style={{
-                                  padding: '3px 10px',
-                                  borderRadius: 'var(--radius-full)',
-                                  fontSize: '10px',
+                                <div style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '4px 12px',
+                                  borderRadius: '9999px',
+                                  background: statusTheme.bg,
+                                  color: statusTheme.color,
+                                  border: `1px solid ${statusTheme.border}`,
+                                  fontSize: '11px',
                                   fontWeight: 700,
-                                  background: badge.bg,
-                                  color: badge.color,
-                                  border: `1px solid ${badge.border}`,
-                                  textTransform: 'uppercase',
                                   letterSpacing: '0.02em',
-                                  flexShrink: 0
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0,
+                                  alignSelf: 'flex-start'
                                 }}>
-                                  {group.latest_status?.replace('_', ' ') || 'ACTIVE'}
-                                </span>
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusTheme.dot }} />
+                                  <span>{statusTheme.label}</span>
+                                </div>
                               </div>
 
                               {/* Task Metadata Row */}
@@ -883,97 +942,99 @@ const HistoryPage = () => {
                                 alignItems: 'center',
                                 gap: '10px',
                                 flexWrap: 'wrap',
-                                marginBottom: '12px',
+                                marginBottom: '14px',
                                 fontSize: '11px',
-                                color: 'var(--text-secondary)'
+                                color: '#475569'
                               }}>
                                 {group.assignee && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Assignee:</span>
-                                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    <span style={{ fontWeight: 600, color: '#94A3B8' }}>Assignee:</span>
+                                    <span style={{ fontWeight: 600, color: '#0F172A', background: '#F1F5F9', padding: '2px 8px', borderRadius: '6px' }}>
                                       {group.assignee.first_name} {group.assignee.last_name}
                                     </span>
                                   </div>
                                 )}
                                 {group.priority && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                    <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Priority:</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span style={{ fontWeight: 600, color: '#94A3B8' }}>Priority:</span>
                                     <span style={{
                                       fontWeight: 700,
                                       textTransform: 'capitalize',
-                                      color: group.priority === 'urgent' ? 'var(--priority-urgent)' :
-                                             group.priority === 'high' ? 'var(--priority-high)' : 'var(--text-secondary)'
+                                      color: group.priority === 'urgent' ? '#EF4444' :
+                                             group.priority === 'high' ? '#F97316' : '#64748B'
                                     }}>
                                       {group.priority}
                                     </span>
                                   </div>
                                 )}
                                 {group.team_name && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                    <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Team:</span>
-                                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{group.team_name}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span style={{ fontWeight: 600, color: '#94A3B8' }}>Squad:</span>
+                                    <span style={{ fontWeight: 600, color: '#475569', background: '#F1F5F9', padding: '2px 8px', borderRadius: '6px' }}>{group.team_name}</span>
                                   </div>
                                 )}
                               </div>
 
+                              {/* Recent Activity Highlight Box */}
                               <div style={{
-                                background: 'var(--subtle)',
-                                borderRadius: 'var(--radius-sm)',
-                                padding: '10px 12px',
-                                border: '1px solid var(--border)',
-                                marginBottom: '14px'
+                                background: '#F8FAFC',
+                                borderRadius: '12px',
+                                padding: '12px 14px',
+                                border: '1px solid #E2E8F0',
+                                marginBottom: '16px'
                               }}>
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="text-xs font-semibold text-secondary" style={{ fontSize: '11px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                     Recent Activity
                                   </span>
-                                  <span className="text-xs text-secondary flex items-center gap-1 font-medium" style={{ fontSize: '11px' }}>
-                                    <Clock size={11} />
+                                  <span style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                                    <Clock size={12} />
                                     {group.latest_created_at ? formatDateTime(group.latest_created_at) : 'Recent'}
                                   </span>
                                 </div>
-                                <p style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
+                                <p style={{ fontSize: '13px', color: '#0F172A', fontWeight: 600, margin: '0 0 4px 0', lineHeight: '1.4' }}>
                                   {group.latest_action}
                                 </p>
                                 {group.latest_actor && (
-                                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
-                                    Actor: {group.latest_actor.first_name} {group.latest_actor.last_name} ({group.latest_actor.role})
+                                  <span style={{ fontSize: '11px', color: '#64748B', display: 'block' }}>
+                                    Actor: <strong style={{ color: '#334155' }}>{group.latest_actor.first_name} {group.latest_actor.last_name} ({group.latest_actor.role})</strong>
                                   </span>
                                 )}
                               </div>
                             </div>
 
+                            {/* Card Footer */}
                             <div style={{
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center',
-                              paddingTop: '12px',
-                              borderTop: '1px solid var(--border)',
+                              paddingTop: '14px',
+                              borderTop: '1px solid #F1F5F9',
                               fontSize: '12px'
                             }}>
                               <span style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '5px',
+                                gap: '6px',
                                 fontWeight: 600,
                                 color: '#059669',
-                                background: 'rgba(16, 185, 129, 0.1)',
-                                padding: '2px 8px',
-                                borderRadius: 'var(--radius-full)'
+                                background: '#ECFDF5',
+                                padding: '4px 12px',
+                                borderRadius: '9999px'
                               }}>
-                                <Activity size={12} />
+                                <Activity size={13} />
                                 {group.events.length} event{group.events.length === 1 ? '' : 's'} recorded
                               </span>
 
                               <span style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px',
+                                gap: '5px',
                                 color: '#059669',
-                                fontWeight: 600
+                                fontWeight: 700
                               }}>
                                 <span>View Audit Dialogue</span>
-                                <ArrowRight size={13} strokeWidth={2.2} />
+                                <ArrowRight size={14} strokeWidth={2.2} />
                               </span>
                             </div>
                           </div>
