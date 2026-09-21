@@ -10,7 +10,7 @@ import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../context/AuthContext';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
 import { AttachmentCard } from '../components/common/AttachmentCard';
-import { formatDeadlineWithTime, isUpcomingDate } from '../components/projects/DayWiseTaskPlanner';
+import { formatDeadlineWithTime, isUpcomingDate, isDeadlineOverdue } from '../components/projects/DayWiseTaskPlanner';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
   Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2, Trash2, Shield
@@ -818,7 +818,7 @@ const TasksPage = () => {
           {filteredTasks.map(task => {
             const isAssignedToMe = String(task.assigned_to) === String(user?.id);
             const isAssignedByMe = String(task.assigned_by) === String(user?.id);
-            const isOverdue = task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
+            const isOverdue = isDeadlineOverdue(task.deadline, task.status);
 
             // Status Theme helper for Left Side Bar
             const getStatusTheme = (st) => {
