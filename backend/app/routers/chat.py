@@ -19,25 +19,17 @@ from app.models.notification import Notification
 
 
 def _can_chat(db, task, user):
-    """TL of team or assigned TM or assigner can chat."""
+    """Only assigned member and assigner can access task chat."""
     if str(task.assigned_to) == str(user.id) or str(task.assigned_by) == str(user.id):
         return True
-    if task.team_id:
-        lead = db.query(TeamMembership).filter(
-            TeamMembership.team_id == task.team_id,
-            TeamMembership.user_id == user.id,
-            (TeamMembership.is_lead == True) | (user.role == "TL"),
-        ).first()
-        if lead:
-            return True
-    return user.role in ("CEO", "CTO", "PM")
+    return False
 
 
 @router.get("/{task_id}/chat", response_model=List[ChatMessageResponse])
 def get_chat(task_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task or not _can_chat(db, task, user):
-        raise HTTPException(403, "Access denied")
+        raise HTTPException(403, "Access denied: This conversation is private between the assignee and assigner.")
     return db.query(ChatMessage).filter(ChatMessage.task_id == task_id).order_by(ChatMessage.created_at.asc()).all()
 
 
@@ -45,7 +37,7 @@ def get_chat(task_id: UUID, db: Session = Depends(get_db), user: User = Depends(
 async def send_message(task_id: UUID, req: ChatMessageCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task or not _can_chat(db, task, user):
-        raise HTTPException(403, "Access denied")
+        raise HTTPException(403, "Access denied: This conversation is private between the assignee and assigner.")
     msg = ChatMessage(task_id=task_id, sender_id=user.id, **req.model_dump())
     db.add(msg)
 
@@ -78,7 +70,7 @@ async def send_message(task_id: UUID, req: ChatMessageCreate, db: Session = Depe
             "created_at": msg.created_at.isoformat(),
         }
     }
-    await manager.broadcast(f"task:{task_id}", event)
+    # Direct targeted WebSocket dispatch ONLY to sender and recipient (private)
     if recipient_id and str(recipient_id) != str(user.id):
         await manager.send_to_user(str(recipient_id), event)
         await manager.send_to_user(str(recipient_id), {
