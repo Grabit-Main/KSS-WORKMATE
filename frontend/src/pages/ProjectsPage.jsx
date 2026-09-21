@@ -1111,7 +1111,7 @@ const ProjectsPage = () => {
                   }}
                   onClick={e => e.stopPropagation()}
                 >
-                  {['TL', 'TM'].includes(user?.role) && (
+                  {user && (
                     <button
                       type="button"
                       onClick={() => setPlannerProject(p)}
@@ -2180,7 +2180,7 @@ const ProjectsPage = () => {
         );
       })()}
 
-      {plannerProject && ['TL', 'TM'].includes(user?.role) && (
+      {plannerProject && (
         <DayWiseTaskPlanner
           project={plannerProject}
           currentUser={user}
