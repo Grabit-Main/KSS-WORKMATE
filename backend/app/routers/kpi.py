@@ -311,10 +311,10 @@ def get_my_kpi(
         ("deadline_adherence", "Deadline Adherence", 2),
         ("ownership", "Ownership", 2),
         ("problem_solving", "Problem Solving", 2),
-        ("communication", "Communication", 2),
+        ("communication", "Communication", 1),
         ("team_collaboration", "Team Collaboration", 1),
         ("learning_improvement", "Learning / Improvement", 1),
-        ("attendance_discipline", "Attendance & Discipline", 1)
+        ("attendance_discipline", "Attendance & Discipline", 2)
     ]
 
     trend_history = get_trend_history(db, user.id, period_type, offset)
@@ -348,16 +348,16 @@ def get_my_kpi(
     overall_percentage = round(total_pct / days_evaluated, 1)
     average_score = round((overall_percentage / 100.0) * 5.0, 1)
 
-    if overall_percentage >= 90.0:
+    if overall_percentage >= 95.0:
         status = "Excellent"
     elif overall_percentage >= 80.0:
         status = "Very Good"
-    elif overall_percentage >= 70.0:
+    elif overall_percentage >= 65.0:
         status = "Meets Expectation"
-    elif overall_percentage >= 60.0:
+    elif overall_percentage >= 50.0:
         status = "Needs Improvement"
     else:
-        status = "Requires Attention"
+        status = "Needs Attention"
 
     kpis_list = []
     category_items = []

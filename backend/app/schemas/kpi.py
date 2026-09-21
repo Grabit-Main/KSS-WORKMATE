@@ -26,10 +26,10 @@ class KPICreate(BaseModel):
     deadline_adherence: int = Field(..., ge=1, le=5, description="1 to 5, Weight: 2")
     ownership: int = Field(..., ge=1, le=5, description="1 to 5, Weight: 2")
     problem_solving: int = Field(..., ge=1, le=5, description="1 to 5, Weight: 2")
-    communication: int = Field(..., ge=1, le=5, description="1 to 5, Weight: 2")
+    communication: int = Field(..., ge=1, le=5, description="1 to 5, Weight: 1")
     team_collaboration: int = Field(..., ge=1, le=5, description="1 to 5, Weight: 1")
     learning_improvement: int = Field(..., ge=1, le=5, description="1 to 5, Weight: 1")
-    attendance_discipline: int = Field(..., ge=1, le=5, description="1 to 5, Weight: 1")
+    attendance_discipline: int = Field(..., ge=1, le=5, description="1 to 5, Weight: 2")
     notes: Optional[str] = None
 
 
