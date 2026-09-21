@@ -7,6 +7,7 @@ import {
   getKPITeammates,
   createOrUpdateKPI,
   updateKPI,
+  deleteKPI,
   downloadKPICSV
 } from '../api/kpi';
 import { useRealtime } from '../realtime/useRealtime';
@@ -26,6 +27,7 @@ import {
   X,
   Edit2,
   Eye,
+  Trash2,
   BarChart3,
   HelpCircle,
   BookOpen,
@@ -1620,6 +1622,19 @@ const KpiPage = () => {
     setModalOpen(true);
   };
 
+  const handleDeleteKPI = async (logId, employeeName, dateStr) => {
+    if (!window.confirm(`Are you sure you want to delete the KPI log for ${employeeName || 'this teammate'} on ${dateStr}?`)) {
+      return;
+    }
+    try {
+      await deleteKPI(logId);
+      loadData();
+    } catch (err) {
+      console.error('Error deleting KPI:', err);
+      alert(err.response?.data?.detail || 'Failed to delete KPI log.');
+    }
+  };
+
   const handleScoreChange = (key, val) => {
     setFormData((prev) => ({
       ...prev,
@@ -2627,28 +2642,57 @@ const KpiPage = () => {
                             <Eye size={15} />
                           </button>
 
-                          {/* Only Team Lead can edit their teammates' KPIs */}
+                          {/* Only Team Lead can edit/delete their teammates' KPIs */}
                           {canGiveOrEdit && isOwnTeammate && (
-                            <button
-                              onClick={() => handleOpenEditModal(log)}
-                              title="Edit KPI"
-                              style={{
-                                padding: '6px 10px',
-                                borderRadius: 'var(--radius-xs)',
-                                border: '1px solid var(--brand-300)',
-                                background: 'var(--brand-50)',
-                                color: 'var(--brand-700)',
-                                fontWeight: 600,
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              <Edit2 size={13} />
-                              <span>Edit</span>
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleOpenEditModal(log)}
+                                title="Edit KPI"
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: 'var(--radius-xs)',
+                                  border: '1px solid var(--brand-300)',
+                                  background: 'var(--brand-50)',
+                                  color: 'var(--brand-700)',
+                                  fontWeight: 600,
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <Edit2 size={13} />
+                                <span>Edit</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteKPI(log.id, log.employee ? `${log.employee.first_name} ${log.employee.last_name}` : 'teammate', log.date)}
+                                title="Delete KPI log"
+                                style={{
+                                  padding: '6px',
+                                  borderRadius: 'var(--radius-xs)',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  background: 'rgba(239, 68, 68, 0.06)',
+                                  color: '#EF4444',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                                  e.currentTarget.style.borderColor = '#EF4444';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)';
+                                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                                }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

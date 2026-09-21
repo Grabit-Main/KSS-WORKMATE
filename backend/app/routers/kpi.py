@@ -647,6 +647,33 @@ async def update_kpi(
     return kpi_log
 
 
+@router.delete("/{kpi_id}")
+async def delete_kpi(
+    kpi_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """
+    Only Team Leads (or PM, CTO, CEO) can delete a KPI log entry.
+    """
+    can_delete = user.role in ("CEO", "CTO", "PM") or is_team_lead(db, user)
+    if not can_delete:
+        raise HTTPException(403, "Only Team Leads and Executives can delete KPI logs")
+
+    kpi_log = db.query(DailyKPILog).filter(DailyKPILog.id == kpi_id).first()
+    if not kpi_log:
+        raise HTTPException(404, "KPI log not found")
+
+    if user.role == "TL" and user.role not in ("CEO", "CTO", "PM"):
+        teammate_ids = get_teammate_ids_for_lead(db, user)
+        if kpi_log.employee_id not in teammate_ids and kpi_log.evaluator_id != user.id:
+            raise HTTPException(403, "You can only delete KPIs of your assigned team mates")
+
+    db.delete(kpi_log)
+    db.commit()
+    return {"message": "KPI log deleted successfully", "id": str(kpi_id)}
+
+
 @router.get("/export-csv")
 def export_kpi_csv(
     month: Optional[str] = None,

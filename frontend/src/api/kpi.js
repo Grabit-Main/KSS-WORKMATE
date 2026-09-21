@@ -30,6 +30,11 @@ export const updateKPI = async (id, data) => {
   return res.data;
 };
 
+export const deleteKPI = async (id) => {
+  const res = await api.delete(`/kpi/${id}`);
+  return res.data;
+};
+
 export const downloadKPICSV = async (params = {}) => {
   const res = await api.get('/kpi/export-csv', {
     params,
