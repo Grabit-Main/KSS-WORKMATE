@@ -2388,8 +2388,8 @@ const KpiPage = () => {
                         <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="6. Problem Solving (Weight: 2, Max 10%)">
                           6. Problem (10%)
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="7. Communication (Weight: 2, Max 10%)">
-                          7. Comm (10%)
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="7. Communication (Weight: 1, Max 5%)">
+                          7. Comm (5%)
                         </th>
                         <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="8. Team Collaboration (Weight: 1, Max 5%)">
                           8. Collab (5%)
@@ -2397,8 +2397,8 @@ const KpiPage = () => {
                         <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="9. Learning / Improvement (Weight: 1, Max 5%)">
                           9. Learn (5%)
                         </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="10. Attendance & Discipline (Weight: 1, Max 5%)">
-                          10. Attend (5%)
+                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="10. Attendance & Discipline (Weight: 2, Max 10%)">
+                          10. Attend (10%)
                         </th>
                       </>
                     ) : (
