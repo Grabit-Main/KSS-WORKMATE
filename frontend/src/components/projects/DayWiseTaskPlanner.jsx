@@ -575,11 +575,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
     );
   };
 
-  // Authorization guard: PM, CTO, and CEO do not have access to day-wise planner
-  if (['PM', 'CTO', 'CEO'].includes(currentUser?.role)) {
-    return null;
-  }
-
+  // Remove role restriction so all portals can access/view Date-Wise Allocation
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -589,486 +585,671 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 999,
-        padding: '12px'
+        zIndex: 1000,
+        padding: '24px'
       }}
     >
-      <div className="card modal-animate" style={{
+      <div className="modal-animate" style={{
         width: '100%',
-        maxWidth: '1100px',
+        maxWidth: '1080px',
         height: '88vh',
+        maxHeight: '740px',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         padding: 0,
         overflow: 'hidden',
-        boxShadow: 'var(--shadow-float)',
-        borderRadius: 'var(--radius-xl)',
-        background: 'var(--surface)'
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        borderRadius: '24px',
+        background: '#FFFFFF'
       }}>
-        {/* Planner Header */}
+        {/* Left Sidebar Panel - Dark Navy Theme */}
         <div style={{
-          padding: '20px 28px',
-          borderBottom: '1px solid var(--border)',
-          background: 'var(--subtle-glass)',
+          width: '320px',
+          flexShrink: 0,
+          background: '#19173D',
+          padding: '32px 24px',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexShrink: 0
+          flexDirection: 'column',
+          color: '#FFFFFF'
         }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--brand-100)',
-                color: 'var(--brand-700)',
-                textTransform: 'uppercase'
-              }}>
-                Date-Wise Allocation
-              </span>
-              <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-                {project.name}
-              </h3>
-            </div>
-            <p className="text-xs text-secondary mt-1">
-              Plan and allocate daily task deliverables by date for squad members. Click any task to inspect details and chat.
+          {/* Header Label & Project Info */}
+          <div style={{ marginBottom: '28px' }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+              color: '#818CF8',
+              textTransform: 'uppercase',
+              display: 'block',
+              marginBottom: '10px'
+            }}>
+              DATE-WISE ALLOCATION
+            </span>
+            <h2 style={{
+              fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif',
+              fontSize: '32px',
+              fontWeight: 700,
+              color: '#FFFFFF',
+              margin: '0 0 10px 0',
+              lineHeight: 1.1,
+              letterSpacing: '-0.01em'
+            }}>
+              {project.name}
+            </h2>
+            <p style={{
+              fontSize: '13px',
+              color: '#94A3B8',
+              lineHeight: 1.5,
+              margin: 0,
+              fontWeight: 400
+            }}>
+              Plan and allocate daily task deliverables by date for squad members.
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {/* Pre-fill Tasks Button (Team Leads only) */}
+          {/* Dates Navigation List */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            paddingRight: '4px'
+          }}>
+            {dates.map(d => {
+              const isUpcoming = isUpcomingDate(d);
+              const isMemberLocked = currentUser?.role === 'TM' && isUpcoming;
+              const countForDate = userVisibleTasks.filter(t => normalizeToDDMMYYYY(t.scheduled_date) === d).length;
+              const isSelected = activeDate === d;
+
+              if (isMemberLocked) {
+                return (
+                  <div
+                    key={d}
+                    style={{
+                      padding: '14px 18px',
+                      borderRadius: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      opacity: 0.55,
+                      cursor: 'not-allowed',
+                      userSelect: 'none'
+                    }}
+                    title="Upcoming deliverable date is locked for members"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#94A3B8', fontSize: '13.5px', fontWeight: 500 }}>
+                      <Lock size={14} style={{ color: '#64748B' }} />
+                      <span>{d}</span>
+                    </div>
+                    <span style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      letterSpacing: '0.05em',
+                      color: '#64748B',
+                      textTransform: 'uppercase'
+                    }}>
+                      LOCKED
+                    </span>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={d}
+                  onClick={() => handleSelectDate(d)}
+                  style={{
+                    padding: '14px 18px',
+                    borderRadius: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    background: isSelected ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    border: isSelected ? '1px solid rgba(255, 255, 255, 0.22)' : '1px solid transparent',
+                    boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: isSelected ? 700 : 500,
+                    color: isSelected ? '#FFFFFF' : '#A5B4FC'
+                  }}>
+                    {d}
+                  </span>
+                  <div style={{
+                    width: isSelected ? '24px' : '22px',
+                    height: isSelected ? '24px' : '22px',
+                    borderRadius: '50%',
+                    background: isSelected ? '#93C5FD' : 'rgba(255, 255, 255, 0.15)',
+                    color: isSelected ? '#19173D' : '#E0E7FF',
+                    fontWeight: isSelected ? 800 : 700,
+                    fontSize: isSelected ? '12px' : '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {countForDate}
+                  </div>
+                </div>
+              );
+            })}
+
             {canAllocate && (
               <button
-                onClick={handlePreFillTasks}
-                className="btn btn-secondary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 14px' }}
-                title="Pre-fill sprint deliverables across scheduled dates"
+                type="button"
+                onClick={handleOpenAddDateDialog}
+                style={{
+                  marginTop: '8px',
+                  padding: '12px 16px',
+                  borderRadius: '14px',
+                  border: '1px dashed rgba(255, 255, 255, 0.3)',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  color: '#E0E7FF',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
               >
-                <Sparkles size={14} color="var(--brand-600)" />
-                <span>Pre-fill Tasks</span>
+                <Plus size={15} />
+                <span>Add Date</span>
               </button>
             )}
-
-            {/* Add Task for Date Button (Team Leads only) */}
-            {canAllocate && (
-              <button
-                onClick={() => handleOpenAddModal(activeDate)}
-                className="btn btn-primary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 14px' }}
-              >
-                <Plus size={14} />
-                <span>Add Task on {activeDate}</span>
-              </button>
-            )}
-
-            <button
-              onClick={onClose}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-tertiary)',
-                padding: '4px',
-                borderRadius: 'var(--radius-full)'
-              }}
-            >
-              <X size={20} />
-            </button>
           </div>
         </div>
 
-
-
-        {/* Dates Bar */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '12px 28px',
-          background: 'var(--surface)',
-          borderBottom: '1px solid var(--border)',
-          overflowX: 'auto',
-          flexShrink: 0
-        }}>
-          {dates.map(d => {
-            const isUpcoming = isUpcomingDate(d);
-            const isMemberLocked = currentUser?.role === 'TM' && isUpcoming;
-            const countForDate = userVisibleTasks.filter(t => normalizeToDDMMYYYY(t.scheduled_date) === d).length;
-            const isSelected = activeDate === d;
-            return (
-              <button
-                key={d}
-                disabled={isMemberLocked}
-                onClick={() => handleSelectDate(d)}
-                title={isMemberLocked ? "Upcoming deliverable date is locked for members" : `Deliverables for ${d}`}
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: 'var(--radius-full)',
-                  border: isSelected ? '1px solid var(--brand-500)' : '1px solid var(--border)',
-                  background: isSelected ? 'var(--brand-50)' : isMemberLocked ? 'var(--subtle)' : 'var(--subtle)',
-                  color: isSelected ? 'var(--brand-700)' : isMemberLocked ? 'var(--text-tertiary)' : 'var(--text-secondary)',
-                  fontWeight: isSelected ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: isMemberLocked ? 'not-allowed' : 'pointer',
-                  opacity: isMemberLocked ? 0.55 : 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all var(--transition-fast)',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {isMemberLocked && <Lock size={11} />}
-                <span>{d}</span>
-                {isMemberLocked ? (
-                  <span style={{
-                    fontSize: '9px',
-                    padding: '1px 5px',
-                    borderRadius: 'var(--radius-full)',
-                    background: 'rgba(0,0,0,0.06)',
-                    color: 'var(--text-tertiary)',
-                    fontWeight: 600,
-                    textTransform: 'uppercase'
-                  }}>
-                    Locked
-                  </span>
-                ) : (
-                  <span style={{
-                    fontSize: '10px',
-                    padding: '1px 6px',
-                    borderRadius: 'var(--radius-full)',
-                    background: isSelected ? 'var(--brand-600)' : 'var(--border)',
-                    color: isSelected ? '#fff' : 'var(--text-secondary)',
-                    fontWeight: 700
-                  }}>
-                    {countForDate}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-
-          {canAllocate && (
-            <button
-              type="button"
-              onClick={handleOpenAddDateDialog}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-full)',
-                border: '1px dashed var(--brand-500)',
-                background: 'var(--brand-50)',
-                color: 'var(--brand-600)',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                whiteSpace: 'nowrap',
-                transition: 'all var(--transition-fast)'
-              }}
-              title="Add a new deliverable date via calendar selection"
-            >
-              <Plus size={13} />
-              <span>Add Date</span>
-            </button>
-          )}
-        </div>
-
-        {/* Day Tasks Content */}
+        {/* Right Main Content Panel */}
         <div style={{
           flex: 1,
-          padding: '24px 28px',
-          overflowY: 'auto',
-          overscrollBehavior: 'contain',
-          WebkitOverflowScrolling: 'touch'
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#FAFAFA',
+          padding: '28px 36px',
+          overflow: 'hidden'
         }}>
-          {currentUser?.role === 'TM' && isUpcomingDate(activeDate) ? (
-            <div className="card" style={{
-              padding: '48px 24px',
-              textAlign: 'center',
-              background: 'var(--subtle-glass)',
-              border: '1px dashed var(--border)',
-              maxWidth: '520px',
-              margin: '40px auto'
-            }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                background: 'var(--subtle)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 12px',
-                color: 'var(--text-tertiary)'
-              }}>
-                <Lock size={22} />
-              </div>
-              <h5 className="font-bold text-base mb-1" style={{ color: 'var(--text-primary)' }}>
-                Upcoming Deliverables Locked
-              </h5>
-              <p className="text-xs text-secondary mb-4">
-                Team members can only view deliverables for the current date ({formatDateDDMMYYYY(new Date())}). Upcoming days will unlock on their scheduled date.
-              </p>
+          {/* Top Breadcrumb & Action Row */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '20px',
+            flexShrink: 0
+          }}>
+            {/* Breadcrumbs */}
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#64748B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: '#64748B' }}>{project.name}</span>
+              <span style={{ color: '#CBD5E1', fontWeight: 400 }}>&gt;</span>
+              <span style={{ color: '#0F172A', fontWeight: 700 }}>{activeDate}</span>
+            </div>
+
+            {/* Header Actions & Close */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {canAllocate && (
+                <button
+                  onClick={handlePreFillTasks}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    background: '#EEF2FF',
+                    color: '#4F46E5',
+                    border: '1px solid #C7D2FE',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="Pre-fill sprint deliverables across scheduled dates"
+                >
+                  <Sparkles size={14} />
+                  <span>Pre-fill Tasks</span>
+                </button>
+              )}
+
+              {canAllocate && (
+                <button
+                  onClick={() => handleOpenAddModal(activeDate)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '8px 16px',
+                    borderRadius: '10px',
+                    background: '#5B50E5',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(91, 80, 229, 0.25)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Add Task</span>
+                </button>
+              )}
+
               <button
-                type="button"
-                onClick={() => setActiveDate(formatDateDDMMYYYY(new Date()))}
-                className="btn btn-sm btn-primary"
+                onClick={onClose}
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '8px',
+                  background: '#F3F4F6',
+                  border: 'none',
+                  color: '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#E5E7EB'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#F3F4F6'}
               >
-                View Today's Deliverables
+                <X size={18} />
               </button>
             </div>
-          ) : (
-            <>
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="font-bold text-sm" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-                  Allocated Deliverables for {activeDate} ({activeDateTasks.length})
-                </h4>
-                <span className="text-xs text-secondary">
-                  Click any card to open full details & team chat
-                </span>
-              </div>
+          </div>
 
-              {loading ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-                  {[1, 2, 3].map(i => <div key={i} className="card skeleton" style={{ height: '140px' }} />)}
-                </div>
-              ) : activeDateTasks.length === 0 ? (
-                <div className="card" style={{
-                  padding: '48px 24px',
-                  textAlign: 'center',
-                  background: 'var(--subtle-glass)',
-                  border: '1px dashed var(--border)'
+          {/* Main Heading */}
+          <h3 style={{
+            fontSize: '24px',
+            fontWeight: 700,
+            color: '#0F172A',
+            margin: '0 0 24px 0',
+            letterSpacing: '-0.02em',
+            flexShrink: 0
+          }}>
+            {activeDateTasks.length} deliverable{activeDateTasks.length === 1 ? '' : 's'} allocated
+          </h3>
+
+          {/* Deliverables List Container */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            paddingRight: '6px'
+          }}>
+            {currentUser?.role === 'TM' && isUpcomingDate(activeDate) ? (
+              <div style={{
+                padding: '48px 24px',
+                textAlign: 'center',
+                background: '#FFFFFF',
+                borderRadius: '16px',
+                border: '1px dashed #CBD5E1',
+                maxWidth: '520px',
+                margin: '40px auto'
+              }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: '#F1F5F9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  color: '#64748B'
                 }}>
-                  <Calendar size={36} strokeWidth={1.5} style={{ margin: '0 auto 10px', color: 'var(--text-tertiary)' }} />
-                  <h5 className="font-bold text-sm mb-1">No Deliverables Scheduled for {activeDate}</h5>
-                  {canAllocate ? (
-                    <>
-                      <p className="text-xs text-secondary mb-4">
-                        Assign tasks to squad members on this date or click "Pre-fill Tasks" to build a standard roadmap.
-                      </p>
-                      <button
-                        onClick={() => handleOpenAddModal(activeDate)}
-                        className="btn btn-primary"
-                        style={{ fontSize: '12px', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <Plus size={14} />
-                        <span>Add Task on {activeDate}</span>
-                      </button>
-                    </>
-                  ) : (
-                    <p className="text-xs text-secondary mb-1">
-                      No deliverables scheduled for this date.
-                    </p>
-                  )}
+                  <Lock size={22} />
                 </div>
-              ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-              {activeDateTasks.map(t => {
-                const isOverdue = t.deadline && new Date(t.deadline).getTime() < Date.now() && t.status !== 'completed';
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => setSelectedTask(t)}
-                    className="card"
-                    style={{
-                      padding: '18px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      minHeight: '235px',
-                      height: '100%',
-                      transition: 'all var(--transition-smooth)',
-                      border: isOverdue ? '1.5px solid rgba(239, 68, 68, 0.45)' : '1px solid var(--border)',
-                      background: isOverdue ? 'rgba(239, 68, 68, 0.02)' : 'var(--surface)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = isOverdue ? '#EF4444' : 'var(--brand-300)';
-                      e.currentTarget.style.boxShadow = 'var(--shadow-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = isOverdue ? 'rgba(239, 68, 68, 0.45)' : 'var(--border)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <div>
-                      <div className="flex justify-between items-start mb-2.5" style={{ minHeight: '24px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {getStatusBadge(t.status)}
-                          {isOverdue && (
-                            <span style={{
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              padding: '2px 7px',
-                              borderRadius: 'var(--radius-full)',
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              color: '#EF4444',
-                              border: '1px solid rgba(239, 68, 68, 0.25)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px'
-                            }}>
-                              <AlertTriangle size={10} /> Exceeded
-                            </span>
-                          )}
-                        </div>
-                        <span style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          textTransform: 'capitalize',
-                          color: t.priority === 'urgent' ? 'var(--priority-urgent)' :
-                                 t.priority === 'high' ? 'var(--priority-high)' : 'var(--text-tertiary)'
-                        }}>
-                          {t.priority}
-                        </span>
-                      </div>
+                <h5 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>
+                  Upcoming Deliverables Locked
+                </h5>
+                <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px', lineHeight: 1.5 }}>
+                  Team members can only view deliverables for current date ({formatDateDDMMYYYY(new Date())}). Upcoming days will unlock on their scheduled date.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveDate(formatDateDDMMYYYY(new Date()))}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: '10px',
+                    background: '#5B50E5',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  View Today's Deliverables
+                </button>
+              </div>
+            ) : loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {[1, 2].map(i => (
+                  <div key={i} className="card skeleton" style={{ height: '220px', borderRadius: '16px' }} />
+                ))}
+              </div>
+            ) : activeDateTasks.length === 0 ? (
+              <div style={{
+                padding: '60px 24px',
+                textAlign: 'center',
+                background: '#FFFFFF',
+                borderRadius: '16px',
+                border: '1px dashed #CBD5E1',
+                margin: '20px 0'
+              }}>
+                <Calendar size={40} strokeWidth={1.5} style={{ margin: '0 auto 12px', color: '#94A3B8' }} />
+                <h5 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>
+                  No Deliverables Scheduled for {activeDate}
+                </h5>
+                {canAllocate ? (
+                  <>
+                    <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '20px' }}>
+                      Assign tasks to squad members on this date or click "Pre-fill Tasks" to build a standard roadmap.
+                    </p>
+                    <button
+                      onClick={() => handleOpenAddModal(activeDate)}
+                      style={{
+                        padding: '10px 20px',
+                        borderRadius: '10px',
+                        background: '#5B50E5',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Plus size={15} />
+                      <span>Add Task on {activeDate}</span>
+                    </button>
+                  </>
+                ) : (
+                  <p style={{ fontSize: '13px', color: '#64748B' }}>
+                    No deliverables scheduled for this date.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {activeDateTasks.map(t => {
+                  const isOverdue = t.deadline && new Date(t.deadline).getTime() < Date.now() && t.status !== 'completed';
 
-                      <h4 className="font-bold text-sm mb-1.5" style={{
-                        color: 'var(--text-primary)',
-                        minHeight: '40px',
-                        lineHeight: 1.35,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                      }}>
-                        {t.title}
-                      </h4>
-                      <p className="text-xs text-secondary mb-2" style={{
-                        minHeight: '34px',
-                        lineHeight: 1.45,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                      }}>
-                        {t.description || 'No description provided.'}
-                      </p>
+                  // Badge styles matching image design
+                  const isCompleted = t.status === 'completed';
+                  const isUrgent = t.priority === 'urgent' || t.priority === 'high';
 
-                      {/* Explicit Deadline with Date & Time display */}
-                      {t.deadline && (
-                        <div style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '3px 8px',
-                          borderRadius: 'var(--radius-sm)',
-                          background: isOverdue ? 'rgba(239, 68, 68, 0.08)' : 'var(--subtle)',
-                          border: `1px solid ${isOverdue ? 'rgba(239, 68, 68, 0.25)' : 'var(--border)'}`,
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          color: isOverdue ? '#DC2626' : 'var(--text-secondary)',
-                          marginBottom: '8px'
-                        }}>
-                          <Clock size={11} style={{ color: isOverdue ? '#DC2626' : 'var(--brand-500)', flexShrink: 0 }} />
-                          <span>Deadline: {formatDeadlineWithTime(t.deadline)}</span>
-                        </div>
-                      )}
-
-                      {t.attachments && t.attachments.length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }} onClick={e => e.stopPropagation()}>
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => setSelectedTask(t)}
+                      style={{
+                        background: '#FFFFFF',
+                        borderRadius: '16px',
+                        border: isOverdue ? '1.5px solid rgba(239, 68, 68, 0.5)' : '1px solid #E2E8F0',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                        padding: '24px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = isOverdue ? '#EF4444' : '#818CF8';
+                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = isOverdue ? 'rgba(239, 68, 68, 0.5)' : '#E2E8F0';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.03)';
+                      }}
+                    >
+                      {/* Top Badges Row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                        {/* Completed / Status Tag */}
+                        {isCompleted ? (
                           <span style={{
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            padding: '2px 7px',
-                            borderRadius: 'var(--radius-full)',
-                            background: 'var(--subtle)',
-                            border: '1px solid var(--border)',
-                            color: 'var(--brand-700)',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            padding: '4px 12px',
+                            borderRadius: '9999px',
+                            background: '#E6F4EA',
+                            color: '#107C41',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px'
                           }}>
-                            <Paperclip size={11} /> {t.attachments.length} attachment{t.attachments.length === 1 ? '' : 's'}
+                            Completed
                           </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      paddingTop: '10px',
-                      marginTop: 'auto',
-                      borderTop: '1px solid var(--border)',
-                      fontSize: '11px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {t.assignee?.avatar_url ? (
-                          <img
-                            src={t.assignee.avatar_url}
-                            alt=""
-                            style={{ width: '22px', height: '22px', borderRadius: 'var(--radius-full)', objectFit: 'cover' }}
-                          />
                         ) : (
+                          getStatusBadge(t.status)
+                        )}
+
+                        {/* Priority / Urgent Tag */}
+                        {isUrgent && (
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            color: '#EF4444',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            🔥 Urgent
+                          </span>
+                        )}
+
+                        {isOverdue && (
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '9999px',
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            color: '#EF4444',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}>
+                            <AlertTriangle size={11} /> Exceeded
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title in Serif Font */}
+                      <h4 style={{
+                        fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif',
+                        fontSize: '26px',
+                        fontWeight: 700,
+                        color: '#0F172A',
+                        margin: '0 0 8px 0',
+                        lineHeight: 1.2
+                      }}>
+                        {t.title}
+                      </h4>
+
+                      {/* Description */}
+                      <p style={{
+                        fontSize: '14px',
+                        color: '#64748B',
+                        lineHeight: 1.5,
+                        margin: '0 0 20px 0'
+                      }}>
+                        {t.description || 'Complete everything regarding this project.'}
+                      </p>
+
+                      {/* Deadline Purple Highlight Box */}
+                      {t.deadline && (
+                        <div style={{
+                          background: '#EEF2FF',
+                          borderRadius: '14px',
+                          padding: '14px 18px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '14px',
+                          marginBottom: '20px'
+                        }}>
+                          {/* Clock Icon inside White Square Badge */}
                           <div style={{
-                            width: '22px',
-                            height: '22px',
-                            borderRadius: 'var(--radius-full)',
-                            background: 'var(--brand-gradient)',
-                            color: '#fff',
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '10px',
+                            background: '#FFFFFF',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '9px',
-                            fontWeight: 700
+                            border: '1px solid #E0E7FF',
+                            color: '#4F46E5',
+                            flexShrink: 0
                           }}>
-                            {t.assignee?.first_name?.[0]}{t.assignee?.last_name?.[0]}
+                            <Clock size={18} />
                           </div>
-                        )}
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {t.assignee?.first_name} {t.assignee?.last_name}
-                        </span>
-                      </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {/* Start Action directly from card: only the assigned user can start */}
-                        {t.status === 'not_started' && String(t.assigned_to) === String(currentUser?.id) && (
+                          {/* Deadline Text */}
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              letterSpacing: '0.06em',
+                              color: '#6366F1',
+                              textTransform: 'uppercase',
+                              marginBottom: '2px'
+                            }}>
+                              DEADLINE
+                            </span>
+                            <span style={{
+                              fontSize: '15px',
+                              fontWeight: 700,
+                              color: '#1E1B4B'
+                            }}>
+                              {formatDeadlineWithTime(t.deadline)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Divider Line */}
+                      <div style={{ borderTop: '1px solid #F1F5F9', marginBottom: '16px' }} />
+
+                      {/* Card Footer: Assignee & Action */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}>
+                        {/* Assignee Information */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {t.assignee?.avatar_url ? (
+                            <img
+                              src={t.assignee.avatar_url}
+                              alt=""
+                              style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: '38px',
+                              height: '38px',
+                              borderRadius: '50%',
+                              background: '#334155',
+                              color: '#FFFFFF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '13px',
+                              fontWeight: 700
+                            }}>
+                              {t.assignee?.first_name?.[0]}{t.assignee?.last_name?.[0]}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 500 }}>
+                              Assigned to
+                            </span>
+                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>
+                              {t.assignee ? `${t.assignee.first_name} ${t.assignee.last_name}` : 'Unassigned'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action Button: Message / Details */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {t.status === 'not_started' && String(t.assigned_to) === String(currentUser?.id) && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleStartTaskDirect(e, t)}
+                              style={{
+                                background: '#E0E7FF',
+                                color: '#4338CA',
+                                padding: '9px 14px',
+                                borderRadius: '10px',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <Play size={12} fill="currentColor" /> Start Task
+                            </button>
+                          )}
+
                           <button
                             type="button"
-                            onClick={(e) => handleStartTaskDirect(e, t)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTask(t);
+                            }}
                             style={{
-                              background: 'var(--brand-50)',
-                              border: '1px solid rgba(99, 102, 241, 0.25)',
-                              color: 'var(--brand-700)',
-                              padding: '2px 8px',
-                              borderRadius: 'var(--radius-full)',
-                              fontSize: '10px',
-                              fontWeight: 700,
+                              background: '#5B50E5',
+                              color: '#FFFFFF',
+                              padding: '10px 18px',
+                              borderRadius: '10px',
+                              fontSize: '14px',
+                              fontWeight: 600,
+                              border: 'none',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px'
+                              gap: '8px',
+                              boxShadow: '0 2px 8px rgba(91, 80, 229, 0.25)',
+                              transition: 'all 0.2s ease'
                             }}
-                            title="Start Task"
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#4338CA'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = '#5B50E5'}
                           >
-                            <Play size={10} fill="currentColor" /> Start
+                            <MessageSquare size={16} />
+                            <span>Message {t.assignee?.first_name || 'Assignee'}</span>
                           </button>
-                        )}
-
-                        <span style={{ color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          <MessageSquare size={13} />
-                        </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          </>
-        )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1374,7 +1555,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
               </div>
             </div>
 
-            {/* Quick Suggestions / Presets */}
+            {/* Quick Shortcuts */}
             <div>
               <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
                 Quick Shortcuts
