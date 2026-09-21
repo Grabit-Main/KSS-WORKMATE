@@ -4,35 +4,72 @@ import { uploadFile } from '../../api/upload';
 import { useRealtime } from '../../realtime/useRealtime';
 import { useWebSocket } from '../../context/WebSocketContext';
 import { AttachmentCard } from '../common/AttachmentCard';
-import { formatTime } from '../../utils/dateUtils';
-import { Send, MessageSquare, Paperclip, X, Loader2 } from 'lucide-react';
+import { Send, Paperclip, X, Loader2, ShieldCheck, CheckCheck, Lock } from 'lucide-react';
+
+const formatTimeOnly = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+};
+
+const formatDateGroup = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
 
 export const TaskChat = ({ task, currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileUploading, setFileUploading] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const { joinRoom, leaveRoom, dispatch } = useWebSocket();
+  const { joinRoom, leaveRoom, dispatch } = useWebSocket() || {};
 
-  // Identify counterpart
-  const isAssignee = String(task.assigned_to) === String(currentUser.id);
-  const partnerUser = isAssignee ? task.assigner : task.assignee;
+  // Verify privacy membership
+  const isAssignee = String(task?.assigned_to) === String(currentUser?.id);
+  const isAssigner = String(task?.assigned_by) === String(currentUser?.id);
+  const isParticipant = isAssignee || isAssigner;
+  const partnerUser = isAssignee ? task?.assigner : task?.assignee;
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (behavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
   const loadMessages = async () => {
+    if (!task?.id) return;
+    if (!isParticipant) {
+      setAccessDenied(true);
+      setLoading(false);
+      return;
+    }
     try {
+      setAccessDenied(false);
       const data = await getChat(task.id);
-      setMessages(data);
+      setMessages(data || []);
     } catch (err) {
-      console.error('Failed to load task messages:', err);
+      if (err.response?.status === 403) {
+        setAccessDenied(true);
+      } else {
+        console.error('Failed to load task messages:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -40,35 +77,37 @@ export const TaskChat = ({ task, currentUser }) => {
 
   // Join task room for real-time WebSocket events
   useEffect(() => {
-    if (task?.id) {
-      joinRoom(`task:${task.id}`);
+    if (task?.id && isParticipant) {
+      if (joinRoom) joinRoom(`task:${task.id}`);
       loadMessages();
       return () => {
-        leaveRoom(`task:${task.id}`);
+        if (leaveRoom) leaveRoom(`task:${task.id}`);
       };
+    } else {
+      setLoading(false);
+      if (!isParticipant) setAccessDenied(true);
     }
-  }, [task?.id, joinRoom, leaveRoom]);
+  }, [task?.id, currentUser?.id, isParticipant]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    scrollToBottom('auto');
+  }, [messages.length]);
 
   // Realtime new message listener via WebSocket & EventBus
   useRealtime('chat.new_message', (eventData) => {
-    if (String(eventData?.task_id) === String(task.id)) {
+    if (String(eventData?.task_id) === String(task?.id) && isParticipant) {
       setMessages(prev => {
-        // Replace optimistic placeholder if matching message already present
         const cleaned = prev.filter(m => !m.isOptimistic || m.message !== eventData.message);
         if (cleaned.some(m => String(m.id) === String(eventData.id))) return cleaned;
         return [...cleaned, eventData];
       });
-      setTimeout(scrollToBottom, 50);
+      setTimeout(() => scrollToBottom('smooth'), 50);
     }
   });
 
-  // High-frequency smart fallback sync (every 600ms when chat is open) to guarantee near-instant message receipt
+  // High-frequency smart fallback sync (every 800ms when chat is open)
   useEffect(() => {
-    if (!task?.id) return;
+    if (!task?.id || !isParticipant) return;
     let isFetching = false;
     const interval = setInterval(() => {
       if (isFetching || document.hidden) return;
@@ -88,9 +127,9 @@ export const TaskChat = ({ task, currentUser }) => {
         })
         .catch(() => {})
         .finally(() => { isFetching = false; });
-    }, 600);
+    }, 800);
     return () => clearInterval(interval);
-  }, [task?.id]);
+  }, [task?.id, isParticipant]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
@@ -103,12 +142,12 @@ export const TaskChat = ({ task, currentUser }) => {
   const handleSend = async (e) => {
     if (e) e.preventDefault();
     const textToSend = newMessage.trim();
-    if ((!textToSend && !selectedFile) || sending || fileUploading) return;
+    if ((!textToSend && !selectedFile) || sending || fileUploading || !isParticipant) return;
 
     setSending(true);
     setNewMessage('');
 
-    // 0 ms Optimistic update for instant feedback
+    // Instant 0ms Optimistic Update for WhatsApp-like feel
     let tempId = null;
     if (textToSend && !selectedFile) {
       tempId = 'opt_' + Date.now();
@@ -116,7 +155,7 @@ export const TaskChat = ({ task, currentUser }) => {
         id: tempId,
         task_id: task.id,
         sender_id: currentUser.id,
-        sender_name: currentUser.full_name || `${currentUser.first_name} ${currentUser.last_name}`,
+        sender_name: currentUser.full_name || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim(),
         message: textToSend,
         attachment_url: null,
         attachment_type: null,
@@ -124,7 +163,7 @@ export const TaskChat = ({ task, currentUser }) => {
         isOptimistic: true
       };
       setMessages(prev => [...prev, optimisticMsg]);
-      setTimeout(scrollToBottom, 20);
+      setTimeout(() => scrollToBottom('smooth'), 20);
     }
 
     let attachmentUrl = null;
@@ -157,7 +196,7 @@ export const TaskChat = ({ task, currentUser }) => {
       if (dispatch) {
         dispatch('chat.new_message', sentMsg);
       }
-      setTimeout(scrollToBottom, 50);
+      setTimeout(() => scrollToBottom('smooth'), 50);
     } catch (err) {
       console.error('Failed to send message:', err);
       if (tempId) {
@@ -182,85 +221,145 @@ export const TaskChat = ({ task, currentUser }) => {
     return u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email;
   };
 
+  const getPartnerFirstName = () => {
+    if (!partnerUser) return 'Member';
+    return partnerUser.first_name || partnerUser.full_name?.split(' ')[0] || 'Member';
+  };
+
+  // Group messages by date for WhatsApp-style date headers
+  const groupedMessages = React.useMemo(() => {
+    const groups = [];
+    let currentGroup = null;
+
+    messages.forEach((msg) => {
+      const dateKey = formatDateGroup(msg.created_at);
+      if (!currentGroup || currentGroup.dateKey !== dateKey) {
+        currentGroup = { dateKey, items: [] };
+        groups.push(currentGroup);
+      }
+      currentGroup.items.push(msg);
+    });
+
+    return groups;
+  }, [messages]);
+
+  // Handle Privacy Blocked View for non-participants (e.g. PM, CEO, CTO, or other members)
+  if (accessDenied || !isParticipant) {
+    const assigneeName = getUserName(task?.assignee);
+    const assignerName = getUserName(task?.assigner);
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        background: '#FAF8F5',
+        borderLeft: '1px solid #E2E8F0',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '32px',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          background: 'rgba(99, 102, 241, 0.1)',
+          color: '#6366F1',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '16px'
+        }}>
+          <Lock size={26} />
+        </div>
+        <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1E293B', marginBottom: '6px' }}>
+          Private Task Channel
+        </h3>
+        <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.5, maxWidth: '280px' }}>
+          This conversation is private strictly between the assigned member (<strong>{assigneeName}</strong>) and the assigner (<strong>{assignerName}</strong>).
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
-      background: 'var(--surface)',
-      borderLeft: '1px solid var(--border)',
-      overflow: 'hidden'
+      background: '#FAF8F5', // Soft off-white / light cream background as in reference image
+      borderLeft: '1px solid #E2E8F0',
+      overflow: 'hidden',
+      fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
     }}>
-      {/* Header */}
+      {/* Top Header matching reference image */}
       <div style={{
         padding: '16px 20px',
-        borderBottom: '1px solid var(--border)',
-        background: 'var(--subtle-glass)',
+        background: '#FFFFFF',
+        borderBottom: '1px solid #F1F5F9',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        gap: '12px',
         flexShrink: 0
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {partnerUser?.avatar_url ? (
-            <img
-              src={partnerUser.avatar_url}
-              alt=""
-              style={{ width: '32px', height: '32px', borderRadius: 'var(--radius-full)', objectFit: 'cover' }}
-            />
-          ) : (
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--brand-gradient)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              fontWeight: 700
-            }}>
-              {partnerUser?.first_name?.[0]}{partnerUser?.last_name?.[0]}
-            </div>
-          )}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-                {getUserName(partnerUser)}
-              </span>
-              <span style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                padding: '1px 6px',
-                borderRadius: 'var(--radius-full)',
-                background: partnerUser?.role === 'TL' ? 'var(--brand-100)' : 'var(--subtle)',
-                color: partnerUser?.role === 'TL' ? 'var(--brand-700)' : 'var(--text-secondary)'
-              }}>
-                {partnerUser?.role || (isAssignee ? 'Lead' : 'Member')}
-              </span>
-            </div>
-            <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-              {isAssignee ? 'Team Lead Direct Channel' : 'Assigned Member Channel'}
-            </p>
+        {partnerUser?.avatar_url ? (
+          <img
+            src={partnerUser.avatar_url}
+            alt=""
+            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }}
+          />
+        ) : (
+          <div style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '50%',
+            background: '#6366F1',
+            color: '#FFFFFF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '13px',
+            fontWeight: 700
+          }}>
+            {partnerUser?.first_name?.[0]}{partnerUser?.last_name?.[0]}
           </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
+              {getUserName(partnerUser)}
+            </span>
+            <span style={{
+              fontSize: '10px',
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: '6px',
+              background: '#EEF2FF',
+              color: '#6366F1',
+              textTransform: 'uppercase'
+            }}>
+              {partnerUser?.role || (isAssignee ? 'TL' : 'TM')}
+            </span>
+          </div>
+          <span style={{ fontSize: '12px', color: '#94A3B8' }}>
+            {isAssignee ? 'Team Lead Direct Channel' : 'Assigned Member Channel'}
+          </span>
         </div>
       </div>
 
-      {/* Messages Area */}
+      {/* Messages Scroll Area */}
       <div style={{
         flex: 1,
         padding: '20px',
         overflowY: 'auto',
-        overscrollBehavior: 'contain',
-        WebkitOverflowScrolling: 'touch',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px'
+        gap: '16px'
       }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: '13px' }}>
-            Loading conversation...
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#94A3B8', fontSize: '13px' }}>
+            Loading messages...
           </div>
         ) : messages.length === 0 ? (
           <div style={{
@@ -270,96 +369,133 @@ export const TaskChat = ({ task, currentUser }) => {
             justifyContent: 'center',
             height: '100%',
             textAlign: 'center',
-            color: 'var(--text-tertiary)',
+            color: '#94A3B8',
             padding: '20px'
           }}>
-            <MessageSquare size={32} strokeWidth={1.5} style={{ marginBottom: '10px', color: 'var(--brand-300)' }} />
-            <p className="font-semibold text-sm" style={{ color: 'var(--text-secondary)' }}>No messages yet</p>
-            <p className="text-xs text-tertiary mt-1" style={{ maxWidth: '240px' }}>
-              Start the discussion regarding this deliverable with {getUserName(partnerUser)}.
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              background: '#EEF2FF',
+              color: '#6366F1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '10px'
+            }}>
+              <ShieldCheck size={22} />
+            </div>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: '#475569' }}>Private Channel Ready</p>
+            <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', maxWidth: '240px' }}>
+              Send a direct message regarding this task to {getPartnerFirstName()}.
             </p>
           </div>
         ) : (
-          messages.map((m, idx) => {
-            const isMe = String(m.sender_id) === String(currentUser.id);
-            return (
-              <div
-                key={m.id || idx}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: isMe ? 'flex-end' : 'flex-start',
-                  maxWidth: '85%',
-                  alignSelf: isMe ? 'flex-end' : 'flex-start'
-                }}
-              >
-                <div style={{
-                  padding: m.attachment_url ? '8px' : '10px 14px',
-                  borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                  background: isMe ? 'var(--brand-gradient)' : 'var(--subtle)',
-                  color: isMe ? '#fff' : 'var(--text-primary)',
-                  fontSize: '13px',
-                  lineHeight: 1.45,
-                  wordBreak: 'break-word',
-                  boxShadow: isMe ? 'var(--brand-glow)' : 'var(--shadow-subtle)'
+          groupedMessages.map((group, gIdx) => (
+            <React.Fragment key={group.dateKey || gIdx}>
+              {/* Date Header Pill */}
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 8px 0' }}>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: '#64748B',
+                  background: '#FFFFFF',
+                  padding: '3px 12px',
+                  borderRadius: '12px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
                 }}>
-                  {m.message && (
-                    <div style={{ marginBottom: m.attachment_url ? '6px' : '0', padding: m.attachment_url ? '2px 4px' : '0' }}>
-                      {m.message}
-                    </div>
-                  )}
-
-                  {/* Render attachment in a clickable small box */}
-                  {m.attachment_url && (
-                    <div style={{ marginTop: m.message ? '4px' : '0' }}>
-                      <AttachmentCard
-                        url={m.attachment_url}
-                        type={m.attachment_type}
-                        storage={m.storage_provider}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  marginTop: '3px',
-                  fontSize: '10px',
-                  color: 'var(--text-tertiary)'
-                }}>
-                  <span>{isMe ? 'You' : (m.sender_name || getUserName(partnerUser))}</span>
-                  <span>•</span>
-                  <span>
-                    {m.created_at ? formatTime(m.created_at) : 'Now'}
-                  </span>
-                </div>
+                  {group.dateKey}
+                </span>
               </div>
-            );
-          })
+
+              {group.items.map((m, idx) => {
+                const isMe = String(m.sender_id) === String(currentUser?.id);
+                const senderDisplayName = isMe ? 'You' : (m.sender_name || getUserName(partnerUser));
+                const timeFormatted = formatTimeOnly(m.created_at);
+
+                return (
+                  <div
+                    key={m.id || idx}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: isMe ? 'flex-end' : 'flex-start',
+                      maxWidth: '82%',
+                      alignSelf: isMe ? 'flex-end' : 'flex-start'
+                    }}
+                  >
+                    {/* Message Bubble matching exact design in screenshot */}
+                    <div style={{
+                      padding: m.attachment_url ? '10px' : '14px 18px',
+                      borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                      background: isMe ? '#EEF2FF' : '#EFECE6', // #EFECE6 matches exact off-white beige bubble in uploaded screenshot
+                      border: isMe ? '1px solid #C7D2FE' : '1px solid #E5E0D8',
+                      color: isMe ? '#1E1B4B' : '#1E293B',
+                      fontSize: '13px',
+                      lineHeight: '1.5',
+                      wordBreak: 'break-word',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                    }}>
+                      {m.message && (
+                        <div>{m.message}</div>
+                      )}
+
+                      {/* Attachment preview if present */}
+                      {m.attachment_url && (
+                        <div style={{ marginTop: m.message ? '8px' : '0' }}>
+                          <AttachmentCard
+                            url={m.attachment_url}
+                            type={m.attachment_type}
+                            storage={m.storage_provider}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Sub-meta line e.g. "Jingyasha Priyadarsini Rout · 06:39 PM" */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      marginTop: '4px',
+                      fontSize: '11px',
+                      color: '#94A3B8'
+                    }}>
+                      <span>{senderDisplayName}</span>
+                      <span>·</span>
+                      <span>{timeFormatted}</span>
+                      {isMe && (
+                        <CheckCheck size={14} color="#6366F1" style={{ marginLeft: '2px' }} />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          ))
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Attachment Preview (if selected) */}
+      {/* Attachment Selected Banner */}
       {selectedFile && (
         <div style={{
           padding: '8px 16px',
-          background: 'var(--subtle)',
-          borderTop: '1px solid var(--border)',
+          background: '#FFFFFF',
+          borderTop: '1px solid #E2E8F0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           fontSize: '12px',
-          color: 'var(--text-secondary)'
+          color: '#475569'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-            <Paperclip size={14} color="var(--brand-600)" />
+            <Paperclip size={14} color="#6366F1" />
             <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
               {selectedFile.name}
             </span>
-            <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
+            <span style={{ fontSize: '10px', color: '#94A3B8' }}>
               ({(selectedFile.size / 1024).toFixed(1)} KB)
             </span>
           </div>
@@ -370,9 +506,8 @@ export const TaskChat = ({ task, currentUser }) => {
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              color: 'var(--text-tertiary)',
-              padding: '2px',
-              borderRadius: 'var(--radius-full)'
+              color: '#94A3B8',
+              padding: '2px'
             }}
             title="Remove attachment"
           >
@@ -381,16 +516,16 @@ export const TaskChat = ({ task, currentUser }) => {
         </div>
       )}
 
-      {/* Input Box */}
+      {/* Footer Input matching reference image pill design */}
       <form
         onSubmit={handleSend}
         style={{
-          padding: '12px 16px',
-          borderTop: '1px solid var(--border)',
-          background: 'var(--surface)',
+          padding: '14px 20px',
+          background: '#FFFFFF',
+          borderTop: '1px solid #F1F5F9',
           display: 'flex',
-          gap: '8px',
           alignItems: 'center',
+          gap: '10px',
           flexShrink: 0
         }}
       >
@@ -404,56 +539,68 @@ export const TaskChat = ({ task, currentUser }) => {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           style={{
-            background: selectedFile ? 'var(--brand-50)' : 'transparent',
-            border: '1px solid ' + (selectedFile ? 'var(--brand-400)' : 'var(--border)'),
-            borderRadius: 'var(--radius-full)',
-            width: '36px',
-            height: '36px',
+            width: '38px',
+            height: '38px',
+            borderRadius: '50%',
+            background: selectedFile ? '#EEF2FF' : '#F1F5F9',
+            border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            color: selectedFile ? 'var(--brand-600)' : 'var(--text-secondary)',
-            transition: 'all var(--transition-fast)'
+            color: selectedFile ? '#6366F1' : '#64748B',
+            transition: 'all 0.15s ease',
+            flexShrink: 0
           }}
-          title="Add attachment (image, document, video)"
+          title="Add attachment"
           disabled={sending || fileUploading}
         >
-          <Paperclip size={16} />
+          <Paperclip size={18} />
         </button>
 
         <input
           type="text"
-          placeholder={selectedFile ? 'Add a caption (optional)...' : `Message ${getUserName(partnerUser)}...`}
+          placeholder={selectedFile ? 'Add a caption (optional)...' : `Message ${getPartnerFirstName()}...`}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="input"
           style={{
             flex: 1,
-            borderRadius: 'var(--radius-full)',
-            padding: '9px 16px',
-            fontSize: '13px'
+            borderRadius: '9999px',
+            border: '1px solid #E2E8F0',
+            padding: '10px 18px',
+            fontSize: '13px',
+            color: '#1E293B',
+            outline: 'none',
+            background: '#FFFFFF'
           }}
           disabled={sending || fileUploading}
         />
+
         <button
           type="submit"
-          className="btn btn-primary"
           disabled={(!newMessage.trim() && !selectedFile) || sending || fileUploading}
           style={{
-            borderRadius: 'var(--radius-full)',
             width: '38px',
             height: '38px',
-            padding: 0,
+            borderRadius: '50%',
+            background: (!newMessage.trim() && !selectedFile) || sending || fileUploading ? '#94A3B8' : '#6366F1',
+            border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            flexShrink: 0
+            color: '#FFFFFF',
+            cursor: (!newMessage.trim() && !selectedFile) || sending || fileUploading ? 'not-allowed' : 'pointer',
+            flexShrink: 0,
+            transition: 'background 0.15s ease'
           }}
           title="Send message"
         >
-          {sending || fileUploading ? <Loader2 size={16} className="spinner" /> : <Send size={16} />}
+          {sending || fileUploading ? (
+            <Loader2 size={16} className="spinner" />
+          ) : (
+            <Send size={16} style={{ transform: 'translateX(1px)' }} />
+          )}
         </button>
       </form>
     </div>
