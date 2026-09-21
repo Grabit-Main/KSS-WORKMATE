@@ -6,7 +6,7 @@ import { getTeams } from '../../api/teams';
 import { AttachmentCard } from '../common/AttachmentCard';
 import { useRealtime } from '../../realtime/useRealtime';
 import { useWebSocket } from '../../context/WebSocketContext';
-import { formatDateTime, normalizeToDDMMYYYY, getDeadlineStatus } from '../../utils/dateUtils';
+import { formatDateTime, normalizeToDDMMYYYY, getDeadlineStatus, isOverdue } from '../../utils/dateUtils';
 import {
   X, Calendar, Clock, Play, CheckCircle2, User,
   Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle, UserCheck, Trash2
@@ -379,9 +379,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
             )}
 
             {/* Overdue Warning Banner */}
-            {currentTask.deadline &&
-              new Date(currentTask.deadline).getTime() < Date.now() &&
-              currentTask.status !== 'completed' && (
+            {isOverdue(currentTask.deadline, currentTask.status) && (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',

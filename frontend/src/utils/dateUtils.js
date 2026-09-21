@@ -121,7 +121,8 @@ export const normalizeToDDMMYYYY = (val) => {
 };
 
 // Check if a deadline is overdue
-export const isOverdue = (deadline) => {
+export const isOverdue = (deadline, status) => {
+  if (!deadline || status === 'completed') return false;
   const d = parseUTC(deadline);
   if (!d) return false;
   return d.getTime() < Date.now();

@@ -39,6 +39,18 @@ export const formatDeadlineWithTime = (dateVal) => {
   return `${datePart} at ${timePart}`;
 };
 
+// Check if task deadline is overdue safely considering UTC timezone
+export const isDeadlineOverdue = (dateVal, status) => {
+  if (!dateVal || status === 'completed') return false;
+  let str = String(dateVal).trim();
+  if (str.includes('T') && !str.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(str)) {
+    str += 'Z';
+  }
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return false;
+  return d.getTime() < Date.now();
+};
+
 // Normalize any date representation into DD-MM-YYYY strictly without timezone drift
 export const normalizeToDDMMYYYY = (val) => {
   if (!val) return '';
@@ -997,7 +1009,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                 gap: '16px'
               }}>
                 {activeDateTasks.map(t => {
-                  const isOverdue = t.deadline && new Date(t.deadline).getTime() < Date.now() && t.status !== 'completed';
+                  const isOverdue = isDeadlineOverdue(t.deadline, t.status);
 
                   // Badge styles matching image design
                   const isCompleted = t.status === 'completed';
