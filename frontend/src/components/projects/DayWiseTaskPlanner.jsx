@@ -991,7 +991,11 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                 )}
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                gap: '16px'
+              }}>
                 {activeDateTasks.map(t => {
                   const isOverdue = t.deadline && new Date(t.deadline).getTime() < Date.now() && t.status !== 'completed';
 
@@ -1008,11 +1012,13 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                         borderRadius: '16px',
                         border: isOverdue ? '1.5px solid rgba(239, 68, 68, 0.5)' : '1px solid #E2E8F0',
                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
-                        padding: '24px',
+                        padding: '18px 20px',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        minHeight: '260px'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor = isOverdue ? '#EF4444' : '#818CF8';
@@ -1023,225 +1029,247 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                         e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.03)';
                       }}
                     >
-                      {/* Top Badges Row */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                        {/* Completed / Status Tag */}
-                        {isCompleted ? (
-                          <span style={{
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            padding: '4px 12px',
-                            borderRadius: '9999px',
-                            background: '#E6F4EA',
-                            color: '#107C41',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}>
-                            Completed
-                          </span>
-                        ) : (
-                          getStatusBadge(t.status)
-                        )}
-
-                        {/* Priority / Urgent Tag */}
-                        {isUrgent && (
-                          <span style={{
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            color: '#EF4444',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}>
-                            🔥 Urgent
-                          </span>
-                        )}
-
-                        {isOverdue && (
-                          <span style={{
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: '9999px',
-                            background: 'rgba(239, 68, 68, 0.12)',
-                            color: '#EF4444',
-                            border: '1px solid rgba(239, 68, 68, 0.25)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px'
-                          }}>
-                            <AlertTriangle size={11} /> Exceeded
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Title in Serif Font */}
-                      <h4 style={{
-                        fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif',
-                        fontSize: '26px',
-                        fontWeight: 700,
-                        color: '#0F172A',
-                        margin: '0 0 8px 0',
-                        lineHeight: 1.2
-                      }}>
-                        {t.title}
-                      </h4>
-
-                      {/* Description */}
-                      <p style={{
-                        fontSize: '14px',
-                        color: '#64748B',
-                        lineHeight: 1.5,
-                        margin: '0 0 20px 0'
-                      }}>
-                        {t.description || 'Complete everything regarding this project.'}
-                      </p>
-
-                      {/* Deadline Purple Highlight Box */}
-                      {t.deadline && (
-                        <div style={{
-                          background: '#EEF2FF',
-                          borderRadius: '14px',
-                          padding: '14px 18px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '14px',
-                          marginBottom: '20px'
-                        }}>
-                          {/* Clock Icon inside White Square Badge */}
-                          <div style={{
-                            width: '38px',
-                            height: '38px',
-                            borderRadius: '10px',
-                            background: '#FFFFFF',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: '1px solid #E0E7FF',
-                            color: '#4F46E5',
-                            flexShrink: 0
-                          }}>
-                            <Clock size={18} />
-                          </div>
-
-                          {/* Deadline Text */}
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div>
+                        {/* Top Badges Row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                          {/* Completed / Status Tag */}
+                          {isCompleted ? (
                             <span style={{
                               fontSize: '11px',
                               fontWeight: 700,
-                              letterSpacing: '0.06em',
-                              color: '#6366F1',
-                              textTransform: 'uppercase',
-                              marginBottom: '2px'
+                              padding: '3px 10px',
+                              borderRadius: '9999px',
+                              background: '#E6F4EA',
+                              color: '#107C41',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
                             }}>
-                              DEADLINE
+                              Completed
                             </span>
-                            <span style={{
-                              fontSize: '15px',
-                              fontWeight: 700,
-                              color: '#1E1B4B'
-                            }}>
-                              {formatDeadlineWithTime(t.deadline)}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Divider Line */}
-                      <div style={{ borderTop: '1px solid #F1F5F9', marginBottom: '16px' }} />
-
-                      {/* Card Footer: Assignee & Action */}
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}>
-                        {/* Assignee Information */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          {t.assignee?.avatar_url ? (
-                            <img
-                              src={t.assignee.avatar_url}
-                              alt=""
-                              style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }}
-                            />
                           ) : (
+                            getStatusBadge(t.status)
+                          )}
+
+                          {/* Priority / Urgent Tag */}
+                          {isUrgent && (
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              color: '#EF4444',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}>
+                              🔥 Urgent
+                            </span>
+                          )}
+
+                          {isOverdue && (
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              padding: '2px 7px',
+                              borderRadius: '9999px',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              color: '#EF4444',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}>
+                              <AlertTriangle size={10} /> Exceeded
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Title in Serif Font */}
+                        <h4 style={{
+                          fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif',
+                          fontSize: '20px',
+                          fontWeight: 700,
+                          color: '#0F172A',
+                          margin: '0 0 6px 0',
+                          lineHeight: 1.25,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {t.title}
+                        </h4>
+
+                        {/* Description */}
+                        <p style={{
+                          fontSize: '13px',
+                          color: '#64748B',
+                          lineHeight: 1.45,
+                          margin: '0 0 14px 0',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {t.description || 'Complete everything regarding this project.'}
+                        </p>
+
+                        {/* Deadline Purple Highlight Box */}
+                        {t.deadline && (
+                          <div style={{
+                            background: '#EEF2FF',
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            marginBottom: '14px'
+                          }}>
+                            {/* Clock Icon inside White Square Badge */}
                             <div style={{
-                              width: '38px',
-                              height: '38px',
-                              borderRadius: '50%',
-                              background: '#334155',
-                              color: '#FFFFFF',
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              background: '#FFFFFF',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              fontSize: '13px',
-                              fontWeight: 700
+                              border: '1px solid #E0E7FF',
+                              color: '#4F46E5',
+                              flexShrink: 0
                             }}>
-                              {t.assignee?.first_name?.[0]}{t.assignee?.last_name?.[0]}
+                              <Clock size={16} />
                             </div>
-                          )}
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 500 }}>
-                              Assigned to
-                            </span>
-                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>
-                              {t.assignee ? `${t.assignee.first_name} ${t.assignee.last_name}` : 'Unassigned'}
-                            </span>
-                          </div>
-                        </div>
 
-                        {/* Action Button: Message / Details */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {t.status === 'not_started' && String(t.assigned_to) === String(currentUser?.id) && (
+                            {/* Deadline Text */}
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                letterSpacing: '0.06em',
+                                color: '#6366F1',
+                                textTransform: 'uppercase',
+                                marginBottom: '1px'
+                              }}>
+                                DEADLINE
+                              </span>
+                              <span style={{
+                                fontSize: '13px',
+                                fontWeight: 700,
+                                color: '#1E1B4B'
+                              }}>
+                                {formatDeadlineWithTime(t.deadline)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        {/* Divider Line */}
+                        <div style={{ borderTop: '1px solid #F1F5F9', marginBottom: '12px' }} />
+
+                        {/* Card Footer: Assignee & Action */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px'
+                        }}>
+                          {/* Assignee Information */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            {t.assignee?.avatar_url ? (
+                              <img
+                                src={t.assignee.avatar_url}
+                                alt=""
+                                style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                              />
+                            ) : (
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                background: '#334155',
+                                color: '#FFFFFF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                flexShrink: 0
+                              }}>
+                                {t.assignee?.first_name?.[0]}{t.assignee?.last_name?.[0]}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 500 }}>
+                                Assigned to
+                              </span>
+                              <span style={{
+                                fontSize: '12.5px',
+                                fontWeight: 700,
+                                color: '#0F172A',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}>
+                                {t.assignee ? `${t.assignee.first_name} ${t.assignee.last_name}` : 'Unassigned'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Action Button: Message / Details */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                            {t.status === 'not_started' && String(t.assigned_to) === String(currentUser?.id) && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleStartTaskDirect(e, t)}
+                                style={{
+                                  background: '#E0E7FF',
+                                  color: '#4338CA',
+                                  padding: '7px 10px',
+                                  borderRadius: '8px',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <Play size={11} fill="currentColor" /> Start
+                              </button>
+                            )}
+
                             <button
                               type="button"
-                              onClick={(e) => handleStartTaskDirect(e, t)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTask(t);
+                              }}
                               style={{
-                                background: '#E0E7FF',
-                                color: '#4338CA',
-                                padding: '9px 14px',
-                                borderRadius: '10px',
-                                fontSize: '13px',
+                                background: '#5B50E5',
+                                color: '#FFFFFF',
+                                padding: '8px 14px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
                                 fontWeight: 600,
                                 border: 'none',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '5px'
+                                gap: '6px',
+                                boxShadow: '0 2px 8px rgba(91, 80, 229, 0.25)',
+                                transition: 'all 0.2s ease',
+                                whiteSpace: 'nowrap'
                               }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#4338CA'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = '#5B50E5'}
                             >
-                              <Play size={12} fill="currentColor" /> Start Task
+                              <MessageSquare size={14} />
+                              <span>Message {t.assignee?.first_name || 'Assignee'}</span>
                             </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedTask(t);
-                            }}
-                            style={{
-                              background: '#5B50E5',
-                              color: '#FFFFFF',
-                              padding: '10px 18px',
-                              borderRadius: '10px',
-                              fontSize: '14px',
-                              fontWeight: 600,
-                              border: 'none',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              boxShadow: '0 2px 8px rgba(91, 80, 229, 0.25)',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#4338CA'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = '#5B50E5'}
-                          >
-                            <MessageSquare size={16} />
-                            <span>Message {t.assignee?.first_name || 'Assignee'}</span>
-                          </button>
+                          </div>
                         </div>
                       </div>
                     </div>
