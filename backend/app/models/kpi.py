@@ -24,10 +24,10 @@ class DailyKPILog(Base):
     deadline_adherence = Column(Integer, nullable=False)    # Weight: 2 (10%)
     ownership = Column(Integer, nullable=False)             # Weight: 2 (10%)
     problem_solving = Column(Integer, nullable=False)       # Weight: 2 (10%)
-    communication = Column(Integer, nullable=False)         # Weight: 2 (10%)
+    communication = Column(Integer, nullable=False)         # Weight: 1 (5%)
     team_collaboration = Column(Integer, nullable=False)    # Weight: 1 (5%)
     learning_improvement = Column(Integer, nullable=False)  # Weight: 1 (5%)
-    attendance_discipline = Column(Integer, nullable=False) # Weight: 1 (5%)
+    attendance_discipline = Column(Integer, nullable=False) # Weight: 2 (10%)
 
     daily_kpi_percentage = Column(Float, nullable=False)    # 20.0% to 100.0%
     month = Column(String(20), nullable=False)             # e.g. 'Sep-26'
@@ -58,7 +58,7 @@ class DailyKPILog(Base):
         Computes the daily KPI percentage, month string, and performance status
         based on the exact weighted sum of the 10 criteria scores.
         """
-        # Weighted sum: Max = (3*5 + 3*5 + 3*5 + 2*5 + 2*5 + 2*5 + 2*5 + 1*5 + 1*5 + 1*5) = 100
+        # Weighted sum: Max = (3*5 + 3*5 + 3*5 + 2*5 + 2*5 + 2*5 + 1*5 + 1*5 + 1*5 + 2*5) = 100
         score = (
             3 * task_completion
             + 3 * quality
@@ -66,21 +66,21 @@ class DailyKPILog(Base):
             + 2 * deadline_adherence
             + 2 * ownership
             + 2 * problem_solving
-            + 2 * communication
+            + 1 * communication
             + 1 * team_collaboration
             + 1 * learning_improvement
-            + 1 * attendance_discipline
+            + 2 * attendance_discipline
         )
         pct = round(float(score), 1)
 
-        # Status thresholds matching Employee_KPI_Tracker-01.csv
-        if pct >= 90.0:
+        # Status thresholds
+        if pct >= 95.0:
             status = "Excellent"
         elif pct >= 80.0:
             status = "Very Good"
-        elif pct >= 70.0:
+        elif pct >= 65.0:
             status = "Meets Expectation"
-        elif pct >= 60.0:
+        elif pct >= 50.0:
             status = "Needs Improvement"
         else:
             status = "Needs Attention"

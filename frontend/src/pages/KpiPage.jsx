@@ -144,8 +144,8 @@ export const CRITERIA = [
     key: 'communication',
     num: 7,
     label: 'Communication',
-    weight: 2,
-    maxContrib: 10,
+    weight: 1,
+    maxContrib: 5,
     desc: 'Clear, timely & transparent updates',
     rubric: {
       1: 'Critical communication failures',
@@ -189,8 +189,8 @@ export const CRITERIA = [
     key: 'attendance_discipline',
     num: 10,
     label: 'Attendance & Discipline',
-    weight: 1,
-    maxContrib: 5,
+    weight: 2,
+    maxContrib: 10,
     desc: 'Punctuality, presence & work ethics',
     rubric: {
       1: 'Serious/repeated violations',
@@ -226,10 +226,10 @@ const calculateLiveMetrics = (scores) => {
   });
   const pct = Math.round(weightedSum * 10) / 10;
   let status = 'Needs Attention';
-  if (pct >= 90) status = 'Excellent';
+  if (pct >= 95) status = 'Excellent';
   else if (pct >= 80) status = 'Very Good';
-  else if (pct >= 70) status = 'Meets Expectation';
-  else if (pct >= 60) status = 'Needs Improvement';
+  else if (pct >= 65) status = 'Meets Expectation';
+  else if (pct >= 50) status = 'Needs Improvement';
 
   return { pct, status };
 };
@@ -1381,9 +1381,9 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
                     <br />
                     <strong>Weight 3 (15% Max):</strong> Task Completion, Quality, Productivity
                     <br />
-                    <strong>Weight 2 (10% Max):</strong> Deadline Adherence, Ownership, Problem Solving, Communication
+                    <strong>Weight 2 (10% Max):</strong> Deadline Adherence, Ownership, Problem Solving, Attendance & Discipline
                     <br />
-                    <strong>Weight 1 (5% Max):</strong> Team Collaboration, Learning / Improvement, Attendance & Discipline
+                    <strong>Weight 1 (5% Max):</strong> Communication, Team Collaboration, Learning / Improvement
                   </p>
                 </div>
                 <div>
@@ -1393,23 +1393,23 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#065F46', fontWeight: 600 }}>● Excellent:</span>
-                      <span style={{ fontWeight: 700 }}>≥ 90.0%</span>
+                      <span style={{ fontWeight: 700 }}>≥ 95.0%</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#3730A3', fontWeight: 600 }}>● Very Good:</span>
-                      <span style={{ fontWeight: 700 }}>80.0% – 89.9%</span>
+                      <span style={{ fontWeight: 700 }}>80.0% – 94.9%</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#1E40AF', fontWeight: 600 }}>● Meets Expectation:</span>
-                      <span style={{ fontWeight: 700 }}>70.0% – 79.9%</span>
+                      <span style={{ fontWeight: 700 }}>65.0% – 79.9%</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#92400E', fontWeight: 600 }}>● Needs Improvement:</span>
-                      <span style={{ fontWeight: 700 }}>60.0% – 69.9%</span>
+                      <span style={{ fontWeight: 700 }}>50.0% – 64.9%</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#991B1B', fontWeight: 600 }}>● Needs Attention:</span>
-                      <span style={{ fontWeight: 700 }}>&lt; 60.0%</span>
+                      <span style={{ fontWeight: 700 }}>&lt; 50.0%</span>
                     </div>
                   </div>
                 </div>
@@ -2097,11 +2097,11 @@ const KpiPage = () => {
           }}
         >
           <option value="">All Statuses</option>
-          <option value="Excellent">Excellent (≥ 90%)</option>
-          <option value="Very Good">Very Good (80-89%)</option>
-          <option value="Meets Expectation">Meets Expectation (70-79%)</option>
-          <option value="Needs Improvement">Needs Improvement (60-69%)</option>
-          <option value="Needs Attention">Needs Attention (&lt; 60%)</option>
+          <option value="Excellent">Excellent (≥ 95%)</option>
+          <option value="Very Good">Very Good (80-94%)</option>
+          <option value="Meets Expectation">Meets Expectation (65-79%)</option>
+          <option value="Needs Improvement">Needs Improvement (50-64%)</option>
+          <option value="Needs Attention">Needs Attention (&lt; 50%)</option>
         </select>
 
         {/* Employee Filter (For Execs and TLs) */}
@@ -3563,9 +3563,9 @@ const KpiPage = () => {
                     <br />
                     <strong>Weight 3 (15% Max):</strong> Task Completion, Quality, Productivity
                     <br />
-                    <strong>Weight 2 (10% Max):</strong> Deadline Adherence, Ownership, Problem Solving, Communication
+                    <strong>Weight 2 (10% Max):</strong> Deadline Adherence, Ownership, Problem Solving, Attendance & Discipline
                     <br />
-                    <strong>Weight 1 (5% Max):</strong> Team Collaboration, Learning / Improvement, Attendance & Discipline
+                    <strong>Weight 1 (5% Max):</strong> Communication, Team Collaboration, Learning / Improvement
                   </p>
                 </div>
                 <div>
@@ -3575,23 +3575,23 @@ const KpiPage = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#065F46', fontWeight: 600 }}>● Excellent:</span>
-                      <span style={{ fontWeight: 700 }}>≥ 90.0%</span>
+                      <span style={{ fontWeight: 700 }}>≥ 95.0%</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#3730A3', fontWeight: 600 }}>● Very Good:</span>
-                      <span style={{ fontWeight: 700 }}>80.0% – 89.9%</span>
+                      <span style={{ fontWeight: 700 }}>80.0% – 94.9%</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#1E40AF', fontWeight: 600 }}>● Meets Expectation:</span>
-                      <span style={{ fontWeight: 700 }}>70.0% – 79.9%</span>
+                      <span style={{ fontWeight: 700 }}>65.0% – 79.9%</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#92400E', fontWeight: 600 }}>● Needs Improvement:</span>
-                      <span style={{ fontWeight: 700 }}>60.0% – 69.9%</span>
+                      <span style={{ fontWeight: 700 }}>50.0% – 64.9%</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#991B1B', fontWeight: 600 }}>● Needs Attention:</span>
-                      <span style={{ fontWeight: 700 }}>&lt; 60.0%</span>
+                      <span style={{ fontWeight: 700 }}>&lt; 50.0%</span>
                     </div>
                   </div>
                 </div>

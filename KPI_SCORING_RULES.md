@@ -14,10 +14,10 @@ This document defines the official **KPI Evaluation Rules and Scoring Rubric** f
 | **4** | **Deadline Adherence** | Major/repeated missed deadlines | Multiple delays | Generally meets deadlines | Consistently meets deadlines | Consistently early/on-time + proactively manages risks | **2** | 10% |
 | **5** | **Ownership** | Avoids responsibility / leaves work incomplete | Frequent reminders required | Completes assigned work with normal supervision | Independently drives assigned work | Fully owns work, identifies risks and closes issues proactively | **2** | 10% |
 | **6** | **Problem Solving** | Cannot resolve routine issues | Requires substantial assistance | Solves normal issues with reasonable guidance | Solves issues independently | Finds root cause + effective solution + prevents recurrence | **2** | 10% |
-| **7** | **Communication** | Critical communication failures | Repeated unclear/delayed updates | Required communication provided | Clear and timely communication | Proactive, clear communication that prevents problems | **2** | 10% |
+| **7** | **Communication** | Critical communication failures | Repeated unclear/delayed updates | Required communication provided | Clear and timely communication | Proactive, clear communication that prevents problems | **1** | 5% |
 | **8** | **Team Collaboration** | Causes significant team obstruction | Repeated collaboration/dependency issues | Cooperates as required | Consistently effective team collaboration | Proactively unblocks/help others and improves team output | **1** | 5% |
 | **9** | **Learning / Improvement** | Ignores required improvement | Little improvement despite feedback | Applies feedback and maintains required skills | Actively improves skills/process | Applies new knowledge and creates measurable improvement | **1** | 5% |
-| **10** | **Attendance & Discipline** | Serious/repeated violations | Frequent attendance/discipline issues | Meets company expectations | Very consistent attendance & discipline | Excellent consistency + exemplary adherence to policies | **1** | 5% |
+| **10** | **Attendance & Discipline** | Serious/repeated violations | Frequent attendance/discipline issues | Meets company expectations | Very consistent attendance & discipline | Excellent consistency + exemplary adherence to policies | **2** | 10% |
 | **Total** | | | | | | | **20** | **100%** |
 
 ---
@@ -30,8 +30,8 @@ $$\text{Daily KPI \%} = \sum_{i=1}^{10} (\text{Score}_i \times \text{Weight}_i)$
 
 Where:
 - $\text{Score}_i \in \{1, 2, 3, 4, 5\}$
-- Maximum theoretical score is $(5 \times 3) + (5 \times 3) + (5 \times 3) + (5 \times 2) + (5 \times 2) + (5 \times 2) + (5 \times 2) + (5 \times 1) + (5 \times 1) + (5 \times 1) = 100\%$
-- Minimum theoretical score is $(1 \times 3) + (1 \times 3) + (1 \times 3) + (1 \times 2) + (1 \times 2) + (1 \times 2) + (1 \times 2) + (1 \times 1) + (1 \times 1) + (1 \times 1) = 20\%$
+- Maximum theoretical score is $(5 \times 3) + (5 \times 3) + (5 \times 3) + (5 \times 2) + (5 \times 2) + (5 \times 2) + (5 \times 1) + (5 \times 1) + (5 \times 1) + (5 \times 2) = 100\%$
+- Minimum theoretical score is $(1 \times 3) + (1 \times 3) + (1 \times 3) + (1 \times 2) + (1 \times 2) + (1 \times 2) + (1 \times 1) + (1 \times 1) + (1 \times 1) + (1 \times 2) = 20\%$
 
 ---
 
@@ -41,11 +41,11 @@ Based on the calculated Daily KPI percentage, the system classifies each evaluat
 
 | Status | KPI Range | Description |
 |--------|:---------:|-------------|
-| **Excellent** | **$\ge 90.0\%$** | Exceptional daily contribution, high independence, and proactive impact. |
-| **Very Good** | **$80.0\% - 89.9\%$** | Exceeds expected standards with consistent quality and solid teamwork. |
-| **Meets Expectation** | **$70.0\% - 79.9\%$** | Fully delivers expected daily output with normal supervision. |
-| **Needs Improvement** | **$60.0\% - 69.9\%$** | Below acceptable output or missed deadlines requiring management guidance. |
-| **Needs Attention** | **$< 60.0\%$** | Significant performance or compliance blockers requiring immediate support. |
+| **Excellent** | **$\ge 95.0\%$** | Exceptional daily contribution, high independence, and proactive impact. |
+| **Very Good** | **$80.0\% - 94.9\%$** | Exceeds expected standards with consistent quality and solid teamwork. |
+| **Meets Expectation** | **$65.0\% - 79.9\%$** | Fully delivers expected daily output with normal supervision. |
+| **Needs Improvement** | **$50.0\% - 64.9\%$** | Below acceptable output or missed deadlines requiring management guidance. |
+| **Needs Attention** | **$< 50.0\%$** | Significant performance or compliance blockers requiring immediate support. |
 
 ---
 
