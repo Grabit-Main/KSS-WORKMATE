@@ -51,22 +51,41 @@ const normalizeToYYYYMMDD = (val) => {
   return '';
 };
 
+const getTodayYYYYMMDD = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const TasksPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const targetTaskId = searchParams.get('taskId');
   const { user } = useAuth();
-  const cacheKey = user ? `cache_tasks_${user.id}` : 'cache_tasks';
+  const cacheKey = user ? `cache_tasks_${user.id}` : null;
   const [tasks, setTasks] = useState(() => {
-    const cached = localStorage.getItem(cacheKey) || localStorage.getItem('cache_tasks');
+    if (!cacheKey) return [];
+    const cached = localStorage.getItem(cacheKey);
     return cached ? JSON.parse(cached) : [];
   });
-  const [loading, setLoading] = useState(() => !(localStorage.getItem(cacheKey) || localStorage.getItem('cache_tasks')));
+  const [loading, setLoading] = useState(() => {
+    if (!cacheKey) return true;
+    return !localStorage.getItem(cacheKey);
+  });
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'projects', 'standalone', 'mine', 'review'
-  const [selectedDateFilter, setSelectedDateFilter] = useState('all'); // 'all' or 'YYYY-MM-DD'
+  const [selectedDateFilter, setSelectedDateFilter] = useState(() => getTodayYYYYMMDD());
   const dateInputRef = useRef(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const { joinRoom, dispatch } = useWebSocket();
+
+  // Sync tasks state to localStorage whenever it changes
+  useEffect(() => {
+    if (cacheKey && tasks && tasks.length >= 0) {
+      localStorage.setItem(cacheKey, JSON.stringify(tasks));
+    }
+  }, [tasks, cacheKey]);
 
   // Reassign Task State
   const [reassigningTask, setReassigningTask] = useState(null);
@@ -478,21 +497,29 @@ const TasksPage = () => {
 
   const isLeadership = ['CEO', 'CTO', 'PM'].includes(user?.role);
 
-  const getTaskDateKey = useCallback((t) => {
-    if (!t) return null;
+  const isTaskForDate = useCallback((t, targetDate) => {
+    if (!t || !targetDate) return false;
+    if (targetDate === 'all') return true;
+
     if (t.scheduled_date) {
-      const k = normalizeToYYYYMMDD(t.scheduled_date);
-      if (k) return k;
+      const sKey = normalizeToYYYYMMDD(t.scheduled_date);
+      return sKey === targetDate;
     }
     if (t.deadline) {
-      const k = normalizeToYYYYMMDD(t.deadline);
-      if (k) return k;
+      const dKey = normalizeToYYYYMMDD(t.deadline);
+      if (dKey) return dKey === targetDate;
     }
     if (t.created_at) {
-      const k = normalizeToYYYYMMDD(t.created_at);
-      if (k) return k;
+      const cKey = normalizeToYYYYMMDD(t.created_at);
+      if (cKey === targetDate) return true;
     }
-    return null;
+
+    const todayStr = getTodayYYYYMMDD();
+    if (targetDate === todayStr && t.status !== 'completed') {
+      return true;
+    }
+
+    return false;
   }, []);
 
   const userTasks = tasks.filter(t => {
@@ -508,43 +535,19 @@ const TasksPage = () => {
     return true;
   });
 
-  const availableDates = useMemo(() => {
-    const dateSet = new Set();
-    userTasks.forEach(t => {
-      const dKey = getTaskDateKey(t);
-      if (dKey && /^\d{4}-\d{2}-\d{2}$/.test(dKey)) {
-        dateSet.add(dKey);
-      }
+  const dateFilteredTasks = useMemo(() => {
+    return userTasks.filter(t => isTaskForDate(t, selectedDateFilter));
+  }, [userTasks, selectedDateFilter, isTaskForDate]);
+
+  const filteredTasks = useMemo(() => {
+    return dateFilteredTasks.filter(t => {
+      if (filterTab === 'mine' && String(t.assigned_to) !== String(user?.id)) return false;
+      if (filterTab === 'review' && t.status !== 'in_review') return false;
+      if (filterTab === 'projects' && !t.project_id) return false;
+      if (filterTab === 'standalone' && t.project_id) return false;
+      return true;
     });
-
-    const sorted = Array.from(dateSet).sort((a, b) => b.localeCompare(a));
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
-    return sorted.map(dStr => {
-      const [y, m, d] = dStr.split('-').map(Number);
-      const dt = new Date(y, m - 1, d);
-      let dateFormatted = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-      if (dStr === todayStr) {
-        dateFormatted = `Today (${dateFormatted})`;
-      }
-      return { key: dStr, label: dateFormatted };
-    });
-  }, [userTasks, getTaskDateKey]);
-
-  const filteredTasks = userTasks.filter(t => {
-    if (filterTab === 'mine' && String(t.assigned_to) !== String(user?.id)) return false;
-    if (filterTab === 'review' && t.status !== 'in_review') return false;
-    if (filterTab === 'projects' && !t.project_id) return false;
-    if (filterTab === 'standalone' && t.project_id) return false;
-
-    if (selectedDateFilter !== 'all') {
-      const taskDateKey = getTaskDateKey(t);
-      if (!taskDateKey || taskDateKey !== selectedDateFilter) return false;
-    }
-
-    return true;
-  });
+  }, [dateFilteredTasks, filterTab, user?.id]);
 
   const availableTeams = user?.role === 'TL'
     ? teams.filter(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(user?.id)))
@@ -619,7 +622,7 @@ const TasksPage = () => {
             Total Workload
           </span>
           <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
-            {userTasks.length}
+            {dateFilteredTasks.length}
           </h3>
         </div>
 
@@ -635,7 +638,7 @@ const TasksPage = () => {
             Completed
           </span>
           <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
-            {userTasks.filter(t => t.status === 'completed').length}
+            {dateFilteredTasks.filter(t => t.status === 'completed').length}
           </h3>
         </div>
 
@@ -651,7 +654,7 @@ const TasksPage = () => {
             In Progress
           </span>
           <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
-            {userTasks.filter(t => t.status === 'in_progress').length}
+            {dateFilteredTasks.filter(t => t.status === 'in_progress').length}
           </h3>
         </div>
 
@@ -667,7 +670,7 @@ const TasksPage = () => {
             In Review
           </span>
           <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
-            {userTasks.filter(t => t.status === 'in_review').length}
+            {dateFilteredTasks.filter(t => t.status === 'in_review').length}
           </h3>
         </div>
       </div>
@@ -694,11 +697,11 @@ const TasksPage = () => {
           flex: 1
         }}>
           {[
-            { id: 'all', label: `All Tasks (${userTasks.length})` },
-            { id: 'projects', label: `Project Tasks (${userTasks.filter(t => Boolean(t.project_id)).length})` },
-            { id: 'standalone', label: `Standalone Tasks (${userTasks.filter(t => !t.project_id).length})` },
-            { id: 'mine', label: `Assigned to Me (${userTasks.filter(t => String(t.assigned_to) === String(user?.id)).length})` },
-            { id: 'review', label: `In Review (${userTasks.filter(t => t.status === 'in_review').length})` }
+            { id: 'all', label: selectedDateFilter === getTodayYYYYMMDD() ? `Today's Tasks (${dateFilteredTasks.length})` : `All Tasks (${dateFilteredTasks.length})` },
+            { id: 'projects', label: `Project Tasks (${dateFilteredTasks.filter(t => Boolean(t.project_id)).length})` },
+            { id: 'standalone', label: `Standalone Tasks (${dateFilteredTasks.filter(t => !t.project_id).length})` },
+            { id: 'mine', label: `Assigned to Me (${dateFilteredTasks.filter(t => String(t.assigned_to) === String(user?.id)).length})` },
+            { id: 'review', label: `In Review (${dateFilteredTasks.filter(t => t.status === 'in_review').length})` }
           ].map(tab => (
             <button
               key={tab.id}
@@ -1552,6 +1555,9 @@ const TasksPage = () => {
           }}
           onTaskUpdated={(updated) => {
             setSelectedTask(updated);
+            if (updated && updated.id) {
+              setTasks(prev => prev.map(t => String(t.id) === String(updated.id) ? { ...t, ...updated } : t));
+            }
             loadTasks();
           }}
         />
