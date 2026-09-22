@@ -234,17 +234,274 @@ const calculateLiveMetrics = (scores) => {
   return { pct, status };
 };
 
+const KPIHeaderBanner = ({
+  viewMode,
+  setViewMode,
+  isManagementUser,
+  onShowRulesModal,
+  onDownloadCSV,
+  onOpenCreateModal,
+  canDownload,
+  canGiveOrEdit,
+  downloading,
+  loading
+}) => {
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #F0F4FF 0%, #F5F3FF 100%)',
+      borderRadius: '24px',
+      border: '1px solid rgba(85, 81, 255, 0.12)',
+      padding: '32px 36px',
+      marginBottom: '28px',
+      position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)'
+    }}>
+      {/* Background Graphic Chart Illustration on Right */}
+      <div style={{
+        position: 'absolute',
+        right: '-10px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        width: '320px',
+        height: '100%',
+        pointerEvents: 'none',
+        opacity: 0.85,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <svg width="280" height="160" viewBox="0 0 280 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="20" y="90" width="24" height="60" rx="8" fill="#3B82F6" fillOpacity="0.15" />
+          <rect x="56" y="65" width="24" height="85" rx="8" fill="#3B82F6" fillOpacity="0.22" />
+          <rect x="92" y="45" width="24" height="105" rx="8" fill="#3B82F6" fillOpacity="0.3" />
+          <rect x="128" y="25" width="24" height="125" rx="8" fill="#3B82F6" fillOpacity="0.38" />
+          <rect x="164" y="15" width="24" height="135" rx="8" fill="#2563EB" fillOpacity="0.45" />
+
+          {/* Upward Line Path */}
+          <path d="M 10 115 L 68 85 L 104 100 L 176 30" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M 10 115 L 68 85 L 104 100 L 176 30" stroke="#3B82F6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          
+          {/* End Glow Circle Node */}
+          <circle cx="176" cy="30" r="7" fill="#FFFFFF" filter="drop-shadow(0 2px 6px rgba(37,99,235,0.4))" />
+          <circle cx="176" cy="30" r="4" fill="#2563EB" />
+
+          {/* Sparkles */}
+          <path d="M 220 50 L 223 57 L 230 60 L 223 63 L 220 70 L 217 63 L 210 60 L 217 57 Z" fill="#93C5FD" fillOpacity="0.8" />
+          <path d="M 205 120 L 207 124 L 211 126 L 207 128 L 205 132 L 203 128 L 199 126 L 203 124 Z" fill="#BFDBFE" fillOpacity="0.7" />
+        </svg>
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 2 }}>
+        {/* Top View Switcher Pill Bar */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          background: '#FFFFFF',
+          padding: '4px',
+          borderRadius: '9999px',
+          border: '1px solid #E2E8F0',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+          marginBottom: '24px'
+        }}>
+          {isManagementUser && (
+            <button
+              type="button"
+              onClick={() => setViewMode && setViewMode('management')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 20px',
+                borderRadius: '9999px',
+                border: 'none',
+                background: viewMode === 'management' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
+                color: viewMode === 'management' ? '#FFFFFF' : '#64748B',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                boxShadow: viewMode === 'management' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
+              }}
+            >
+              <BarChart3 size={15} color={viewMode === 'management' ? '#FFFFFF' : '#64748B'} />
+              <span>Management KPI View</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setViewMode && setViewMode('personal')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 20px',
+              borderRadius: '9999px',
+              border: 'none',
+              background: viewMode === 'personal' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
+              color: viewMode === 'personal' ? '#FFFFFF' : '#64748B',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              boxShadow: viewMode === 'personal' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
+            }}
+          >
+            <TrendingUp size={15} color={viewMode === 'personal' ? '#FFFFFF' : '#64748B'} />
+            <span>My Performance Overview</span>
+          </button>
+        </div>
+
+        {/* Main Title Row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' }}>
+          <div style={{
+            width: '60px',
+            height: '60px',
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#FFFFFF',
+            boxShadow: '0 8px 20px rgba(37, 99, 235, 0.3)',
+            flexShrink: 0
+          }}>
+            <BarChart3 size={28} />
+          </div>
+
+          <div>
+            <h1 style={{
+              fontSize: '34px',
+              fontWeight: 800,
+              letterSpacing: '-0.025em',
+              color: '#1E293B',
+              fontFamily: 'serif, Georgia, Inter, sans-serif',
+              margin: 0,
+              lineHeight: 1.1
+            }}>
+              KPI Tracker
+            </h1>
+            <p style={{
+              fontSize: '14px',
+              color: '#64748B',
+              margin: '6px 0 0 0',
+              fontWeight: 400
+            }}>
+              Daily employee performance tracking, weighted KPI calculations & evaluation logs.
+            </p>
+          </div>
+        </div>
+
+        {/* Action Buttons Row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Scoring Rules Button */}
+          <button
+            type="button"
+            onClick={onShowRulesModal}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '11px 22px',
+              borderRadius: '16px',
+              background: '#FFFFFF',
+              color: '#1E293B',
+              border: '1.5px solid rgba(37, 99, 235, 0.2)',
+              fontWeight: 700,
+              fontSize: '13.5px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <BookOpen size={18} style={{ color: '#2563EB' }} />
+            <span>Scoring Rules</span>
+            <ChevronRight size={16} style={{ color: '#2563EB', marginLeft: '2px' }} />
+          </button>
+
+          {/* Download CSV Button */}
+          {canDownload && (
+            <button
+              type="button"
+              onClick={onDownloadCSV}
+              disabled={downloading || loading}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '11px 22px',
+                borderRadius: '16px',
+                background: '#FFFFFF',
+                color: '#1E293B',
+                border: '1.5px solid #E2E8F0',
+                fontWeight: 700,
+                fontSize: '13.5px',
+                cursor: downloading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Download size={18} style={{ color: '#334155' }} />
+              <span>{downloading ? 'Downloading...' : 'Download CSV'}</span>
+              <ChevronRight size={16} style={{ color: '#64748B', marginLeft: '2px' }} />
+            </button>
+          )}
+
+          {/* Give Daily KPI Button */}
+          {canGiveOrEdit && (
+            <button
+              type="button"
+              onClick={onOpenCreateModal}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '11px 24px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)',
+                color: '#FFFFFF',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '13.5px',
+                cursor: 'pointer',
+                boxShadow: '0 8px 20px rgba(37, 99, 235, 0.35)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div style={{
+                width: '22px',
+                height: '22px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Plus size={14} color="#FFFFFF" />
+              </div>
+              <span>Give Daily KPI</span>
+              <ChevronRight size={16} style={{ color: '#FFFFFF', marginLeft: '2px' }} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToManagement, isManagementUser }) => {
   const [periodType, setPeriodType] = useState('week');
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
   const fetchDeveloperKPI = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError('');
       const res = await getMyKPI({ period_type: periodType, offset });
       setData(res);
     } catch (err) {
@@ -284,86 +541,13 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
 
   return (
     <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-      {/* Top Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        marginBottom: '24px'
-      }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h1 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', color: '#1E293B', fontFamily: 'serif, Georgia, Inter, sans-serif', margin: 0 }}>
-              My Performance Overview
-            </h1>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '3px 10px',
-              borderRadius: '9999px',
-              background: '#EEF2FF',
-              color: '#5551FF',
-              border: '1px solid rgba(85, 81, 255, 0.2)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em'
-            }}>
-              Personal KPI
-            </span>
-          </div>
-          <p style={{ fontSize: '14px', color: '#64748B', margin: '4px 0 0 0' }}>
-            Weekly & monthly performance overview across all 10 KPI categories.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {isManagementUser && (
-            <button
-              onClick={onSwitchToManagement}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '9px 14px',
-                borderRadius: '8px',
-                background: '#FFFFFF',
-                color: '#5551FF',
-                border: '1px solid #CBD5E1',
-                fontWeight: 600,
-                fontSize: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <BarChart3 size={15} />
-              <span>Switch to Management View</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => setShowRulesModal(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '9px 16px',
-              borderRadius: '8px',
-              background: '#5551FF',
-              color: '#FFFFFF',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '12px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(85, 81, 255, 0.25)',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <BookOpen size={15} />
-            <span>Scoring Rules</span>
-          </button>
-        </div>
-      </div>
+      {/* Top Header Banner matching exact design */}
+      <KPIHeaderBanner
+        viewMode="personal"
+        setViewMode={onSwitchToManagement ? () => onSwitchToManagement() : undefined}
+        isManagementUser={isManagementUser}
+        onShowRulesModal={() => setShowRulesModal(true)}
+      />
 
       {/* Period Filter & Navigation Bar */}
       <div style={{
@@ -1709,179 +1893,19 @@ const KpiPage = () => {
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto' }}>
-      {/* View Mode Switching Tabs for Management Users (Except CEO & CTO) */}
-      {!isTM && !isCeoOrCto && (
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '20px',
-          background: 'var(--surface)',
-          padding: '6px 10px',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border)',
-          width: 'fit-content'
-        }}>
-          <button
-            onClick={() => setViewMode('management')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              background: viewMode === 'management' ? 'var(--brand-gradient)' : 'transparent',
-              color: viewMode === 'management' ? '#FFFFFF' : 'var(--text-secondary)',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer'
-            }}
-          >
-            Management KPI View
-          </button>
-          <button
-            onClick={() => setViewMode('personal')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              background: viewMode === 'personal' ? 'var(--brand-gradient)' : 'transparent',
-              color: viewMode === 'personal' ? '#FFFFFF' : 'var(--text-secondary)',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer'
-            }}
-          >
-            My Performance Overview
-          </button>
-        </div>
-      )}
-
-      {/* Top Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        marginBottom: '28px',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
-            }}>
-              <TrendingUp size={22} />
-            </div>
-            <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-              KPI Tracker
-            </h1>
-            <span style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              padding: '4px 10px',
-              borderRadius: 'var(--radius-full)',
-              background: isExecutive ? '#EFF6FF' : isTL ? '#EEF2FF' : '#F1F5F9',
-              color: isExecutive ? '#1E40AF' : isTL ? '#4F46E5' : '#475569',
-              border: '1px solid currentColor',
-              opacity: 0.9
-            }}>
-              {isExecutive && 'Executive View (All • Read-Only)'}
-              {isTL && 'Team Lead View (Give & Edit)'}
-              {isTM && 'Personal KPI View'}
-              {user?.role === 'HR' && 'HR View (Read-Only)'}
-            </span>
-          </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
-            Daily employee performance tracking, weighted KPI calculations & evaluation logs.
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Scoring Rules & Rubric Button */}
-          <button
-            onClick={() => setShowRulesModal(true)}
-            title="View official KPI evaluation rules & scoring rubric"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--surface)',
-              color: 'var(--brand-700, #4338CA)',
-              border: '1px solid var(--brand-300, #C7D2FE)',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-              boxShadow: 'var(--shadow-subtle)',
-              transition: 'all var(--transition-fast)'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--brand-600)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--brand-300, #C7D2FE)'}
-          >
-            <BookOpen size={16} />
-            <span>Scoring Rules</span>
-          </button>
-
-          {canDownload && (
-            <button
-              onClick={handleDownloadCSV}
-              disabled={downloading || loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 18px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--surface)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border)',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: downloading ? 'not-allowed' : 'pointer',
-                boxShadow: 'var(--shadow-subtle)',
-                transition: 'all var(--transition-fast)'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--brand-400)'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-            >
-              <Download size={16} />
-              <span>{downloading ? 'Downloading...' : 'Download CSV'}</span>
-            </button>
-          )}
-
-          {canGiveOrEdit && (
-            <button
-              onClick={handleOpenCreateModal}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 20px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--brand-gradient)',
-                color: '#FFFFFF',
-                border: 'none',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
-                boxShadow: 'var(--brand-glow)',
-                transition: 'all var(--transition-fast)'
-              }}
-            >
-              <Plus size={16} />
-              <span>Give Daily KPI</span>
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Top Header Banner matching exact design */}
+      <KPIHeaderBanner
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        isManagementUser={!isTM}
+        onShowRulesModal={() => setShowRulesModal(true)}
+        onDownloadCSV={handleDownloadCSV}
+        onOpenCreateModal={handleOpenCreateModal}
+        canDownload={canDownload}
+        canGiveOrEdit={canGiveOrEdit}
+        downloading={downloading}
+        loading={loading}
+      />
 
       {/* Summary Scoreboard Cards */}
       <div style={{
