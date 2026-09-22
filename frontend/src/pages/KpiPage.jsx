@@ -2497,17 +2497,34 @@ const KpiPage = () => {
                               justifyContent: 'center',
                               fontWeight: 700,
                               fontSize: '12px',
-                              flexShrink: 0
+                              flexShrink: 0,
+                              overflow: 'hidden',
+                              position: 'relative'
                             }}>
-                              {log.employee?.first_name?.[0] || 'E'}
-                              {log.employee?.last_name?.[0] || ''}
+                              {log.employee?.avatar_url ? (
+                                <img
+                                  src={log.employee.avatar_url}
+                                  alt={`${log.employee.first_name || ''} ${log.employee.last_name || ''}`}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.style.display = 'none';
+                                    const span = e.currentTarget.parentNode?.querySelector('.kpi-avatar-initials');
+                                    if (span) span.style.display = 'inline';
+                                  }}
+                                />
+                              ) : null}
+                              <span className="kpi-avatar-initials" style={{ display: log.employee?.avatar_url ? 'none' : 'inline' }}>
+                                {log.employee?.first_name?.[0] || 'E'}
+                                {log.employee?.last_name?.[0] || ''}
+                              </span>
                             </div>
                             <div>
                               <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                                 {log.employee?.first_name} {log.employee?.last_name}
                               </div>
                               <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                                {log.employee?.department || log.employee?.email}
+                                {log.employee?.role || log.employee?.department || log.employee?.email}
                               </div>
                             </div>
                           </div>

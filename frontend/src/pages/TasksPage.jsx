@@ -931,6 +931,9 @@ const TasksPage = () => {
             const assigneeInitials = isAssignedToMe
               ? (user?.first_name?.[0] || 'Y')
               : (task.assignee?.first_name?.[0] || 'U') + (task.assignee?.last_name?.[0] || '');
+            const assigneeAvatar = isAssignedToMe
+              ? user?.avatar_url
+              : task.assignee?.avatar_url;
 
             return (
               <div
@@ -1220,10 +1223,28 @@ const TasksPage = () => {
                           fontWeight: 700,
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                          position: 'relative',
+                          flexShrink: 0
                         }}
                       >
-                        {assigneeInitials}
+                        {assigneeAvatar ? (
+                          <img
+                            src={assigneeAvatar}
+                            alt={assigneeName}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '9999px' }}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.style.display = 'none';
+                              const span = e.currentTarget.parentNode?.querySelector('.task-avatar-initials');
+                              if (span) span.style.display = 'inline';
+                            }}
+                          />
+                        ) : null}
+                        <span className="task-avatar-initials" style={{ display: assigneeAvatar ? 'none' : 'inline' }}>
+                          {assigneeInitials}
+                        </span>
                       </div>
                       <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
                         {assigneeName}
