@@ -558,6 +558,9 @@ const TasksPage = () => {
 
   const filteredTasks = useMemo(() => {
     return userTasks.filter(t => {
+      if (filterTab === 'all') {
+        return true;
+      }
       if (filterTab === 'today') {
         if (!isTaskForDate(t, todayStr)) return false;
       } else if (selectedDateFilter !== 'all') {
@@ -572,7 +575,7 @@ const TasksPage = () => {
     });
   }, [userTasks, filterTab, selectedDateFilter, isTaskForDate, todayStr]);
 
-  const activeMetricTasks = filterTab === 'today' ? todayTasks : dateFilteredTasks;
+  const activeMetricTasks = filterTab === 'all' ? userTasks : (filterTab === 'today' ? todayTasks : dateFilteredTasks);
 
   const filterTabs = [
     {
@@ -593,7 +596,7 @@ const TasksPage = () => {
     {
       id: 'all',
       label: "All Tasks",
-      count: userTasks.filter(t => selectedDateFilter === 'all' ? true : isTaskForDate(t, selectedDateFilter)).length
+      count: userTasks.length
     },
     {
       id: 'review',
@@ -733,20 +736,16 @@ const TasksPage = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '16px',
-        marginBottom: '24px',
+        gap: '8px',
+        marginBottom: '20px',
         flexWrap: 'wrap'
       }}>
         {/* Left: Filter Tabs */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          flexWrap: 'nowrap',
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          maxWidth: '100%',
-          paddingBottom: '4px',
+          gap: '6px',
+          flexWrap: 'wrap',
           flex: 1
         }}>
           {filterTabs.map(tab => {
@@ -759,13 +758,15 @@ const TasksPage = () => {
                   setFilterTab(tab.id);
                   if (tab.id === 'today') {
                     setSelectedDateFilter(todayStr);
+                  } else if (tab.id === 'all') {
+                    setSelectedDateFilter('all');
                   }
                 }}
                 style={{
-                  padding: '9px 22px',
+                  padding: '6px 14px',
                   borderRadius: '9999px',
-                  fontSize: '13.5px',
-                  fontWeight: 700,
+                  fontSize: '12.5px',
+                  fontWeight: 600,
                   border: isActive ? 'none' : '1px solid #E2E8F0',
                   background: isActive ? '#5551FF' : '#FFFFFF',
                   color: isActive ? '#FFFFFF' : '#334155',
@@ -773,15 +774,15 @@ const TasksPage = () => {
                   transition: 'all 0.15s ease',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
-                  boxShadow: isActive ? '0 4px 14px rgba(85, 81, 255, 0.35)' : '0 1px 3px rgba(0, 0, 0, 0.02)',
+                  boxShadow: isActive ? '0 3px 10px rgba(85, 81, 255, 0.3)' : '0 1px 2px rgba(0, 0, 0, 0.02)',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '4px'
                 }}
               >
                 <span>{tab.label}</span>
                 <span style={{
-                  fontSize: '12px',
+                  fontSize: '11.5px',
                   fontWeight: 500,
                   color: isActive ? 'rgba(255, 255, 255, 0.85)' : '#94A3B8'
                 }}>
@@ -792,7 +793,7 @@ const TasksPage = () => {
           })}
         </div>
 
-        {/* Right: Daily Date-wise Pill Input Filter matching exact UI image */}
+        {/* Right: Daily Date-wise Pill Input Filter */}
         <div 
           onClick={() => {
             if (dateInputRef.current?.showPicker) {
@@ -804,26 +805,26 @@ const TasksPage = () => {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             background: '#FFFFFF',
             border: '1.5px solid #5551FF',
             borderRadius: '9999px',
-            padding: '7px 18px',
-            boxShadow: '0 2px 8px rgba(85, 81, 255, 0.12)',
+            padding: '5px 14px',
+            boxShadow: '0 2px 6px rgba(85, 81, 255, 0.1)',
             transition: 'all 0.15s ease',
             flexShrink: 0,
             cursor: 'pointer',
-            height: '40px',
+            height: '34px',
             position: 'relative'
           }}
         >
           {/* Far Left Calendar Icon */}
-          <Calendar size={16} style={{ color: '#5551FF', flexShrink: 0 }} />
+          <Calendar size={14} style={{ color: '#5551FF', flexShrink: 0 }} />
 
           {/* Formatted Date Display (DD-MM-YYYY) */}
           <span style={{
-            fontSize: '13.5px',
-            fontWeight: 700,
+            fontSize: '12.5px',
+            fontWeight: 600,
             color: '#1E293B',
             fontFamily: 'inherit',
             letterSpacing: '0.01em',
@@ -881,10 +882,10 @@ const TasksPage = () => {
                 marginLeft: '2px'
               }}
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           ) : (
-            <Calendar size={16} style={{ color: '#5551FF', flexShrink: 0 }} />
+            <Calendar size={14} style={{ color: '#5551FF', flexShrink: 0 }} />
           )}
         </div>
       </div>
