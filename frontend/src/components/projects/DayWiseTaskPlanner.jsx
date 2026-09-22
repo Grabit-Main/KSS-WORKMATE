@@ -1279,7 +1279,7 @@ export const DayWiseTaskPlanner = ({ project, currentUser, onClose }) => {
                               onMouseLeave={(e) => e.currentTarget.style.background = '#5B50E5'}
                             >
                               <MessageSquare size={14} />
-                              <span>Message {t.assignee?.first_name || 'Assignee'}</span>
+                              <span>Message</span>
                             </button>
                           </div>
                         </div>
