@@ -59,6 +59,20 @@ const getTodayYYYYMMDD = () => {
   return `${year}-${month}-${day}`;
 };
 
+const formatYYYYMMDDtoDDMMYYYY = (val) => {
+  if (!val || val === 'all') return '';
+  const str = String(val).trim();
+  const yyyymmdd = str.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
+  if (yyyymmdd) {
+    return `${yyyymmdd[3]}-${yyyymmdd[2]}-${yyyymmdd[1]}`;
+  }
+  const ddmmyyyy = str.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
+  if (ddmmyyyy) {
+    return `${ddmmyyyy[1]}-${ddmmyyyy[2]}-${ddmmyyyy[3]}`;
+  }
+  return str;
+};
+
 const TasksPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const targetTaskId = searchParams.get('taskId');
@@ -73,7 +87,7 @@ const TasksPage = () => {
     if (!cacheKey) return true;
     return !localStorage.getItem(cacheKey);
   });
-  const [filterTab, setFilterTab] = useState('all'); // 'all', 'projects', 'standalone', 'mine', 'review'
+  const [filterTab, setFilterTab] = useState('today'); // 'today', 'projects', 'standalone', 'all', 'review'
   const [selectedDateFilter, setSelectedDateFilter] = useState(() => getTodayYYYYMMDD());
   const dateInputRef = useRef(null);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -535,19 +549,58 @@ const TasksPage = () => {
     return true;
   });
 
+  const todayStr = getTodayYYYYMMDD();
+  const todayTasks = userTasks.filter(t => isTaskForDate(t, todayStr));
+
   const dateFilteredTasks = useMemo(() => {
     return userTasks.filter(t => isTaskForDate(t, selectedDateFilter));
   }, [userTasks, selectedDateFilter, isTaskForDate]);
 
   const filteredTasks = useMemo(() => {
-    return dateFilteredTasks.filter(t => {
-      if (filterTab === 'mine' && String(t.assigned_to) !== String(user?.id)) return false;
-      if (filterTab === 'review' && t.status !== 'in_review') return false;
+    return userTasks.filter(t => {
+      if (filterTab === 'today') {
+        if (!isTaskForDate(t, todayStr)) return false;
+      } else if (selectedDateFilter !== 'all') {
+        if (!isTaskForDate(t, selectedDateFilter)) return false;
+      }
+
       if (filterTab === 'projects' && !t.project_id) return false;
       if (filterTab === 'standalone' && t.project_id) return false;
+      if (filterTab === 'review' && t.status !== 'in_review') return false;
+
       return true;
     });
-  }, [dateFilteredTasks, filterTab, user?.id]);
+  }, [userTasks, filterTab, selectedDateFilter, isTaskForDate, todayStr]);
+
+  const activeMetricTasks = filterTab === 'today' ? todayTasks : dateFilteredTasks;
+
+  const filterTabs = [
+    {
+      id: 'today',
+      label: "Today's Tasks",
+      count: todayTasks.length
+    },
+    {
+      id: 'projects',
+      label: "Project Tasks",
+      count: userTasks.filter(t => Boolean(t.project_id) && (selectedDateFilter === 'all' || isTaskForDate(t, selectedDateFilter))).length
+    },
+    {
+      id: 'standalone',
+      label: "Standalone Tasks",
+      count: userTasks.filter(t => !t.project_id && (selectedDateFilter === 'all' || isTaskForDate(t, selectedDateFilter))).length
+    },
+    {
+      id: 'all',
+      label: "All Tasks",
+      count: userTasks.filter(t => selectedDateFilter === 'all' ? true : isTaskForDate(t, selectedDateFilter)).length
+    },
+    {
+      id: 'review',
+      label: "In Review",
+      count: userTasks.filter(t => t.status === 'in_review' && (selectedDateFilter === 'all' || isTaskForDate(t, selectedDateFilter))).length
+    }
+  ];
 
   const availableTeams = user?.role === 'TL'
     ? teams.filter(t => t.memberships?.some(m => String(m.user_id || m.user?.id) === String(user?.id)))
@@ -622,7 +675,7 @@ const TasksPage = () => {
             Total Workload
           </span>
           <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
-            {dateFilteredTasks.length}
+            {activeMetricTasks.length}
           </h3>
         </div>
 
@@ -638,7 +691,7 @@ const TasksPage = () => {
             Completed
           </span>
           <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
-            {dateFilteredTasks.filter(t => t.status === 'completed').length}
+            {activeMetricTasks.filter(t => t.status === 'completed').length}
           </h3>
         </div>
 
@@ -654,7 +707,7 @@ const TasksPage = () => {
             In Progress
           </span>
           <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
-            {dateFilteredTasks.filter(t => t.status === 'in_progress').length}
+            {activeMetricTasks.filter(t => t.status === 'in_progress').length}
           </h3>
         </div>
 
@@ -670,17 +723,17 @@ const TasksPage = () => {
             In Review
           </span>
           <h3 style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
-            {dateFilteredTasks.filter(t => t.status === 'in_review').length}
+            {activeMetricTasks.filter(t => t.status === 'in_review').length}
           </h3>
         </div>
       </div>
 
-      {/* Filter Tabs & Daily Date-wise Dropdown Row */}
+      {/* Filter Tabs & Daily Date-wise Dropdown Row matching image UI */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '12px',
+        gap: '16px',
         marginBottom: '24px',
         flexWrap: 'wrap'
       }}>
@@ -688,7 +741,7 @@ const TasksPage = () => {
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
+          gap: '10px',
           flexWrap: 'nowrap',
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
@@ -696,35 +749,47 @@ const TasksPage = () => {
           paddingBottom: '4px',
           flex: 1
         }}>
-          {[
-            { id: 'all', label: selectedDateFilter === getTodayYYYYMMDD() ? `Today's Tasks (${dateFilteredTasks.length})` : `All Tasks (${dateFilteredTasks.length})` },
-            { id: 'projects', label: `Project Tasks (${dateFilteredTasks.filter(t => Boolean(t.project_id)).length})` },
-            { id: 'standalone', label: `Standalone Tasks (${dateFilteredTasks.filter(t => !t.project_id).length})` },
-            { id: 'mine', label: `Assigned to Me (${dateFilteredTasks.filter(t => String(t.assigned_to) === String(user?.id)).length})` },
-            { id: 'review', label: `In Review (${dateFilteredTasks.filter(t => t.status === 'in_review').length})` }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setFilterTab(tab.id)}
-              style={{
-                padding: '7px 16px',
-                borderRadius: '9999px',
-                fontSize: '12px',
-                fontWeight: filterTab === tab.id ? 700 : 500,
-                border: '1px solid',
-                borderColor: filterTab === tab.id ? '#5551FF' : '#E2E8F0',
-                background: filterTab === tab.id ? '#5551FF' : '#FFFFFF',
-                color: filterTab === tab.id ? '#FFFFFF' : '#475569',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                boxShadow: filterTab === tab.id ? '0 2px 6px rgba(85, 81, 255, 0.2)' : 'none'
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {filterTabs.map(tab => {
+            const isActive = filterTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setFilterTab(tab.id);
+                  if (tab.id === 'today') {
+                    setSelectedDateFilter(todayStr);
+                  }
+                }}
+                style={{
+                  padding: '9px 22px',
+                  borderRadius: '9999px',
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  border: isActive ? 'none' : '1px solid #E2E8F0',
+                  background: isActive ? '#5551FF' : '#FFFFFF',
+                  color: isActive ? '#FFFFFF' : '#334155',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  boxShadow: isActive ? '0 4px 14px rgba(85, 81, 255, 0.35)' : '0 1px 3px rgba(0, 0, 0, 0.02)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>{tab.label}</span>
+                <span style={{
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: isActive ? 'rgba(255, 255, 255, 0.85)' : '#94A3B8'
+                }}>
+                  ({tab.count})
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Right: Daily Date-wise Pill Input Filter matching exact UI image */}
@@ -739,52 +804,69 @@ const TasksPage = () => {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '10px',
-            background: '#F8FAFC',
-            border: selectedDateFilter !== 'all' ? '1.5px solid #5551FF' : '1px solid #E2E8F0',
+            gap: '8px',
+            background: '#FFFFFF',
+            border: '1.5px solid #5551FF',
             borderRadius: '9999px',
-            padding: '6px 16px',
-            boxShadow: selectedDateFilter !== 'all' ? '0 2px 8px rgba(85, 81, 255, 0.12)' : '0 1px 2px rgba(0,0,0,0.02)',
+            padding: '7px 18px',
+            boxShadow: '0 2px 8px rgba(85, 81, 255, 0.12)',
             transition: 'all 0.15s ease',
             flexShrink: 0,
             cursor: 'pointer',
-            height: '38px'
+            height: '40px',
+            position: 'relative'
           }}
         >
           {/* Far Left Calendar Icon */}
-          <Calendar size={18} style={{ color: selectedDateFilter !== 'all' ? '#5551FF' : '#94A3B8', flexShrink: 0 }} />
+          <Calendar size={16} style={{ color: '#5551FF', flexShrink: 0 }} />
 
-          {/* Date Input displaying dd - mm - yyyy or selected date */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <input
-              type="date"
-              ref={dateInputRef}
-              className="custom-date-pill-input"
-              value={selectedDateFilter === 'all' ? '' : selectedDateFilter}
-              onChange={(e) => setSelectedDateFilter(e.target.value ? e.target.value : 'all')}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: selectedDateFilter !== 'all' ? '#1E293B' : '#475569',
-                fontFamily: 'inherit',
-                letterSpacing: '0.02em',
-                cursor: 'pointer',
-                width: '135px'
-              }}
-            />
-          </div>
+          {/* Formatted Date Display (DD-MM-YYYY) */}
+          <span style={{
+            fontSize: '13.5px',
+            fontWeight: 700,
+            color: '#1E293B',
+            fontFamily: 'inherit',
+            letterSpacing: '0.01em',
+            whiteSpace: 'nowrap'
+          }}>
+            {selectedDateFilter !== 'all' ? formatYYYYMMDDtoDDMMYYYY(selectedDateFilter) : formatYYYYMMDDtoDDMMYYYY(todayStr)}
+          </span>
 
-          {/* Far Right Calendar / Clear Icon */}
+          {/* Native Hidden Date Input */}
+          <input
+            type="date"
+            ref={dateInputRef}
+            className="custom-date-pill-input"
+            value={selectedDateFilter === 'all' ? '' : selectedDateFilter}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedDateFilter(val ? val : 'all');
+              if (val === todayStr) {
+                setFilterTab('today');
+              } else if (val) {
+                setFilterTab('all');
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              opacity: 0,
+              cursor: 'pointer'
+            }}
+          />
+
+          {/* Far Right Clear Icon */}
           {selectedDateFilter !== 'all' ? (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedDateFilter('all');
+                setFilterTab('all');
               }}
               title="Clear date filter"
               style={{
@@ -794,13 +876,15 @@ const TasksPage = () => {
                 display: 'flex',
                 alignItems: 'center',
                 padding: 0,
-                color: '#64748B'
+                color: '#94A3B8',
+                zIndex: 2,
+                marginLeft: '2px'
               }}
             >
-              <X size={16} />
+              <X size={14} />
             </button>
           ) : (
-            <Calendar size={16} style={{ color: '#0F172A', flexShrink: 0 }} />
+            <Calendar size={16} style={{ color: '#5551FF', flexShrink: 0 }} />
           )}
         </div>
       </div>
