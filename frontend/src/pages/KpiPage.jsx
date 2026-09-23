@@ -202,6 +202,14 @@ export const CRITERIA = [
   }
 ];
 
+const getTodayDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const getStatusColor = (status) => {
   switch (status) {
     case 'Excellent':
@@ -1651,7 +1659,7 @@ const KpiPage = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(getTodayDateString());
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -1666,7 +1674,7 @@ const KpiPage = () => {
   // Form state
   const initialForm = {
     employee_id: '',
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayDateString(),
     task_completion: 4,
     quality: 4,
     productivity: 4,
@@ -2169,11 +2177,11 @@ const KpiPage = () => {
           <input
             type="date"
             title="Filter by evaluation date (previous and present dates only)"
-            max={new Date().toISOString().split('T')[0]}
+            max={getTodayDateString()}
             value={selectedDate}
             onChange={(e) => {
               const val = e.target.value;
-              const maxDate = new Date().toISOString().split('T')[0];
+              const maxDate = getTodayDateString();
               if (val && val > maxDate) {
                 alert("Future dates are not allowed. You can only view present and previous dates.");
                 setSelectedDate(maxDate);
@@ -2213,14 +2221,14 @@ const KpiPage = () => {
         </div>
 
         {/* Reset Filter Button */}
-        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || selectedDate) && (
+        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || (selectedDate !== getTodayDateString())) && (
           <button
             onClick={() => {
               setSearchTerm('');
               setSelectedMonth('');
               setSelectedStatus('');
               setSelectedEmployeeId('');
-              setSelectedDate('');
+              setSelectedDate(getTodayDateString());
             }}
             style={{
               padding: '8px 12px',
