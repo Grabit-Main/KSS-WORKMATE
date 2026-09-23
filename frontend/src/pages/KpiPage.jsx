@@ -246,6 +246,7 @@ const KPIHeaderBanner = ({
   viewMode,
   setViewMode,
   isManagementUser,
+  isCeoOrCto,
   onShowRulesModal,
   onDownloadCSV,
   onOpenCreateModal,
@@ -338,28 +339,30 @@ const KPIHeaderBanner = ({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => setViewMode && setViewMode('personal')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 20px',
-              borderRadius: '9999px',
-              border: 'none',
-              background: viewMode === 'personal' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
-              color: viewMode === 'personal' ? '#FFFFFF' : '#64748B',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              boxShadow: viewMode === 'personal' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
-            }}
-          >
-            <TrendingUp size={15} color={viewMode === 'personal' ? '#FFFFFF' : '#64748B'} />
-            <span>My Performance Overview</span>
-          </button>
+          {!isCeoOrCto && (
+            <button
+              type="button"
+              onClick={() => setViewMode && setViewMode('personal')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 20px',
+                borderRadius: '9999px',
+                border: 'none',
+                background: viewMode === 'personal' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
+                color: viewMode === 'personal' ? '#FFFFFF' : '#64748B',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                boxShadow: viewMode === 'personal' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
+              }}
+            >
+              <TrendingUp size={15} color={viewMode === 'personal' ? '#FFFFFF' : '#64748B'} />
+              <span>My Performance Overview</span>
+            </button>
+          )}
         </div>
 
         {/* Main Title Row */}
@@ -1906,6 +1909,7 @@ const KpiPage = () => {
         viewMode={viewMode}
         setViewMode={setViewMode}
         isManagementUser={!isTM}
+        isCeoOrCto={isCeoOrCto}
         onShowRulesModal={() => setShowRulesModal(true)}
         onDownloadCSV={handleDownloadCSV}
         onOpenCreateModal={handleOpenCreateModal}
