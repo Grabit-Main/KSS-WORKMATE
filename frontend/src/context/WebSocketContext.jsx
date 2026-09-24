@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { getNotifications } from '../api/notifications';
+import { initSupabaseRealtime } from '../realtime/supabaseRealtime';
 
 const WebSocketContext = createContext(null);
 
@@ -226,8 +227,11 @@ export const WebSocketProvider = ({ children }) => {
 
   useEffect(() => {
     isDestroyedRef.current = false;
+    let cleanupSupabase = () => {};
+
     if (user) {
       connect();
+      cleanupSupabase = initSupabaseRealtime(user, dispatch);
     } else {
       if (ws.current) {
         ws.current.close();
@@ -241,6 +245,7 @@ export const WebSocketProvider = ({ children }) => {
 
     return () => {
       isDestroyedRef.current = true;
+      if (cleanupSupabase) cleanupSupabase();
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
       if (ws.current) {
@@ -248,7 +253,7 @@ export const WebSocketProvider = ({ children }) => {
         ws.current = null;
       }
     };
-  }, [user, connect]);
+  }, [user, connect, dispatch]);
 
   const joinRoom = useCallback((room) => {
     if (!room) return;
