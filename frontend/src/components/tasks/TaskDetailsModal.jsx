@@ -756,142 +756,143 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                 )}
               </>
             )}
+          </div>
 
-            {/* Action Bar */}
-            <div style={{
-              marginTop: 'auto',
-              paddingTop: '20px',
-              borderTop: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              flexWrap: 'wrap'
-            }}>
-              <div>
-                {currentTask.status === 'not_started' && (
-                  <p className="text-xs text-secondary">
-                    Click <strong>Start Task</strong> to transition status to in-progress and begin work.
-                  </p>
-                )}
-                {currentTask.status === 'in_progress' && (
-                  <p className="text-xs text-secondary">
-                    Task is currently in progress. Complete deliverables before submitting for review.
-                  </p>
-                )}
-                {currentTask.status === 'in_review' && (
-                  <p className="text-xs text-secondary">
-                    Deliverables submitted and currently pending review and confirmation.
-                  </p>
-                )}
-                {currentTask.status === 'completed' && (
-                  <p className="text-xs text-secondary" style={{ color: 'var(--status-completed)', fontWeight: 600 }}>
-                    ✓ This task has been confirmed as completed.
-                  </p>
-                )}
-                {isReadOnlyObserver && (
-                  <p className="text-xs text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Shield size={14} color="var(--brand-600)" />
-                    <span>Viewing as {currentUser.role}. Actions are strictly reserved for the task assigner ({getUserFullName(currentTask.assigner)}) and assignee.</span>
-                  </p>
-                )}
-              </div>
+          {/* Action Bar - Static Locked Footer */}
+          <div style={{
+            padding: '16px 28px',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface)',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            <div>
+              {currentTask.status === 'not_started' && (
+                <p className="text-xs text-secondary">
+                  Click <strong>Start Task</strong> to transition status to in-progress and begin work.
+                </p>
+              )}
+              {currentTask.status === 'in_progress' && (
+                <p className="text-xs text-secondary">
+                  Task is currently in progress. Complete deliverables before submitting for review.
+                </p>
+              )}
+              {currentTask.status === 'in_review' && (
+                <p className="text-xs text-secondary">
+                  Deliverables submitted and currently pending review and confirmation.
+                </p>
+              )}
+              {currentTask.status === 'completed' && (
+                <p className="text-xs text-secondary" style={{ color: 'var(--status-completed)', fontWeight: 600 }}>
+                  ✓ This task has been confirmed as completed.
+                </p>
+              )}
+              {isReadOnlyObserver && (
+                <p className="text-xs text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Shield size={14} color="var(--brand-600)" />
+                  <span>Viewing as {currentUser.role}. Actions are strictly reserved for the task assigner ({getUserFullName(currentTask.assigner)}) and assignee.</span>
+                </p>
+              )}
+            </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {isReadOnlyObserver && (
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    color: 'var(--text-tertiary)',
-                    background: 'var(--subtle)',
-                    padding: '8px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}>
-                    <Shield size={12} />
-                    Read-Only Mode
-                  </span>
-                )}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {isReadOnlyObserver && (
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  color: 'var(--text-tertiary)',
+                  background: 'var(--subtle)',
+                  padding: '8px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  <Shield size={12} />
+                  Read-Only Mode
+                </span>
+              )}
 
-                {/* START ACTION: Only assignee can start task */}
-                {currentTask.status === 'not_started' && isAssignee && (
+              {/* START ACTION: Only assignee can start task */}
+              {currentTask.status === 'not_started' && isAssignee && (
+                <button
+                  className="btn btn-primary"
+                  onClick={handleStart}
+                  disabled={actionLoading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 20px' }}
+                >
+                  <Play size={16} fill="currentColor" />
+                  <span>{actionLoading ? 'Starting...' : 'Start Task'}</span>
+                </button>
+              )}
+
+              {/* IN PROGRESS -> SUBMIT FOR REVIEW (Assignee only) */}
+              {currentTask.status === 'in_progress' && isAssignee && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleComplete}
+                  disabled={actionLoading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+                >
+                  <CheckCircle2 size={16} />
+                  <span>{actionLoading ? 'Submitting...' : 'Submit for Review'}</span>
+                </button>
+              )}
+
+              {/* ASSIGNER ACTIONS: Strictly only who assigned the task has Reassign and Complete Task */}
+              {isAssigner && currentTask.status !== 'completed' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setErrorMsg('');
+                      setReassignCandidate(String(currentTask.assigned_to) || '');
+                      setShowReassignModal(true);
+                    }}
+                    disabled={actionLoading || reassignLoading}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '13px',
+                      padding: '8px 14px',
+                      background: 'var(--subtle)',
+                      color: 'var(--brand-700)',
+                      border: '1px solid rgba(99, 102, 241, 0.3)'
+                    }}
+                    title="Reassign this deliverable"
+                  >
+                    <UserCheck size={16} />
+                    <span>Reassign</span>
+                  </button>
+
                   <button
                     className="btn btn-primary"
-                    onClick={handleStart}
-                    disabled={actionLoading}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 20px' }}
-                  >
-                    <Play size={16} fill="currentColor" />
-                    <span>{actionLoading ? 'Starting...' : 'Start Task'}</span>
-                  </button>
-                )}
-
-                {/* IN PROGRESS -> SUBMIT FOR REVIEW (Assignee only) */}
-                {currentTask.status === 'in_progress' && isAssignee && (
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleComplete}
-                    disabled={actionLoading}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+                    onClick={handleConfirm}
+                    disabled={actionLoading || reassignLoading}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      fontSize: '13px',
+                      padding: '8px 18px',
+                      background: 'var(--status-completed)',
+                      borderColor: 'var(--status-completed)'
+                    }}
                   >
                     <CheckCircle2 size={16} />
-                    <span>{actionLoading ? 'Submitting...' : 'Submit for Review'}</span>
+                    <span>{actionLoading ? 'Completing...' : 'Complete Task'}</span>
                   </button>
-                )}
-
-                {/* ASSIGNER ACTIONS: Strictly only who assigned the task has Reassign and Complete Task */}
-                {isAssigner && currentTask.status !== 'completed' && (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        setErrorMsg('');
-                        setReassignCandidate(String(currentTask.assigned_to) || '');
-                        setShowReassignModal(true);
-                      }}
-                      disabled={actionLoading || reassignLoading}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontSize: '13px',
-                        padding: '8px 14px',
-                        background: 'var(--subtle)',
-                        color: 'var(--brand-700)',
-                        border: '1px solid rgba(99, 102, 241, 0.3)'
-                      }}
-                      title="Reassign this deliverable"
-                    >
-                      <UserCheck size={16} />
-                      <span>Reassign</span>
-                    </button>
-
-                    <button
-                      className="btn btn-primary"
-                      onClick={handleConfirm}
-                      disabled={actionLoading || reassignLoading}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '7px',
-                        fontSize: '13px',
-                        padding: '8px 18px',
-                        background: 'var(--status-completed)',
-                        borderColor: 'var(--status-completed)'
-                      }}
-                    >
-                      <CheckCircle2 size={16} />
-                      <span>{actionLoading ? 'Completing...' : 'Complete Task'}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
