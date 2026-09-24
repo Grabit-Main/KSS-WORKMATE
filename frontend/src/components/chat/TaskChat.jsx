@@ -5,18 +5,17 @@ import { useRealtime } from '../../realtime/useRealtime';
 import { useWebSocket } from '../../context/WebSocketContext';
 import { AttachmentCard } from '../common/AttachmentCard';
 import { Send, Paperclip, X, Loader2, ShieldCheck, CheckCheck, Lock } from 'lucide-react';
+import { parseUTC } from '../../utils/dateUtils';
 
 const formatTimeOnly = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
+  const d = parseUTC(dateStr);
+  if (!d) return '';
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
 const formatDateGroup = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
+  const d = parseUTC(dateStr);
+  if (!d) return '';
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
