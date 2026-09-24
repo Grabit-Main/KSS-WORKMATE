@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TaskChat } from '../chat/TaskChat';
-import { startTask, completeTask, confirmTask, reassignTask, deleteTask } from '../../api/tasks';
+import { startTask, completeTask, confirmTask, reassignTask, updateTask, deleteTask } from '../../api/tasks';
 import { getUsers } from '../../api/users';
 import { getTeams } from '../../api/teams';
 import { AttachmentCard } from '../common/AttachmentCard';
@@ -9,7 +9,7 @@ import { useWebSocket } from '../../context/WebSocketContext';
 import { formatDateTime, normalizeToDDMMYYYY, getDeadlineStatus, isOverdue } from '../../utils/dateUtils';
 import {
   X, Calendar, Clock, Play, CheckCircle2, User,
-  Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle, UserCheck, Trash2
+  Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle, UserCheck, Trash2, Edit3
 } from 'lucide-react';
 
 const formatScheduledDate = (val) => normalizeToDDMMYYYY(val);
@@ -20,6 +20,48 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const { dispatch } = useWebSocket() || {};
+
+  // Edit Task State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editPriority, setEditPriority] = useState('normal');
+  const [editScheduledDate, setEditScheduledDate] = useState('');
+  const [editDeadline, setEditDeadline] = useState('');
+  const [saveLoading, setSaveLoading] = useState(false);
+
+  const handleStartEditing = () => {
+    setEditTitle(currentTask.title || '');
+    setEditDescription(currentTask.description || '');
+    setEditPriority(currentTask.priority || 'normal');
+    setEditScheduledDate(currentTask.scheduled_date || '');
+    setEditDeadline(currentTask.deadline ? new Date(currentTask.deadline).toISOString().slice(0, 16) : '');
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      setSaveLoading(true);
+      setErrorMsg('');
+      const payload = {
+        title: editTitle,
+        description: editDescription,
+        priority: editPriority,
+        scheduled_date: editScheduledDate || null,
+        deadline: editDeadline ? new Date(editDeadline).toISOString() : null
+      };
+      const updated = await updateTask(currentTask.id, payload);
+      setCurrentTask(updated);
+      setIsEditing(false);
+      if (onTaskUpdated) onTaskUpdated();
+    } catch (err) {
+      console.error('Failed to update task:', err);
+      setErrorMsg(err.response?.data?.detail || 'Failed to save task edits.');
+    } finally {
+      setSaveLoading(false);
+    }
+  };
 
   // Real-time synchronization for active task
   useRealtime('task.status_changed', (data) => {
@@ -258,14 +300,15 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
       <div className="card modal-animate task-details-modal-box">
         {/* Left Side: Complete Task Details (60% Desktop, Stacks on Mobile) */}
         <div className="task-details-left-panel">
-          {/* Header Bar */}
+          {/* Header Bar - Locked Static */}
           <div style={{
             padding: '20px 28px',
             borderBottom: '1px solid var(--border)',
             background: 'var(--subtle-glass)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            flexShrink: 0
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {getStatusBadge(currentTask.status)}
@@ -306,6 +349,30 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={isEditing ? () => setIsEditing(false) : handleStartEditing}
+                style={{
+                  background: isEditing ? 'rgba(100, 116, 139, 0.08)' : 'rgba(85, 81, 255, 0.08)',
+                  border: isEditing ? '1px solid rgba(100, 116, 139, 0.25)' : '1px solid rgba(85, 81, 255, 0.25)',
+                  color: isEditing ? '#475569' : '#5551FF',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = isEditing ? 'rgba(100, 116, 139, 0.16)' : 'rgba(85, 81, 255, 0.16)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = isEditing ? 'rgba(100, 116, 139, 0.08)' : 'rgba(85, 81, 255, 0.08)'; }}
+              >
+                <Edit3 size={14} />
+                <span>{isEditing ? 'Cancel Edit' : 'Edit Task'}</span>
+              </button>
+
               {isAssigner && (
                 <button
                   type="button"
@@ -378,157 +445,316 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
               </div>
             )}
 
-            {/* Overdue Warning Banner */}
-            {isOverdue(currentTask.deadline, currentTask.status) && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 16px',
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
-                borderRadius: 'var(--radius-md)',
-                color: '#EF4444'
-              }}>
-                <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+            {isEditing ? (
+              <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  Edit Task Details
+                </h3>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700 }}>
-                    Deadline Exceeded!
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    This task was scheduled to complete on{' '}
-                    <strong>{formatDeadlineWithTime(currentTask.deadline)}</strong> and is overdue. Immediate action required.
-                  </div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    Task Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text-primary)',
+                      fontSize: '14px',
+                      outline: 'none'
+                    }}
+                  />
                 </div>
-              </div>
-            )}
 
-            {/* Title */}
-            <div>
-              <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)', lineHeight: 1.3 }}>
-                {currentTask.title}
-              </h2>
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                      Priority
+                    </label>
+                    <select
+                      value={editPriority}
+                      onChange={(e) => setEditPriority(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text-primary)',
+                        fontSize: '13px',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
 
-            {/* Quick Metadata Bar */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: '12px',
-              padding: '14px 16px',
-              background: 'var(--subtle)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)'
-            }}>
-              <div>
-                <span className="text-xs text-secondary font-semibold uppercase block mb-1">Assignee</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {currentTask.assignee?.avatar_url ? (
-                    <img
-                      src={currentTask.assignee.avatar_url}
-                      alt=""
-                      style={{ width: '24px', height: '24px', borderRadius: 'var(--radius-full)', objectFit: 'cover' }}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                      Scheduled Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editScheduledDate}
+                      onChange={(e) => setEditScheduledDate(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text-primary)',
+                        fontSize: '13px',
+                        outline: 'none'
+                      }}
                     />
-                  ) : (
-                    <div style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: 'var(--radius-full)',
-                      background: 'var(--brand-gradient)',
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                      Deadline & Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={editDeadline}
+                      onChange={(e) => setEditDeadline(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text-primary)',
+                        fontSize: '13px',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    Description & Deliverables
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      lineHeight: 1.5,
+                      outline: 'none',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+                  <button
+                    type="submit"
+                    disabled={saveLoading}
+                    style={{
+                      padding: '10px 20px',
+                      borderRadius: 'var(--radius-md)',
+                      background: '#5551FF',
                       color: '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '10px',
-                      fontWeight: 700
-                    }}>
-                      {currentTask.assignee?.first_name?.[0]}{currentTask.assignee?.last_name?.[0]}
-                    </div>
-                  )}
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    {getUserFullName(currentTask.assignee)}
-                  </span>
+                      border: 'none',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      cursor: saveLoading ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 2px 8px rgba(85, 81, 255, 0.3)'
+                    }}
+                  >
+                    {saveLoading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    style={{
+                      padding: '10px 18px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'transparent',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid var(--border)',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
-              </div>
-
-              <div>
-                <span className="text-xs text-secondary font-semibold uppercase block mb-1">Assigned By</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                    {getUserFullName(currentTask.assigner)} ({currentTask.assigner?.role})
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-xs text-secondary font-semibold uppercase block mb-1">Deadline & Time</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
-                  <Clock size={14} color="var(--brand-600)" />
-                  <span style={{ fontWeight: 600 }}>
-                    {currentTask.deadline
-                      ? formatDeadlineWithTime(currentTask.deadline)
-                      : 'No deadline set'}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-xs text-secondary font-semibold uppercase block mb-1">Priority</span>
-                <span style={{
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  textTransform: 'capitalize',
-                  color: currentTask.priority === 'urgent' ? 'var(--priority-urgent)' :
-                         currentTask.priority === 'high' ? 'var(--priority-high)' : 'var(--text-primary)'
-                }}>
-                  {currentTask.priority}
-                </span>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div>
-              <h4 className="text-xs font-semibold text-secondary uppercase mb-2">Description & Deliverables</h4>
-              <div style={{
-                padding: '16px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--surface-hover)',
-                border: '1px solid var(--border)',
-                fontSize: '14px',
-                lineHeight: 1.6,
-                color: 'var(--text-primary)',
-                whiteSpace: 'pre-wrap'
-              }}>
-                {currentTask.description || 'No description provided.'}
-              </div>
-            </div>
-
-            {/* Task Attachments */}
-            {currentTask.attachments && currentTask.attachments.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-secondary uppercase mb-2" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>Attachments</span>
-                  <span style={{
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    padding: '1px 6px',
-                    borderRadius: 'var(--radius-full)',
-                    background: 'var(--subtle)',
-                    color: 'var(--text-secondary)'
+              </form>
+            ) : (
+              <>
+                {/* Overdue Warning Banner */}
+                {isOverdue(currentTask.deadline, currentTask.status) && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    borderRadius: 'var(--radius-md)',
+                    color: '#EF4444'
                   }}>
-                    {currentTask.attachments.length}
-                  </span>
-                </h4>
+                    <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 700 }}>
+                        Deadline Exceeded!
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        This task was scheduled to complete on{' '}
+                        <strong>{formatDeadlineWithTime(currentTask.deadline)}</strong> and is overdue. Immediate action required.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Title */}
+                <div>
+                  <h2 className="text-2xl font-bold" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)', lineHeight: 1.3 }}>
+                    {currentTask.title}
+                  </h2>
+                </div>
+
+                {/* Quick Metadata Bar */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                  gap: '10px'
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gap: '12px',
+                  padding: '14px 16px',
+                  background: 'var(--subtle)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border)'
                 }}>
-                  {currentTask.attachments.map((att) => (
-                    <AttachmentCard key={att.id || att.file_url} attachment={att} />
-                  ))}
+                  <div>
+                    <span className="text-xs text-secondary font-semibold uppercase block mb-1">Assignee</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {currentTask.assignee?.avatar_url ? (
+                        <img
+                          src={currentTask.assignee.avatar_url}
+                          alt=""
+                          style={{ width: '24px', height: '24px', borderRadius: 'var(--radius-full)', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: 'var(--radius-full)',
+                          background: 'var(--brand-gradient)',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '10px',
+                          fontWeight: 700
+                        }}>
+                          {currentTask.assignee?.first_name?.[0]}{currentTask.assignee?.last_name?.[0]}
+                        </div>
+                      )}
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {getUserFullName(currentTask.assignee)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-xs text-secondary font-semibold uppercase block mb-1">Assigned By</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                        {getUserFullName(currentTask.assigner)} ({currentTask.assigner?.role})
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-xs text-secondary font-semibold uppercase block mb-1">Deadline & Time</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                      <Clock size={14} color="var(--brand-600)" />
+                      <span style={{ fontWeight: 600 }}>
+                        {currentTask.deadline
+                          ? formatDeadlineWithTime(currentTask.deadline)
+                          : 'No deadline set'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-xs text-secondary font-semibold uppercase block mb-1">Priority</span>
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      textTransform: 'capitalize',
+                      color: currentTask.priority === 'urgent' ? 'var(--priority-urgent)' :
+                             currentTask.priority === 'high' ? 'var(--priority-high)' : 'var(--text-primary)'
+                    }}>
+                      {currentTask.priority}
+                    </span>
+                  </div>
                 </div>
-              </div>
+
+                {/* Description */}
+                <div>
+                  <h4 className="text-xs font-semibold text-secondary uppercase mb-2">Description & Deliverables</h4>
+                  <div style={{
+                    padding: '16px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--surface-hover)',
+                    border: '1px solid var(--border)',
+                    fontSize: '14px',
+                    lineHeight: 1.6,
+                    color: 'var(--text-primary)',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {currentTask.description || 'No description provided.'}
+                  </div>
+                </div>
+
+                {/* Task Attachments */}
+                {currentTask.attachments && currentTask.attachments.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-secondary uppercase mb-2" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>Attachments</span>
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'var(--subtle)',
+                        color: 'var(--text-secondary)'
+                      }}>
+                        {currentTask.attachments.length}
+                      </span>
+                    </h4>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                      gap: '10px'
+                    }}>
+                      {currentTask.attachments.map((att) => (
+                        <AttachmentCard key={att.id || att.file_url} attachment={att} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Action Bar */}
