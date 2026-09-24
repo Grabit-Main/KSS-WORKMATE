@@ -417,8 +417,16 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
             </div>
           </div>
 
-          {/* Body Details */}
-          <div style={{ padding: '28px', flex: 1, display: 'flex', flexDirection: 'column', gap: '22px' }}>
+          {/* Body Details - Only Middle Section Scrolls */}
+          <div style={{
+            padding: '24px 28px',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px'
+          }}>
             {reassignSuccessMsg && (
               <div style={{
                 padding: '10px 14px',
@@ -760,7 +768,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
 
           {/* Action Bar - Static Locked Footer */}
           <div style={{
-            padding: '16px 28px',
+            padding: '16px 28px 20px 28px',
             borderTop: '1px solid var(--border)',
             background: 'var(--surface)',
             flexShrink: 0,
