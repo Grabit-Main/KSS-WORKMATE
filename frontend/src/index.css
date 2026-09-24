@@ -743,6 +743,7 @@ input, select, textarea {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
