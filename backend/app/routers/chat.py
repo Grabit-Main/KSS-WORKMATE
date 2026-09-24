@@ -67,7 +67,7 @@ async def send_message(task_id: UUID, req: ChatMessageCreate, db: Session = Depe
             "attachment_url": msg.attachment_url,
             "attachment_type": msg.attachment_type,
             "storage_provider": msg.storage_provider,
-            "created_at": msg.created_at.isoformat(),
+            "created_at": (msg.created_at.isoformat() + "Z") if msg.created_at and not msg.created_at.isoformat().endswith("Z") and "+" not in msg.created_at.isoformat() else (msg.created_at.isoformat() if msg.created_at else None),
         }
     }
     # Direct targeted WebSocket dispatch ONLY to sender and recipient (private)
