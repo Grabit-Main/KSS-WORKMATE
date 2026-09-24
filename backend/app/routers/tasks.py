@@ -8,7 +8,7 @@ from app.models.task import Task, TaskStatusLog
 from app.models.project import Team, TeamMembership
 from app.models.notification import Notification
 from app.models.user import User
-from app.schemas.task import TaskCreate, TaskResponse, StatusUpdate, ReassignRequest
+from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, StatusUpdate, ReassignRequest
 from app.dependencies import get_current_user
 from app.websocket.manager import manager
 from app.websocket.events import (
@@ -26,6 +26,44 @@ def _log_status(db, task, from_s, to_s, user_id, reason=None):
 def _notify(db, user_id, title, message, event_type, ref_id=None):
     n = Notification(user_id=user_id, title=title, message=message, event_type=event_type, ref_id=str(ref_id) if ref_id else None)
     db.add(n)
+
+
+@router.put("/{task_id}", response_model=TaskResponse)
+async def update_task(
+    task_id: UUID,
+    req: TaskUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
+    is_assigner = str(task.assigned_by) == str(user.id)
+    is_assignee = str(task.assigned_to) == str(user.id)
+    if not (is_assigner or is_assignee or user.role in ("CEO", "CTO", "PM", "TL")):
+        raise HTTPException(403, "Not authorized to update this task")
+
+    if req.title is not None:
+        task.title = req.title.strip()
+    if req.description is not None:
+        task.description = req.description.strip()
+    if req.priority is not None:
+        task.priority = req.priority
+    if req.deadline is not None:
+        task.deadline = req.deadline
+    if req.scheduled_date is not None:
+        task.scheduled_date = req.scheduled_date
+    if req.project_id is not None:
+        task.project_id = req.project_id
+
+    task.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(task)
+
+    await _broadcast_task(task, task.team_id, TASK_STATUS_CHANGED)
+    return task
+
 
 
 async def _broadcast_task(task, team_id, event_type):
