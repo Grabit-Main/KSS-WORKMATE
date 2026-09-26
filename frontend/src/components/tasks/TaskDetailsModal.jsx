@@ -847,10 +847,39 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
               {/* IN PROGRESS -> SUBMIT FOR REVIEW (Assignee only) */}
               {currentTask.status === 'in_progress' && isAssignee && (
                 <button
-                  className="btn btn-secondary"
+                  type="button"
                   onClick={handleComplete}
                   disabled={actionLoading}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+                  style={{
+                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                    color: '#FFFFFF',
+                    padding: '8px 20px',
+                    borderRadius: '24px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    letterSpacing: '0.2px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    cursor: actionLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.35)',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!actionLoading) {
+                      e.currentTarget.style.transform = 'translateY(-1.5px)';
+                      e.currentTarget.style.boxShadow = '0 6px 20px 0 rgba(16, 185, 129, 0.45)';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!actionLoading) {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(16, 185, 129, 0.35)';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
+                    }
+                  }}
                 >
                   <CheckCircle2 size={16} />
                   <span>{actionLoading ? 'Submitting...' : 'Submit for Review'}</span>
