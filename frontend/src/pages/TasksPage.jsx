@@ -1181,18 +1181,31 @@ const TasksPage = () => {
                         onClick={(e) => handleCompleteTask(task.id, e)}
                         style={{
                           width: '100%',
-                          background: '#1EA566',
-                          border: 'none',
+                          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                          border: '1px solid rgba(16, 185, 129, 0.4)',
                           color: '#FFFFFF',
-                          borderRadius: '8px',
-                          padding: '9px 12px',
+                          borderRadius: '20px',
+                          padding: '9px 14px',
                           fontWeight: 600,
                           fontSize: '12px',
+                          letterSpacing: '0.2px',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '6px'
+                          gap: '6px',
+                          boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.35)',
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-1.5px)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px 0 rgba(16, 185, 129, 0.45)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(16, 185, 129, 0.35)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
                         }}
                       >
                         <CheckCircle2 size={14} />
