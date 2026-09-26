@@ -165,6 +165,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
   const isAssigner = String(currentTask.assigned_by) === String(currentUser.id);
   const isLeadership = ['CEO', 'CTO', 'PM'].includes(currentUser.role);
   const isReadOnlyObserver = isLeadership && !isAssignee && !isAssigner;
+  const canEditTask = ['TL', 'CEO', 'CTO', 'PM'].includes(currentUser?.role) || (isAssigner && currentUser?.role !== 'TM');
 
   const handleStart = async () => {
     setActionLoading(true);
@@ -349,29 +350,31 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={isEditing ? () => setIsEditing(false) : handleStartEditing}
-                style={{
-                  background: isEditing ? 'rgba(100, 116, 139, 0.08)' : 'rgba(85, 81, 255, 0.08)',
-                  border: isEditing ? '1px solid rgba(100, 116, 139, 0.25)' : '1px solid rgba(85, 81, 255, 0.25)',
-                  color: isEditing ? '#475569' : '#5551FF',
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = isEditing ? 'rgba(100, 116, 139, 0.16)' : 'rgba(85, 81, 255, 0.16)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = isEditing ? 'rgba(100, 116, 139, 0.08)' : 'rgba(85, 81, 255, 0.08)'; }}
-              >
-                <Edit3 size={14} />
-                <span>{isEditing ? 'Cancel Edit' : 'Edit Task'}</span>
-              </button>
+              {canEditTask && (
+                <button
+                  type="button"
+                  onClick={isEditing ? () => setIsEditing(false) : handleStartEditing}
+                  style={{
+                    background: isEditing ? 'rgba(100, 116, 139, 0.08)' : 'rgba(85, 81, 255, 0.08)',
+                    border: isEditing ? '1px solid rgba(100, 116, 139, 0.25)' : '1px solid rgba(85, 81, 255, 0.25)',
+                    color: isEditing ? '#475569' : '#5551FF',
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = isEditing ? 'rgba(100, 116, 139, 0.16)' : 'rgba(85, 81, 255, 0.16)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = isEditing ? 'rgba(100, 116, 139, 0.08)' : 'rgba(85, 81, 255, 0.08)'; }}
+                >
+                  <Edit3 size={14} />
+                  <span>{isEditing ? 'Cancel Edit' : 'Edit Task'}</span>
+                </button>
+              )}
 
               {isAssigner && (
                 <button
