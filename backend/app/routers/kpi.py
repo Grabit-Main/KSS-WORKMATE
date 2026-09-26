@@ -172,7 +172,27 @@ def get_kpi_summary(
     )
 
 
-def get_prev_period_logs(db: Session, employee_id: UUID, period_type: str, offset: int, today: date, user_role: str = "TM"):
+def get_user_employee_ids(db: Session, user: User) -> list[UUID]:
+    user_ids = [user.id]
+    prefix = user.email.split('@')[0].lower().replace('.', '').replace('-', '')
+    all_users = db.query(User).all()
+    for u in all_users:
+        if u.id in user_ids:
+            continue
+        u_prefix = u.email.split('@')[0].lower().replace('.', '').replace('-', '')
+        if u_prefix == prefix or sorted(u_prefix) == sorted(prefix):
+            user_ids.append(u.id)
+            continue
+        u1_fn = (user.first_name or '').lower().split()[0] if user.first_name else ''
+        u2_fn = (u.first_name or '').lower().split()[0] if u.first_name else ''
+        u1_ln = (user.last_name or '').lower().split()[-1] if user.last_name else ''
+        u2_ln = (u.last_name or '').lower().split()[-1] if u.last_name else ''
+        if u1_fn and u2_fn and u1_fn == u2_fn and u1_ln and u2_ln and u1_ln == u2_ln:
+            user_ids.append(u.id)
+    return user_ids
+
+
+def get_prev_period_logs(db: Session, employee_ids: list[UUID], period_type: str, offset: int, today: date):
     prev_offset = offset - 1
     if period_type == "week":
         current_start = today - timedelta(days=today.weekday())
@@ -187,12 +207,12 @@ def get_prev_period_logs(db: Session, employee_id: UUID, period_type: str, offse
         end_date = date(target_year, target_month, last_day)
 
     logs = db.query(DailyKPILog).filter(
-        DailyKPILog.employee_id == employee_id,
+        DailyKPILog.employee_id.in_(employee_ids),
         DailyKPILog.date >= start_date,
         DailyKPILog.date <= min(end_date, today)
     ).all()
 
-    if not logs and user_role in ("CEO", "CTO", "PM", "TL"):
+    if not logs:
         logs = db.query(DailyKPILog).filter(
             DailyKPILog.date >= start_date,
             DailyKPILog.date <= min(end_date, today)
@@ -201,7 +221,7 @@ def get_prev_period_logs(db: Session, employee_id: UUID, period_type: str, offse
     return logs
 
 
-def get_trend_history(db: Session, employee_id: UUID, period_type: str, current_offset: int, user_role: str = "TM"):
+def get_trend_history(db: Session, employee_ids: list[UUID], period_type: str, current_offset: int):
     today = date.today()
     points = []
     # Return 5 historical points ending at current_offset
@@ -227,12 +247,12 @@ def get_trend_history(db: Session, employee_id: UUID, period_type: str, current_
             short_label = start_date.strftime("%b %y")
 
         period_logs = db.query(DailyKPILog).filter(
-            DailyKPILog.employee_id == employee_id,
+            DailyKPILog.employee_id.in_(employee_ids),
             DailyKPILog.date >= start_date,
             DailyKPILog.date <= min(end_date, today)
         ).all()
 
-        if not period_logs and user_role in ("CEO", "CTO", "PM", "TL"):
+        if not period_logs:
             period_logs = db.query(DailyKPILog).filter(
                 DailyKPILog.date >= start_date,
                 DailyKPILog.date <= min(end_date, today)
@@ -310,14 +330,16 @@ def get_my_kpi(
         else:
             expected_days = sum(1 for d in range(1, last_day + 1) if date(target_year, target_month, d).weekday() < 5)
 
+    emp_ids = get_user_employee_ids(db, user)
+
     logs = db.query(DailyKPILog).filter(
-        DailyKPILog.employee_id == user.id,
+        DailyKPILog.employee_id.in_(emp_ids),
         DailyKPILog.date >= start_date,
         DailyKPILog.date <= min(end_date, today)
     ).order_by(DailyKPILog.date.asc()).all()
 
-    # For leadership users (CEO, CTO, PM, TL), fallback to overall team KPI logs if personal logs are absent
-    if not logs and user.role in ("CEO", "CTO", "PM", "TL"):
+    # Fallback to overall team KPI logs if personal logs are absent
+    if not logs:
         logs = db.query(DailyKPILog).filter(
             DailyKPILog.date >= start_date,
             DailyKPILog.date <= min(end_date, today)
@@ -338,7 +360,7 @@ def get_my_kpi(
         ("attendance_discipline", "Attendance & Discipline", 2)
     ]
 
-    trend_history = get_trend_history(db, user.id, period_type, offset, user_role=user.role)
+    trend_history = get_trend_history(db, emp_ids, period_type, offset)
 
     if days_evaluated == 0:
         return {
@@ -408,7 +430,7 @@ def get_my_kpi(
         for item in below_100_sorted[:3]
     ]
 
-    prev_logs = get_prev_period_logs(db, user.id, period_type, offset, today, user_role=user.role)
+    prev_logs = get_prev_period_logs(db, emp_ids, period_type, offset, today)
     if prev_logs and len(prev_logs) > 0:
         prev_pct = sum(l.daily_kpi_percentage for l in prev_logs) / len(prev_logs)
         if prev_pct > 0:
