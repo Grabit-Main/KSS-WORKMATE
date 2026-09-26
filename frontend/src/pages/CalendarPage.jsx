@@ -217,7 +217,7 @@ export default function CalendarPage() {
   };
 
   const weekDates = getWeekDates(selectedDate);
-  const hoursList = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]; // 8 AM to 9 PM
+  const hoursList = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]; // 10 AM to 7 PM
 
   // Add Event Form Handler
   const handleCreateEvent = (e) => {
@@ -413,13 +413,13 @@ export default function CalendarPage() {
             })}
           </div>
 
-          {/* Time Slots Grid (8 AM - 9 PM) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', gap: '1px', minWidth: '750px', position: 'relative', minHeight: '680px' }}>
+          {/* Time Slots Grid (10 AM - 7 PM) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', gap: '1px', minWidth: '750px', position: 'relative', minHeight: '520px' }}>
             
             {/* Current Time Indicator Dashed Line (e.g., 11:30 AM) */}
             <div style={{
               position: 'absolute',
-              top: '180px',
+              top: '72px',
               left: '80px',
               right: 0,
               borderTop: '2px dashed #10B981',
@@ -447,7 +447,7 @@ export default function CalendarPage() {
               const dayEvts = allEvents.filter(e => e.date === cellDateStr);
 
               return (
-                <div key={colIdx} style={{ borderLeft: '1px solid var(--border)', position: 'relative', minHeight: '680px' }}>
+                <div key={colIdx} style={{ borderLeft: '1px solid var(--border)', position: 'relative', minHeight: '520px' }}>
                   {dayEvts.map(evt => (
                     <div
                       key={evt.id}
@@ -456,7 +456,7 @@ export default function CalendarPage() {
                       }}
                       style={{
                         position: 'absolute',
-                        top: `${((evt.startHour || 10) - 8) * 48}px`,
+                        top: `${((evt.startHour || 10) - 10) * 48}px`,
                         left: '4px',
                         right: '4px',
                         height: `${(evt.duration || 1) * 44}px`,
