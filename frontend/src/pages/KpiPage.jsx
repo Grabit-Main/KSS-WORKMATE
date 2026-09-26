@@ -246,7 +246,7 @@ const KPIHeaderBanner = ({
   viewMode,
   setViewMode,
   isManagementUser,
-  isCeoOrCto,
+  hidePersonalView,
   onShowRulesModal,
   onDownloadCSV,
   onOpenCreateModal,
@@ -339,7 +339,7 @@ const KPIHeaderBanner = ({
             </button>
           )}
 
-          {!isCeoOrCto && (
+          {!hidePersonalView && (
             <button
               type="button"
               onClick={() => setViewMode && setViewMode('personal')}
@@ -1694,21 +1694,22 @@ const KpiPage = () => {
 
   const isExecutive = ['CEO', 'CTO', 'PM'].includes(user?.role);
   const isCeoOrCto = ['CEO', 'CTO'].includes(user?.role);
+  const hidePersonalView = ['CEO', 'CTO', 'PM', 'TL'].includes(user?.role);
   const isTL = user?.role === 'TL';
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
   const canGiveOrEdit = isTL;
 
-  const [viewMode, setViewMode] = useState(isCeoOrCto ? 'management' : (isTM ? 'personal' : 'management'));
+  const [viewMode, setViewMode] = useState(hidePersonalView ? 'management' : (isTM ? 'personal' : 'management'));
 
   // Sync viewMode if user role updates
   useEffect(() => {
-    if (isCeoOrCto) {
+    if (hidePersonalView) {
       setViewMode('management');
     } else if (isTM) {
       setViewMode('personal');
     }
-  }, [isCeoOrCto, isTM]);
+  }, [hidePersonalView, isTM]);
 
   const loadData = useCallback(async () => {
     try {
@@ -1891,7 +1892,7 @@ const KpiPage = () => {
 
   const liveMetrics = useMemo(() => calculateLiveMetrics(formData), [formData]);
 
-  if (!isCeoOrCto && (isTM || viewMode === 'personal')) {
+  if (!hidePersonalView && (isTM || viewMode === 'personal')) {
     return (
       <DeveloperDashboardView
         showRulesModal={showRulesModal}
@@ -1909,7 +1910,7 @@ const KpiPage = () => {
         viewMode={viewMode}
         setViewMode={setViewMode}
         isManagementUser={!isTM}
-        isCeoOrCto={isCeoOrCto}
+        hidePersonalView={hidePersonalView}
         onShowRulesModal={() => setShowRulesModal(true)}
         onDownloadCSV={handleDownloadCSV}
         onOpenCreateModal={handleOpenCreateModal}
