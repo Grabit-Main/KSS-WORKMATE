@@ -7,11 +7,15 @@ import { MainLayout } from './components/layout/MainLayout';
 // Pages
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import MyWorkPage from './pages/MyWorkPage';
 import ProjectsPage from './pages/ProjectsPage';
 import TeamsPage from './pages/TeamsPage';
 import TasksPage from './pages/TasksPage';
 import FeedbackPage from './pages/FeedbackPage';
 import KpiPage from './pages/KpiPage';
+import CollaborationPage from './pages/CollaborationPage';
+import GoalsPage from './pages/GoalsPage';
+import CalendarPage from './pages/CalendarPage';
 import HistoryPage from './pages/HistoryPage';
 import UsersPage from './pages/UsersPage';
 import ProfilePage from './pages/ProfilePage';
@@ -37,10 +41,14 @@ const AppRoutes = () => {
       
       <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route index element={<DashboardPage />} />
+        <Route path="my-work" element={<MyWorkPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="teams" element={<TeamsPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="kpi" element={<KpiPage />} />
+        <Route path="collaboration" element={<CollaborationPage />} />
+        <Route path="goals" element={<GoalsPage />} />
+        <Route path="calendar" element={<CalendarPage />} />
         <Route path="feedback" element={<FeedbackPage />} />
         <Route path="reviews" element={<Navigate to="/feedback" replace />} />
         <Route path="history" element={<HistoryPage />} />
