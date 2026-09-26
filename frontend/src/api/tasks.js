@@ -13,5 +13,6 @@ export const confirmTask = async (id) => (await api.put(`/tasks/${id}/confirm`))
 export const declineTask = async (id, reason) => (await api.put(`/tasks/${id}/decline`, { reason })).data;
 export const reassignTask = async (id, assigned_to, reason) => (await api.put(`/tasks/${id}/reassign`, { assigned_to, reason })).data;
 export const updateTask = async (id, data) => (await api.put(`/tasks/${id}`, data)).data;
+export const updateTaskStatus = async (id, status) => (await api.put(`/tasks/${id}`, { status })).data;
 export const deleteTask = async (id) => (await api.delete(`/tasks/${id}`)).data;
 
