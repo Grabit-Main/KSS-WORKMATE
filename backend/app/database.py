@@ -9,7 +9,9 @@ db_url = settings.DATABASE_URL or os.getenv("DATABASE_URL", "")
 if not db_url:
     db_url = "postgresql://postgres.wdtvedyfmtdqnvvhgcso:Kalpanaaa123@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
 if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # In serverless environments (Vercel / AWS Lambda), use NullPool to avoid frozen connection pool deadlocks
 is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))

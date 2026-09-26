@@ -12,6 +12,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 app = FastAPI(title="Workmate API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://kss-workmate.vercel.app",
+        "https://kss-workmate.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com|http://localhost:\d+|http://127\.0\.0\.1:\d+",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
+)
+
 init_error = None
 
 try:
@@ -21,20 +40,6 @@ try:
         chat, upload, analytics, reviews, notifications, history, kpi
     )
     from app.websocket.router import router as websocket_router
-
-    cors_origins = list(set(settings.origins + [
-        "https://kss-workmate.vercel.app",
-        "https://kss-workmate.onrender.com",
-    ]))
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=cors_origins,
-        allow_origin_regex=r"https://.*\.vercel\.app|http://localhost:\d+|http://127\.0\.0\.1:\d+",
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
     app.include_router(auth.router)
     app.include_router(users.router)
