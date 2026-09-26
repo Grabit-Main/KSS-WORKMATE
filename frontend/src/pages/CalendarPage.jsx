@@ -588,23 +588,6 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          {/* WIDGET 3: WORKOS SMART ASSISTANT SUGGESTION CARD */}
-          <div className="card" style={{ padding: '20px', borderRadius: 'var(--radius-xl)', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(168, 85, 247, 0.06) 100%)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Sparkles size={18} color="var(--brand-600)" />
-                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>WorkOS Suggests</span>
-              </div>
-              <button style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={16} /></button>
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.4, margin: '0 0 14px 0' }}>
-              You have a busy day today. Try blocking 30 mins for a break to stay productive.
-            </p>
-            <button style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              Find time for a break <ArrowUpRight size={14} />
-            </button>
-          </div>
-
         </div>
       </div>
 
