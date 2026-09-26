@@ -1,13 +1,40 @@
 import axios from 'axios';
 
+export const getApiBaseUrl = () => {
+  let envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl) {
+    if (envUrl.includes('onrender.vercel.com')) {
+      envUrl = envUrl.replace('onrender.vercel.com', 'onrender.com');
+    }
+    return envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
+  }
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:8000/api';
+    }
+  }
+  return 'https://kss-workmate.onrender.com/api';
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: getApiBaseUrl(),
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const isPublicAuthUrl =
+    config.url?.includes('/auth/login') ||
+    config.url?.includes('/auth/warmup') ||
+    config.url?.includes('/auth/refresh') ||
+    config.url?.includes('/auth/forgot-password') ||
+    config.url?.includes('/auth/verify-otp') ||
+    config.url?.includes('/auth/reset-password');
+
+  if (!isPublicAuthUrl) {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
@@ -61,7 +88,7 @@ api.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL || ''}/auth/refresh`,
+          `${getApiBaseUrl()}/auth/refresh`,
           { refresh_token: refreshToken }
         );
         const { access_token, refresh_token: newRefresh } = res.data;
