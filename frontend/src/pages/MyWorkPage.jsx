@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRealtime } from '../realtime/useRealtime';
 import { getTasks, updateTask } from '../api/tasks';
+import { getProjects } from '../api/projects';
+import { getUsers } from '../api/users';
 import api from '../api/axios';
 import {
   CheckCircle2, Clock, AlertTriangle, PlayCircle, Plus, Calendar, Filter, Sparkles,
@@ -10,6 +12,13 @@ import {
   ListOrdered, Lock, Send, Target, Award, Eye
 } from 'lucide-react';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
+
+import QuickAddPopover from '../components/quickadd/QuickAddPopover';
+import AddTaskModal from '../components/quickadd/AddTaskModal';
+import LogProgressModal from '../components/quickadd/LogProgressModal';
+import DailyPulseModal from '../components/quickadd/DailyPulseModal';
+import ReportBlockerModal from '../components/quickadd/ReportBlockerModal';
+import AskHelpModal from '../components/quickadd/AskHelpModal';
 
 export default function MyWorkPage() {
   const { user } = useAuth();
@@ -21,12 +30,17 @@ export default function MyWorkPage() {
 
   // Global State
   const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('today'); // 'today', 'upcoming', 'overdue', 'completed'
   const [selectedTask, setSelectedTask] = useState(null);
 
-  // Modals & Panels
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  // Quick Add Popover & 5 Modals State
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [activeQuickAddModal, setActiveQuickAddModal] = useState(null); // 'add_task', 'log_progress', 'daily_pulse', 'report_blocker', 'ask_help'
+
+  // Legacy Modals & Panels (retained for backward compatibility)
   const [showFocusModal, setShowFocusModal] = useState(false);
   const [updateProgressModalTask, setUpdateProgressModalTask] = useState(null);
   const [reportBlockerModalTask, setReportBlockerModalTask] = useState(null);
@@ -79,7 +93,7 @@ export default function MyWorkPage() {
   // Drag and drop task order
   const [customTaskOrder, setCustomTaskOrder] = useState([]);
 
-  // Fetch Tasks
+  // Fetch Tasks, Projects, Users
   const loadTasks = useCallback(async () => {
     try {
       const data = await getTasks();
@@ -93,9 +107,23 @@ export default function MyWorkPage() {
     }
   }, []);
 
+  const loadProjectsAndUsers = useCallback(async () => {
+    try {
+      const [projData, userData] = await Promise.all([
+        getProjects().catch(() => []),
+        getUsers().catch(() => [])
+      ]);
+      if (Array.isArray(projData)) setProjects(projData);
+      if (Array.isArray(userData)) setUsers(userData);
+    } catch (err) {
+      console.error("Error fetching projects or users:", err);
+    }
+  }, []);
+
   useEffect(() => {
     loadTasks();
-  }, [loadTasks]);
+    loadProjectsAndUsers();
+  }, [loadTasks, loadProjectsAndUsers]);
 
   // Realtime handlers
   const handleRealtimeRefresh = useCallback(() => {
@@ -347,13 +375,34 @@ export default function MyWorkPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            onClick={() => setShowQuickAdd(true)}
-            className="btn btn-secondary"
-            style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
-          >
-            <Plus size={16} /> Quick Add
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setIsQuickAddOpen(prev => !prev)}
+              className="btn btn-secondary"
+              style={{
+                padding: '10px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: 600,
+                background: isQuickAddOpen ? 'rgba(99, 102, 241, 0.18)' : undefined,
+                borderColor: isQuickAddOpen ? 'var(--brand-500)' : undefined
+              }}
+              aria-expanded={isQuickAddOpen}
+              aria-haspopup="menu"
+            >
+              <Plus size={16} /> Quick Add
+            </button>
+
+            <QuickAddPopover
+              isOpen={isQuickAddOpen}
+              onClose={() => setIsQuickAddOpen(false)}
+              onSelectOption={(optId) => {
+                setIsQuickAddOpen(false);
+                setActiveQuickAddModal(optId);
+              }}
+            />
+          </div>
           
           <button
             onClick={() => handleStartFocusSession(todayTasks[0])}
@@ -782,45 +831,59 @@ export default function MyWorkPage() {
         </div>
       )}
 
-      {/* MODAL 3: QUICK ADD */}
-      {showQuickAdd && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <form onSubmit={handleQuickAddSubmit} className="card" style={{ width: '480px', padding: '28px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Quick Add Item</h3>
-              <button type="button" onClick={() => setShowQuickAdd(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={20} /></button>
-            </div>
+      {/* QUICK ADD MODALS (EXACTLY 5 ACTIONS) */}
+      <AddTaskModal
+        isOpen={activeQuickAddModal === 'add_task'}
+        onClose={() => setActiveQuickAddModal(null)}
+        user={user}
+        projects={projects}
+        users={users}
+        onSuccess={() => loadTasks()}
+        onOpenTask={(t) => setSelectedTask(t)}
+      />
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Title</label>
-              <input
-                type="text"
-                value={quickAddTitle}
-                onChange={(e) => setQuickAddTitle(e.target.value)}
-                placeholder="Item title..."
-                required
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }}
-              />
-            </div>
+      <LogProgressModal
+        isOpen={activeQuickAddModal === 'log_progress'}
+        onClose={() => setActiveQuickAddModal(null)}
+        tasks={allWorkItems}
+        user={user}
+        onSuccess={() => loadTasks()}
+      />
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Details</label>
-              <textarea
-                value={quickAddDesc}
-                onChange={(e) => setQuickAddDesc(e.target.value)}
-                rows={3}
-                placeholder="Additional notes..."
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }}
-              />
-            </div>
+      <DailyPulseModal
+        isOpen={activeQuickAddModal === 'daily_pulse'}
+        onClose={() => setActiveQuickAddModal(null)}
+        user={user}
+        users={users}
+        onSuccess={() => loadTasks()}
+      />
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button type="button" onClick={() => setShowQuickAdd(false)} className="btn btn-secondary">Cancel</button>
-              <button type="submit" className="btn btn-primary">Save Personal Item</button>
-            </div>
-          </form>
-        </div>
-      )}
+      <ReportBlockerModal
+        isOpen={activeQuickAddModal === 'report_blocker'}
+        onClose={() => setActiveQuickAddModal(null)}
+        tasks={allWorkItems}
+        users={users}
+        projects={projects}
+        user={user}
+        onSuccess={() => {
+          loadTasks();
+          try {
+            const saved = localStorage.getItem(`mywork_blockers_${user?.id}`);
+            if (saved) setBlockersList(JSON.parse(saved));
+          } catch {}
+        }}
+        onViewBlockers={() => setActiveTab('today')}
+      />
+
+      <AskHelpModal
+        isOpen={activeQuickAddModal === 'ask_help'}
+        onClose={() => setActiveQuickAddModal(null)}
+        projects={projects}
+        tasks={allWorkItems}
+        users={users}
+        user={user}
+        onSuccess={() => loadTasks()}
+      />
 
       {/* FOCUS SESSION OVERLAY */}
       {showFocusModal && focusState.active && (
