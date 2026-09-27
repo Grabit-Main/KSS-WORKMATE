@@ -105,7 +105,7 @@ export default function LogProgressModal({ isOpen, onClose, tasks = [], user, on
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 300,
+      zIndex: 10000,
       padding: '20px'
     }}>
       <div className="card" style={{

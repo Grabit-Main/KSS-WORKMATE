@@ -125,7 +125,7 @@ export default function AskHelpModal({ isOpen, onClose, projects = [], tasks = [
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 300,
+      zIndex: 10000,
       padding: '20px'
     }}>
       <div className="card" style={{

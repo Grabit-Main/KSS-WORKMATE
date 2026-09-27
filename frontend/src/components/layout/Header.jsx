@@ -132,7 +132,7 @@ export const Header = ({ title, onToggleSidebar }) => {
       justifyContent: 'space-between',
       padding: '0 32px',
       position: 'relative',
-      zIndex: 500,
+      zIndex: 50,
       userSelect: 'none'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
