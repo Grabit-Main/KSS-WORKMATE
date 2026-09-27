@@ -4,6 +4,12 @@ from typing import List
 from uuid import UUID
 from app.database import get_db
 from app.models.user import User
+from app.models.project import Project, Team, TeamMembership, ProjectStatusLog, ProjectAttachment
+from app.models.task import Task, TaskAttachment, TaskStatusLog
+from app.models.chat import ChatMessage
+from app.models.review import Review
+from app.models.notification import Notification
+from app.models.kpi import DailyKPILog
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.utils.security import hash_password
 from app.dependencies import get_current_user, require_ceo_cto
@@ -134,14 +140,51 @@ async def update_user(user_id: UUID, req: UserUpdate, db: Session = Depends(get_
 
 
 @router.delete("/{user_id}")
-async def delete_user(user_id: UUID, db: Session = Depends(get_db), _=Depends(require_ceo_cto)):
+async def delete_user(user_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(require_ceo_cto)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
     if user.role in ("CEO", "CTO"):
         raise HTTPException(400, "CEO and CTO accounts cannot be deleted")
-    db.delete(user)
-    db.commit()
+    if user.id == current_user.id:
+        raise HTTPException(400, "You cannot delete your own account")
+
+    try:
+        db.query(DailyKPILog).filter(
+            (DailyKPILog.employee_id == user_id) | (DailyKPILog.evaluator_id == user_id)
+        ).delete(synchronize_session=False)
+
+        db.query(TeamMembership).filter(
+            TeamMembership.user_id == user_id
+        ).delete(synchronize_session=False)
+
+        task_ids = [t.id for t in db.query(Task.id).filter((Task.assigned_to == user_id) | (Task.assigned_by == user_id)).all()]
+        if task_ids:
+            db.query(TaskAttachment).filter(TaskAttachment.task_id.in_(task_ids)).delete(synchronize_session=False)
+            db.query(TaskStatusLog).filter(TaskStatusLog.task_id.in_(task_ids)).delete(synchronize_session=False)
+            db.query(ChatMessage).filter(ChatMessage.task_id.in_(task_ids)).delete(synchronize_session=False)
+            db.query(Task).filter(Task.id.in_(task_ids)).delete(synchronize_session=False)
+
+        db.query(TaskAttachment).filter(TaskAttachment.uploaded_by == user_id).delete(synchronize_session=False)
+        db.query(TaskStatusLog).filter(TaskStatusLog.changed_by == user_id).delete(synchronize_session=False)
+
+        db.query(Review).filter((Review.reviewer_id == user_id) | (Review.reviewee_id == user_id)).delete(synchronize_session=False)
+        db.query(Notification).filter(Notification.user_id == user_id).delete(synchronize_session=False)
+        db.query(ChatMessage).filter(ChatMessage.sender_id == user_id).delete(synchronize_session=False)
+
+        db.query(ProjectStatusLog).filter(ProjectStatusLog.changed_by == user_id).delete(synchronize_session=False)
+        db.query(ProjectAttachment).filter(ProjectAttachment.uploaded_by == user_id).delete(synchronize_session=False)
+
+        db.delete(user)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        try:
+            user.is_active = False
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise HTTPException(400, f"Failed to delete user: {str(e)}")
 
     event = {"type": "user.deleted", "data": {"id": str(user_id)}}
     await manager.broadcast("global:admins", event)
