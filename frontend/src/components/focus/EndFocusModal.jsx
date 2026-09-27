@@ -36,8 +36,10 @@ export default function EndFocusModal({ isOpen, onClose, session, onContinueFocu
         }
       }
 
+const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
       await saveFocusSession({
-        task_id: session.taskId && session.taskId !== 'general' ? session.taskId : null,
+        task_id: isUUID(session.taskId) ? session.taskId : null,
         duration_mins: session.durationMins || 25,
         active_duration_secs: session.activeDurationSecs || 0,
         status: 'completed'

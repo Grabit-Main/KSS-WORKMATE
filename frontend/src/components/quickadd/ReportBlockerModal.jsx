@@ -3,6 +3,8 @@ import { X, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { updateTask } from '../../api/tasks';
 import { reportBlocker } from '../../api/mywork';
 
+const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
 export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users = [], projects = [], user, onSuccess, onViewBlockers }) {
   const [selectedTaskId, setSelectedTaskId] = useState(tasks[0]?.id || '');
   const selectedTask = tasks.find((t) => String(t.id) === String(selectedTaskId)) || tasks[0];
@@ -49,8 +51,9 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
         status: 'active'
       };
 
+      const validTaskId = isUUID(selectedTask?.id) ? selectedTask.id : null;
       await reportBlocker({
-        task_id: selectedTask?.id || null,
+        task_id: validTaskId,
         description: `[${blockerType}] ${description.trim()}`,
         severity: severity.toLowerCase()
       });
