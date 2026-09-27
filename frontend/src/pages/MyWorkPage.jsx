@@ -99,6 +99,10 @@ export default function MyWorkPage() {
     } catch { return []; }
   });
 
+  const [showFocusSetupModal, setShowFocusSetupModal] = useState(false);
+  const [showActiveFocusOverlay, setShowActiveFocusOverlay] = useState(false);
+  const [showEndFocusModal, setShowEndFocusModal] = useState(false);
+
   // Upcoming Sort
   const [upcomingSort, setUpcomingSort] = useState('dueDate'); // 'dueDate', 'priority', 'project'
   const [customTaskOrder, setCustomTaskOrder] = useState([]);
