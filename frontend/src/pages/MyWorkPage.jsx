@@ -412,7 +412,7 @@ export default function MyWorkPage() {
       {/* HEADER SECTION */}
       <div style={{
         position: 'relative',
-        zIndex: 50,
+        zIndex: 2,
         background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
         borderRadius: 'var(--radius-xl)',
         padding: '28px 32px',
