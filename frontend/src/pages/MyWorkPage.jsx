@@ -20,6 +20,11 @@ import DailyPulseModal from '../components/quickadd/DailyPulseModal';
 import ReportBlockerModal from '../components/quickadd/ReportBlockerModal';
 import AskHelpModal from '../components/quickadd/AskHelpModal';
 
+import StartFocusSetupModal from '../components/focus/StartFocusSetupModal';
+import ActiveFocusOverlay from '../components/focus/ActiveFocusOverlay';
+import EndFocusModal from '../components/focus/EndFocusModal';
+import FocusSummaryCard from '../components/focus/FocusSummaryCard';
+
 export default function MyWorkPage() {
   const { user } = useAuth();
   const role = user?.role || 'TM';
@@ -79,18 +84,23 @@ export default function MyWorkPage() {
     } catch { return []; }
   });
 
-  // Focus Timer State
-  const [focusState, setFocusState] = useState(() => {
+  // Focus System State & Storage
+  const [focusSession, setFocusSession] = useState(() => {
     try {
       const saved = localStorage.getItem(`mywork_focus_${user?.id}`);
-      return saved ? JSON.parse(saved) : { active: false, paused: false, taskId: null, taskTitle: '', seconds: 0, goal: '' };
-    } catch { return { active: false, paused: false, taskId: null, taskTitle: '', seconds: 0, goal: '' }; }
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+
+  const [focusHistory, setFocusHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`mywork_focus_history_${user?.id}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
 
   // Upcoming Sort
   const [upcomingSort, setUpcomingSort] = useState('dueDate'); // 'dueDate', 'priority', 'project'
-
-  // Drag and drop task order
   const [customTaskOrder, setCustomTaskOrder] = useState([]);
 
   // Fetch Tasks, Projects, Users
@@ -135,20 +145,37 @@ export default function MyWorkPage() {
   useRealtime('task.reassigned', handleRealtimeRefresh);
   useRealtime('analytics.refresh', handleRealtimeRefresh);
 
-  // Focus Timer Interval
+  // Focus Timer Interval Countdown Effect
   useEffect(() => {
     let interval = null;
-    if (focusState.active && !focusState.paused) {
+    if (focusSession && focusSession.active && !focusSession.paused) {
       interval = setInterval(() => {
-        setFocusState(prev => {
-          const next = { ...prev, seconds: prev.seconds + 1 };
-          localStorage.setItem(`mywork_focus_${user?.id}`, JSON.stringify(next));
-          return next;
+        setFocusSession((prev) => {
+          if (!prev || !prev.active || prev.paused) return prev;
+          const nextRemaining = prev.remainingSecs - 1;
+          const nextActive = prev.activeDurationSecs + 1;
+
+          const updated = {
+            ...prev,
+            remainingSecs: nextRemaining,
+            activeDurationSecs: nextActive
+          };
+
+          localStorage.setItem(`mywork_focus_${user?.id}`, JSON.stringify(updated));
+
+          if (nextRemaining <= 0) {
+            setShowActiveFocusOverlay(false);
+            setShowEndFocusModal(true);
+          }
+
+          return updated;
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
-  }, [focusState.active, focusState.paused, user?.id]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [focusSession?.active, focusSession?.paused, user?.id]);
 
   // Derived Work Lists
   const myAssignedTasks = tasks.filter(t => 
@@ -262,36 +289,63 @@ export default function MyWorkPage() {
     setBlockerHelper('');
   };
 
-  // Start Focus Session
-  const handleStartFocusSession = (task) => {
-    const newFocus = {
-      active: true,
-      paused: false,
-      taskId: task?.id || 'general',
-      taskTitle: task?.title || 'General Deep Work Session',
-      seconds: 0,
-      goal: `Complete key deliverables for ${task?.title || 'today'}`
-    };
-    setFocusState(newFocus);
-    localStorage.setItem(`mywork_focus_${user?.id}`, JSON.stringify(newFocus));
-    setShowFocusModal(true);
+  // Focus Handlers
+  const handleStartFocusSession = async (sessionData) => {
+    setFocusSession(sessionData);
+    localStorage.setItem(`mywork_focus_${user?.id}`, JSON.stringify(sessionData));
+    setShowActiveFocusOverlay(true);
+
+    // If existing business rules allow, update task status to in_progress when starting work
+    if (sessionData.taskId && sessionData.taskId !== 'general') {
+      try {
+        await updateTask(sessionData.taskId, { status: 'in_progress' });
+        loadTasks();
+      } catch (err) {
+        console.warn('Task status update skipped on focus start:', err);
+      }
+    }
   };
 
-  const handlePauseFocus = () => {
-    setFocusState(prev => {
+  const handlePauseResumeFocus = () => {
+    setFocusSession((prev) => {
+      if (!prev) return null;
       const next = { ...prev, paused: !prev.paused };
       localStorage.setItem(`mywork_focus_${user?.id}`, JSON.stringify(next));
       return next;
     });
   };
 
-  const handleFinishFocus = () => {
-    setFocusState(prev => {
-      const next = { ...prev, active: false, paused: false };
-      localStorage.setItem(`mywork_focus_${user?.id}`, JSON.stringify(next));
-      return next;
-    });
-    setShowFocusModal(false);
+  const handleEndFocusClick = () => {
+    setShowActiveFocusOverlay(false);
+    setShowEndFocusModal(true);
+  };
+
+  const handleSaveAndEndFocus = ({ accomplishment, remainingWork, updatedProgress, updatedTaskObj }) => {
+    if (!focusSession) return;
+
+    const completedRecord = {
+      ...focusSession,
+      active: false,
+      paused: false,
+      endedAt: new Date().toISOString(),
+      date: new Date().toISOString().split('T')[0],
+      status: focusSession.remainingSecs <= 0 ? 'Completed' : 'Ended Early',
+      accomplishment,
+      remainingWork,
+      finalProgress: updatedProgress
+    };
+
+    const updatedHistory = [completedRecord, ...focusHistory];
+    setFocusHistory(updatedHistory);
+    localStorage.setItem(`mywork_focus_history_${user?.id}`, JSON.stringify(updatedHistory));
+
+    // Clear active session
+    localStorage.removeItem(`mywork_focus_${user?.id}`);
+    setFocusSession(null);
+    setShowEndFocusModal(false);
+    setShowActiveFocusOverlay(false);
+
+    loadTasks();
   };
 
   // Quick Add Personal Task / Note
@@ -407,7 +461,13 @@ export default function MyWorkPage() {
           </div>
           
           <button
-            onClick={() => handleStartFocusSession(todayTasks[0])}
+            onClick={() => {
+              if (focusSession?.active) {
+                setShowActiveFocusOverlay(true);
+              } else {
+                setShowFocusSetupModal(true);
+              }
+            }}
             className="btn btn-primary"
             style={{
               padding: '10px 20px',
@@ -415,13 +475,57 @@ export default function MyWorkPage() {
               alignItems: 'center',
               gap: '8px',
               fontWeight: 600,
-              background: focusState.active ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)' : 'var(--brand-600)'
+              background: focusSession?.active ? (focusSession.paused ? '#F59E0B' : 'linear-gradient(135deg, #10B981 0%, #059669 100%)') : '#6366F1',
+              borderRadius: '10px'
             }}
           >
-            <Flame size={16} /> {focusState.active ? `Focusing (${formatTime(focusState.seconds)})` : 'Start Focus'}
+            <Flame size={16} /> {focusSession?.active ? (focusSession.paused ? 'Focus Paused' : `Focusing (${Math.floor(Math.max(0, focusSession.remainingSecs) / 60)}m)`) : 'Start Focus'}
           </button>
         </div>
       </div>
+
+      {/* ACTIVE FOCUS BANNER */}
+      {focusSession?.active && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(16, 185, 129, 0.12) 100%)',
+          border: '1px solid rgba(99, 102, 241, 0.3)',
+          borderRadius: '16px',
+          padding: '16px 24px',
+          marginBottom: '24px',
+          display: 'flex',
+          justify: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#6366F1', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Flame size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#6366F1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Active Focus Session
+              </div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary, #0F172A)' }}>
+                {focusSession.taskTitle}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: focusSession.paused ? '#F59E0B' : '#10B981', fontVariantNumeric: 'tabular-nums' }}>
+              {Math.floor(Math.max(0, focusSession.remainingSecs) / 60)}m {Math.max(0, focusSession.remainingSecs) % 60}s {focusSession.paused ? '(Paused)' : 'remaining'}
+            </div>
+            <button
+              onClick={() => setShowActiveFocusOverlay(true)}
+              className="btn btn-primary"
+              style={{ padding: '8px 18px', background: '#6366F1', borderRadius: '10px', fontWeight: 600, fontSize: '13px' }}
+            >
+              Open Focus
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* SUMMARY STAT CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '28px' }}>
@@ -549,6 +653,14 @@ export default function MyWorkPage() {
           </div>
         )}
       </div>
+
+      {/* TODAY'S FOCUS SUMMARY CARD */}
+      <FocusSummaryCard
+        focusHistory={focusHistory}
+        activeSession={focusSession}
+        onStartFocus={() => setShowFocusSetupModal(true)}
+        role={role}
+      />
 
       {/* MAIN WORK TABS */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '24px', gap: '16px' }}>
@@ -887,29 +999,32 @@ export default function MyWorkPage() {
         onSuccess={() => loadTasks()}
       />
 
-      {/* FOCUS SESSION OVERLAY */}
-      {showFocusModal && focusState.active && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120 }}>
-          <div className="card" style={{ width: '450px', padding: '36px', textAlign: 'center', background: 'var(--surface)' }}>
-            <Flame size={48} style={{ color: 'var(--brand-600)', margin: '0 auto 16px auto' }} />
-            <h2 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 8px 0' }}>Focus Session Active</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '0 0 24px 0' }}>{focusState.taskTitle}</p>
-            
-            <div style={{ fontSize: '48px', fontWeight: 800, color: 'var(--brand-600)', letterSpacing: '0.04em', margin: '0 0 28px 0' }}>
-              {formatTime(focusState.seconds)}
-            </div>
+      {/* FOCUS MODALS & OVERLAY */}
+      <StartFocusSetupModal
+        isOpen={showFocusSetupModal}
+        onClose={() => setShowFocusSetupModal(false)}
+        tasks={allWorkItems}
+        projects={projects}
+        user={user}
+        onStartSession={handleStartFocusSession}
+      />
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '14px' }}>
-              <button onClick={handlePauseFocus} className="btn btn-secondary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Pause size={18} /> {focusState.paused ? 'Resume' : 'Pause'}
-              </button>
-              <button onClick={handleFinishFocus} className="btn btn-primary" style={{ padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px', background: '#10B981' }}>
-                <StopCircle size={18} /> Finish Session
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ActiveFocusOverlay
+        session={showActiveFocusOverlay ? focusSession : null}
+        onPauseResume={handlePauseResumeFocus}
+        onEndFocus={handleEndFocusClick}
+      />
+
+      <EndFocusModal
+        isOpen={showEndFocusModal}
+        onClose={() => setShowEndFocusModal(false)}
+        session={focusSession}
+        onContinueFocusing={() => {
+          setShowEndFocusModal(false);
+          setShowActiveFocusOverlay(true);
+        }}
+        onSaveAndEnd={handleSaveAndEndFocus}
+      />
 
       {/* TASK DETAILS MODAL */}
       {selectedTask && (
