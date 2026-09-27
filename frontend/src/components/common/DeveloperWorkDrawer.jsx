@@ -82,20 +82,96 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
         setDeveloperTasks(filtered);
       }
 
+      // 1. Daily Pulse (backend or local fallback)
       if (Array.isArray(pulseRes) && pulseRes.length > 0) {
         setDailyPulse(pulseRes[0]);
       } else {
-        setDailyPulse(null);
+        try {
+          const savedPulse = localStorage.getItem(`mywork_pulse_${queryUuid}`) || localStorage.getItem(`mywork_pulse_${developer?.id}`);
+          setDailyPulse(savedPulse ? JSON.parse(savedPulse) : null);
+        } catch {
+          setDailyPulse(null);
+        }
       }
-      if (Array.isArray(blockersRes)) {
-        setBlockersList(blockersRes);
+
+      // 2. Blockers (combine backend DB, localStorage, and blocked tasks)
+      let localBlockers = [];
+      try {
+        const savedBlockers = localStorage.getItem(`mywork_blockers_${queryUuid}`) || localStorage.getItem(`mywork_blockers_${developer?.id}`);
+        if (savedBlockers) localBlockers = JSON.parse(savedBlockers);
+      } catch (e) {}
+
+      const taskBlockers = (filtered || [])
+        .filter((t) => t.status === 'blocked')
+        .map((t) => ({
+          id: `task_blocked_${t.id}`,
+          description: `[Task Blocker] ${t.title}${t.description ? `: ${t.description}` : ''}`,
+          severity: t.priority === 'urgent' ? 'critical' : (t.priority === 'high' ? 'high' : 'medium'),
+          status: 'open',
+          taskTitle: t.title,
+          created_at: t.updated_at || t.created_at
+        }));
+
+      const rawBlockers = [
+        ...(Array.isArray(blockersRes) ? blockersRes : []),
+        ...localBlockers,
+        ...taskBlockers
+      ];
+
+      const mergedBlockers = [];
+      const seenBlockerKeys = new Set();
+      for (const item of rawBlockers) {
+        const key = item.id || item.description;
+        if (!seenBlockerKeys.has(key)) {
+          seenBlockerKeys.add(key);
+          mergedBlockers.push(item);
+        }
       }
-      if (Array.isArray(helpRes)) {
-        setHelpRequests(helpRes);
+      setBlockersList(mergedBlockers);
+
+      // 3. Help Requests (backend or localStorage)
+      let localHelp = [];
+      try {
+        const savedHelp = localStorage.getItem(`mywork_help_requests_${queryUuid}`) || localStorage.getItem(`mywork_help_requests_${developer?.id}`);
+        if (savedHelp) localHelp = JSON.parse(savedHelp);
+      } catch (e) {}
+
+      const rawHelp = [
+        ...(Array.isArray(helpRes) ? helpRes : []),
+        ...localHelp
+      ];
+      const mergedHelp = [];
+      const seenHelpKeys = new Set();
+      for (const item of rawHelp) {
+        const key = item.id || item.details || item.topic;
+        if (!seenHelpKeys.has(key)) {
+          seenHelpKeys.add(key);
+          mergedHelp.push(item);
+        }
       }
-      if (Array.isArray(focusRes)) {
-        setFocusHistory(focusRes);
+      setHelpRequests(mergedHelp);
+
+      // 4. Focus Sessions (backend or localStorage)
+      let localFocus = [];
+      try {
+        const savedFocus = localStorage.getItem(`mywork_focus_history_${queryUuid}`) || localStorage.getItem(`mywork_focus_history_${developer?.id}`);
+        if (savedFocus) localFocus = JSON.parse(savedFocus);
+      } catch (e) {}
+
+      const rawFocus = [
+        ...(Array.isArray(focusRes) ? focusRes : []),
+        ...localFocus
+      ];
+      const mergedFocus = [];
+      const seenFocusKeys = new Set();
+      for (const item of rawFocus) {
+        const key = item.id || `${item.created_at}_${item.duration_mins}`;
+        if (!seenFocusKeys.has(key)) {
+          seenFocusKeys.add(key);
+          mergedFocus.push(item);
+        }
       }
+      setFocusHistory(mergedFocus);
     } catch (err) {
       console.error('Failed to load developer data:', err);
     } finally {

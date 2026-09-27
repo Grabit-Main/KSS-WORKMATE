@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { X, HelpCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { requestHelp } from '../../api/mywork';
 
+const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
 export default function AskHelpModal({ isOpen, onClose, projects = [], tasks = [], users = [], user, onSuccess }) {
   const [projectId, setProjectId] = useState(projects[0]?.id || '');
   const [taskId, setTaskId] = useState(tasks[0]?.id || '');
@@ -54,7 +56,7 @@ export default function AskHelpModal({ isOpen, onClose, projects = [], tasks = [
       };
 
       await requestHelp({
-        task_id: taskId || null,
+        task_id: isUUID(taskId) ? taskId : null,
         topic: helpType,
         details: description.trim()
       });
