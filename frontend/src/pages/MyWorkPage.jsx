@@ -12,7 +12,35 @@ import {
   ListOrdered, Lock, Send, Target, Award, Eye, Users
 } from 'lucide-react';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
-import { getDailyPulses, getBlockers, getHelpRequests, getFocusSessions } from '../api/mywork';
+import { getDailyPulses, getBlockers, reportBlocker, getHelpRequests, getFocusSessions } from '../api/mywork';
+
+const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+const formatBlockersForDisplay = (rawBlockers = []) => {
+  return rawBlockers.map((b) => {
+    if (b.type && b.reportedTime) return b;
+    const rawDesc = b.description || '';
+    let type = 'Technical';
+    let cleanDesc = rawDesc;
+    if (rawDesc.startsWith('[')) {
+      const parts = rawDesc.split(']');
+      type = parts[0].replace('[', '').trim();
+      cleanDesc = parts.slice(1).join(']').trim();
+    }
+    return {
+      id: b.id,
+      taskId: b.task_id,
+      taskTitle: b.task?.title || b.taskTitle || 'General Project',
+      project: b.project || 'General Project',
+      type: type,
+      severity: b.severity ? (b.severity.charAt(0).toUpperCase() + b.severity.slice(1)) : 'High',
+      description: cleanDesc,
+      helper: b.helper || (cleanDesc.includes('Waiting for:') ? cleanDesc.split('Waiting for:')[1].replace(')', '').trim() : ''),
+      reportedTime: b.created_at ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today',
+      status: b.status || 'active'
+    };
+  });
+};
 
 import QuickAddPopover from '../components/quickadd/QuickAddPopover';
 import AddTaskModal from '../components/quickadd/AddTaskModal';
@@ -150,9 +178,26 @@ export default function MyWorkPage() {
         getBlockers(user.id).catch(() => []),
         getFocusSessions(user.id).catch(() => [])
       ]);
-      if (Array.isArray(blockersRes) && blockersRes.length > 0) {
-        setBlockersList(blockersRes);
+
+      let localBlockers = [];
+      try {
+        const saved = localStorage.getItem(`mywork_blockers_${user?.id}`);
+        if (saved) localBlockers = JSON.parse(saved);
+      } catch (e) {}
+
+      const formattedBackend = formatBlockersForDisplay(Array.isArray(blockersRes) ? blockersRes : []);
+      const combined = [...localBlockers, ...formattedBackend];
+      const uniqueBlockers = [];
+      const seen = new Set();
+      for (const item of combined) {
+        const key = item.id || item.description;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueBlockers.push(item);
+        }
       }
+      setBlockersList(uniqueBlockers);
+
       if (Array.isArray(focusRes) && focusRes.length > 0) {
         setFocusHistory(focusRes);
       }
@@ -305,6 +350,17 @@ export default function MyWorkPage() {
     e.preventDefault();
     if (!blockerDesc.trim()) return;
 
+    try {
+      const validTaskId = isUUID(reportBlockerModalTask?.id) ? reportBlockerModalTask.id : null;
+      await reportBlocker({
+        task_id: validTaskId,
+        description: `[${blockerType}] ${blockerDesc.trim()}`,
+        severity: (blockerSeverity || 'high').toLowerCase()
+      });
+    } catch (err) {
+      console.error('Error reporting blocker to backend:', err);
+    }
+
     const newBlocker = {
       id: Date.now(),
       taskId: reportBlockerModalTask?.id,
@@ -326,10 +382,11 @@ export default function MyWorkPage() {
     if (reportBlockerModalTask && !reportBlockerModalTask.isPersonal) {
       try {
         await updateTask(reportBlockerModalTask.id, { status: 'blocked' });
-        loadTasks();
       } catch (err) {}
     }
 
+    loadTasks();
+    loadMyWorkData();
     setReportBlockerModalTask(null);
     setBlockerDesc('');
     setBlockerHelper('');
