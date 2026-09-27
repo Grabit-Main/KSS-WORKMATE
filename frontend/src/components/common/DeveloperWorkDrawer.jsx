@@ -54,20 +54,22 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
 
       const queryUuid = activeUuid || targetDevId;
 
-      const [allTasks, pulseRes, blockersRes, helpRes, focusRes] = await Promise.all([
+      const [allTasks, pulseRes, blockersRes, helpRes, focusRes, allBlockersRes] = await Promise.all([
         getTasks().catch(() => []),
         getDailyPulses(queryUuid).catch(() => []),
         getBlockers(queryUuid).catch(() => []),
         getHelpRequests(queryUuid).catch(() => []),
-        getFocusSessions(queryUuid).catch(() => [])
+        getFocusSessions(queryUuid).catch(() => []),
+        getBlockers().catch(() => [])
       ]);
 
+      let filtered = [];
       if (Array.isArray(allTasks)) {
         const devIdStr = String(queryUuid || '').toLowerCase();
         const devEmailStr = String(developer?.email || '').toLowerCase();
         const devNameStr = `${developer?.first_name || ''} ${developer?.last_name || ''}`.trim().toLowerCase();
 
-        const filtered = allTasks.filter((t) => {
+        filtered = allTasks.filter((t) => {
           const assignedTo = String(t.assigned_to || '').toLowerCase();
           const assignedBy = String(t.assigned_by || '').toLowerCase();
           const assigneeId = String(t.assignee?.id || '').toLowerCase();
@@ -94,11 +96,25 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
         }
       }
 
-      // 2. Blockers (combine backend DB, localStorage, and blocked tasks)
+      // 2. Blockers (combine user DB, general DB, all localStorage keys, and blocked tasks)
+      const dbDevBlockers = (Array.isArray(allBlockersRes) ? allBlockersRes : []).filter((b) => {
+        const bUserId = String(b.user_id || '').toLowerCase();
+        const targetId = String(queryUuid || developer?.id || '').toLowerCase();
+        return bUserId === targetId || bUserId === String(developer?.user_id || '').toLowerCase();
+      });
+
       let localBlockers = [];
       try {
-        const savedBlockers = localStorage.getItem(`mywork_blockers_${queryUuid}`) || localStorage.getItem(`mywork_blockers_${developer?.id}`);
-        if (savedBlockers) localBlockers = JSON.parse(savedBlockers);
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('mywork_blockers')) {
+            const val = localStorage.getItem(k);
+            if (val) {
+              const parsed = JSON.parse(val);
+              if (Array.isArray(parsed)) localBlockers.push(...parsed);
+            }
+          }
+        }
       } catch (e) {}
 
       const taskBlockers = (filtered || [])
@@ -114,6 +130,7 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
 
       const rawBlockers = [
         ...(Array.isArray(blockersRes) ? blockersRes : []),
+        ...dbDevBlockers,
         ...localBlockers,
         ...taskBlockers
       ];
