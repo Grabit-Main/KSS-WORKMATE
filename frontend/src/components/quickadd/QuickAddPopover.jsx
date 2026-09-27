@@ -104,9 +104,9 @@ export default function QuickAddPopover({ isOpen, onClose, onSelectOption }) {
         background: 'var(--surface, #1E293B)',
         borderRadius: 'var(--radius-xl, 16px)',
         border: '1px solid var(--border, rgba(255, 255, 255, 0.12))',
-        boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(99, 102, 241, 0.1)',
-        backdropFilter: 'blur(20px)',
-        zIndex: 200,
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(99, 102, 241, 0.25)',
+        backdropFilter: 'blur(24px)',
+        zIndex: 9999,
         padding: '8px',
         animation: 'quickAddPopoverIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards'
       }}
