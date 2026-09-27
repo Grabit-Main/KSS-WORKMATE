@@ -25,14 +25,21 @@ import StartFocusSetupModal from '../components/focus/StartFocusSetupModal';
 import ActiveFocusOverlay from '../components/focus/ActiveFocusOverlay';
 import EndFocusModal from '../components/focus/EndFocusModal';
 import FocusSummaryCard from '../components/focus/FocusSummaryCard';
+import ManagementMyWorkView from '../components/common/ManagementMyWorkView';
 
 export default function MyWorkPage() {
   const { user } = useAuth();
   const role = user?.role || 'TM';
+
+  // Management roles (TL, PM, CTO, CEO) see the Developer Work portal view (NO personal tasks)
+  if (role !== 'TM') {
+    return <ManagementMyWorkView user={user} />;
+  }
+
   const isExecutive = ['CEO', 'CTO'].includes(role);
   const isPM = role === 'PM';
   const isTL = role === 'TL';
-  const isDev = !isExecutive && !isPM && !isTL;
+  const isDev = true;
 
   // Global State
   const [tasks, setTasks] = useState([]);
