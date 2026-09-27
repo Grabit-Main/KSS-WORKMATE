@@ -4,6 +4,7 @@ import {
   Flame, Activity, ShieldAlert, ShieldCheck, Lock, Eye, Edit3, Trash2, Calendar
 } from 'lucide-react';
 import { getTasks, updateTask, deleteTask } from '../../api/tasks';
+import { getDailyPulses, getBlockers, getHelpRequests, getFocusSessions } from '../../api/mywork';
 import TaskDetailsModal from '../tasks/TaskDetailsModal';
 
 export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role = 'TM', projectContext = null, onRefresh }) {
@@ -12,58 +13,48 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
 
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'tasks', 'progress', 'pulse', 'blockers', 'help', 'focus', 'activity'
   const [developerTasks, setDeveloperTasks] = useState([]);
+  const [dailyPulse, setDailyPulse] = useState(null);
+  const [blockersList, setBlockersList] = useState([]);
+  const [helpRequests, setHelpRequests] = useState([]);
+  const [focusHistory, setFocusHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [editProgressTask, setEditProgressTask] = useState(null);
   const [newProgressVal, setNewProgressVal] = useState(50);
 
-  // Local storage items for Daily Pulse, Blockers, Help Requests, Focus
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const dailyPulse = (() => {
-    if (!developer?.id) return null;
-    try {
-      const saved = localStorage.getItem(`daily_pulse_${developer.id}_${todayStr}`);
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  })();
-
-  const blockersList = (() => {
-    if (!developer?.id) return [];
-    try {
-      const saved = localStorage.getItem(`mywork_blockers_${developer.id}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  })();
-
-  const helpRequests = (() => {
-    if (!developer?.id) return [];
-    try {
-      const saved = localStorage.getItem(`mywork_help_requests_${developer.id}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  })();
-
-  const focusHistory = (() => {
-    if (!developer?.id) return [];
-    try {
-      const saved = localStorage.getItem(`mywork_focus_history_${developer.id}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  })();
-
-  // Load Developer Tasks
-  const loadDevTasks = useCallback(async () => {
+  // Load Developer Data from Backend DB
+  const loadDevData = useCallback(async () => {
     if (!developer?.id) return;
     setLoading(true);
     try {
-      const allTasks = await getTasks();
+      const [allTasks, pulseRes, blockersRes, helpRes, focusRes] = await Promise.all([
+        getTasks().catch(() => []),
+        getDailyPulses(developer.id).catch(() => []),
+        getBlockers(developer.id).catch(() => []),
+        getHelpRequests(developer.id).catch(() => []),
+        getFocusSessions(developer.id).catch(() => [])
+      ]);
+
       if (Array.isArray(allTasks)) {
         const filtered = allTasks.filter((t) => String(t.assigned_to) === String(developer.id) || String(t.assigned_by) === String(developer.id));
         setDeveloperTasks(filtered);
       }
+      if (Array.isArray(pulseRes) && pulseRes.length > 0) {
+        setDailyPulse(pulseRes[0]);
+      }
+      if (Array.isArray(blockersRes)) {
+        setBlockersList(blockersRes);
+      }
+      if (Array.isArray(helpRes)) {
+        setHelpRequests(helpRes);
+      }
+      if (Array.isArray(focusRes)) {
+        setFocusHistory(focusRes);
+      }
     } catch (err) {
-      console.error('Failed to load developer tasks:', err);
+      console.error('Failed to load developer data:', err);
     } finally {
       setLoading(false);
     }
@@ -71,9 +62,9 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
 
   useEffect(() => {
     if (isOpen && developer?.id) {
-      loadDevTasks();
+      loadDevData();
     }
-  }, [isOpen, developer?.id, loadDevTasks]);
+  }, [isOpen, developer?.id, loadDevData]);
 
   if (!isOpen || !developer) return null;
 

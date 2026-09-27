@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, HelpCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { requestHelp } from '../../api/mywork';
 
 export default function AskHelpModal({ isOpen, onClose, projects = [], tasks = [], users = [], user, onSuccess }) {
   const [projectId, setProjectId] = useState(projects[0]?.id || '');
@@ -51,6 +52,12 @@ export default function AskHelpModal({ isOpen, onClose, projects = [], tasks = [
         createdAt: new Date().toISOString(),
         createdTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
+
+      await requestHelp({
+        task_id: taskId || null,
+        topic: helpType,
+        details: description.trim()
+      });
 
       const storageKey = `mywork_help_requests_${user?.id}`;
       const existing = (() => {

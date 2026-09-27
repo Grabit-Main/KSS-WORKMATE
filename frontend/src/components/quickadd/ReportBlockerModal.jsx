@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { updateTask } from '../../api/tasks';
+import { reportBlocker } from '../../api/mywork';
 
 export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users = [], projects = [], user, onSuccess, onViewBlockers }) {
   const [selectedTaskId, setSelectedTaskId] = useState(tasks[0]?.id || '');
@@ -47,6 +48,12 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
         reportedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         status: 'active'
       };
+
+      await reportBlocker({
+        task_id: selectedTask?.id || null,
+        description: `[${blockerType}] ${description.trim()}`,
+        severity: severity.toLowerCase()
+      });
 
       // Save to localStorage list for My Work persistent state
       const savedListKey = `mywork_blockers_${user?.id}`;

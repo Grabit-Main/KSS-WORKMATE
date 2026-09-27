@@ -149,9 +149,23 @@ def list_tasks(
     user: User = Depends(get_current_user)
 ):
     # Visibility rule: CEO, CTO, and PM can see all assigned tasks company-wide in read-only mode;
-    # Other users (TL, TM) can strictly only see tasks assigned to them or by them.
+    # Team Leads (TL) can see tasks for all members of their team(s);
+    # Other users (TM) can strictly only see tasks assigned to them or by them.
     if user.role in ("CEO", "CTO", "PM"):
         q = db.query(Task)
+    elif user.role == "TL":
+        my_team_ids = [tm.team_id for tm in db.query(TeamMembership.team_id).filter(TeamMembership.user_id == user.id).all()]
+        if my_team_ids:
+            team_member_ids = [tm.user_id for tm in db.query(TeamMembership.user_id).filter(TeamMembership.team_id.in_(my_team_ids)).all()]
+            q = db.query(Task).filter(
+                (Task.assigned_to.in_(team_member_ids)) |
+                (Task.assigned_by.in_(team_member_ids)) |
+                (Task.team_id.in_(my_team_ids)) |
+                (Task.assigned_to == user.id) |
+                (Task.assigned_by == user.id)
+            )
+        else:
+            q = db.query(Task).filter((Task.assigned_to == user.id) | (Task.assigned_by == user.id))
     else:
         q = db.query(Task).filter((Task.assigned_to == user.id) | (Task.assigned_by == user.id))
 
@@ -229,15 +243,16 @@ async def create_task(req: TaskCreate, db: Session = Depends(get_db), user: User
             if team:
                 req.team_id = team.id
 
-    # Check authorization: Must be TL of that team, or CEO/CTO/PM
-    if req.team_id:
+    # Check authorization: Must be TL of that team, or CEO/CTO/PM, or creating own task for self
+    is_creating_own = str(req.assigned_to) == str(user.id)
+    if req.team_id and not is_creating_own:
         lead = db.query(TeamMembership).filter(
             TeamMembership.team_id == req.team_id,
             TeamMembership.user_id == user.id,
             (TeamMembership.is_lead == True) | (user.role == "TL")
         ).first()
         if not lead and user.role not in ("CEO", "CTO", "PM"):
-            raise HTTPException(403, "Only Team Leads or PMs can allocate tasks")
+            raise HTTPException(403, "Only Team Leads or PMs can allocate tasks to other users")
 
     # Day-wise task allocation rule: Team Leads, Project Managers, and Executives can allocate day-wise tasks
     if req.scheduled_date:
