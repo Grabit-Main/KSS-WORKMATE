@@ -143,15 +143,35 @@ export default function MyWorkPage() {
     }
   }, []);
 
+  const loadMyWorkData = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const [blockersRes, focusRes] = await Promise.all([
+        getBlockers(user.id).catch(() => []),
+        getFocusSessions(user.id).catch(() => [])
+      ]);
+      if (Array.isArray(blockersRes) && blockersRes.length > 0) {
+        setBlockersList(blockersRes);
+      }
+      if (Array.isArray(focusRes) && focusRes.length > 0) {
+        setFocusHistory(focusRes);
+      }
+    } catch (err) {
+      console.error('Error fetching developer mywork data:', err);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     loadTasks();
     loadProjectsAndUsers();
-  }, [loadTasks, loadProjectsAndUsers]);
+    loadMyWorkData();
+  }, [loadTasks, loadProjectsAndUsers, loadMyWorkData]);
 
   // Realtime handlers
   const handleRealtimeRefresh = useCallback(() => {
     loadTasks();
-  }, [loadTasks]);
+    loadMyWorkData();
+  }, [loadTasks, loadMyWorkData]);
 
   useRealtime('task.created', handleRealtimeRefresh);
   useRealtime('task.status_changed', handleRealtimeRefresh);

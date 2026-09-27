@@ -5,8 +5,11 @@ import {
   Sparkles, CheckCircle2, Clock
 } from 'lucide-react';
 import { getTasks, updateTask, deleteTask } from '../../api/tasks';
+import { getUsers } from '../../api/users';
 import { getDailyPulses, getBlockers, getHelpRequests, getFocusSessions } from '../../api/mywork';
 import TaskDetailsModal from '../tasks/TaskDetailsModal';
+
+const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role = 'TM', projectContext = null, onRefresh }) {
   const isTL = role === 'TL';
@@ -28,26 +31,57 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
 
   // Load Developer Data from Backend DB
   const loadDevData = useCallback(async () => {
-    if (!targetDevId) return;
+    if (!developer) return;
     setLoading(true);
     try {
+      let activeUuid = isUUID(targetDevId) ? targetDevId : null;
+      let allUsers = [];
+
+      if (!activeUuid) {
+        try {
+          allUsers = await getUsers();
+          const devEmail = developer?.email?.toLowerCase();
+          const devFullName = `${developer?.first_name || ''} ${developer?.last_name || ''}`.trim().toLowerCase();
+          const found = allUsers.find(
+            (u) => (devEmail && u.email?.toLowerCase() === devEmail) ||
+                   (`${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase() === devFullName)
+          );
+          if (found) activeUuid = found.id;
+        } catch (e) {
+          console.warn('Failed to resolve developer UUID:', e);
+        }
+      }
+
+      const queryUuid = activeUuid || targetDevId;
+
       const [allTasks, pulseRes, blockersRes, helpRes, focusRes] = await Promise.all([
         getTasks().catch(() => []),
-        getDailyPulses(targetDevId).catch(() => []),
-        getBlockers(targetDevId).catch(() => []),
-        getHelpRequests(targetDevId).catch(() => []),
-        getFocusSessions(targetDevId).catch(() => [])
+        getDailyPulses(queryUuid).catch(() => []),
+        getBlockers(queryUuid).catch(() => []),
+        getHelpRequests(queryUuid).catch(() => []),
+        getFocusSessions(queryUuid).catch(() => [])
       ]);
 
       if (Array.isArray(allTasks)) {
-        const devIdStr = String(targetDevId).toLowerCase();
-        const filtered = allTasks.filter((t) => 
-          String(t.assigned_to || '').toLowerCase() === devIdStr || 
-          String(t.assigned_by || '').toLowerCase() === devIdStr ||
-          String(t.assignee?.id || '').toLowerCase() === devIdStr
-        );
+        const devIdStr = String(queryUuid || '').toLowerCase();
+        const devEmailStr = String(developer?.email || '').toLowerCase();
+        const devNameStr = `${developer?.first_name || ''} ${developer?.last_name || ''}`.trim().toLowerCase();
+
+        const filtered = allTasks.filter((t) => {
+          const assignedTo = String(t.assigned_to || '').toLowerCase();
+          const assignedBy = String(t.assigned_by || '').toLowerCase();
+          const assigneeId = String(t.assignee?.id || '').toLowerCase();
+          const assigneeEmail = String(t.assignee?.email || '').toLowerCase();
+
+          return (
+            (devIdStr && (assignedTo === devIdStr || assignedBy === devIdStr || assigneeId === devIdStr)) ||
+            (devEmailStr && (assignedTo === devEmailStr || assigneeEmail === devEmailStr)) ||
+            (devNameStr && (assignedTo === devNameStr))
+          );
+        });
         setDeveloperTasks(filtered);
       }
+
       if (Array.isArray(pulseRes) && pulseRes.length > 0) {
         setDailyPulse(pulseRes[0]);
       } else {
@@ -67,13 +101,13 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
     } finally {
       setLoading(false);
     }
-  }, [targetDevId]);
+  }, [developer, targetDevId]);
 
   useEffect(() => {
-    if (isOpen && targetDevId) {
+    if (isOpen && developer) {
       loadDevData();
     }
-  }, [isOpen, targetDevId, loadDevData]);
+  }, [isOpen, developer, loadDevData]);
 
   if (!isOpen || !developer) return null;
 

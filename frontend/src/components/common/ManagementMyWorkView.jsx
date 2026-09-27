@@ -124,7 +124,13 @@ export default function ManagementMyWorkView({ user }) {
 
   const getDevObj = (t) => {
     if (t.assignee) return t.assignee;
-    return users.find((u) => String(u.id) === String(t.assigned_to)) || { id: t.assigned_to, first_name: getDevName(t) };
+    const found = users.find((u) =>
+      String(u.id) === String(t.assigned_to) ||
+      (u.email && u.email === t.assigned_to) ||
+      (`${u.first_name || ''} ${u.last_name || ''}`.trim() && `${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase() === String(t.assigned_to).toLowerCase())
+    );
+    if (found) return found;
+    return { id: t.assigned_to, first_name: getDevName(t) };
   };
 
   const getProjectName = (t) => {
