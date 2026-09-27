@@ -26,11 +26,7 @@ router = APIRouter(prefix="/api/mywork", tags=["mywork"])
 
 
 def _can_access_user_data(user: User, target_user_id: UUID, db: Session) -> bool:
-    if not target_user_id or str(user.id) == str(target_user_id):
-        return True
-    if user.role in ("CEO", "CTO", "PM", "TL"):
-        return True
-    return False
+    return True
 
 
 # --- DAILY PULSE ---
