@@ -96,7 +96,7 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
         }
       }
 
-      // 2. Blockers (combine user DB, general DB, all localStorage keys, and blocked tasks)
+      // 2. Blockers (combine user DB, general DB, and all localStorage keys)
       const dbDevBlockers = (Array.isArray(allBlockersRes) ? allBlockersRes : []).filter((b) => {
         const bUserId = String(b.user_id || '').toLowerCase();
         const targetId = String(queryUuid || developer?.id || '').toLowerCase();
@@ -117,22 +117,10 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
         }
       } catch (e) {}
 
-      const taskBlockers = (filtered || [])
-        .filter((t) => t.status === 'blocked')
-        .map((t) => ({
-          id: `task_blocked_${t.id}`,
-          description: `[Task Blocker] ${t.title}${t.description ? `: ${t.description}` : ''}`,
-          severity: t.priority === 'urgent' ? 'critical' : (t.priority === 'high' ? 'high' : 'medium'),
-          status: 'open',
-          taskTitle: t.title,
-          created_at: t.updated_at || t.created_at
-        }));
-
       const rawBlockers = [
         ...(Array.isArray(blockersRes) ? blockersRes : []),
         ...dbDevBlockers,
-        ...localBlockers,
-        ...taskBlockers
+        ...localBlockers
       ];
 
       const mergedBlockers = [];
@@ -651,15 +639,35 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
                   <div style={{ fontSize: '13px', color: '#64748B' }}>All clear! This developer has reported 0 blockers.</div>
                 </div>
               ) : (
-                blockersList.map((b) => (
-                  <div key={b.id} style={{ padding: '18px', borderRadius: '14px', borderLeft: '4px solid #EF4444', background: '#FFFFFF', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#EF4444', textTransform: 'uppercase' }}>Severity: {b.severity}</span>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: b.status === 'resolved' ? '#10B981' : '#EF4444' }}>{b.status.toUpperCase()}</span>
+                blockersList.map((b) => {
+                  const rawDesc = b.description || '';
+                  let type = b.type || 'Technical';
+                  let cleanDesc = rawDesc;
+                  if (rawDesc.startsWith('[')) {
+                    const parts = rawDesc.split(']');
+                    type = parts[0].replace('[', '').trim();
+                    cleanDesc = parts.slice(1).join(']').trim();
+                  }
+                  const sevText = (b.severity || 'high').toUpperCase();
+                  const badgeText = `${type.toUpperCase()} BLOCKER (${sevText})`;
+                  const taskTitle = b.taskTitle || b.task?.title || 'PETSHOP';
+                  const timeStr = b.reportedTime || (b.created_at ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today');
+                  const helperName = b.helper || (cleanDesc.includes('Waiting for:') ? cleanDesc.split('Waiting for:')[1].replace(')', '').trim() : '');
+
+                  return (
+                    <div key={b.id || b.description} style={{ padding: '18px', borderRadius: '14px', borderLeft: '4px solid #EF4444', background: '#FFFFFF', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', padding: '3px 9px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444' }}>
+                          {badgeText}
+                        </span>
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>{timeStr}</span>
+                      </div>
+                      <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>{taskTitle}</h4>
+                      <p style={{ fontSize: '13px', color: '#334155', margin: '0 0 8px 0', lineHeight: 1.4 }}>{cleanDesc}</p>
+                      {helperName && <div style={{ fontSize: '12px', color: '#4F46E5', fontWeight: 600 }}>Waiting for: {helperName}</div>}
                     </div>
-                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A', margin: 0 }}>{b.description}</p>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
