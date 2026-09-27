@@ -98,8 +98,16 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
 
       // 2. Blockers (combine user DB, general DB, and all localStorage keys)
       const isDemoBlocker = (item) => {
-        const d = String(item?.description || item?.cleanDesc || '').toLowerCase();
-        return d.includes('i need this') || d.includes('i am facing an issue') || d.includes('satya ranjan das');
+        if (!item) return false;
+        const str = JSON.stringify(item).toLowerCase();
+        return (
+          str.includes('i need this') ||
+          str.includes('i am facing an issue') ||
+          str.includes('satya ranjan das') ||
+          str.includes('requirement blocker') ||
+          str.includes('dependency blocker') ||
+          (str.includes('blocker') && str.includes('petshop'))
+        );
       };
 
       const dbDevBlockers = (Array.isArray(allBlockersRes) ? allBlockersRes : []).filter((b) => {
