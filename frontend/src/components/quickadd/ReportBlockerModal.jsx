@@ -78,11 +78,37 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
     }
   };
 
+  const fieldStyle = {
+    width: '100%',
+    padding: '10px 14px',
+    borderRadius: '10px',
+    border: '1px solid var(--border-input, #CBD5E1)',
+    background: 'var(--bg-input, #F8FAFC)',
+    color: 'var(--text-primary, #0F172A)',
+    fontSize: '14px',
+    fontWeight: 500,
+    outline: 'none',
+    boxSizing: 'border-box'
+  };
+
+  const labelStyle = {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: 'var(--text-secondary, #334155)',
+    display: 'block',
+    marginBottom: '6px'
+  };
+
+  const optionStyle = {
+    color: '#0F172A',
+    background: '#FFFFFF'
+  };
+
   return (
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: 'rgba(15, 23, 42, 0.75)',
+      background: 'rgba(15, 23, 42, 0.65)',
       backdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
@@ -96,52 +122,63 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
         maxHeight: '90vh',
         overflowY: 'auto',
         padding: '28px',
-        borderRadius: 'var(--radius-xl, 16px)',
-        background: 'var(--surface, #1E293B)',
-        border: '1px solid var(--border, rgba(255,255,255,0.12))',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+        borderRadius: '16px',
+        background: 'var(--surface, #FFFFFF)',
+        border: '1px solid var(--border, #E2E8F0)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
       }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: 'rgba(239, 68, 68, 0.15)',
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: 'rgba(239, 68, 68, 0.12)',
               color: '#EF4444',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <AlertTriangle size={20} />
+              <AlertTriangle size={22} />
             </div>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary, #F8FAFC)' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary, #0F172A)' }}>
                 Report Blocker
               </h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary, #94A3B8)', margin: 0 }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary, #64748B)', margin: '2px 0 0 0' }}>
                 Tell your team what is preventing your progress
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary, #94A3B8)' }}
+            style={{
+              background: 'rgba(0,0,0,0.05)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'var(--text-tertiary, #64748B)'
+            }}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {errorMsg && (
           <div style={{
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 'var(--radius-md, 8px)',
+            background: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            borderRadius: '10px',
             padding: '10px 14px',
             marginBottom: '16px',
             fontSize: '13px',
-            color: '#EF4444',
+            color: '#DC2626',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
@@ -156,7 +193,7 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              background: 'rgba(239, 68, 68, 0.15)',
+              background: '#FEF2F2',
               color: '#EF4444',
               display: 'flex',
               alignItems: 'center',
@@ -165,10 +202,10 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
             }}>
               <CheckCircle2 size={32} />
             </div>
-            <h4 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary, #F8FAFC)', margin: '0 0 6px 0' }}>
+            <h4 style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>
               Blocker Reported
             </h4>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary, #94A3B8)', margin: '0 0 24px 0' }}>
+            <p style={{ fontSize: '14px', color: '#64748B', margin: '0 0 24px 0' }}>
               Your team & assigner have been notified regarding "{createdBlocker.taskTitle}".
             </p>
 
@@ -176,7 +213,7 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
               <button
                 onClick={onClose}
                 className="btn btn-secondary"
-                style={{ padding: '10px 18px' }}
+                style={{ padding: '10px 18px', borderRadius: '10px' }}
               >
                 Close
               </button>
@@ -186,7 +223,7 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
                   onClose();
                 }}
                 className="btn btn-primary"
-                style={{ padding: '10px 24px', background: '#EF4444' }}
+                style={{ padding: '10px 24px', background: '#EF4444', borderRadius: '10px' }}
               >
                 View Blocker
               </button>
@@ -196,25 +233,15 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Related Task */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Related Task *
-              </label>
+              <label style={labelStyle}>Related Task *</label>
               <select
                 value={selectedTaskId}
                 onChange={(e) => setSelectedTaskId(e.target.value)}
                 required
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
-                }}
+                style={fieldStyle}
               >
                 {tasks.map((t) => (
-                  <option key={t.id} value={t.id}>
+                  <option key={t.id} value={t.id} style={optionStyle}>
                     {t.title}
                   </option>
                 ))}
@@ -223,21 +250,15 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
 
             {/* Project (Auto/Display) */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Project
-              </label>
+              <label style={labelStyle}>Project</label>
               <input
                 type="text"
                 readOnly
                 value={selectedTask?.project?.name || 'General Project'}
                 style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'rgba(255,255,255,0.04)',
-                  color: 'var(--text-secondary, #94A3B8)',
-                  fontSize: '14px'
+                  ...fieldStyle,
+                  background: '#F1F5F9',
+                  color: '#64748B'
                 }}
               />
             </div>
@@ -245,124 +266,74 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
             {/* Blocker Type & Severity */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                  Blocker Type *
-                </label>
+                <label style={labelStyle}>Blocker Type *</label>
                 <select
                   value={blockerType}
                   onChange={(e) => setBlockerType(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
-                    border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                    background: 'var(--surface-dark, #0F172A)',
-                    color: 'var(--text-primary, #F8FAFC)',
-                    fontSize: '14px'
-                  }}
+                  style={fieldStyle}
                 >
-                  <option value="Technical">Technical</option>
-                  <option value="Dependency">Dependency</option>
-                  <option value="Requirement">Requirement</option>
-                  <option value="Access">Access</option>
-                  <option value="Environment">Environment</option>
-                  <option value="Review">Review</option>
-                  <option value="Other">Other</option>
+                  <option value="Technical" style={optionStyle}>Technical</option>
+                  <option value="Dependency" style={optionStyle}>Dependency</option>
+                  <option value="Requirement" style={optionStyle}>Requirement</option>
+                  <option value="Access" style={optionStyle}>Access</option>
+                  <option value="Environment" style={optionStyle}>Environment</option>
+                  <option value="Review" style={optionStyle}>Review</option>
+                  <option value="Other" style={optionStyle}>Other</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                  Severity *
-                </label>
+                <label style={labelStyle}>Severity *</label>
                 <select
                   value={severity}
                   onChange={(e) => setSeverity(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
-                    border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                    background: 'var(--surface-dark, #0F172A)',
-                    color: 'var(--text-primary, #F8FAFC)',
-                    fontSize: '14px'
-                  }}
+                  style={fieldStyle}
                 >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Critical">Critical</option>
+                  <option value="Low" style={optionStyle}>Low</option>
+                  <option value="Medium" style={optionStyle}>Medium</option>
+                  <option value="High" style={optionStyle}>High</option>
+                  <option value="Critical" style={optionStyle}>Critical</option>
                 </select>
               </div>
             </div>
 
             {/* Description */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Description *
-              </label>
+              <label style={labelStyle}>Description *</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 placeholder="Explain what is blocking your work..."
                 required
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
-                }}
+                style={fieldStyle}
               />
             </div>
 
             {/* Blocking Since & Need Help From */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                  Blocking Since
-                </label>
+                <label style={labelStyle}>Blocking Since</label>
                 <input
                   type="date"
                   value={blockingSince}
                   onChange={(e) => setBlockingSince(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
-                    border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                    background: 'var(--surface-dark, #0F172A)',
-                    color: 'var(--text-primary, #F8FAFC)',
-                    fontSize: '14px'
-                  }}
+                  style={fieldStyle}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                  Need Help From
-                </label>
+                <label style={labelStyle}>Need Help From</label>
                 <select
                   value={needHelpFrom}
                   onChange={(e) => setNeedHelpFrom(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
-                    border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                    background: 'var(--surface-dark, #0F172A)',
-                    color: 'var(--text-primary, #F8FAFC)',
-                    fontSize: '14px'
-                  }}
+                  style={fieldStyle}
                 >
-                  <option value="">Unassigned Helper</option>
+                  <option value="" style={optionStyle}>Unassigned Helper</option>
                   {users
                     .filter((u) => u.id !== user?.id)
                     .map((u) => (
-                      <option key={u.id} value={u.id}>
+                      <option key={u.id} value={u.id} style={optionStyle}>
                         {u.first_name} {u.last_name} ({u.role})
                       </option>
                     ))}
@@ -377,6 +348,7 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
                 onClick={onClose}
                 className="btn btn-secondary"
                 disabled={submitting}
+                style={{ padding: '10px 20px', borderRadius: '10px' }}
               >
                 Cancel
               </button>
@@ -384,7 +356,7 @@ export default function ReportBlockerModal({ isOpen, onClose, tasks = [], users 
                 type="submit"
                 className="btn btn-primary"
                 disabled={submitting}
-                style={{ background: '#EF4444' }}
+                style={{ padding: '10px 24px', background: '#EF4444', borderRadius: '10px', fontWeight: 600 }}
               >
                 {submitting ? 'Submitting...' : 'Report Blocker'}
               </button>

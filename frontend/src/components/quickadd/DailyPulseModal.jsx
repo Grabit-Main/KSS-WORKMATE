@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, FileText, CheckCircle2, AlertCircle, Smile, Meh, Frown, AlertOctagon } from 'lucide-react';
 
 export default function DailyPulseModal({ isOpen, onClose, user, users = [], onSuccess }) {
@@ -64,18 +64,44 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
     }
   };
 
+  const fieldStyle = {
+    width: '100%',
+    padding: '10px 14px',
+    borderRadius: '10px',
+    border: '1px solid var(--border-input, #CBD5E1)',
+    background: 'var(--bg-input, #F8FAFC)',
+    color: 'var(--text-primary, #0F172A)',
+    fontSize: '14px',
+    fontWeight: 500,
+    outline: 'none',
+    boxSizing: 'border-box'
+  };
+
+  const labelStyle = {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: 'var(--text-secondary, #334155)',
+    display: 'block',
+    marginBottom: '6px'
+  };
+
+  const optionStyle = {
+    color: '#0F172A',
+    background: '#FFFFFF'
+  };
+
   const statusOptions = [
-    { id: 'going_well', label: 'Going Well', icon: Smile, color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' },
-    { id: 'normal', label: 'Normal', icon: Meh, color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.15)' },
-    { id: 'need_help', label: 'Need Help', icon: Frown, color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' },
-    { id: 'blocked', label: 'Blocked', icon: AlertOctagon, color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' }
+    { id: 'going_well', label: 'Going Well', icon: Smile, color: '#10B981', bg: '#ECFDF5' },
+    { id: 'normal', label: 'Normal', icon: Meh, color: '#3B82F6', bg: '#EFF6FF' },
+    { id: 'need_help', label: 'Need Help', icon: Frown, color: '#F59E0B', bg: '#FEF3C7' },
+    { id: 'blocked', label: 'Blocked', icon: AlertOctagon, color: '#EF4444', bg: '#FEF2F2' }
   ];
 
   return (
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: 'rgba(15, 23, 42, 0.75)',
+      background: 'rgba(15, 23, 42, 0.65)',
       backdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
@@ -89,52 +115,63 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
         maxHeight: '90vh',
         overflowY: 'auto',
         padding: '28px',
-        borderRadius: 'var(--radius-xl, 16px)',
-        background: 'var(--surface, #1E293B)',
-        border: '1px solid var(--border, rgba(255,255,255,0.12))',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+        borderRadius: '16px',
+        background: 'var(--surface, #FFFFFF)',
+        border: '1px solid var(--border, #E2E8F0)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
       }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: 'rgba(245, 158, 11, 0.15)',
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: 'rgba(245, 158, 11, 0.12)',
               color: '#F59E0B',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <FileText size={20} />
+              <FileText size={22} />
             </div>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary, #F8FAFC)' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary, #0F172A)' }}>
                 Daily Pulse
               </h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary, #94A3B8)', margin: 0 }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary, #64748B)', margin: '2px 0 0 0' }}>
                 Share today's overall work status & priorities
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary, #94A3B8)' }}
+            style={{
+              background: 'rgba(0,0,0,0.05)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'var(--text-tertiary, #64748B)'
+            }}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {errorMsg && (
           <div style={{
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 'var(--radius-md, 8px)',
+            background: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            borderRadius: '10px',
             padding: '10px 14px',
             marginBottom: '16px',
             fontSize: '13px',
-            color: '#EF4444',
+            color: '#DC2626',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
@@ -149,8 +186,8 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              background: 'rgba(245, 158, 11, 0.15)',
-              color: '#F59E0B',
+              background: '#FEF3C7',
+              color: '#D97706',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -158,13 +195,13 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
             }}>
               <CheckCircle2 size={32} />
             </div>
-            <h4 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary, #F8FAFC)', margin: '0 0 6px 0' }}>
+            <h4 style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>
               Today's Pulse
             </h4>
             <div style={{
               fontSize: '14px',
               fontWeight: 600,
-              color: '#10B981',
+              color: '#D97706',
               marginBottom: '20px'
             }}>
               ✓ Submitted at {submittedPulse.submittedAt}
@@ -174,14 +211,14 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
               <button
                 onClick={() => setSubmittedPulse(null)}
                 className="btn btn-secondary"
-                style={{ padding: '10px 18px' }}
+                style={{ padding: '10px 18px', borderRadius: '10px' }}
               >
                 Edit Pulse
               </button>
               <button
                 onClick={onClose}
                 className="btn btn-primary"
-                style={{ padding: '10px 24px', background: '#F59E0B' }}
+                style={{ padding: '10px 24px', background: '#F59E0B', borderRadius: '10px' }}
               >
                 Done
               </button>
@@ -191,9 +228,7 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Overall Status Selection */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '8px' }}>
-                Overall Status *
-              </label>
+              <label style={labelStyle}>Overall Status *</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                 {statusOptions.map((opt) => {
                   const Icon = opt.icon;
@@ -205,10 +240,10 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
                       onClick={() => setOverallStatus(opt.id)}
                       style={{
                         padding: '12px',
-                        borderRadius: 'var(--radius-lg, 10px)',
-                        border: selected ? `2px solid ${opt.color}` : '1px solid var(--border, rgba(255,255,255,0.12))',
-                        background: selected ? opt.bg : 'var(--surface-dark, #0F172A)',
-                        color: selected ? opt.color : 'var(--text-primary, #F8FAFC)',
+                        borderRadius: '10px',
+                        border: selected ? `2px solid ${opt.color}` : '1px solid #CBD5E1',
+                        background: selected ? opt.bg : '#F8FAFC',
+                        color: selected ? opt.color : '#334155',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '10px',
@@ -228,51 +263,31 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
 
             {/* Completed Today */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Completed Today
-              </label>
+              <label style={labelStyle}>Completed Today</label>
               <textarea
                 value={completedToday}
                 onChange={(e) => setCompletedToday(e.target.value)}
                 rows={2}
                 placeholder="What did you accomplish today?"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
-                }}
+                style={fieldStyle}
               />
             </div>
 
             {/* Currently Working On */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Currently Working On
-              </label>
+              <label style={labelStyle}>Currently Working On</label>
               <textarea
                 value={currentlyWorking}
                 onChange={(e) => setCurrentlyWorking(e.target.value)}
                 rows={2}
                 placeholder="Active focus tasks..."
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
-                }}
+                style={fieldStyle}
               />
             </div>
 
             {/* Blocker / Concern */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: isBlockerRequired ? '#EF4444' : 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ ...labelStyle, color: isBlockerRequired ? '#DC2626' : 'var(--text-secondary, #334155)' }}>
                 Blocker / Concern {isBlockerRequired && '*'}
               </label>
               <textarea
@@ -282,62 +297,37 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
                 placeholder="Describe any issues or blockers..."
                 required={isBlockerRequired}
                 style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: isBlockerRequired ? '1px solid #EF4444' : '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
+                  ...fieldStyle,
+                  borderColor: isBlockerRequired ? '#FCA5A5' : '#CBD5E1'
                 }}
               />
             </div>
 
             {/* Next Focus */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Next Focus
-              </label>
+              <label style={labelStyle}>Next Focus</label>
               <textarea
                 value={nextFocus}
                 onChange={(e) => setNextFocus(e.target.value)}
                 rows={2}
                 placeholder="What will you focus on next?"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
-                }}
+                style={fieldStyle}
               />
             </div>
 
             {/* Need Help From */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Need Help From
-              </label>
+              <label style={labelStyle}>Need Help From</label>
               <select
                 value={needHelpFrom}
                 onChange={(e) => setNeedHelpFrom(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
-                }}
+                style={fieldStyle}
               >
-                <option value="">None / Unspecified</option>
+                <option value="" style={optionStyle}>None / Unspecified</option>
                 {users
                   .filter((u) => u.id !== user?.id)
                   .map((u) => (
-                    <option key={u.id} value={u.id}>
+                    <option key={u.id} value={u.id} style={optionStyle}>
                       {u.first_name} {u.last_name} ({u.role})
                     </option>
                   ))}
@@ -351,6 +341,7 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
                 onClick={onClose}
                 className="btn btn-secondary"
                 disabled={submitting}
+                style={{ padding: '10px 20px', borderRadius: '10px' }}
               >
                 Cancel
               </button>
@@ -358,7 +349,7 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
                 type="submit"
                 className="btn btn-primary"
                 disabled={submitting}
-                style={{ background: '#F59E0B' }}
+                style={{ padding: '10px 24px', background: '#F59E0B', borderRadius: '10px', fontWeight: 600 }}
               >
                 {submitting ? 'Submitting...' : 'Submit Daily Pulse'}
               </button>

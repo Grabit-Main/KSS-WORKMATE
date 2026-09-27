@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CheckSquare, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, CheckSquare, CheckCircle2, AlertCircle } from 'lucide-react';
 import { createTask } from '../../api/tasks';
 
 export default function AddTaskModal({ isOpen, onClose, user, projects = [], users = [], onSuccess, onOpenTask }) {
@@ -58,11 +58,37 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
     }
   };
 
+  const fieldStyle = {
+    width: '100%',
+    padding: '10px 14px',
+    borderRadius: '10px',
+    border: '1px solid var(--border-input, #CBD5E1)',
+    background: 'var(--bg-input, #F8FAFC)',
+    color: 'var(--text-primary, #0F172A)',
+    fontSize: '14px',
+    fontWeight: 500,
+    outline: 'none',
+    boxSizing: 'border-box'
+  };
+
+  const labelStyle = {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: 'var(--text-secondary, #334155)',
+    display: 'block',
+    marginBottom: '6px'
+  };
+
+  const optionStyle = {
+    color: '#0F172A',
+    background: '#FFFFFF'
+  };
+
   return (
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: 'rgba(15, 23, 42, 0.75)',
+      background: 'rgba(15, 23, 42, 0.65)',
       backdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
@@ -74,53 +100,64 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
         width: '100%',
         maxWidth: '540px',
         padding: '28px',
-        borderRadius: 'var(--radius-xl, 16px)',
-        background: 'var(--surface, #1E293B)',
-        border: '1px solid var(--border, rgba(255,255,255,0.12))',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+        borderRadius: '16px',
+        background: 'var(--surface, #FFFFFF)',
+        border: '1px solid var(--border, #E2E8F0)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
       }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: 'rgba(99, 102, 241, 0.15)',
-              color: 'var(--brand-600, #6366F1)',
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: 'rgba(99, 102, 241, 0.12)',
+              color: '#6366F1',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <CheckSquare size={20} />
+              <CheckSquare size={22} />
             </div>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary, #F8FAFC)' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary, #0F172A)' }}>
                 Add Task
               </h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary, #94A3B8)', margin: 0 }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary, #64748B)', margin: '2px 0 0 0' }}>
                 Quickly create a task without leaving My Work
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary, #94A3B8)' }}
+            style={{
+              background: 'rgba(0,0,0,0.05)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'var(--text-tertiary, #64748B)'
+            }}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Error Banner */}
         {errorMsg && (
           <div style={{
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 'var(--radius-md, 8px)',
+            background: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            borderRadius: '10px',
             padding: '10px 14px',
             marginBottom: '16px',
             fontSize: '13px',
-            color: '#EF4444',
+            color: '#DC2626',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
@@ -136,7 +173,7 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              background: 'rgba(16, 185, 129, 0.15)',
+              background: '#ECFDF5',
               color: '#10B981',
               display: 'flex',
               alignItems: 'center',
@@ -145,10 +182,10 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
             }}>
               <CheckCircle2 size={32} />
             </div>
-            <h4 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary, #F8FAFC)', margin: '0 0 6px 0' }}>
+            <h4 style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>
               Task Created
             </h4>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary, #94A3B8)', margin: '0 0 24px 0' }}>
+            <p style={{ fontSize: '14px', color: '#64748B', margin: '0 0 24px 0' }}>
               "{createdTask.title}" has been added to My Work.
             </p>
 
@@ -167,7 +204,7 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
                     onClose();
                   }}
                   className="btn btn-primary"
-                  style={{ padding: '10px 20px', background: 'var(--brand-600, #6366F1)' }}
+                  style={{ padding: '10px 20px', background: '#6366F1' }}
                 >
                   Open Task
                 </button>
@@ -178,71 +215,41 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Task Title */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Task Title *
-              </label>
+              <label style={labelStyle}>Task Title *</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Enter task title..."
                 required
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
-                }}
+                style={fieldStyle}
               />
             </div>
 
             {/* Description */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Description
-              </label>
+              <label style={labelStyle}>Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 placeholder="Task description & deliverables..."
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
-                }}
+                style={fieldStyle}
               />
             </div>
 
             {/* Project Dropdown */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Project *
-              </label>
+              <label style={labelStyle}>Project *</label>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 required
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px'
-                }}
+                style={fieldStyle}
               >
-                <option value="" disabled>Select Project...</option>
+                <option value="" disabled style={optionStyle}>Select Project...</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
+                  <option key={p.id} value={p.id} style={optionStyle}>
                     {p.name}
                   </option>
                 ))}
@@ -252,79 +259,51 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
             {/* Priority & Due Date Row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                  Priority
-                </label>
+                <label style={labelStyle}>Priority</label>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
-                    border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                    background: 'var(--surface-dark, #0F172A)',
-                    color: 'var(--text-primary, #F8FAFC)',
-                    fontSize: '14px'
-                  }}
+                  style={fieldStyle}
                 >
-                  <option value="low">Low</option>
-                  <option value="normal">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="low" style={optionStyle}>Low</option>
+                  <option value="normal" style={optionStyle}>Medium</option>
+                  <option value="high" style={optionStyle}>High</option>
+                  <option value="urgent" style={optionStyle}>Urgent</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                  Due Date
-                </label>
+                <label style={labelStyle}>Due Date</label>
                 <input
                   type="date"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
-                    border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                    background: 'var(--surface-dark, #0F172A)',
-                    color: 'var(--text-primary, #F8FAFC)',
-                    fontSize: '14px'
-                  }}
+                  style={fieldStyle}
                 />
               </div>
             </div>
 
             {/* Assigned To */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #94A3B8)', display: 'block', marginBottom: '6px' }}>
-                Assigned To
-              </label>
+              <label style={labelStyle}>Assigned To</label>
               <select
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
                 disabled={isDev}
                 style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                  background: 'var(--surface-dark, #0F172A)',
-                  color: 'var(--text-primary, #F8FAFC)',
-                  fontSize: '14px',
+                  ...fieldStyle,
                   opacity: isDev ? 0.7 : 1
                 }}
               >
                 {isDev ? (
-                  <option value={user?.id}>
+                  <option value={user?.id} style={optionStyle}>
                     {user?.first_name} {user?.last_name} (Self)
                   </option>
                 ) : (
                   users
                     .filter((u) => !['CEO', 'CTO'].includes(u.role))
                     .map((u) => (
-                      <option key={u.id} value={u.id}>
+                      <option key={u.id} value={u.id} style={optionStyle}>
                         {u.first_name} {u.last_name} ({u.role})
                       </option>
                     ))
@@ -339,6 +318,7 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
                 onClick={onClose}
                 className="btn btn-secondary"
                 disabled={submitting}
+                style={{ padding: '10px 20px', borderRadius: '10px' }}
               >
                 Cancel
               </button>
@@ -346,7 +326,7 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
                 type="submit"
                 className="btn btn-primary"
                 disabled={submitting}
-                style={{ background: 'var(--brand-600, #6366F1)' }}
+                style={{ padding: '10px 24px', background: '#6366F1', borderRadius: '10px', fontWeight: 600 }}
               >
                 {submitting ? 'Creating...' : 'Create Task'}
               </button>
