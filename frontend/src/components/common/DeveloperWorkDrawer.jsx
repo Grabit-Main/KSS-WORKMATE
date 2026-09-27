@@ -97,28 +97,40 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
       }
 
       // 2. Blockers (combine user DB, general DB, and all localStorage keys)
+      const isDemoBlocker = (item) => {
+        const d = String(item?.description || item?.cleanDesc || '').toLowerCase();
+        return d.includes('i need this') || d.includes('i am facing an issue') || d.includes('satya ranjan das');
+      };
+
       const dbDevBlockers = (Array.isArray(allBlockersRes) ? allBlockersRes : []).filter((b) => {
         const bUserId = String(b.user_id || '').toLowerCase();
         const targetId = String(queryUuid || developer?.id || '').toLowerCase();
         return bUserId === targetId || bUserId === String(developer?.user_id || '').toLowerCase();
-      });
+      }).filter(b => !isDemoBlocker(b));
 
       let localBlockers = [];
       try {
-        for (let i = 0; i < localStorage.length; i++) {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
           const k = localStorage.key(i);
           if (k && k.startsWith('mywork_blockers')) {
             const val = localStorage.getItem(k);
             if (val) {
               const parsed = JSON.parse(val);
-              if (Array.isArray(parsed)) localBlockers.push(...parsed);
+              if (Array.isArray(parsed)) {
+                const cleaned = parsed.filter(b => !isDemoBlocker(b));
+                if (cleaned.length !== parsed.length) {
+                  if (cleaned.length === 0) localStorage.removeItem(k);
+                  else localStorage.setItem(k, JSON.stringify(cleaned));
+                }
+                localBlockers.push(...cleaned);
+              }
             }
           }
         }
       } catch (e) {}
 
       const rawBlockers = [
-        ...(Array.isArray(blockersRes) ? blockersRes : []),
+        ...(Array.isArray(blockersRes) ? blockersRes : []).filter(b => !isDemoBlocker(b)),
         ...dbDevBlockers,
         ...localBlockers
       ];
@@ -127,7 +139,7 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
       const seenBlockerKeys = new Set();
       for (const item of rawBlockers) {
         const key = item.id || item.description;
-        if (!seenBlockerKeys.has(key)) {
+        if (!seenBlockerKeys.has(key) && !isDemoBlocker(item)) {
           seenBlockerKeys.add(key);
           mergedBlockers.push(item);
         }
