@@ -39,9 +39,22 @@ async def update_task(
     if not task:
         raise HTTPException(404, "Task not found")
 
+    # Read-Only rule: PM, CTO, and CEO cannot modify developer work records
+    if user.role in ("CEO", "CTO", "PM"):
+        raise HTTPException(403, "PM, CTO, and CEO roles have read-only access to work records.")
+
     is_assigner = str(task.assigned_by) == str(user.id)
     is_assignee = str(task.assigned_to) == str(user.id)
-    if not (is_assigner or is_assignee or user.role in ("CEO", "CTO", "PM", "TL")):
+    is_team_lead = False
+
+    if user.role == "TL" and task.team_id:
+        is_team_lead = db.query(TeamMembership).filter(
+            TeamMembership.team_id == task.team_id,
+            TeamMembership.user_id == user.id,
+            (TeamMembership.is_lead == True) | (user.role == "TL")
+        ).first() is not None
+
+    if not (is_assigner or is_assignee or is_team_lead):
         raise HTTPException(403, "Not authorized to update this task")
 
     if req.title is not None:
@@ -505,8 +518,21 @@ async def delete_task(
     if not task:
         raise HTTPException(404, "Task not found")
 
-    if str(task.assigned_by) != str(user.id):
-        raise HTTPException(403, "Only the person who assigned the task can delete it")
+    if user.role in ("CEO", "CTO", "PM"):
+        raise HTTPException(403, "PM, CTO, and CEO roles have read-only access to work records.")
+
+    is_assigner = str(task.assigned_by) == str(user.id)
+    is_team_lead = False
+
+    if user.role == "TL" and task.team_id:
+        is_team_lead = db.query(TeamMembership).filter(
+            TeamMembership.team_id == task.team_id,
+            TeamMembership.user_id == user.id,
+            (TeamMembership.is_lead == True) | (user.role == "TL")
+        ).first() is not None
+
+    if not (is_assigner or is_team_lead):
+        raise HTTPException(403, "Only the task assigner or authorized Team Lead can delete this task")
 
     team_id = task.team_id
     project_id = task.project_id
