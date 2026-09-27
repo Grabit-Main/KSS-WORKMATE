@@ -107,10 +107,21 @@ export default function MyWorkPage() {
   const [quickAddDesc, setQuickAddDesc] = useState('');
 
   // Local Storage Items: Focus Sessions & Blockers & Personal Tasks
+  const isDemoBlocker = (item) => {
+    const d = String(item?.description || item?.cleanDesc || '').toLowerCase();
+    return d.includes('i need this') || d.includes('i am facing an issue') || d.includes('satya ranjan das');
+  };
+
   const [blockersList, setBlockersList] = useState(() => {
     try {
       const saved = localStorage.getItem(`mywork_blockers_${user?.id}`);
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(b => !isDemoBlocker(b));
+        }
+      }
+      return [];
     } catch { return []; }
   });
 
@@ -182,16 +193,26 @@ export default function MyWorkPage() {
       let localBlockers = [];
       try {
         const saved = localStorage.getItem(`mywork_blockers_${user?.id}`);
-        if (saved) localBlockers = JSON.parse(saved);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.filter(b => !isDemoBlocker(b));
+            if (cleaned.length !== parsed.length) {
+              if (cleaned.length === 0) localStorage.removeItem(`mywork_blockers_${user?.id}`);
+              else localStorage.setItem(`mywork_blockers_${user?.id}`, JSON.stringify(cleaned));
+            }
+            localBlockers = cleaned;
+          }
+        }
       } catch (e) {}
 
-      const formattedBackend = formatBlockersForDisplay(Array.isArray(blockersRes) ? blockersRes : []);
+      const formattedBackend = formatBlockersForDisplay(Array.isArray(blockersRes) ? blockersRes : []).filter(b => !isDemoBlocker(b));
       const combined = [...localBlockers, ...formattedBackend];
       const uniqueBlockers = [];
       const seen = new Set();
       for (const item of combined) {
         const key = item.id || item.description;
-        if (!seen.has(key)) {
+        if (!seen.has(key) && !isDemoBlocker(item)) {
           seen.add(key);
           uniqueBlockers.push(item);
         }
