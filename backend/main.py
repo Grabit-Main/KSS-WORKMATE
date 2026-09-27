@@ -37,7 +37,7 @@ try:
     from app.config import settings
     from app.routers import (
         auth, users, projects, teams, tasks,
-        chat, upload, analytics, reviews, notifications, history, kpi
+        chat, upload, analytics, reviews, notifications, history, kpi, mywork
     )
     from app.websocket.router import router as websocket_router
 
@@ -53,6 +53,7 @@ try:
     app.include_router(history.router)
     app.include_router(notifications.router)
     app.include_router(kpi.router)
+    app.include_router(mywork.router)
     app.include_router(websocket_router)
 except Exception as e:
     init_error = traceback.format_exc()

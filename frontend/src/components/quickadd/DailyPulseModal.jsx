@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, FileText, CheckCircle2, AlertCircle, Smile, Meh, Frown, AlertOctagon } from 'lucide-react';
+import { submitDailyPulse } from '../../api/mywork';
 
 export default function DailyPulseModal({ isOpen, onClose, user, users = [], onSuccess }) {
   const todayStr = new Date().toISOString().split('T')[0];
@@ -39,6 +40,12 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
     setErrorMsg('');
 
     try {
+      const summaryText = [
+        currentlyWorking && `Working on: ${currentlyWorking.trim()}`,
+        completedToday && `Completed: ${completedToday.trim()}`,
+        nextFocus && `Next focus: ${nextFocus.trim()}`
+      ].filter(Boolean).join('\n');
+
       const pulseData = {
         userId: user?.id,
         userName: `${user?.first_name} ${user?.last_name}`,
@@ -51,6 +58,12 @@ export default function DailyPulseModal({ isOpen, onClose, user, users = [], onS
         nextFocus: nextFocus.trim(),
         needHelpFrom
       };
+
+      await submitDailyPulse({
+        mood: overallStatus,
+        summary: summaryText || 'Submitted daily pulse',
+        blockers: blockerConcern.trim() || null
+      });
 
       localStorage.setItem(storageKey, JSON.stringify(pulseData));
       setSubmittedPulse(pulseData);

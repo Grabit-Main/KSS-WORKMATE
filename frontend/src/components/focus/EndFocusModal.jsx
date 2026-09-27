@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, TrendingUp, AlertCircle } from 'lucide-react';
 import { updateTask } from '../../api/tasks';
+import { saveFocusSession } from '../../api/mywork';
 
 export default function EndFocusModal({ isOpen, onClose, session, onContinueFocusing, onSaveAndEnd }) {
   if (!isOpen || !session) return null;
@@ -34,6 +35,13 @@ export default function EndFocusModal({ isOpen, onClose, session, onContinueFocu
           console.warn('Task progress update warning:', err);
         }
       }
+
+      await saveFocusSession({
+        task_id: session.taskId && session.taskId !== 'general' ? session.taskId : null,
+        duration_mins: session.durationMins || 25,
+        active_duration_secs: session.activeDurationSecs || 0,
+        status: 'completed'
+      });
 
       onSaveAndEnd({
         accomplishment: accomplishment.trim(),
