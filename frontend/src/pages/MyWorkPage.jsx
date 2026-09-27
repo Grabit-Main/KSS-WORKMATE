@@ -9,9 +9,10 @@ import {
   CheckCircle2, Clock, AlertTriangle, PlayCircle, Plus, Calendar, Filter, Sparkles,
   User, FileText, ArrowUpRight, CheckSquare, MessageSquare, AlertCircle, ShieldAlert,
   Flame, Pause, StopCircle, RefreshCw, X, ArrowUpDown, ChevronRight, UserCheck, Layers,
-  ListOrdered, Lock, Send, Target, Award, Eye
+  ListOrdered, Lock, Send, Target, Award, Eye, Users
 } from 'lucide-react';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
+import { getDailyPulses, getBlockers, getHelpRequests, getFocusSessions } from '../api/mywork';
 
 import QuickAddPopover from '../components/quickadd/QuickAddPopover';
 import AddTaskModal from '../components/quickadd/AddTaskModal';
@@ -40,6 +41,7 @@ export default function MyWorkPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('today'); // 'today', 'upcoming', 'overdue', 'completed'
   const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedDevFilter, setSelectedDevFilter] = useState('all'); // 'all', 'mine', or user.id
 
   // Quick Add Popover & 5 Modals State
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -182,10 +184,23 @@ export default function MyWorkPage() {
   }, [focusSession?.active, focusSession?.paused, user?.id]);
 
   // Derived Work Lists
-  const myAssignedTasks = tasks.filter(t => 
-    String(t.assigned_to) === String(user?.id) || 
-    t.assignee?.id === user?.id
-  );
+  const myAssignedTasks = tasks.filter(t => {
+    if (!isTL && !isExecutive && !isPM) {
+      return String(t.assigned_to) === String(user?.id) || t.assignee?.id === user?.id;
+    }
+    if (selectedDevFilter === 'mine') {
+      return String(t.assigned_to) === String(user?.id) || t.assignee?.id === user?.id;
+    }
+    if (selectedDevFilter === 'all') {
+      return true;
+    }
+    const devIdStr = String(selectedDevFilter).toLowerCase();
+    return (
+      String(t.assigned_to || '').toLowerCase() === devIdStr ||
+      String(t.assigned_by || '').toLowerCase() === devIdStr ||
+      String(t.assignee?.id || '').toLowerCase() === devIdStr
+    );
+  });
 
   const allWorkItems = [...myAssignedTasks, ...personalTasks];
 
@@ -487,6 +502,117 @@ export default function MyWorkPage() {
           </button>
         </div>
       </div>
+
+      {/* SQUAD / DEVELOPER WORK SCOPE BAR (For Team Leads & Leadership) */}
+      {(isTL || isExecutive || isPM) && (
+        <div style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: '14px 20px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '14px',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'var(--brand-100)',
+              color: 'var(--brand-600)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Users size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                {isTL ? 'Team Lead Squad Work Scope' : 'Developer Work Visibility'}
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                {selectedDevFilter === 'all'
+                  ? 'Showing tasks & work data for all team developers'
+                  : selectedDevFilter === 'mine'
+                    ? 'Showing your own personal work items'
+                    : `Filtered by developer: ${users.find(u => String(u.id) === String(selectedDevFilter))?.first_name || 'Selected Developer'}`}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedDevFilter('all')}
+              style={{
+                background: selectedDevFilter === 'all' ? 'var(--brand-600)' : 'var(--subtle)',
+                color: selectedDevFilter === 'all' ? '#FFFFFF' : 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: '20px',
+                padding: '6px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              👥 All Squad Members ({tasks.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedDevFilter('mine')}
+              style={{
+                background: selectedDevFilter === 'mine' ? 'var(--brand-600)' : 'var(--subtle)',
+                color: selectedDevFilter === 'mine' ? '#FFFFFF' : 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: '20px',
+                padding: '6px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              👤 My Work Only
+            </button>
+
+            <select
+              value={['all', 'mine'].includes(selectedDevFilter) ? '' : selectedDevFilter}
+              onChange={(e) => setSelectedDevFilter(e.target.value || 'all')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '20px',
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--text-primary)',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="">-- Select Specific Developer --</option>
+              {users.filter(u => u.role !== 'CEO' && u.role !== 'CTO' && u.role !== 'PM').map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email} ({u.role})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* ACTIVE FOCUS BANNER */}
       {focusSession?.active && (

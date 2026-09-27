@@ -23,22 +23,28 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
   const [newProgressVal, setNewProgressVal] = useState(50);
 
   const todayStr = new Date().toISOString().split('T')[0];
+  const targetDevId = developer?.id || developer?.user_id || developer?._id;
 
   // Load Developer Data from Backend DB
   const loadDevData = useCallback(async () => {
-    if (!developer?.id) return;
+    if (!targetDevId) return;
     setLoading(true);
     try {
       const [allTasks, pulseRes, blockersRes, helpRes, focusRes] = await Promise.all([
         getTasks().catch(() => []),
-        getDailyPulses(developer.id).catch(() => []),
-        getBlockers(developer.id).catch(() => []),
-        getHelpRequests(developer.id).catch(() => []),
-        getFocusSessions(developer.id).catch(() => [])
+        getDailyPulses(targetDevId).catch(() => []),
+        getBlockers(targetDevId).catch(() => []),
+        getHelpRequests(targetDevId).catch(() => []),
+        getFocusSessions(targetDevId).catch(() => [])
       ]);
 
       if (Array.isArray(allTasks)) {
-        const filtered = allTasks.filter((t) => String(t.assigned_to) === String(developer.id) || String(t.assigned_by) === String(developer.id));
+        const devIdStr = String(targetDevId).toLowerCase();
+        const filtered = allTasks.filter((t) => 
+          String(t.assigned_to || '').toLowerCase() === devIdStr || 
+          String(t.assigned_by || '').toLowerCase() === devIdStr ||
+          String(t.assignee?.id || '').toLowerCase() === devIdStr
+        );
         setDeveloperTasks(filtered);
       }
       if (Array.isArray(pulseRes) && pulseRes.length > 0) {
@@ -58,13 +64,13 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
     } finally {
       setLoading(false);
     }
-  }, [developer?.id]);
+  }, [targetDevId]);
 
   useEffect(() => {
-    if (isOpen && developer?.id) {
+    if (isOpen && targetDevId) {
       loadDevData();
     }
-  }, [isOpen, developer?.id, loadDevData]);
+  }, [isOpen, targetDevId, loadDevData]);
 
   if (!isOpen || !developer) return null;
 
