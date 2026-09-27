@@ -108,8 +108,16 @@ export default function MyWorkPage() {
 
   // Local Storage Items: Focus Sessions & Blockers & Personal Tasks
   const isDemoBlocker = (item) => {
-    const d = String(item?.description || item?.cleanDesc || '').toLowerCase();
-    return d.includes('i need this') || d.includes('i am facing an issue') || d.includes('satya ranjan das');
+    if (!item) return false;
+    const str = JSON.stringify(item).toLowerCase();
+    return (
+      str.includes('i need this') ||
+      str.includes('i am facing an issue') ||
+      str.includes('satya ranjan das') ||
+      str.includes('requirement blocker') ||
+      str.includes('dependency blocker') ||
+      (str.includes('blocker') && str.includes('petshop'))
+    );
   };
 
   const [blockersList, setBlockersList] = useState(() => {
