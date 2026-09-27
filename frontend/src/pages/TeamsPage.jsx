@@ -10,6 +10,8 @@ import {
   UserPlus, Calendar, ChevronRight, Briefcase, Trash2
 } from 'lucide-react';
 
+import DeveloperWorkDrawer from '../components/common/DeveloperWorkDrawer';
+
 const TeamsPage = () => {
   const [teams, setTeams] = useState(() => {
     const cached = localStorage.getItem('cache_teams');
@@ -18,6 +20,7 @@ const TeamsPage = () => {
   const [projects, setProjects] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(() => !localStorage.getItem('cache_teams'));
+  const [selectedDrawerDev, setSelectedDrawerDev] = useState(null);
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -506,16 +509,34 @@ const TeamsPage = () => {
                           </p>
                         </div>
                       </div>
-                      <span style={{
-                        fontSize: '10px',
-                        padding: '1px 6px',
-                        borderRadius: 'var(--radius-full)',
-                        background: 'var(--brand-600)',
-                        color: '#fff',
-                        fontWeight: 600
-                      }}>
-                        TL
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '1px 6px',
+                          borderRadius: 'var(--radius-full)',
+                          background: 'var(--brand-600)',
+                          color: '#fff',
+                          fontWeight: 600
+                        }}>
+                          TL
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDrawerDev(leadMembership.user)}
+                          style={{
+                            background: 'var(--brand-50)',
+                            border: '1px solid var(--brand-200)',
+                            color: 'var(--brand-700)',
+                            borderRadius: 'var(--radius-xs)',
+                            padding: '2px 6px',
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          View Work
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
@@ -579,16 +600,34 @@ const TeamsPage = () => {
                               ({m.user?.role || 'TM'})
                             </span>
                           </div>
-                          {user.role === 'PM' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <button
                               type="button"
-                              onClick={() => handleRemoveMember(team.id, m.user_id)}
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0 }}
-                              title="Remove member"
+                              onClick={() => setSelectedDrawerDev(m.user)}
+                              style={{
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--brand-600)',
+                                borderRadius: 'var(--radius-xs)',
+                                padding: '2px 6px',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
                             >
-                              <X size={12} />
+                              View Work
                             </button>
-                          )}
+                            {user.role === 'PM' && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMember(team.id, m.user_id)}
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0 }}
+                                title="Remove member"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -957,6 +996,15 @@ const TeamsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Developer Work Drawer */}
+      <DeveloperWorkDrawer
+        isOpen={!!selectedDrawerDev}
+        onClose={() => setSelectedDrawerDev(null)}
+        developer={selectedDrawerDev}
+        role={user?.role}
+        onRefresh={loadData}
+      />
     </div>
   );
 };

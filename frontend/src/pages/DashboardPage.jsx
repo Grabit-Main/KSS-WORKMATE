@@ -7,11 +7,13 @@ import { TrendingUp, Users, CheckCircle2, Clock, AlertCircle, CheckSquare, BarCh
 import { PieChart } from '../components/analytics/PieChart';
 import { BarChart } from '../components/analytics/BarChart';
 import { TrendLineChart } from '../components/analytics/TrendLineChart';
+import DeveloperWorkDrawer from '../components/common/DeveloperWorkDrawer';
 
 const DashboardPage = () => {
   const { user } = useAuth();
   const [period, setPeriod] = useState('daily');
   const [userTasksList, setUserTasksList] = useState([]);
+  const [selectedDrawerDev, setSelectedDrawerDev] = useState(null);
   const [data, setData] = useState(() => {
     const cached = localStorage.getItem(`cache_dashboard_${period}`);
     return cached ? JSON.parse(cached) : null;
@@ -576,6 +578,7 @@ const DashboardPage = () => {
                   <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>In Progress</th>
                   <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>Blocked</th>
                   <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>Success Rate</th>
+                  <th style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -617,11 +620,21 @@ const DashboardPage = () => {
                         </span>
                       </div>
                     </td>
+                    <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDrawerDev({ id: m.user_id, first_name: m.user_name, role: m.role })}
+                        className="btn btn-secondary"
+                        style={{ fontSize: '11px', padding: '3px 9px' }}
+                      >
+                        View Work
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {members.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '14px' }}>
                       No team member activity recorded for this period.
                     </td>
                   </tr>
@@ -711,6 +724,15 @@ const DashboardPage = () => {
           </div>
         </div>
       )}
+
+      {/* Developer Work Drawer */}
+      <DeveloperWorkDrawer
+        isOpen={!!selectedDrawerDev}
+        onClose={() => setSelectedDrawerDev(null)}
+        developer={selectedDrawerDev}
+        role={user?.role}
+        onRefresh={loadData}
+      />
     </div>
   );
 };
