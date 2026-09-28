@@ -2,22 +2,34 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, ArrowLeft, BookOpen, FolderKanban, FileText, 
   Layers, Pin, Sparkles, Grid, List as ListIcon, Clock, 
-  ArrowRight, Shield, CheckCircle2, ChevronRight, X, AlertCircle
+  ArrowRight, Shield, CheckCircle2, ChevronRight, X, AlertCircle, Plus
 } from 'lucide-react';
 import { DocumentationSidebar } from './DocumentationSidebar';
 import { ProjectDocCard } from './ProjectDocCard';
 import { DocCard } from './DocCard';
 import { DocReader } from './DocReader';
+import { DocEditorModal } from './DocEditorModal';
+import { useAuth } from '../../context/AuthContext';
 import { 
   getDocumentationSummary, 
-  getDocumentations 
+  getDocumentations,
+  createDocumentation,
+  updateDocumentation,
+  deleteDocumentation
 } from '../../api/documentation';
 
 export const DocumentationHub = ({ onBackToCollaboration }) => {
+  const { user } = useAuth();
+  const isTL = user?.role === 'TL';
+
   const [summary, setSummary] = useState(null);
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Modal State for TL
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState(null);
 
   // Filter & View States
   const [selectedView, setSelectedView] = useState('overview'); // 'overview', 'pinned', 'project', 'category'
@@ -110,6 +122,16 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
     return Object.entries(catMap).map(([category, count]) => ({ category, count }));
   }, [selectedProject, filteredDocs]);
 
+  // Available categories list
+  const allCategoriesList = useMemo(() => {
+    if (summary?.categories_list) return summary.categories_list;
+    return [
+      'Requirements', 'Design', 'Development', 'API', 'Database',
+      'Testing', 'Deployment', 'User Guide', 'Architecture', 'Security',
+      'Integration', 'Meeting Notes', 'Decision Records', 'Change Log'
+    ];
+  }, [summary]);
+
   // Handler functions
   const handleSelectOverview = () => {
     setSelectedView('overview');
@@ -145,6 +167,42 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
     setActiveDoc(docItem);
   };
 
+  // TL CRUD Handlers
+  const handleCreateNew = () => {
+    setEditingDoc(null);
+    setIsEditorOpen(true);
+  };
+
+  const handleEditDoc = (docItem) => {
+    setEditingDoc(docItem);
+    setIsEditorOpen(true);
+  };
+
+  const handleDeleteDoc = async (docItem) => {
+    if (!window.confirm(`Are you sure you want to delete "${docItem.title}"?`)) return;
+    try {
+      await deleteDocumentation(docItem.id);
+      if (activeDoc?.id === docItem.id) {
+        setActiveDoc(null);
+      }
+      fetchData();
+    } catch (err) {
+      alert(err?.response?.data?.detail || 'Failed to delete documentation.');
+    }
+  };
+
+  const handleSaveDoc = async (docData) => {
+    if (docData.id) {
+      const updated = await updateDocumentation(docData.id, docData);
+      if (activeDoc?.id === docData.id) {
+        setActiveDoc(updated);
+      }
+    } else {
+      await createDocumentation(docData);
+    }
+    fetchData();
+  };
+
   // If reader is active
   if (activeDoc) {
     const projectDocsList = docs.filter(d => d.project_id === activeDoc.project_id);
@@ -154,6 +212,9 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
         projectDocs={projectDocsList}
         onBack={() => setActiveDoc(null)}
         onSelectDoc={(d) => setActiveDoc(d)}
+        isTL={isTL}
+        onEdit={handleEditDoc}
+        onDelete={handleDeleteDoc}
       />
     );
   }
@@ -226,31 +287,58 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
           </div>
         </div>
 
-        {/* Global Hub Search Bar */}
-        <div style={{ position: 'relative', width: '320px' }}>
-          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search documentation..."
-            style={{
-              width: '100%',
-              padding: '9px 12px 9px 36px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)',
-              background: 'var(--surface-hover)',
-              fontSize: '13.5px',
-              color: 'var(--text-primary)',
-              outline: 'none'
-            }}
-          />
-          {searchQuery && (
+        {/* Right Search & TL Action */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Global Hub Search Bar */}
+          <div style={{ position: 'relative', width: '280px' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search documentation..."
+              style={{
+                width: '100%',
+                padding: '9px 12px 9px 36px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border)',
+                background: 'var(--surface-hover)',
+                fontSize: '13.5px',
+                color: 'var(--text-primary)',
+                outline: 'none'
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* ONLY TEAM LEAD GETS + New Documentation BUTTON */}
+          {isTL && (
             <button
-              onClick={() => setSearchQuery('')}
-              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+              onClick={handleCreateNew}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '9px 16px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--brand-600)',
+                color: '#FFF',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)',
+                whiteSpace: 'nowrap'
+              }}
             >
-              <X size={14} />
+              <Plus size={16} /> + New Documentation
             </button>
           )}
         </div>
@@ -344,6 +432,9 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                           doc={docItem}
                           viewMode="grid"
                           onClick={() => handleOpenDoc(docItem)}
+                          isTL={isTL}
+                          onEdit={handleEditDoc}
+                          onDelete={handleDeleteDoc}
                         />
                       ))}
                     </div>
@@ -553,6 +644,9 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                           doc={docItem}
                           viewMode={viewMode}
                           onClick={() => handleOpenDoc(docItem)}
+                          isTL={isTL}
+                          onEdit={handleEditDoc}
+                          onDelete={handleDeleteDoc}
                         />
                       ))}
                     </div>
@@ -590,6 +684,9 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                           doc={docItem}
                           viewMode="grid"
                           onClick={() => handleOpenDoc(docItem)}
+                          isTL={isTL}
+                          onEdit={handleEditDoc}
+                          onDelete={handleDeleteDoc}
                         />
                       ))}
                     </div>
@@ -600,6 +697,18 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
           )}
         </main>
       </div>
+
+      {/* Editor Modal for Team Lead */}
+      {isTL && (
+        <DocEditorModal
+          isOpen={isEditorOpen}
+          onClose={() => setIsEditorOpen(false)}
+          onSave={handleSaveDoc}
+          doc={editingDoc}
+          projects={summary?.projects || []}
+          categories={allCategoriesList}
+        />
+      )}
     </div>
   );
 };

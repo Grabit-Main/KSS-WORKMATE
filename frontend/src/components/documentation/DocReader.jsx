@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { 
   ArrowLeft, Pin, User, Clock, FileText, Share2, 
-  BookOpen, ChevronRight, Check, Sparkles, Tag, Edit3
+  BookOpen, ChevronRight, Check, Sparkles, Tag, Edit3, Pencil, Trash2
 } from 'lucide-react';
 import { DocMarkdownRenderer } from './DocMarkdownRenderer';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
-export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc }) => {
+export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = false, onEdit, onDelete }) => {
   const [toc, setToc] = useState([]);
   const [activeTocId, setActiveTocId] = useState('');
 
@@ -85,6 +85,48 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc }) => {
             <span style={{ fontSize: '12px', fontWeight: 600, background: '#EEF2FF', color: 'var(--brand-600)', padding: '4px 10px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Pin size={13} /> Pinned
             </span>
+          )}
+
+          {/* TL Management Buttons */}
+          {isTL && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px' }}>
+              <button
+                onClick={() => onEdit && onEdit(doc)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Pencil size={14} /> Edit
+              </button>
+              <button
+                onClick={() => onDelete && onDelete(doc)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  border: 'none',
+                  background: '#FEF2F2',
+                  color: '#EF4444',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
           )}
         </div>
       </div>
