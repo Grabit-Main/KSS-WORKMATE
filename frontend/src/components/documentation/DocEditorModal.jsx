@@ -1,6 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Save, FileText, Pin, AlertCircle, Upload, CheckCircle2, FileCheck, Trash2 } from 'lucide-react';
 import { uploadFile } from '../../api/upload';
+
+const STATIC_14_PROJECTS = [
+  'Finance Management System',
+  'College Management System',
+  'Hospital Management System',
+  'BBMP Municipal Management System',
+  'Grabit',
+  'Buyzo',
+  'PETSHOP',
+  'LIVO',
+  'Nagara',
+  'Property Management System',
+  'Logistics / Transportation',
+  'Procurement OS',
+  'FairTicket',
+  'Lundrix'
+];
 
 export const DocEditorModal = ({
   isOpen,
@@ -27,11 +44,28 @@ export const DocEditorModal = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // Combine prop projects with static 14 projects to guarantee all 14 projects exist in dropdown
+  const availableProjectOptions = useMemo(() => {
+    const projectMap = new Map();
+    (projects || []).forEach(p => {
+      if (p.name) {
+        projectMap.set(p.name.trim().toLowerCase(), { id: p.id || p.name, name: p.name });
+      }
+    });
+    STATIC_14_PROJECTS.forEach(name => {
+      const key = name.trim().toLowerCase();
+      if (!projectMap.has(key)) {
+        projectMap.set(key, { id: name, name });
+      }
+    });
+    return Array.from(projectMap.values());
+  }, [projects]);
+
   useEffect(() => {
     if (doc) {
       setTitle(doc.title || '');
       setDescription(doc.description || '');
-      setProjectId(doc.project_id || (projects[0]?.id || ''));
+      setProjectId(doc.project_id || doc.project_name || (availableProjectOptions[0]?.id || ''));
       const isCustom = !categories.includes(doc.category);
       if (isCustom && doc.category) {
         setCategory('Custom');
@@ -50,7 +84,7 @@ export const DocEditorModal = ({
     } else {
       setTitle('');
       setDescription('');
-      setProjectId(projects[0]?.id || '');
+      setProjectId(availableProjectOptions[0]?.id || '');
       setCategory('Requirements');
       setCustomCategory('');
       setContent('');
@@ -62,7 +96,7 @@ export const DocEditorModal = ({
       setIsPinned(false);
     }
     setError(null);
-  }, [doc, isOpen, projects, categories]);
+  }, [doc, isOpen, availableProjectOptions, categories]);
 
   if (!isOpen) return null;
 
@@ -388,8 +422,8 @@ export const DocEditorModal = ({
                 }}
               >
                 <option value="">General / Platform</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                {availableProjectOptions.map((p) => (
+                  <option key={p.id || p.name} value={p.id || p.name}>{p.name}</option>
                 ))}
               </select>
             </div>

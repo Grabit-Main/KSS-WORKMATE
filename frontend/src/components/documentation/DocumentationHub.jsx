@@ -17,6 +17,24 @@ import {
   updateDocumentation,
   deleteDocumentation
 } from '../../api/documentation';
+import { getProjects } from '../../api/projects';
+
+const STATIC_14_PROJECTS_FALLBACK = [
+  'Finance Management System',
+  'College Management System',
+  'Hospital Management System',
+  'BBMP Municipal Management System',
+  'Grabit',
+  'Buyzo',
+  'PETSHOP',
+  'LIVO',
+  'Nagara',
+  'Property Management System',
+  'Logistics / Transportation',
+  'Procurement OS',
+  'FairTicket',
+  'Lundrix'
+];
 
 export const DocumentationHub = ({ onBackToCollaboration }) => {
   const { user } = useAuth();
@@ -44,12 +62,38 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
     try {
       setLoading(true);
       setError(null);
-      const [sumRes, docsRes] = await Promise.all([
-        getDocumentationSummary(),
-        getDocumentations()
+      const [sumRes, docsRes, projectsRes] = await Promise.all([
+        getDocumentationSummary().catch(() => ({})),
+        getDocumentations().catch(() => []),
+        getProjects().catch(() => [])
       ]);
-      setSummary(sumRes);
-      setDocs(docsRes);
+
+      const projectMap = new Map();
+      // First add projects from getProjects()
+      (projectsRes || []).forEach(p => {
+        if (p.name) projectMap.set(p.name.trim().toLowerCase(), { id: p.id, name: p.name, description: p.aim });
+      });
+      // Next add projects from sumRes.projects
+      (sumRes?.projects || []).forEach(p => {
+        if (p.name) projectMap.set(p.name.trim().toLowerCase(), { id: p.id, name: p.name, description: p.description, document_count: p.document_count, categories: p.categories, updated_at: p.updated_at });
+      });
+      // Fallback add static 14 projects
+      STATIC_14_PROJECTS_FALLBACK.forEach(name => {
+        const key = name.trim().toLowerCase();
+        if (!projectMap.has(key)) {
+          projectMap.set(key, { id: name, name, description: 'Project workspace documentation and specs.', document_count: 0, categories: [] });
+        }
+      });
+
+      const mergedProjects = Array.from(projectMap.values());
+      const mergedSummary = {
+        ...(sumRes || {}),
+        total_projects: mergedProjects.length,
+        projects: mergedProjects
+      };
+
+      setSummary(mergedSummary);
+      setDocs(docsRes || []);
     } catch (err) {
       console.error('Failed to load documentation data:', err);
       setError('Failed to load documentation data. Please try again.');
