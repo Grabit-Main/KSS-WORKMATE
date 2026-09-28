@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base, engine
 
@@ -13,7 +13,10 @@ class Documentation(Base):
     description = Column(Text, nullable=True)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
     category = Column(String, nullable=False, default="General")
-    content = Column(Text, nullable=False)
+    content = Column(Text, nullable=True)
+    file_url = Column(String, nullable=True)
+    file_name = Column(String, nullable=True)
+    file_type = Column(String, nullable=True, default="pdf")
     author_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     updated_by = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

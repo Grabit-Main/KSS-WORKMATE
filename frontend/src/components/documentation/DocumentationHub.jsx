@@ -321,7 +321,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
             )}
           </div>
 
-          {/* ONLY TEAM LEAD GETS + New Documentation BUTTON */}
+          {/* ONLY TEAM LEAD GETS Upload PDF Documentation BUTTON */}
           {isTL && (
             <button
               onClick={handleCreateNew}
@@ -341,7 +341,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                 whiteSpace: 'nowrap'
               }}
             >
-              <Plus size={16} /> New Documentation
+              <Plus size={16} /> Upload PDF Documentation
             </button>
           )}
         </div>
@@ -419,29 +419,71 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                     </div>
                   </div>
 
-                  {/* PINNED DOCUMENTATION */}
-                  <div style={{ marginBottom: '32px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                      <Pin size={18} style={{ color: 'var(--brand-600)' }} />
-                      <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                        PINNED DOCUMENTATION
+                  {/* Empty State if No Real Documents Yet */}
+                  {docs.length === 0 && (
+                    <div style={{
+                      padding: '48px 24px',
+                      marginBottom: '32px',
+                      textAlign: 'center',
+                      background: 'var(--surface)',
+                      borderRadius: 'var(--radius-lg, 16px)',
+                      border: '1px dashed var(--brand-300, #A5B4FC)'
+                    }}>
+                      <BookOpen size={42} style={{ color: 'var(--brand-600)', marginBottom: '14px' }} />
+                      <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+                        No Project PDF Documentation Uploaded Yet
                       </h3>
+                      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 20px 0', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto' }}>
+                        Upload your real project PDF documents to build your workspace knowledge base.
+                      </p>
+                      {isTL && (
+                        <button
+                          onClick={handleCreateNew}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 20px',
+                            borderRadius: 'var(--radius-md)',
+                            background: 'var(--brand-600)',
+                            color: '#FFF',
+                            border: 'none',
+                            fontSize: '13.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Plus size={16} /> Upload PDF Documentation
+                        </button>
+                      )}
                     </div>
+                  )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                      {docs.filter(d => d.is_pinned).map(docItem => (
-                        <DocCard
-                          key={docItem.id}
-                          doc={docItem}
-                          viewMode="grid"
-                          onClick={() => handleOpenDoc(docItem)}
-                          isTL={isTL}
-                          onEdit={handleEditDoc}
-                          onDelete={handleDeleteDoc}
-                        />
-                      ))}
+                  {/* PINNED DOCUMENTATION */}
+                  {docs.filter(d => d.is_pinned).length > 0 && (
+                    <div style={{ marginBottom: '32px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                        <Pin size={18} style={{ color: 'var(--brand-600)' }} />
+                        <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                          PINNED DOCUMENTATION
+                        </h3>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                        {docs.filter(d => d.is_pinned).map(docItem => (
+                          <DocCard
+                            key={docItem.id}
+                            doc={docItem}
+                            viewMode="grid"
+                            onClick={() => handleOpenDoc(docItem)}
+                            isTL={isTL}
+                            onEdit={handleEditDoc}
+                            onDelete={handleDeleteDoc}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* PROJECT DOCUMENTATION */}
                   <div style={{ marginBottom: '32px' }}>
