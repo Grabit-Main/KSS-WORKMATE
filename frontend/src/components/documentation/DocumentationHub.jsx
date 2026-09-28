@@ -69,19 +69,31 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
       ]);
 
       const projectMap = new Map();
-      // First add projects from getProjects()
-      (projectsRes || []).forEach(p => {
-        if (p.name) projectMap.set(p.name.trim().toLowerCase(), { id: p.id, name: p.name, description: p.aim });
-      });
-      // Next add projects from sumRes.projects
-      (sumRes?.projects || []).forEach(p => {
-        if (p.name) projectMap.set(p.name.trim().toLowerCase(), { id: p.id, name: p.name, description: p.description, document_count: p.document_count, categories: p.categories, updated_at: p.updated_at });
-      });
-      // Fallback add static 14 projects
+      // Initialize with exact 14 projects
       STATIC_14_PROJECTS_FALLBACK.forEach(name => {
         const key = name.trim().toLowerCase();
-        if (!projectMap.has(key)) {
-          projectMap.set(key, { id: name, name, description: 'Project workspace documentation and specs.', document_count: 0, categories: [] });
+        projectMap.set(key, { id: name, name, description: 'Project workspace documentation and specs.', document_count: 0, categories: [] });
+      });
+
+      // Overlay database IDs and details from getProjects()
+      (projectsRes || []).forEach(p => {
+        if (p.name) {
+          const key = p.name.trim().toLowerCase();
+          const existing = projectMap.get(key);
+          if (existing) {
+            projectMap.set(key, { ...existing, id: p.id, description: p.aim || existing.description });
+          }
+        }
+      });
+
+      // Overlay summary stats
+      (sumRes?.projects || []).forEach(p => {
+        if (p.name) {
+          const key = p.name.trim().toLowerCase();
+          const existing = projectMap.get(key);
+          if (existing) {
+            projectMap.set(key, { ...existing, id: p.id || existing.id, document_count: p.document_count || 0, categories: p.categories || [], updated_at: p.updated_at });
+          }
         }
       });
 
