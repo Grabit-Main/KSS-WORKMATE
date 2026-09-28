@@ -88,21 +88,20 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
               href={doc.file_url}
               target="_blank"
               rel="noopener noreferrer"
-              download
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
                 padding: '6px 14px',
                 borderRadius: 'var(--radius-md)',
-                background: '#10B981',
+                background: '#4285F4',
                 color: '#FFF',
                 fontSize: '12.5px',
                 fontWeight: 600,
                 textDecoration: 'none'
               }}
             >
-              <Download size={14} /> Download PDF
+              <ExternalLink size={14} /> Open in Google Drive
             </a>
           )}
 
@@ -277,9 +276,9 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                     href={doc.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ fontSize: '12.5px', color: 'var(--brand-600)', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ fontSize: '12.5px', color: '#4285F4', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
-                    Open Fullscreen <ExternalLink size={14} />
+                    Open in Google Drive <ExternalLink size={14} />
                   </a>
                 </div>
 
