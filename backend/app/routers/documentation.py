@@ -14,54 +14,8 @@ from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/documentation", tags=["documentation"])
 
-# Standard 14 Projects to support
-DEFAULT_PROJECTS = [
-    {"name": "Finance Management System", "aim": "Financial tracking, budgeting, and enterprise accounting platform."},
-    {"name": "College Management System", "aim": "Academic management, student portal, and faculty administration system."},
-    {"name": "Hospital Management System", "aim": "Healthcare administration, patient records, and clinical management."},
-    {"name": "BBMP Municipal Management System", "aim": "Municipal corporation services, grievance tracking, and civic administration."},
-    {"name": "Grabit", "aim": "Quick commerce, instant delivery platform and catalog management."},
-    {"name": "Buyzo", "aim": "E-commerce marketplace, order fulfillment, and vendor ecosystem."},
-    {"name": "PETSHOP", "aim": "Pet care services, adoption portal, and supply chain system."},
-    {"name": "LIVO", "aim": "Daily Task Management Platform & day-wise execution engine."},
-    {"name": "Nagara", "aim": "City 360 civic engagement platform & urban infrastructure tracking."},
-    {"name": "Property Management System", "aim": "Real estate management, tenant portal, and property leasing OS."},
-    {"name": "Logistics / Transportation", "aim": "Fleet tracking, supply chain logistics, and shipment routing system."},
-    {"name": "Procurement OS", "aim": "Vendor management, RFP processing, PO issuance, and procurement workflow."},
-    {"name": "FairTicket", "aim": "Event ticketing engine, queue management, and seat reservation system."},
-    {"name": "Lundrix", "aim": "Enterprise resource planning, operations dashboard, and workflow engine."}
-]
-
-def ensure_all_default_projects_exist(db: Session, user: User):
-    """Ensure all 14 standard projects exist in the database."""
-    try:
-        existing_projects = db.query(Project).all()
-        existing_names = {p.name.strip().lower() for p in existing_projects}
-
-        created = False
-        for p_def in DEFAULT_PROJECTS:
-            name_lower = p_def["name"].strip().lower()
-            if name_lower not in existing_names:
-                new_p = Project(
-                    id=uuid.uuid4(),
-                    name=p_def["name"],
-                    aim=p_def["aim"],
-                    created_by=user.id,
-                    status="active"
-                )
-                db.add(new_p)
-                existing_names.add(name_lower)
-                created = True
-
-        if created:
-            db.commit()
-    except Exception as e:
-        db.rollback()
-        print("Error ensuring default projects exist:", e)
-
-
 def resolve_project_id(db: Session, project_input: Optional[str], user: User) -> Optional[UUID]:
-    """Helper to resolve UUID or Project Name to a valid Project UUID."""
+    """Helper to resolve UUID or Project Name to an existing Project UUID without modifying database projects."""
     if not project_input or project_input in ("", "null", "undefined", "General / Platform"):
         return None
 
@@ -74,7 +28,7 @@ def resolve_project_id(db: Session, project_input: Optional[str], user: User) ->
     except Exception:
         pass
 
-    # Match by exact or partial project name (case-insensitive)
+    # Match by exact or partial project name (case-insensitive) against existing database projects
     p = db.query(Project).filter(Project.name.ilike(project_input.strip())).first()
     if p:
         return p.id
@@ -83,26 +37,10 @@ def resolve_project_id(db: Session, project_input: Optional[str], user: User) ->
     if p:
         return p.id
 
-    # Create project if name not found in db
-    try:
-        new_p = Project(
-            id=uuid.uuid4(),
-            name=project_input.strip(),
-            aim="Project workspace documentation and specs.",
-            created_by=user.id,
-            status="active"
-        )
-        db.add(new_p)
-        db.commit()
-        db.refresh(new_p)
-        return new_p.id
-    except Exception as e:
-        db.rollback()
-        print("Error creating project on the fly:", e)
-        return None
+    return None
 
 
-# Demo document titles to exclude if any remained from initial seeding
+# Demo document titles to exclude if any remained from initial testing
 DEMO_TITLE_PREFIXES = [
     "Authentication API",
     "Daily Task Workflow Requirements",
@@ -131,8 +69,6 @@ def list_documentations(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    ensure_all_default_projects_exist(db, user)
-
     q = db.query(Documentation)
 
     if project_id:
@@ -158,7 +94,7 @@ def list_documentations(
     all_docs = q.order_by(Documentation.is_pinned.desc(), Documentation.updated_at.desc()).all()
     real_docs = [d for d in all_docs if is_real_user_document(d)]
 
-    # Enrich response with project_name
+    # Enrich response with original project_name from existing projects in database
     projects = {p.id: p.name for p in db.query(Project).all()}
     res = []
     for d in real_docs:
@@ -174,13 +110,11 @@ def get_documentation_summary(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    ensure_all_default_projects_exist(db, user)
-
     projects = db.query(Project).all()
     all_docs = db.query(Documentation).all()
     docs = [d for d in all_docs if is_real_user_document(d)]
 
-    # Map projects to document counts, categories, last updated
+    # Map existing database projects with their exact original names to document counts and categories
     project_stats = []
     for p in projects:
         p_docs = [d for d in docs if d.project_id == p.id]

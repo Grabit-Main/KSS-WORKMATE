@@ -19,23 +19,6 @@ import {
 } from '../../api/documentation';
 import { getProjects } from '../../api/projects';
 
-const STATIC_14_PROJECTS_FALLBACK = [
-  'Finance Management System',
-  'College Management System',
-  'Hospital Management System',
-  'BBMP Municipal Management System',
-  'Grabit',
-  'Buyzo',
-  'PETSHOP',
-  'LIVO',
-  'Nagara',
-  'Property Management System',
-  'Logistics / Transportation',
-  'Procurement OS',
-  'FairTicket',
-  'Lundrix'
-];
-
 export const DocumentationHub = ({ onBackToCollaboration }) => {
   const { user } = useAuth();
   const isTL = ['TL', 'PM', 'CEO', 'CTO', 'ADMIN'].includes((user?.role || '').toUpperCase());
@@ -57,7 +40,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [activeDoc, setActiveDoc] = useState(null); // document object if opened in reader
 
-  // Load summary & initial documents
+  // Load summary & initial documents directly from database records
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -69,31 +52,34 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
       ]);
 
       const projectMap = new Map();
-      // Initialize with exact 14 projects
-      STATIC_14_PROJECTS_FALLBACK.forEach(name => {
-        const key = name.trim().toLowerCase();
-        projectMap.set(key, { id: name, name, description: 'Project workspace documentation and specs.', document_count: 0, categories: [] });
-      });
 
-      // Overlay database IDs and details from getProjects()
-      (projectsRes || []).forEach(p => {
-        if (p.name) {
-          const key = p.name.trim().toLowerCase();
-          const existing = projectMap.get(key);
-          if (existing) {
-            projectMap.set(key, { ...existing, id: p.id, description: p.aim || existing.description });
-          }
+      // Load all database projects from getDocumentationSummary() with original names & stats
+      (sumRes?.projects || []).forEach(p => {
+        if (p && p.id && p.name) {
+          projectMap.set(p.id, {
+            id: p.id,
+            name: p.name,
+            description: p.description || 'Project workspace documentation and specs.',
+            document_count: p.document_count || 0,
+            categories: p.categories || [],
+            updated_at: p.updated_at,
+            status: p.status
+          });
         }
       });
 
-      // Overlay summary stats
-      (sumRes?.projects || []).forEach(p => {
-        if (p.name) {
-          const key = p.name.trim().toLowerCase();
-          const existing = projectMap.get(key);
-          if (existing) {
-            projectMap.set(key, { ...existing, id: p.id || existing.id, document_count: p.document_count || 0, categories: p.categories || [], updated_at: p.updated_at });
-          }
+      // Include any additional projects returned from getProjects() preserving original names
+      (projectsRes || []).forEach(p => {
+        if (p && p.id && p.name && !projectMap.has(p.id)) {
+          projectMap.set(p.id, {
+            id: p.id,
+            name: p.name,
+            description: p.aim || 'Project workspace documentation and specs.',
+            document_count: 0,
+            categories: [],
+            updated_at: p.created_at,
+            status: p.status
+          });
         }
       });
 
