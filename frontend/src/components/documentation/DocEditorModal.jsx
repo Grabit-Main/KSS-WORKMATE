@@ -146,8 +146,8 @@ export const DocEditorModal = ({
       onClose();
     } catch (err) {
       console.error('Save documentation error:', err);
-      const detail = err?.response?.data?.detail;
-      let errorMsg = 'Failed to save document. Please check permissions.';
+      const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message;
+      let errorMsg = 'Failed to save document. Please try again.';
       if (typeof detail === 'string') {
         errorMsg = detail;
       } else if (Array.isArray(detail)) {
