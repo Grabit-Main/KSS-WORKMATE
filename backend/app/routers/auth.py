@@ -12,6 +12,7 @@ from app.schemas.user import (
 from app.utils.security import verify_password, hash_password, create_access_token, create_refresh_token, decode_jwt
 from app.services.email_service import send_otp_email
 from app.dependencies import get_current_user
+from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
