@@ -28,7 +28,8 @@ api.interceptors.request.use((config) => {
     config.url?.includes('/auth/refresh') ||
     config.url?.includes('/auth/forgot-password') ||
     config.url?.includes('/auth/verify-otp') ||
-    config.url?.includes('/auth/reset-password');
+    config.url?.includes('/auth/reset-password') ||
+    config.url?.includes('/auth/google-client-id');
 
   if (!isPublicAuthUrl) {
     const token = localStorage.getItem('access_token');
