@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
 
-    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_ID: str = "271988357300-r0hbpq3r5gj5vccpb6tng0587q628dj2.apps.googleusercontent.com"
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_PROJECT_ID: str = ""
     GOOGLE_REFRESH_TOKEN: str = ""
