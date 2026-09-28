@@ -3,7 +3,7 @@ import api from '../api/axios';
 const STORAGE_TOKEN_KEY = 'workmate_gdrive_access_token';
 const STORAGE_EXPIRY_KEY = 'workmate_gdrive_token_expires_at';
 
-let cachedClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+let cachedClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '271988357300-r0hbpq3r5gj5vccpb6tng0587q628dj2.apps.googleusercontent.com';
 
 /**
  * Ensures Google Identity Services (GIS) client library is loaded
