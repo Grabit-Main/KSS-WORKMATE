@@ -36,19 +36,10 @@ export const ensureGisScript = () => {
 };
 
 /**
- * Retrieves client ID either from env, local storage override, or backend config
+ * Retrieves client ID either from backend config, env, or local storage
  */
 export const getGoogleClientId = async () => {
-  if (cachedClientId) return cachedClientId;
-
-  // Check local storage custom override
-  const customId = localStorage.getItem('workmate_gdrive_client_id');
-  if (customId) {
-    cachedClientId = customId;
-    return cachedClientId;
-  }
-
-  // Fetch from backend API
+  // Try fetching from backend API first (authoritative config)
   try {
     const res = await api.get('/auth/google-client-id');
     if (res.data?.client_id) {
@@ -59,7 +50,16 @@ export const getGoogleClientId = async () => {
     console.warn('[GDRIVE] Could not fetch Google Client ID from backend:', e);
   }
 
-  return cachedClientId || '';
+  // Check local storage custom override
+  const customId = localStorage.getItem('workmate_gdrive_client_id');
+  if (customId) {
+    cachedClientId = customId;
+    return cachedClientId;
+  }
+
+  if (cachedClientId) return cachedClientId;
+
+  return import.meta.env.VITE_GOOGLE_CLIENT_ID || '271988357300-r0hbpq3r5gj5vccpb6tng0587q628dj2.apps.googleusercontent.com';
 };
 
 export const setGoogleClientIdOverride = (clientId) => {
