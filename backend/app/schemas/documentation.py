@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
@@ -16,6 +16,12 @@ class DocumentationBase(BaseModel):
     tags: Optional[str] = None
     is_pinned: Optional[bool] = False
 
+    @field_validator('project_id', mode='before')
+    def parse_project_id(cls, v):
+        if v == "" or v == "null" or v == "undefined" or v is None:
+            return None
+        return v
+
 class DocumentationCreate(DocumentationBase):
     pass
 
@@ -31,6 +37,12 @@ class DocumentationUpdate(BaseModel):
     version: Optional[str] = None
     tags: Optional[str] = None
     is_pinned: Optional[bool] = None
+
+    @field_validator('project_id', mode='before')
+    def parse_project_id(cls, v):
+        if v == "" or v == "null" or v == "undefined" or v is None:
+            return None
+        return v
 
 class DocumentationResponse(DocumentationBase):
     id: UUID
