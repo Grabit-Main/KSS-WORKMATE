@@ -245,22 +245,25 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <button
             onClick={onBackToCollaboration}
+            title="Back to Collaboration"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border)',
               background: 'var(--surface)',
               color: 'var(--text-primary)',
-              fontSize: '13px',
-              fontWeight: 600,
               cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
+              flexShrink: 0
             }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
           >
-            <ArrowLeft size={16} /> Back to Collaboration
+            <ArrowLeft size={18} />
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -338,7 +341,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                 whiteSpace: 'nowrap'
               }}
             >
-              <Plus size={16} /> + New Documentation
+              <Plus size={16} /> New Documentation
             </button>
           )}
         </div>
