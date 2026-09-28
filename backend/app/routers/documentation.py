@@ -41,7 +41,6 @@ def ensure_all_default_projects_exist(db: Session, user: User):
         created = False
         for p_def in DEFAULT_PROJECTS:
             name_lower = p_def["name"].strip().lower()
-            # Check exact or partial match
             already_exists = any(name_lower in ex or ex in name_lower for ex in existing_names)
             if not already_exists:
                 new_p = Project(
@@ -59,6 +58,48 @@ def ensure_all_default_projects_exist(db: Session, user: User):
     except Exception as e:
         db.rollback()
         print("Error ensuring default projects exist:", e)
+
+
+def resolve_project_id(db: Session, project_input: Optional[str], user: User) -> Optional[UUID]:
+    """Helper to resolve UUID or Project Name to a valid Project UUID."""
+    if not project_input or project_input in ("", "null", "undefined", "General / Platform"):
+        return None
+
+    # Try UUID parse
+    try:
+        pid = UUID(project_input)
+        p = db.query(Project).filter(Project.id == pid).first()
+        if p:
+            return p.id
+    except Exception:
+        pass
+
+    # Match by exact or partial project name (case-insensitive)
+    p = db.query(Project).filter(Project.name.ilike(project_input.strip())).first()
+    if p:
+        return p.id
+
+    p = db.query(Project).filter(Project.name.ilike(f"%{project_input.strip()}%")).first()
+    if p:
+        return p.id
+
+    # Create project if name not found in db
+    try:
+        new_p = Project(
+            id=uuid.uuid4(),
+            name=project_input.strip(),
+            aim="Project workspace documentation and specs.",
+            created_by=user.id,
+            status="active"
+        )
+        db.add(new_p)
+        db.commit()
+        db.refresh(new_p)
+        return new_p.id
+    except Exception as e:
+        db.rollback()
+        print("Error creating project on the fly:", e)
+        return None
 
 
 # Demo document titles to exclude if any remained from initial seeding
@@ -217,10 +258,12 @@ def create_documentation(
 ):
     check_tl_permission(user)
 
+    resolved_pid = resolve_project_id(db, req.project_id, user)
+
     doc = Documentation(
         title=req.title,
         description=req.description,
-        project_id=req.project_id,
+        project_id=resolved_pid,
         category=req.category,
         content=req.content,
         file_url=req.file_url,
@@ -257,6 +300,9 @@ def update_documentation(
         raise HTTPException(status_code=404, detail="Document not found")
 
     update_data = req.model_dump(exclude_unset=True)
+    if "project_id" in update_data:
+        update_data["project_id"] = resolve_project_id(db, req.project_id, user)
+
     for field, val in update_data.items():
         setattr(doc, field, val)
 

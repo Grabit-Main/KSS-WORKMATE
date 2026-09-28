@@ -1,12 +1,12 @@
 from pydantic import BaseModel, field_validator
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime
 from uuid import UUID
 
 class DocumentationBase(BaseModel):
     title: str
     description: Optional[str] = None
-    project_id: Optional[UUID] = None
+    project_id: Optional[str] = None # Accepts UUID string or Project Name string
     category: str = "General"
     content: Optional[str] = None
     file_url: Optional[str] = None
@@ -20,7 +20,7 @@ class DocumentationBase(BaseModel):
     def parse_project_id(cls, v):
         if v == "" or v == "null" or v == "undefined" or v is None:
             return None
-        return v
+        return str(v)
 
 class DocumentationCreate(DocumentationBase):
     pass
@@ -28,7 +28,7 @@ class DocumentationCreate(DocumentationBase):
 class DocumentationUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    project_id: Optional[UUID] = None
+    project_id: Optional[str] = None
     category: Optional[str] = None
     content: Optional[str] = None
     file_url: Optional[str] = None
@@ -42,7 +42,7 @@ class DocumentationUpdate(BaseModel):
     def parse_project_id(cls, v):
         if v == "" or v == "null" or v == "undefined" or v is None:
             return None
-        return v
+        return str(v)
 
 class DocumentationResponse(DocumentationBase):
     id: UUID
