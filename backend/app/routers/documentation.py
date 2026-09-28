@@ -14,6 +14,53 @@ from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/documentation", tags=["documentation"])
 
+# Standard 14 Projects to support
+DEFAULT_PROJECTS = [
+    {"name": "Finance Management System", "aim": "Financial tracking, budgeting, and enterprise accounting platform."},
+    {"name": "College Management System", "aim": "Academic management, student portal, and faculty administration system."},
+    {"name": "Hospital Management System", "aim": "Healthcare administration, patient records, and clinical management."},
+    {"name": "BBMP Municipal Management System", "aim": "Municipal corporation services, grievance tracking, and civic administration."},
+    {"name": "Grabit", "aim": "Quick commerce, instant delivery platform and catalog management."},
+    {"name": "Buyzo", "aim": "E-commerce marketplace, order fulfillment, and vendor ecosystem."},
+    {"name": "PETSHOP", "aim": "Pet care services, adoption portal, and supply chain system."},
+    {"name": "LIVO", "aim": "Daily Task Management Platform & day-wise execution engine."},
+    {"name": "Nagara", "aim": "City 360 civic engagement platform & urban infrastructure tracking."},
+    {"name": "Property Management System", "aim": "Real estate management, tenant portal, and property leasing OS."},
+    {"name": "Logistics / Transportation", "aim": "Fleet tracking, supply chain logistics, and shipment routing system."},
+    {"name": "Procurement OS", "aim": "Vendor management, RFP processing, PO issuance, and procurement workflow."},
+    {"name": "FairTicket", "aim": "Event ticketing engine, queue management, and seat reservation system."},
+    {"name": "Lundrix", "aim": "Enterprise resource planning, operations dashboard, and workflow engine."}
+]
+
+def ensure_all_default_projects_exist(db: Session, user: User):
+    """Ensure all 14 standard projects exist in the database."""
+    try:
+        existing_projects = db.query(Project).all()
+        existing_names = {p.name.strip().lower() for p in existing_projects}
+
+        created = False
+        for p_def in DEFAULT_PROJECTS:
+            name_lower = p_def["name"].strip().lower()
+            # Check exact or partial match
+            already_exists = any(name_lower in ex or ex in name_lower for ex in existing_names)
+            if not already_exists:
+                new_p = Project(
+                    id=uuid.uuid4(),
+                    name=p_def["name"],
+                    aim=p_def["aim"],
+                    created_by=user.id,
+                    status="active"
+                )
+                db.add(new_p)
+                created = True
+
+        if created:
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print("Error ensuring default projects exist:", e)
+
+
 # Demo document titles to exclude if any remained from initial seeding
 DEMO_TITLE_PREFIXES = [
     "Authentication API",
@@ -43,6 +90,8 @@ def list_documentations(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
+    ensure_all_default_projects_exist(db, user)
+
     q = db.query(Documentation)
 
     if project_id:
@@ -84,6 +133,8 @@ def get_documentation_summary(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
+    ensure_all_default_projects_exist(db, user)
+
     projects = db.query(Project).all()
     all_docs = db.query(Documentation).all()
     docs = [d for d in all_docs if is_real_user_document(d)]
