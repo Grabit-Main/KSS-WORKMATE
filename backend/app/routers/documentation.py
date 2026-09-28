@@ -152,14 +152,19 @@ def get_documentation(
     return res
 
 
+def check_tl_permission(user: User):
+    user_role = (user.role or "").upper()
+    if user_role not in ("TL", "PM", "CEO", "CTO", "ADMIN"):
+        raise HTTPException(status_code=403, detail="Only Team Leads (TL) have permission to create, edit, or delete documentation.")
+
+
 @router.post("", response_model=DocumentationResponse)
 def create_documentation(
     req: DocumentationCreate,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    if user.role != "TL":
-        raise HTTPException(status_code=403, detail="Only Team Leads (TL) have permission to create documentation.")
+    check_tl_permission(user)
 
     doc = Documentation(
         title=req.title,
@@ -171,7 +176,7 @@ def create_documentation(
         file_name=req.file_name,
         file_type=req.file_type or "pdf",
         author_id=user.id,
-        updated_by=user.full_name or "Team Lead",
+        updated_by=user.full_name or f"{user.role} User",
         version=req.version or "v1.0",
         tags=req.tags,
         is_pinned=req.is_pinned or False
@@ -194,8 +199,7 @@ def update_documentation(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    if user.role != "TL":
-        raise HTTPException(status_code=403, detail="Only Team Leads (TL) have permission to edit documentation.")
+    check_tl_permission(user)
 
     doc = db.query(Documentation).filter(Documentation.id == doc_id).first()
     if not doc:
@@ -205,7 +209,7 @@ def update_documentation(
     for field, val in update_data.items():
         setattr(doc, field, val)
 
-    doc.updated_by = user.full_name or "Team Lead"
+    doc.updated_by = user.full_name or f"{user.role} User"
     doc.updated_at = datetime.utcnow()
 
     db.commit()
@@ -224,8 +228,7 @@ def delete_documentation(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    if user.role != "TL":
-        raise HTTPException(status_code=403, detail="Only Team Leads (TL) have permission to delete documentation.")
+    check_tl_permission(user)
 
     doc = db.query(Documentation).filter(Documentation.id == doc_id).first()
     if not doc:

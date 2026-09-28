@@ -125,7 +125,7 @@ export const DocEditorModal = ({
         id: doc?.id,
         title: title.trim(),
         description: description.trim(),
-        project_id: projectId || null,
+        project_id: (projectId && projectId !== "" && projectId !== "null") ? projectId : null,
         category: finalCategory,
         content: content,
         file_url: fileUrl,
@@ -137,7 +137,17 @@ export const DocEditorModal = ({
       });
       onClose();
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Failed to save document. Please check permissions.');
+      console.error('Save documentation error:', err);
+      const detail = err?.response?.data?.detail;
+      let errorMsg = 'Failed to save document. Please check server logs or permissions.';
+      if (typeof detail === 'string') {
+        errorMsg = detail;
+      } else if (Array.isArray(detail)) {
+        errorMsg = detail.map(d => d.msg || d.detail || JSON.stringify(d)).join(', ');
+      } else if (detail && typeof detail === 'object') {
+        errorMsg = detail.msg || JSON.stringify(detail);
+      }
+      setError(errorMsg);
     } finally {
       setSaving(false);
     }

@@ -20,7 +20,7 @@ import {
 
 export const DocumentationHub = ({ onBackToCollaboration }) => {
   const { user } = useAuth();
-  const isTL = user?.role === 'TL';
+  const isTL = ['TL', 'PM', 'CEO', 'CTO', 'ADMIN'].includes((user?.role || '').toUpperCase());
 
   const [summary, setSummary] = useState(null);
   const [docs, setDocs] = useState([]);
