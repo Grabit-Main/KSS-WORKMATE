@@ -27,17 +27,29 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
 
   const isPdf = doc?.file_url || doc?.file_type === 'pdf';
 
-  const iframeSrc = React.useMemo(() => {
-    if (!doc?.file_url) return '';
+  const googleDriveUrls = React.useMemo(() => {
+    if (!doc?.file_url) return { viewUrl: '', iframeSrc: '' };
+    
     if (doc.file_url.includes('drive.google.com')) {
       const match = doc.file_url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || doc.file_url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
-        return `https://drive.google.com/file/d/${match[1]}/preview`;
+        return {
+          viewUrl: `https://drive.google.com/file/d/${match[1]}/view`,
+          iframeSrc: `https://drive.google.com/file/d/${match[1]}/preview`
+        };
       }
-      return doc.file_url.replace(/\/view(\?.*)?$/, '/preview');
+      return {
+        viewUrl: doc.file_url,
+        iframeSrc: doc.file_url.replace(/\/view(\?.*)?$/, '/preview')
+      };
     }
-    // Return empty string for non-Google Drive URLs so iframe does not trigger automatic browser downloads
-    return '';
+
+    // Route non-Google Drive URLs through Google Docs/Drive Viewer so they open in Google Drive web viewer without triggering browser downloads
+    const encoded = encodeURIComponent(doc.file_url);
+    return {
+      viewUrl: `https://docs.google.com/viewer?url=${encoded}`,
+      iframeSrc: `https://docs.google.com/viewer?url=${encoded}&embedded=true`
+    };
   }, [doc?.file_url]);
 
   if (!doc) return null;
@@ -84,9 +96,9 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {doc.file_url && (
+          {googleDriveUrls.viewUrl && (
             <a
-              href={doc.file_url}
+              href={googleDriveUrls.viewUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -274,7 +286,7 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                     {doc.file_name || `${doc.title}.pdf`}
                   </div>
                   <a
-                    href={doc.file_url}
+                    href={googleDriveUrls.viewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ fontSize: '12.5px', color: '#4285F4', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -283,44 +295,13 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                   </a>
                 </div>
 
-                {iframeSrc ? (
-                  <iframe
-                    src={iframeSrc}
-                    title={doc.title}
-                    width="100%"
-                    height="750px"
-                    style={{ border: 'none', display: 'block' }}
-                  />
-                ) : (
-                  <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--surface-hover)' }}>
-                    <FileCheck size={48} style={{ color: '#4285F4', marginBottom: '16px' }} />
-                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                      PDF Document Ready
-                    </h3>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', maxWidth: '460px', margin: '0 auto 20px auto' }}>
-                      This document is stored on Google Drive. Click below to open and view the document directly in Google Drive.
-                    </p>
-                    <a
-                      href={doc.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 22px',
-                        borderRadius: '8px',
-                        background: '#4285F4',
-                        color: '#FFF',
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        textDecoration: 'none'
-                      }}
-                    >
-                      <ExternalLink size={16} /> Open Document in Google Drive
-                    </a>
-                  </div>
-                )}
+                <iframe
+                  src={googleDriveUrls.iframeSrc}
+                  title={doc.title}
+                  width="100%"
+                  height="750px"
+                  style={{ border: 'none', display: 'block' }}
+                />
               </div>
 
               {/* Text Notes if available */}
