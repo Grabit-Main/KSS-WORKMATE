@@ -125,6 +125,8 @@ export const requestGoogleAccessToken = async () => {
     }
   }
 
+  console.log('[GDRIVE OAUTH] Initializing Google token client with Client ID:', clientId);
+
   if (!window.google?.accounts?.oauth2) {
     throw new Error('Google Identity Services script failed to load. Please check your internet connection.');
   }
