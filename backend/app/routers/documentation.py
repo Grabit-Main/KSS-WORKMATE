@@ -41,8 +41,7 @@ def ensure_all_default_projects_exist(db: Session, user: User):
         created = False
         for p_def in DEFAULT_PROJECTS:
             name_lower = p_def["name"].strip().lower()
-            already_exists = any(name_lower in ex or ex in name_lower for ex in existing_names)
-            if not already_exists:
+            if name_lower not in existing_names:
                 new_p = Project(
                     id=uuid.uuid4(),
                     name=p_def["name"],
@@ -51,6 +50,7 @@ def ensure_all_default_projects_exist(db: Session, user: User):
                     status="active"
                 )
                 db.add(new_p)
+                existing_names.add(name_lower)
                 created = True
 
         if created:
