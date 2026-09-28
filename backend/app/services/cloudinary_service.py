@@ -33,7 +33,10 @@ def upload_file(file_bytes: bytes, filename: str, folder: str = "workmate") -> d
             quality="auto",
             fetch_format="auto",
         )
-    return {"url": result["secure_url"], "public_id": result["public_id"]}
+    url = result.get("secure_url", "")
+    if is_pdf and "/upload/" in url and "/fl_inline/" not in url:
+        url = url.replace("/upload/", "/upload/fl_inline/")
+    return {"url": url, "public_id": result.get("public_id", "")}
 
 
 def delete_file(public_id: str):
