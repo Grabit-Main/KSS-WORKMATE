@@ -3,7 +3,7 @@ import api from '../api/axios';
 const STORAGE_TOKEN_KEY = 'workmate_gdrive_access_token';
 const STORAGE_EXPIRY_KEY = 'workmate_gdrive_token_expires_at';
 
-let cachedClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '562995893354-o2a3lj5qmfo96f9u445fb1bvtm9c5pbj.apps.googleusercontent.com';
+let cachedClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 /**
  * Ensures Google Identity Services (GIS) client library is loaded
@@ -36,10 +36,19 @@ export const ensureGisScript = () => {
 };
 
 /**
- * Retrieves client ID either from env or backend config
+ * Retrieves client ID either from env, local storage override, or backend config
  */
 export const getGoogleClientId = async () => {
   if (cachedClientId) return cachedClientId;
+
+  // Check local storage custom override
+  const customId = localStorage.getItem('workmate_gdrive_client_id');
+  if (customId) {
+    cachedClientId = customId;
+    return cachedClientId;
+  }
+
+  // Fetch from backend API
   try {
     const res = await api.get('/auth/google-client-id');
     if (res.data?.client_id) {
@@ -49,7 +58,18 @@ export const getGoogleClientId = async () => {
   } catch (e) {
     console.warn('[GDRIVE] Could not fetch Google Client ID from backend:', e);
   }
-  return cachedClientId;
+
+  return cachedClientId || '';
+};
+
+export const setGoogleClientIdOverride = (clientId) => {
+  if (clientId) {
+    localStorage.setItem('workmate_gdrive_client_id', clientId.trim());
+    cachedClientId = clientId.trim();
+  } else {
+    localStorage.removeItem('workmate_gdrive_client_id');
+    cachedClientId = '';
+  }
 };
 
 /**
@@ -82,7 +102,19 @@ export const isGoogleDriveConnected = () => {
  */
 export const requestGoogleAccessToken = async () => {
   await ensureGisScript();
-  const clientId = await getGoogleClientId();
+  let clientId = await getGoogleClientId();
+
+  if (!clientId) {
+    const userPromptId = window.prompt(
+      'Google OAuth Client ID is missing.\n\nPlease enter your Google Cloud OAuth Client ID (e.g. xxx.apps.googleusercontent.com):'
+    );
+    if (userPromptId && userPromptId.trim()) {
+      setGoogleClientIdOverride(userPromptId.trim());
+      clientId = userPromptId.trim();
+    } else {
+      throw new Error('Google OAuth Client ID is required to connect to Google Drive.');
+    }
+  }
 
   if (!window.google?.accounts?.oauth2) {
     throw new Error('Google Identity Services script failed to load. Please check your internet connection.');
@@ -96,6 +128,9 @@ export const requestGoogleAccessToken = async () => {
         callback: (response) => {
           if (response.error) {
             console.error('[GDRIVE OAUTH ERROR]', response);
+            if (response.error === 'invalid_client' || response.error_description?.includes('invalid_client')) {
+              setGoogleClientIdOverride('');
+            }
             reject(new Error(response.error_description || response.error || 'Google authentication was cancelled or failed'));
             return;
           }
