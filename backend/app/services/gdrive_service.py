@@ -63,7 +63,8 @@ def upload_file(file_bytes: bytes, filename: str, project_name: str, task_id: st
     tasks = _get_or_create_folder(service, "Tasks", project_folder)
     task_folder = _get_or_create_folder(service, task_id, tasks)
 
-    media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype="application/octet-stream", resumable=False)
+    mimetype = "application/pdf" if filename.lower().endswith(".pdf") else "application/octet-stream"
+    media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mimetype, resumable=False)
     file_meta = {"name": filename, "parents": [task_folder]}
     uploaded = service.files().create(body=file_meta, media_body=media, fields="id").execute()
     file_id = uploaded["id"]
@@ -89,7 +90,8 @@ def upload_file_user(access_token: str, file_bytes: bytes, filename: str, projec
     tasks = _get_or_create_folder(service, "Tasks", project_folder)
     task_folder = _get_or_create_folder(service, task_id, tasks)
 
-    media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype="application/octet-stream", resumable=False)
+    mimetype = "application/pdf" if filename.lower().endswith(".pdf") else "application/octet-stream"
+    media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mimetype, resumable=False)
     file_meta = {"name": filename, "parents": [task_folder]}
     uploaded = service.files().create(body=file_meta, media_body=media, fields="id").execute()
     file_id = uploaded["id"]

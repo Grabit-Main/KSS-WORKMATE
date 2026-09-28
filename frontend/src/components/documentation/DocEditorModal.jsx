@@ -88,15 +88,8 @@ export const DocEditorModal = ({
       setUploadingPdf(true);
       setError(null);
 
-      // Check for Google Drive token
-      let googleToken = getStoredGoogleToken();
-      if (!googleToken) {
-        try {
-          googleToken = await requestGoogleAccessToken();
-        } catch (authErr) {
-          console.warn('[GDRIVE] User cancelled Google Drive auth:', authErr);
-        }
-      }
+      // Check if user has an active Google Drive token stored
+      const googleToken = getStoredGoogleToken();
 
       // Standalone PDF upload for Documentation Hub
       const res = await uploadFile(file, null, null, googleToken);
@@ -120,6 +113,7 @@ export const DocEditorModal = ({
       setError(typeof detail === 'string' ? detail : JSON.stringify(detail));
     } finally {
       setUploadingPdf(false);
+      if (e.target) e.target.value = '';
     }
   };
 
