@@ -44,11 +44,15 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
       };
     }
 
-    // Route non-Google Drive URLs through Google Docs/Drive Viewer so they open in Google Drive web viewer without triggering browser downloads
-    const encoded = encodeURIComponent(doc.file_url);
+    // For Cloudinary or raw PDF URLs: use inline delivery flag fl_inline to display PDF natively in iframe/new tab without downloading or "No preview available" errors
+    let inlineUrl = doc.file_url;
+    if (inlineUrl.includes('cloudinary.com') && inlineUrl.includes('/upload/') && !inlineUrl.includes('/fl_inline/')) {
+      inlineUrl = inlineUrl.replace('/upload/', '/upload/fl_inline/');
+    }
+
     return {
-      viewUrl: `https://docs.google.com/viewer?url=${encoded}`,
-      iframeSrc: `https://docs.google.com/viewer?url=${encoded}&embedded=true`
+      viewUrl: inlineUrl,
+      iframeSrc: inlineUrl
     };
   }, [doc?.file_url]);
 
@@ -114,7 +118,7 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                 textDecoration: 'none'
               }}
             >
-              <ExternalLink size={14} /> Open in Google Drive
+              <ExternalLink size={14} /> {doc?.file_url?.includes('drive.google.com') ? 'Open in Google Drive' : 'Open Fullscreen PDF'}
             </a>
           )}
 
