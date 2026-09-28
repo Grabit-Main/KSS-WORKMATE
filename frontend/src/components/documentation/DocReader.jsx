@@ -28,31 +28,28 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
   const isPdf = doc?.file_url || doc?.file_type === 'pdf';
 
   const googleDriveUrls = React.useMemo(() => {
-    if (!doc?.file_url) return { viewUrl: '', iframeSrc: '' };
+    if (!doc?.file_url) return { viewUrl: '', iframeSrc: '', isDrive: false };
     
     if (doc.file_url.includes('drive.google.com')) {
       const match = doc.file_url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || doc.file_url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
         return {
           viewUrl: `https://drive.google.com/file/d/${match[1]}/view`,
-          iframeSrc: `https://drive.google.com/file/d/${match[1]}/preview`
+          iframeSrc: `https://drive.google.com/file/d/${match[1]}/preview`,
+          isDrive: true
         };
       }
       return {
         viewUrl: doc.file_url,
-        iframeSrc: doc.file_url.replace(/\/view(\?.*)?$/, '/preview')
+        iframeSrc: doc.file_url.replace(/\/view(\?.*)?$/, '/preview'),
+        isDrive: true
       };
     }
 
-    // For Cloudinary or raw PDF URLs: use inline delivery flag fl_inline to display PDF natively in iframe/new tab without downloading or "No preview available" errors
-    let inlineUrl = doc.file_url;
-    if (inlineUrl.includes('cloudinary.com') && inlineUrl.includes('/upload/') && !inlineUrl.includes('/fl_inline/')) {
-      inlineUrl = inlineUrl.replace('/upload/', '/upload/fl_inline/');
-    }
-
     return {
-      viewUrl: inlineUrl,
-      iframeSrc: inlineUrl
+      viewUrl: doc.file_url,
+      iframeSrc: '',
+      isDrive: false
     };
   }, [doc?.file_url]);
 
@@ -299,13 +296,44 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                   </a>
                 </div>
 
-                <iframe
-                  src={googleDriveUrls.iframeSrc}
-                  title={doc.title}
-                  width="100%"
-                  height="750px"
-                  style={{ border: 'none', display: 'block' }}
-                />
+                {googleDriveUrls.isDrive ? (
+                  <iframe
+                    src={googleDriveUrls.iframeSrc}
+                    title={doc.title}
+                    width="100%"
+                    height="750px"
+                    style={{ border: 'none', display: 'block' }}
+                  />
+                ) : (
+                  <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--surface-hover)' }}>
+                    <FileCheck size={48} style={{ color: '#4285F4', marginBottom: '16px' }} />
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      Google Drive PDF Document
+                    </h3>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', maxWidth: '460px', margin: '0 auto 20px auto' }}>
+                      Click below to open and access the complete PDF document directly in your connected Google Drive account.
+                    </p>
+                    <a
+                      href={googleDriveUrls.viewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 22px',
+                        borderRadius: '8px',
+                        background: '#4285F4',
+                        color: '#FFF',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <ExternalLink size={16} /> Open Document in Google Drive
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Text Notes if available */}
