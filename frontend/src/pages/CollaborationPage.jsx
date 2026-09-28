@@ -6,8 +6,9 @@ import { getTasks } from '../api/tasks';
 import {
   MessageSquare, Send, Users, Sparkles, Search, Paperclip, Smile, AtSign,
   Pin, Bell, CheckCircle2, Filter, Folder, CheckSquare, Megaphone, HelpCircle,
-  FileText, ArrowUpRight, MessageCircle, AlertCircle, X, ChevronRight, User, ThumbsUp, Heart
+  FileText, ArrowUpRight, MessageCircle, AlertCircle, X, ChevronRight, User, ThumbsUp, Heart, BookOpen
 } from 'lucide-react';
+import { DocumentationHub } from '../components/documentation/DocumentationHub';
 
 export default function CollaborationPage() {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ export default function CollaborationPage() {
 
   // Navigation & View Tabs: 'chats', 'projects', 'tasks', 'mentions', 'announcements'
   const [activeTab, setActiveTab] = useState('chats');
+  const [showDocHub, setShowDocHub] = useState(false);
 
   // Real Data Lists
   const [teamUsers, setTeamUsers] = useState([]);
@@ -232,6 +234,14 @@ export default function CollaborationPage() {
   const activeProjectObj = projectsList.find(p => p.id === selectedProjectId);
   const activeTaskObj = tasksList.find(t => t.id === selectedTaskId);
 
+  if (showDocHub) {
+    return (
+      <div style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '20px' }}>
+        <DocumentationHub onBackToCollaboration={() => setShowDocHub(false)} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', height: 'calc(100vh - 110px)', display: 'flex', flexDirection: 'column', paddingBottom: '20px' }}>
       
@@ -274,26 +284,39 @@ export default function CollaborationPage() {
           </div>
         </div>
 
-        {/* Global Search */}
-        <div style={{ position: 'relative', width: '280px' }}>
-          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search messages, tasks, people..."
-            style={{
-              width: '100%',
-              padding: '9px 12px 9px 36px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)',
-              background: 'var(--surface)',
-              fontSize: '13px',
-              color: 'var(--text-primary)',
-              outline: 'none'
-            }}
-          />
-        </div>
+        {/* Documentation Button in exact location of previous search box */}
+        <button
+          onClick={() => setShowDocHub(true)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            width: '280px',
+            height: '38px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--brand-600)',
+            color: '#ffffff',
+            border: 'none',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)',
+            transition: 'all 0.2s ease',
+            flexShrink: 0
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--brand-700, #4338CA)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--brand-600)';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
+        >
+          <BookOpen size={17} />
+          Documentation
+        </button>
       </div>
 
       {/* TOP SUMMARY METRICS */}
