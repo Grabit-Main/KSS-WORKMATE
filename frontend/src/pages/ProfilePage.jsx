@@ -1224,28 +1224,43 @@ const ProfilePage = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '8px 14px',
+              padding: '10px 16px',
               borderRadius: 'var(--radius-md)',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              fontSize: '11.5px',
-              color: 'var(--text-secondary)',
-              marginBottom: '16px',
-              gap: '12px'
+              background: 'var(--brand-50, #EEF2FF)',
+              border: '1px solid var(--brand-200, #C7D2FE)',
+              fontSize: '12px',
+              color: 'var(--text-primary)',
+              marginBottom: '18px',
+              gap: '12px',
+              flexWrap: 'wrap'
             }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <strong style={{ color: 'var(--text-primary)' }}>Active OAuth Client ID:</strong> <code style={{ fontSize: '11px', background: 'var(--surface-hover)', padding: '2px 6px', borderRadius: '4px' }}>{activeClientId || 'Loading...'}</code>
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                <strong style={{ color: 'var(--brand-700, #4338CA)', flexShrink: 0 }}>Active OAuth Client ID:</strong>
+                <code style={{ fontSize: '11.5px', background: '#FFF', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                  {activeClientId || 'Loading...'}
+                </code>
+              </div>
               <button
                 type="button"
                 onClick={() => {
-                  const input = window.prompt('Override Google OAuth Client ID:', activeClientId);
-                  if (input !== null) {
-                    setGoogleClientIdOverride(input);
+                  const input = window.prompt('Enter your Google OAuth Client ID:', activeClientId);
+                  if (input !== null && input.trim()) {
+                    setGoogleClientIdOverride(input.trim());
                     setActiveClientId(input.trim());
+                    alert('Client ID updated! Now click Connect Google Drive.');
                   }
                 }}
-                style={{ background: 'transparent', border: 'none', color: 'var(--brand-600)', cursor: 'pointer', fontSize: '11.5px', fontWeight: 600, flexShrink: 0 }}
+                style={{
+                  background: 'var(--brand-600)',
+                  color: '#FFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '5px 12px',
+                  cursor: 'pointer',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  flexShrink: 0
+                }}
               >
                 Change Key
               </button>
