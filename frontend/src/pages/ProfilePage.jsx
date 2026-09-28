@@ -12,7 +12,9 @@ import { useRealtime } from '../realtime/useRealtime';
 import {
   isGoogleDriveConnected,
   requestGoogleAccessToken,
-  disconnectGoogleDrive
+  disconnectGoogleDrive,
+  getGoogleClientId,
+  setGoogleClientIdOverride
 } from '../services/googleDriveAuth';
 
 const ProfilePage = () => {
@@ -22,6 +24,11 @@ const ProfilePage = () => {
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
   const [gdriveLoading, setGdriveLoading] = useState(false);
   const [gdriveMsg, setGdriveMsg] = useState({ type: '', text: '' });
+  const [activeClientId, setActiveClientId] = useState('');
+
+  useEffect(() => {
+    getGoogleClientId().then(id => setActiveClientId(id));
+  }, []);
 
   // Name & Profile State
   const [firstName, setFirstName] = useState(user?.first_name || '');
@@ -1210,6 +1217,38 @@ const ProfilePage = () => {
                   </>
                 )}
               </p>
+            </div>
+
+            {/* Active Client ID Badge */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 14px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              fontSize: '11.5px',
+              color: 'var(--text-secondary)',
+              marginBottom: '16px',
+              gap: '12px'
+            }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Active OAuth Client ID:</strong> <code style={{ fontSize: '11px', background: 'var(--surface-hover)', padding: '2px 6px', borderRadius: '4px' }}>{activeClientId || 'Loading...'}</code>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = window.prompt('Override Google OAuth Client ID:', activeClientId);
+                  if (input !== null) {
+                    setGoogleClientIdOverride(input);
+                    setActiveClientId(input.trim());
+                  }
+                }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--brand-600)', cursor: 'pointer', fontSize: '11.5px', fontWeight: 600, flexShrink: 0 }}
+              >
+                Change Key
+              </button>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>

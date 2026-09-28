@@ -172,7 +172,7 @@ export const disconnectGoogleDrive = () => {
   const token = localStorage.getItem(STORAGE_TOKEN_KEY);
   if (token && window.google?.accounts?.oauth2?.revoke) {
     try {
-      window.google.accounts.oauth2.revoke(token, () => {});
+      window.google.accounts.oauth2.revoke(token, () => { });
     } catch (e) {
       console.warn('[GDRIVE] Token revocation warning:', e);
     }
