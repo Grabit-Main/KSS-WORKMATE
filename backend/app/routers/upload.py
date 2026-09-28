@@ -62,13 +62,17 @@ async def upload_file(
                 print(f"[GDRIVE SERVER ERROR] Standalone PDF upload to server Google Drive failed: {server_gdrive_err}")
 
         # 3. Cloudinary fallback
-        result = cloudinary_service.upload_file(content, file.filename, folder="workmate/documentation")
-        return {
-            "url": result["url"],
-            "file_name": file.filename,
-            "file_type": "pdf" if "pdf" in (mime.lower() + file.filename.lower()) else "document",
-            "storage_provider": "cloudinary"
-        }
+        try:
+            result = cloudinary_service.upload_file(content, file.filename, folder="workmate/documentation")
+            return {
+                "url": result["url"],
+                "file_name": file.filename,
+                "file_type": "pdf" if "pdf" in (mime.lower() + file.filename.lower()) else "document",
+                "storage_provider": "cloudinary"
+            }
+        except Exception as c_err:
+            print(f"[CLOUDINARY ERROR] Standalone upload failed: {c_err}")
+            raise HTTPException(500, f"Failed to upload document file: {str(c_err)}")
 
     if project_id:
         project = db.query(Project).filter(Project.id == project_id).first()

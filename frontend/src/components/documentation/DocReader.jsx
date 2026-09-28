@@ -29,7 +29,11 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
 
   const iframeSrc = React.useMemo(() => {
     if (!doc?.file_url) return '';
-    if (doc.file_url.includes('drive.google.com/file/d/')) {
+    if (doc.file_url.includes('drive.google.com')) {
+      const match = doc.file_url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || doc.file_url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://drive.google.com/file/d/${match[1]}/preview`;
+      }
       return doc.file_url.replace(/\/view(\?.*)?$/, '/preview');
     }
     return doc.file_url;

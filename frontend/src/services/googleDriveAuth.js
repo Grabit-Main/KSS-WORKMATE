@@ -160,12 +160,20 @@ export const requestGoogleAccessToken = async () => {
       });
 
       // Prompt user with Google Sign-in / Permission dialog
-      client.requestAccessToken({ prompt: '' });
+      client.requestAccessToken({ prompt: 'consent' });
     } catch (err) {
       reject(err);
     }
   });
 };
+
+// Immediately pre-load GIS script and fetch Google Client ID when module loads
+try {
+  ensureGisScript();
+  getGoogleClientId();
+} catch (e) {
+  // Silent catch during initial module load
+}
 
 /**
  * Disconnects / removes Google Drive token

@@ -98,8 +98,12 @@ export const DocEditorModal = ({
         }
       }
 
-      const cleanPid = (projectId && projectId !== "" && projectId !== "null") ? projectId : null;
-      const res = await uploadFile(file, null, cleanPid, googleToken);
+      // Standalone PDF upload for Documentation Hub
+      const res = await uploadFile(file, null, null, googleToken);
+
+      if (!res || !res.url) {
+        throw new Error('Upload response did not return a valid file URL.');
+      }
 
       setFileUrl(res.url);
       setFileName(res.file_name || file.name);
@@ -112,7 +116,8 @@ export const DocEditorModal = ({
       }
     } catch (err) {
       console.error('PDF upload error:', err);
-      setError('Failed to upload PDF file. Please try again.');
+      const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to upload PDF file.';
+      setError(typeof detail === 'string' ? detail : JSON.stringify(detail));
     } finally {
       setUploadingPdf(false);
     }
