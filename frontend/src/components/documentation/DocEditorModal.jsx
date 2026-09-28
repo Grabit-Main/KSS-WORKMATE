@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Save, FileText, Pin, AlertCircle, Upload, FileCheck } from 'lucide-react';
 import { uploadFile } from '../../api/upload';
+import { getStoredGoogleToken, requestGoogleAccessToken } from '../../services/googleDriveAuth';
 
 export const DocEditorModal = ({
   isOpen,
@@ -86,7 +87,20 @@ export const DocEditorModal = ({
     try {
       setUploadingPdf(true);
       setError(null);
-      const res = await uploadFile(file);
+
+      // Check for Google Drive token
+      let googleToken = getStoredGoogleToken();
+      if (!googleToken) {
+        try {
+          googleToken = await requestGoogleAccessToken();
+        } catch (authErr) {
+          console.warn('[GDRIVE] User cancelled Google Drive auth:', authErr);
+        }
+      }
+
+      const cleanPid = (projectId && projectId !== "" && projectId !== "null") ? projectId : null;
+      const res = await uploadFile(file, null, cleanPid, googleToken);
+
       setFileUrl(res.url);
       setFileName(res.file_name || file.name);
       setFileType('pdf');

@@ -28,6 +28,40 @@ async def upload_file(
 
     if not task_id and not project_id:
         # Standalone PDF/document upload for Documentation Hub
+        upload_success = False
+        project_name = "Documentation"
+
+        # 1. Prioritize user's authenticated Google Drive OAuth session
+        if google_token:
+            try:
+                result = gdrive_service.upload_file_user(google_token, content, file.filename, project_name, "specs")
+                print(f"[GDRIVE] Documentation PDF successfully uploaded to user's Google Drive: {file.filename}")
+                return {
+                    "url": result["url"],
+                    "file_name": file.filename,
+                    "file_type": "pdf",
+                    "storage_provider": "gdrive",
+                    "gdrive_file_id": result.get("file_id")
+                }
+            except Exception as user_gdrive_err:
+                print(f"[GDRIVE USER ERROR] Standalone PDF upload to user Google Drive failed: {user_gdrive_err}")
+
+        # 2. Server-level Google Drive fallback
+        if not upload_success:
+            try:
+                result = gdrive_service.upload_file(content, file.filename, project_name, "specs")
+                print(f"[GDRIVE] Documentation PDF successfully uploaded via server Google Drive: {file.filename}")
+                return {
+                    "url": result["url"],
+                    "file_name": file.filename,
+                    "file_type": "pdf",
+                    "storage_provider": "gdrive",
+                    "gdrive_file_id": result.get("file_id")
+                }
+            except Exception as server_gdrive_err:
+                print(f"[GDRIVE SERVER ERROR] Standalone PDF upload to server Google Drive failed: {server_gdrive_err}")
+
+        # 3. Cloudinary fallback
         result = cloudinary_service.upload_file(content, file.filename, folder="workmate/documentation")
         return {
             "url": result["url"],

@@ -27,6 +27,14 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
 
   const isPdf = doc?.file_url || doc?.file_type === 'pdf';
 
+  const iframeSrc = React.useMemo(() => {
+    if (!doc?.file_url) return '';
+    if (doc.file_url.includes('drive.google.com/file/d/')) {
+      return doc.file_url.replace(/\/view(\?.*)?$/, '/preview');
+    }
+    return doc.file_url;
+  }, [doc?.file_url]);
+
   if (!doc) return null;
 
   return (
@@ -272,7 +280,7 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                 </div>
 
                 <iframe
-                  src={doc.file_url}
+                  src={iframeSrc}
                   title={doc.title}
                   width="100%"
                   height="750px"
