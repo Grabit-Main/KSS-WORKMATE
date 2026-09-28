@@ -88,8 +88,15 @@ export const DocEditorModal = ({
       setUploadingPdf(true);
       setError(null);
 
-      // Check if user has an active Google Drive token stored
-      const googleToken = getStoredGoogleToken();
+      // Check for Google Drive token
+      let googleToken = getStoredGoogleToken();
+      if (!googleToken) {
+        try {
+          googleToken = await requestGoogleAccessToken();
+        } catch (authErr) {
+          console.warn('[GDRIVE] User skipped Google Drive prompt:', authErr);
+        }
+      }
 
       // Standalone PDF upload for Documentation Hub
       const res = await uploadFile(file, null, null, googleToken);
