@@ -413,6 +413,9 @@ def create_documentation(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
+    if user.role != "TL":
+        raise HTTPException(status_code=403, detail="Only Team Leads (TL) have permission to create documentation.")
+
     doc = Documentation(
         title=req.title,
         description=req.description,
@@ -443,6 +446,9 @@ def update_documentation(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
+    if user.role != "TL":
+        raise HTTPException(status_code=403, detail="Only Team Leads (TL) have permission to edit documentation.")
+
     doc = db.query(Documentation).filter(Documentation.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -470,6 +476,9 @@ def delete_documentation(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
+    if user.role != "TL":
+        raise HTTPException(status_code=403, detail="Only Team Leads (TL) have permission to delete documentation.")
+
     doc = db.query(Documentation).filter(Documentation.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")

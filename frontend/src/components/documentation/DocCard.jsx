@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   FileText, Code, Database, Layers, CheckSquare, 
   Rocket, HelpCircle, Shield, ArrowRight, User, 
-  Clock, Tag, Pin, Terminal
+  Clock, Tag, Pin, Terminal, Pencil, Trash2
 } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
@@ -19,7 +19,7 @@ const CATEGORY_ICONS = {
   'Security': Shield
 };
 
-export const DocCard = ({ doc, viewMode = 'grid', onClick }) => {
+export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit, onDelete }) => {
   const IconComp = CATEGORY_ICONS[doc.category] || FileText;
 
   const formattedDate = React.useMemo(() => {
@@ -35,6 +35,16 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick }) => {
     if (!doc.tags) return [];
     return doc.tags.split(',').map(t => t.trim()).filter(Boolean);
   }, [doc.tags]);
+
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    if (onEdit) onEdit(doc);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (onDelete) onDelete(doc);
+  };
 
   if (viewMode === 'list') {
     return (
@@ -93,7 +103,7 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick }) => {
         </div>
 
         {/* Project & Meta right side */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginLeft: '16px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '16px', flexShrink: 0 }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand-600)' }}>
               {doc.project_name || 'General'}
@@ -102,6 +112,41 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick }) => {
               {doc.category} · Updated {formattedDate}
             </div>
           </div>
+
+          {/* Role TL CRUD buttons */}
+          {isTL && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                onClick={handleEdit}
+                title="Edit Documentation"
+                style={{
+                  padding: '6px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: 'var(--surface-hover)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer'
+                }}
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={handleDelete}
+                title="Delete Documentation"
+                style={{
+                  padding: '6px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: '#FEF2F2',
+                  color: '#EF4444',
+                  cursor: 'pointer'
+                }}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          )}
+
           <button style={{
             background: 'transparent',
             border: 'none',
@@ -145,7 +190,7 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick }) => {
       }}
     >
       <div>
-        {/* Top bar with Icon, Pinned & Category */}
+        {/* Top bar with Icon, Category, Version & TL controls */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{
@@ -165,11 +210,46 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick }) => {
             </span>
           </div>
 
-          {doc.version && (
-            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--surface-hover)', padding: '2px 6px', borderRadius: '4px' }}>
-              {doc.version}
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {doc.version && (
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--surface-hover)', padding: '2px 6px', borderRadius: '4px' }}>
+                {doc.version}
+              </span>
+            )}
+            {/* TL Actions */}
+            {isTL && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                <button
+                  onClick={handleEdit}
+                  title="Edit Document"
+                  style={{
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    background: 'var(--surface-hover)',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
+                  onClick={handleDelete}
+                  title="Delete Document"
+                  style={{
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    background: '#FEF2F2',
+                    color: '#EF4444',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Document Title & Description */}
