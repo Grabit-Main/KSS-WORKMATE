@@ -11,15 +11,25 @@ cloudinary.config(
 
 def upload_file(file_bytes: bytes, filename: str, folder: str = "workmate") -> dict:
     """Upload to Cloudinary, return {url, public_id}."""
-    result = cloudinary.uploader.upload(
-        file_bytes,
-        folder=folder,
-        resource_type="auto",
-        use_filename=True,
-        unique_filename=True,
-        quality="auto",
-        fetch_format="auto",
-    )
+    is_pdf = filename.lower().endswith(".pdf")
+    if is_pdf:
+        result = cloudinary.uploader.upload(
+            file_bytes,
+            folder=folder,
+            resource_type="raw",
+            use_filename=True,
+            unique_filename=True,
+        )
+    else:
+        result = cloudinary.uploader.upload(
+            file_bytes,
+            folder=folder,
+            resource_type="auto",
+            use_filename=True,
+            unique_filename=True,
+            quality="auto",
+            fetch_format="auto",
+        )
     return {"url": result["secure_url"], "public_id": result["public_id"]}
 
 
