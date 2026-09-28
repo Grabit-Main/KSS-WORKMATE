@@ -143,6 +143,9 @@ def change_password(req: ChangePasswordRequest, db: Session = Depends(get_db), u
 
 @router.get("/google-client-id")
 def get_google_client_id():
-    return {"client_id": settings.GOOGLE_CLIENT_ID or ""}
+    cid = settings.GOOGLE_CLIENT_ID or ""
+    if not cid or "562995893354" in cid:
+        cid = "271988357300-r0hbpq3r5gj5vccpb6tng0587q628dj2.apps.googleusercontent.com"
+    return {"client_id": cid}
 
 
