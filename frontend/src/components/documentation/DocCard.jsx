@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   FileText, Code, Database, Layers, CheckSquare, 
   Rocket, HelpCircle, Shield, ArrowRight, User, 
-  Clock, Tag, Pin, Terminal, Pencil, Trash2
+  Clock, Tag, Pin, Terminal, Pencil, Trash2, Download, FileCheck
 } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
@@ -35,6 +35,8 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
     if (!doc.tags) return [];
     return doc.tags.split(',').map(t => t.trim()).filter(Boolean);
   }, [doc.tags]);
+
+  const isPdf = doc.file_url || doc.file_type === 'pdf';
 
   const handleEdit = (e) => {
     e.stopPropagation();
@@ -75,14 +77,14 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
             width: '36px',
             height: '36px',
             borderRadius: '10px',
-            background: doc.is_pinned ? '#EEF2FF' : 'var(--surface-hover)',
-            color: doc.is_pinned ? 'var(--brand-600)' : 'var(--text-secondary)',
+            background: isPdf ? '#ECFDF5' : doc.is_pinned ? '#EEF2FF' : 'var(--surface-hover)',
+            color: isPdf ? '#047857' : doc.is_pinned ? 'var(--brand-600)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0
           }}>
-            {doc.is_pinned ? <Pin size={16} /> : <IconComp size={16} />}
+            {isPdf ? <FileCheck size={18} /> : doc.is_pinned ? <Pin size={16} /> : <IconComp size={16} />}
           </div>
 
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -90,6 +92,11 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
               <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                 {doc.title}
               </h4>
+              {isPdf && (
+                <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857', background: '#ECFDF5', padding: '1px 6px', borderRadius: '4px' }}>
+                  PDF
+                </span>
+              )}
               {doc.version && (
                 <span style={{ fontSize: '11px', fontWeight: 600, background: 'var(--surface-hover)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: '4px', color: 'var(--text-secondary)' }}>
                   {doc.version}
@@ -97,7 +104,7 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
               )}
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '2px 0 0 0', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-              {doc.description}
+              {doc.description || doc.file_name || 'Project PDF Document'}
             </p>
           </div>
         </div>
@@ -197,17 +204,22 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
               width: '34px',
               height: '34px',
               borderRadius: '8px',
-              background: doc.is_pinned ? '#EEF2FF' : 'var(--surface-hover)',
-              color: doc.is_pinned ? 'var(--brand-600)' : 'var(--text-primary)',
+              background: isPdf ? '#ECFDF5' : doc.is_pinned ? '#EEF2FF' : 'var(--surface-hover)',
+              color: isPdf ? '#047857' : doc.is_pinned ? 'var(--brand-600)' : 'var(--text-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              {doc.is_pinned ? <Pin size={16} /> : <IconComp size={16} />}
+              {isPdf ? <FileCheck size={18} /> : doc.is_pinned ? <Pin size={16} /> : <IconComp size={16} />}
             </div>
             <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--brand-600)', background: 'var(--brand-50, #EEF2FF)', padding: '2px 8px', borderRadius: '12px' }}>
               {doc.category}
             </span>
+            {isPdf && (
+              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857', background: '#ECFDF5', padding: '2px 6px', borderRadius: '4px' }}>
+                PDF
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -266,7 +278,7 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
           overflow: 'hidden',
           lineHeight: 1.5
         }}>
-          {doc.description}
+          {doc.description || doc.file_name || 'Project PDF Document'}
         </p>
 
         {/* Tags */}
@@ -305,7 +317,7 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
           gap: '4px',
           cursor: 'pointer'
         }}>
-          Open <ArrowRight size={14} />
+          {isPdf ? 'View PDF' : 'Open'} <ArrowRight size={14} />
         </button>
       </div>
     </div>

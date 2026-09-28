@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
@@ -8,7 +8,10 @@ class DocumentationBase(BaseModel):
     description: Optional[str] = None
     project_id: Optional[UUID] = None
     category: str = "General"
-    content: str
+    content: Optional[str] = None
+    file_url: Optional[str] = None
+    file_name: Optional[str] = None
+    file_type: Optional[str] = "pdf"
     version: Optional[str] = "v1.0"
     tags: Optional[str] = None
     is_pinned: Optional[bool] = False
@@ -22,6 +25,9 @@ class DocumentationUpdate(BaseModel):
     project_id: Optional[UUID] = None
     category: Optional[str] = None
     content: Optional[str] = None
+    file_url: Optional[str] = None
+    file_name: Optional[str] = None
+    file_type: Optional[str] = None
     version: Optional[str] = None
     tags: Optional[str] = None
     is_pinned: Optional[bool] = None

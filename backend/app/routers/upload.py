@@ -23,11 +23,18 @@ async def upload_file(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    if not task_id and not project_id:
-        raise HTTPException(400, "Either task_id or project_id must be provided")
-
     content = await file.read()
     mime = file.content_type or ""
+
+    if not task_id and not project_id:
+        # Standalone PDF/document upload for Documentation Hub
+        result = cloudinary_service.upload_file(content, file.filename, folder="workmate/documentation")
+        return {
+            "url": result["url"],
+            "file_name": file.filename,
+            "file_type": "pdf" if "pdf" in (mime.lower() + file.filename.lower()) else "document",
+            "storage_provider": "cloudinary"
+        }
 
     if project_id:
         project = db.query(Project).filter(Project.id == project_id).first()

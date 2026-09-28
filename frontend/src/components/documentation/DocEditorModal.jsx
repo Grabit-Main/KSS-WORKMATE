@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, FileText, Pin, AlertCircle, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Save, FileText, Pin, AlertCircle, Upload, CheckCircle2, FileCheck, Trash2 } from 'lucide-react';
+import { uploadFile } from '../../api/upload';
 
 export const DocEditorModal = ({
   isOpen,
@@ -9,15 +10,20 @@ export const DocEditorModal = ({
   projects = [],
   categories = []
 }) => {
+  const fileInputRef = useRef(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState('');
   const [category, setCategory] = useState('Requirements');
   const [customCategory, setCustomCategory] = useState('');
   const [content, setContent] = useState('');
+  const [fileUrl, setFileUrl] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [fileType, setFileType] = useState('pdf');
   const [version, setVersion] = useState('v1.0');
   const [tags, setTags] = useState('');
   const [isPinned, setIsPinned] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -35,6 +41,9 @@ export const DocEditorModal = ({
         setCustomCategory('');
       }
       setContent(doc.content || '');
+      setFileUrl(doc.file_url || '');
+      setFileName(doc.file_name || '');
+      setFileType(doc.file_type || 'pdf');
       setVersion(doc.version || 'v1.0');
       setTags(doc.tags || '');
       setIsPinned(!!doc.is_pinned);
@@ -44,15 +53,10 @@ export const DocEditorModal = ({
       setProjectId(projects[0]?.id || '');
       setCategory('Requirements');
       setCustomCategory('');
-      setContent(`# Title
-
-## 1. Overview
-Write document overview here...
-
-## 2. Details
-- Spec point 1
-- Spec point 2
-`);
+      setContent('');
+      setFileUrl('');
+      setFileName('');
+      setFileType('pdf');
       setVersion('v1.0');
       setTags('');
       setIsPinned(false);
@@ -62,14 +66,53 @@ Write document overview here...
 
   if (!isOpen) return null;
 
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      setError('Please select a valid PDF file (.pdf).');
+      return;
+    }
+
+    try {
+      setUploadingPdf(true);
+      setError(null);
+      const res = await uploadFile(file);
+      setFileUrl(res.url);
+      setFileName(res.file_name || file.name);
+      setFileType('pdf');
+      
+      // Auto fill title if empty
+      if (!title) {
+        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        setTitle(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
+      }
+    } catch (err) {
+      console.error('PDF upload error:', err);
+      setError('Failed to upload PDF file. Please try again.');
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
+
+  const handleRemovePdf = () => {
+    setFileUrl('');
+    setFileName('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
       setError('Document title is required.');
       return;
     }
-    if (!content.trim()) {
-      setError('Document content cannot be empty.');
+
+    if (!fileUrl && !content.trim()) {
+      setError('Please upload a PDF document or provide document content.');
       return;
     }
 
@@ -85,6 +128,9 @@ Write document overview here...
         project_id: projectId || null,
         category: finalCategory,
         content: content,
+        file_url: fileUrl,
+        file_name: fileName,
+        file_type: fileType || 'pdf',
         version: version.trim() || 'v1.0',
         tags: tags.trim(),
         is_pinned: isPinned
@@ -114,7 +160,7 @@ Write document overview here...
         borderRadius: 'var(--radius-xl, 16px)',
         border: '1px solid var(--border)',
         width: '100%',
-        maxWidth: '750px',
+        maxWidth: '720px',
         maxHeight: '90vh',
         display: 'flex',
         flexDirection: 'column',
@@ -131,12 +177,17 @@ Write document overview here...
           background: 'var(--surface)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--brand-50, #EEF2FF)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'var(--brand-50, #EEF2FF)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <FileText size={18} />
             </div>
-            <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              {doc ? 'Edit Documentation' : 'Create New Documentation'}
-            </h3>
+            <div>
+              <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                {doc ? 'Edit PDF Documentation' : 'Upload PDF Documentation'}
+              </h3>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                Attach PDF documents to project knowledge base
+              </span>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -155,6 +206,87 @@ Write document overview here...
             </div>
           )}
 
+          {/* PDF File Upload Zone */}
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+              Upload PDF File *
+            </label>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              onChange={handlePdfUpload}
+              style={{ display: 'none' }}
+            />
+
+            {fileUrl ? (
+              <div style={{
+                padding: '14px 16px',
+                borderRadius: 'var(--radius-md)',
+                background: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#10B981', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FileCheck size={20} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#065F46' }}>
+                      {fileName || 'PDF Document Attached'}
+                    </div>
+                    <span style={{ fontSize: '11.5px', color: '#047857' }}>
+                      PDF Uploaded Successfully
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ fontSize: '12px', color: 'var(--brand-600)', background: '#FFF', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Change PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemovePdf}
+                    style={{ fontSize: '12px', color: '#EF4444', background: '#FFF', border: '1px solid #FCA5A5', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  padding: '24px',
+                  borderRadius: 'var(--radius-lg, 12px)',
+                  border: '2px dashed var(--brand-300, #A5B4FC)',
+                  background: 'var(--brand-50, #EEF2FF)',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--brand-600)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--brand-300, #A5B4FC)'}
+              >
+                <Upload size={28} style={{ color: 'var(--brand-600)', marginBottom: '8px' }} />
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {uploadingPdf ? 'Uploading PDF Document...' : 'Click to Upload Project PDF Document'}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Supports PDF files up to 50MB
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Title & Version */}
           <div style={{ display: 'flex', gap: '12px' }}>
             <div style={{ flex: 1 }}>
@@ -165,7 +297,7 @@ Write document overview here...
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Authentication API & JWT Flow"
+                placeholder="e.g. LIVO Technical Requirement Specification"
                 style={{
                   width: '100%',
                   padding: '9px 12px',
@@ -205,13 +337,13 @@ Write document overview here...
           {/* Description */}
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              Short Description
+              Short Description / Summary
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief summary of what this document covers..."
+              placeholder="Brief summary of what this project PDF document covers..."
               style={{
                 width: '100%',
                 padding: '9px 12px',
@@ -312,7 +444,7 @@ Write document overview here...
                 type="text"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                placeholder="Auth, API, Security"
+                placeholder="Requirements, PDF, Spec"
                 style={{
                   width: '100%',
                   padding: '9px 12px',
@@ -339,26 +471,24 @@ Write document overview here...
             </div>
           </div>
 
-          {/* Markdown Content */}
+          {/* Optional Notes */}
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              Document Content (Markdown) *
+              Additional Document Notes / Remarks (Optional)
             </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              rows={12}
-              placeholder="# Heading 1&#10;## Heading 2&#10;Write markdown documentation content here..."
+              rows={4}
+              placeholder="Add key highlights or notes regarding this PDF file..."
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '10px 12px',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--border)',
-                background: '#0F172A',
-                color: '#F8FAFC',
-                fontFamily: 'monospace',
+                background: 'var(--surface-hover)',
+                color: 'var(--text-primary)',
                 fontSize: '13.5px',
-                lineHeight: 1.6,
                 outline: 'none',
                 resize: 'vertical'
               }}
@@ -385,7 +515,7 @@ Write document overview here...
             </button>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || uploadingPdf}
               style={{
                 padding: '9px 20px',
                 borderRadius: 'var(--radius-md)',
@@ -401,7 +531,7 @@ Write document overview here...
               }}
             >
               <Save size={16} />
-              {saving ? 'Saving...' : doc ? 'Save Changes' : 'Create Documentation'}
+              {saving ? 'Saving...' : doc ? 'Save Changes' : 'Upload Documentation'}
             </button>
           </div>
         </form>
