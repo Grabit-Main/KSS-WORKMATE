@@ -36,7 +36,8 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
       }
       return doc.file_url.replace(/\/view(\?.*)?$/, '/preview');
     }
-    return doc.file_url;
+    // Return empty string for non-Google Drive URLs so iframe does not trigger automatic browser downloads
+    return '';
   }, [doc?.file_url]);
 
   if (!doc) return null;
@@ -282,13 +283,44 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                   </a>
                 </div>
 
-                <iframe
-                  src={iframeSrc}
-                  title={doc.title}
-                  width="100%"
-                  height="750px"
-                  style={{ border: 'none', display: 'block' }}
-                />
+                {iframeSrc ? (
+                  <iframe
+                    src={iframeSrc}
+                    title={doc.title}
+                    width="100%"
+                    height="750px"
+                    style={{ border: 'none', display: 'block' }}
+                  />
+                ) : (
+                  <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--surface-hover)' }}>
+                    <FileCheck size={48} style={{ color: '#4285F4', marginBottom: '16px' }} />
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      PDF Document Ready
+                    </h3>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', maxWidth: '460px', margin: '0 auto 20px auto' }}>
+                      This document is stored on Google Drive. Click below to open and view the document directly in Google Drive.
+                    </p>
+                    <a
+                      href={doc.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 22px',
+                        borderRadius: '8px',
+                        background: '#4285F4',
+                        color: '#FFF',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <ExternalLink size={16} /> Open Document in Google Drive
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Text Notes if available */}
