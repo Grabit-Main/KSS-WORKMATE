@@ -3,7 +3,8 @@ import api from '../api/axios';
 const STORAGE_TOKEN_KEY = 'workmate_gdrive_access_token';
 const STORAGE_EXPIRY_KEY = 'workmate_gdrive_token_expires_at';
 
-let cachedClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '271988357300-r0hbpq3r5gj5vccpb6tng0587q628dj2.apps.googleusercontent.com';
+const DEFAULT_CLIENT_ID = '271988357300-r0hbpq3r5gj5vccpb6tng0587q628dj2.apps.googleusercontent.com';
+let cachedClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
 
 /**
  * Ensures Google Identity Services (GIS) client library is loaded
@@ -39,10 +40,19 @@ export const ensureGisScript = () => {
  * Retrieves client ID either from backend config, env, or local storage
  */
 export const getGoogleClientId = async () => {
-  // Try fetching from backend API first (authoritative config)
+  // Check local storage custom override first if valid
+  const customId = localStorage.getItem('workmate_gdrive_client_id');
+  if (customId && !customId.includes('562995893354')) {
+    cachedClientId = customId;
+    return cachedClientId;
+  } else if (customId && customId.includes('562995893354')) {
+    localStorage.removeItem('workmate_gdrive_client_id');
+  }
+
+  // Try fetching from backend API
   try {
     const res = await api.get('/auth/google-client-id');
-    if (res.data?.client_id) {
+    if (res.data?.client_id && !res.data.client_id.includes('562995893354')) {
       cachedClientId = res.data.client_id;
       return cachedClientId;
     }
@@ -50,16 +60,7 @@ export const getGoogleClientId = async () => {
     console.warn('[GDRIVE] Could not fetch Google Client ID from backend:', e);
   }
 
-  // Check local storage custom override
-  const customId = localStorage.getItem('workmate_gdrive_client_id');
-  if (customId) {
-    cachedClientId = customId;
-    return cachedClientId;
-  }
-
-  if (cachedClientId) return cachedClientId;
-
-  return import.meta.env.VITE_GOOGLE_CLIENT_ID || '271988357300-r0hbpq3r5gj5vccpb6tng0587q628dj2.apps.googleusercontent.com';
+  return import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
 };
 
 export const setGoogleClientIdOverride = (clientId) => {
