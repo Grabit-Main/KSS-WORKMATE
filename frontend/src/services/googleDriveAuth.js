@@ -4,7 +4,13 @@ const STORAGE_TOKEN_KEY = 'workmate_gdrive_access_token';
 const STORAGE_EXPIRY_KEY = 'workmate_gdrive_token_expires_at';
 
 const DEFAULT_CLIENT_ID = '271988357300-r0hbpq3r5gj5vccpb6tng0587q628dj2.apps.googleusercontent.com';
-let cachedClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
+
+const sanitizeClientId = (id) => {
+  if (!id) return '';
+  return id.replace(/[\r\n\s]+/g, '').trim();
+};
+
+let cachedClientId = sanitizeClientId(import.meta.env.VITE_GOOGLE_CLIENT_ID) || DEFAULT_CLIENT_ID;
 
 /**
  * Ensures Google Identity Services (GIS) client library is loaded
@@ -41,7 +47,7 @@ export const ensureGisScript = () => {
  */
 export const getGoogleClientId = async () => {
   // Check local storage custom override first if valid
-  const customId = localStorage.getItem('workmate_gdrive_client_id');
+  const customId = sanitizeClientId(localStorage.getItem('workmate_gdrive_client_id'));
   if (customId && !customId.includes('562995893354')) {
     cachedClientId = customId;
     return cachedClientId;
@@ -52,15 +58,17 @@ export const getGoogleClientId = async () => {
   // Try fetching from backend API
   try {
     const res = await api.get('/auth/google-client-id');
-    if (res.data?.client_id && !res.data.client_id.includes('562995893354')) {
-      cachedClientId = res.data.client_id;
+    const backendId = sanitizeClientId(res.data?.client_id);
+    if (backendId && !backendId.includes('562995893354')) {
+      cachedClientId = backendId;
       return cachedClientId;
     }
   } catch (e) {
     console.warn('[GDRIVE] Could not fetch Google Client ID from backend:', e);
   }
 
-  return import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
+  const envId = sanitizeClientId(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+  return envId || DEFAULT_CLIENT_ID;
 };
 
 export const setGoogleClientIdOverride = (clientId) => {
