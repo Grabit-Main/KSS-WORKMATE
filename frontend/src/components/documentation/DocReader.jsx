@@ -246,6 +246,41 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
           {/* ATTACHMENT CARD SECTION (Matches Project Overview Attachment design) */}
           {doc.file_url ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {rawUrl.includes('cloudinary.com') && (
+                <div style={{
+                  background: '#FFFBEB',
+                  border: '1px solid #FCD34D',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  <div style={{ fontSize: '13.5px', color: '#92400E', lineHeight: 1.4 }}>
+                    <strong>Legacy Document Link Detected:</strong> This document was originally uploaded using Cloudinary. To view it in Google Drive, please click <strong>Edit</strong> and re-save your PDF document via Google Drive.
+                  </div>
+                  {isTL && onEdit && (
+                    <button
+                      onClick={() => onEdit(doc)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '6px',
+                        background: '#F59E0B',
+                        color: '#FFF',
+                        border: 'none',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      Re-upload PDF via Google Drive
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div style={{
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',
