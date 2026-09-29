@@ -5,6 +5,7 @@ import {
   Download, ExternalLink, FileCheck
 } from 'lucide-react';
 import { DocMarkdownRenderer } from './DocMarkdownRenderer';
+import { AttachmentCard } from '../common/AttachmentCard';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
 export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = false, onEdit, onDelete }) => {
@@ -27,30 +28,16 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
 
   const isPdf = doc?.file_url || doc?.file_type === 'pdf';
 
-  const googleDriveUrls = React.useMemo(() => {
-    if (!doc?.file_url) return { viewUrl: '', iframeSrc: '', isDrive: false };
-    
+  const gdriveViewUrl = React.useMemo(() => {
+    if (!doc?.file_url) return '';
     if (doc.file_url.includes('drive.google.com')) {
       const match = doc.file_url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || doc.file_url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
-        return {
-          viewUrl: `https://drive.google.com/file/d/${match[1]}/view`,
-          iframeSrc: `https://drive.google.com/file/d/${match[1]}/preview`,
-          isDrive: true
-        };
+        return `https://drive.google.com/file/d/${match[1]}/view`;
       }
-      return {
-        viewUrl: doc.file_url,
-        iframeSrc: doc.file_url.replace(/\/view(\?.*)?$/, '/preview'),
-        isDrive: true
-      };
+      return doc.file_url;
     }
-
-    return {
-      viewUrl: doc.file_url,
-      iframeSrc: '',
-      isDrive: false
-    };
+    return doc.file_url;
   }, [doc?.file_url]);
 
   if (!doc) return null;
@@ -97,9 +84,9 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {googleDriveUrls.viewUrl && (
+          {gdriveViewUrl && (
             <a
-              href={googleDriveUrls.viewUrl}
+              href={gdriveViewUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -115,7 +102,7 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                 textDecoration: 'none'
               }}
             >
-              <ExternalLink size={14} /> {doc?.file_url?.includes('drive.google.com') ? 'Open in Google Drive' : 'Open Fullscreen PDF'}
+              <ExternalLink size={14} /> Open in Google Drive
             </a>
           )}
 
@@ -264,81 +251,69 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
             </div>
           </div>
 
-          {/* PDF EMBEDDED VIEWER */}
+          {/* ATTACHMENT CARD SECTION (Matches Project Overview Attachment design) */}
           {doc.file_url ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-lg, 12px)',
-                overflow: 'hidden',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
+                borderRadius: 'var(--radius-lg, 16px)',
+                padding: '24px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
               }}>
-                <div style={{
-                  padding: '12px 18px',
-                  background: 'var(--surface-hover)',
-                  borderBottom: '1px solid var(--border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    <FileCheck size={18} style={{ color: '#10B981' }} />
-                    {doc.file_name || `${doc.title}.pdf`}
-                  </div>
-                  <a
-                    href={googleDriveUrls.viewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: '12.5px', color: '#4285F4', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    Open in Google Drive <ExternalLink size={14} />
-                  </a>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Attachments (1)
                 </div>
 
-                {googleDriveUrls.isDrive ? (
-                  <iframe
-                    src={googleDriveUrls.iframeSrc}
-                    title={doc.title}
-                    width="100%"
-                    height="750px"
-                    style={{ border: 'none', display: 'block' }}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                  <AttachmentCard
+                    attachment={{
+                      file_url: gdriveViewUrl,
+                      file_name: doc.file_name || `${doc.title}.pdf`,
+                      file_type: 'pdf',
+                      storage_provider: 'GDRIVE'
+                    }}
                   />
-                ) : (
-                  <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--surface-hover)' }}>
-                    <FileCheck size={48} style={{ color: '#4285F4', marginBottom: '16px' }} />
-                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                      Google Drive PDF Document
-                    </h3>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', maxWidth: '460px', margin: '0 auto 20px auto' }}>
-                      Click below to open and access the complete PDF document directly in your connected Google Drive account.
-                    </p>
-                    <a
-                      href={googleDriveUrls.viewUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 22px',
-                        borderRadius: '8px',
-                        background: '#4285F4',
-                        color: '#FFF',
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        textDecoration: 'none'
-                      }}
-                    >
-                      <ExternalLink size={16} /> Open Document in Google Drive
-                    </a>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: '240px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {doc.file_name || `${doc.title}.pdf`}
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      Click on the attachment card or the button below to open and access the full PDF document directly in your connected Google Drive account.
+                    </div>
+                    <div style={{ marginTop: '4px' }}>
+                      <a
+                        href={gdriveViewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 18px',
+                          borderRadius: '8px',
+                          background: '#4285F4',
+                          color: '#FFF',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          boxShadow: '0 2px 6px rgba(66, 133, 244, 0.25)'
+                        }}
+                      >
+                        <ExternalLink size={15} /> Open in Connected Google Drive
+                      </a>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Text Notes if available */}
               {doc.content && (
-                <div style={{ marginTop: '16px', background: 'var(--surface)', padding: '20px', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid var(--border)' }}>
+                <div style={{ background: 'var(--surface)', padding: '20px', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid var(--border)' }}>
                   <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
                     Document Remarks & Notes
                   </h3>
