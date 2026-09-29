@@ -30,6 +30,8 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
 
   const gdriveViewUrl = React.useMemo(() => {
     if (!doc?.file_url) return '';
+    
+    // 1. Google Drive native file link
     if (doc.file_url.includes('drive.google.com')) {
       const match = doc.file_url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || doc.file_url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
@@ -37,17 +39,9 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
       }
       return doc.file_url;
     }
-    // For Cloudinary URLs: replace raw/upload with image/upload so Cloudinary delivers Content-Disposition: inline (opens PDF viewer in browser tab with NO download)
-    if (doc.file_url.includes('cloudinary.com')) {
-      let cleanUrl = doc.file_url;
-      cleanUrl = cleanUrl.replace('/raw/upload/fl_inline/', '/image/upload/');
-      cleanUrl = cleanUrl.replace('/raw/upload/', '/image/upload/');
-      if (!cleanUrl.toLowerCase().endsWith('.pdf')) {
-        cleanUrl = cleanUrl + '.pdf';
-      }
-      return cleanUrl;
-    }
-    return doc.file_url;
+
+    // 2. Non-Google Drive URLs (like Cloudinary raw URLs): route through Google Docs/Drive Viewer so it opens in Google Web Viewer without 404 error or downloading
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(doc.file_url)}`;
   }, [doc?.file_url]);
 
   if (!doc) return null;
