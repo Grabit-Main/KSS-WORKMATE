@@ -39,6 +39,7 @@ export const TaskChat = ({ task, currentUser }) => {
   const [fileUploading, setFileUploading] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const { joinRoom, leaveRoom, dispatch } = useWebSocket() || {};
 
@@ -145,6 +146,9 @@ export const TaskChat = ({ task, currentUser }) => {
 
     setSending(true);
     setNewMessage('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
 
     // Instant 0ms Optimistic Update for WhatsApp-like feel
     let tempId = null;
@@ -208,8 +212,21 @@ export const TaskChat = ({ task, currentUser }) => {
     }
   };
 
+  const handleTextareaChange = (e) => {
+    setNewMessage(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  };
+
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter') {
+      if (e.shiftKey) {
+        // Shift+Enter creates a new line inside textarea
+        return;
+      }
+      // Enter without Shift submits message
       e.preventDefault();
       handleSend();
     }
@@ -437,7 +454,7 @@ export const TaskChat = ({ task, currentUser }) => {
                       boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                     }}>
                       {m.message && (
-                        <div>{m.message}</div>
+                        <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
                       )}
 
                       {/* Attachment preview if present */}
@@ -557,21 +574,27 @@ export const TaskChat = ({ task, currentUser }) => {
           <Paperclip size={18} />
         </button>
 
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
+          rows={1}
           placeholder={selectedFile ? 'Add a caption (optional)...' : `Message ${getPartnerFirstName()}...`}
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={handleTextareaChange}
           onKeyDown={handleKeyDown}
           style={{
             flex: 1,
-            borderRadius: '9999px',
+            borderRadius: '20px',
             border: '1px solid #E2E8F0',
             padding: '10px 18px',
             fontSize: '13px',
             color: '#1E293B',
             outline: 'none',
-            background: '#FFFFFF'
+            background: '#FFFFFF',
+            resize: 'none',
+            fontFamily: 'inherit',
+            lineHeight: '1.4',
+            maxHeight: '120px',
+            overflowY: 'auto'
           }}
           disabled={sending || fileUploading}
         />
