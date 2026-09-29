@@ -37,6 +37,16 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
       }
       return doc.file_url;
     }
+    // For Cloudinary URLs: replace raw/upload with image/upload so Cloudinary delivers Content-Disposition: inline (opens PDF viewer in browser tab with NO download)
+    if (doc.file_url.includes('cloudinary.com')) {
+      let cleanUrl = doc.file_url;
+      cleanUrl = cleanUrl.replace('/raw/upload/fl_inline/', '/image/upload/');
+      cleanUrl = cleanUrl.replace('/raw/upload/', '/image/upload/');
+      if (!cleanUrl.toLowerCase().endsWith('.pdf')) {
+        cleanUrl = cleanUrl + '.pdf';
+      }
+      return cleanUrl;
+    }
     return doc.file_url;
   }, [doc?.file_url]);
 
