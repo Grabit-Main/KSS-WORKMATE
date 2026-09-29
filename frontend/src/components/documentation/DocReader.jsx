@@ -28,26 +28,7 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
 
   const isPdf = doc?.file_url || doc?.file_type === 'pdf';
 
-  const gdriveViewUrl = React.useMemo(() => {
-    if (!doc?.file_url) return '';
-    
-    // 1. Google Drive native file link (Exact same as Project Overview attachment link)
-    if (doc.file_url.includes('drive.google.com')) {
-      const match = doc.file_url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || doc.file_url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) {
-        return `https://drive.google.com/file/d/${match[1]}/view`;
-      }
-      return doc.file_url;
-    }
-
-    // 2. Legacy Cloudinary URLs: clean up invalid image/upload transformations back to valid URL
-    let cleanUrl = doc.file_url;
-    if (cleanUrl.includes('cloudinary.com')) {
-      cleanUrl = cleanUrl.replace('/image/upload/', '/raw/upload/');
-      cleanUrl = cleanUrl.replace('/fl_inline/', '/');
-    }
-    return cleanUrl;
-  }, [doc?.file_url]);
+  const fileUrl = doc?.file_url || '';
 
   if (!doc) return null;
 
@@ -93,9 +74,9 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {gdriveViewUrl && (
+          {fileUrl && (
             <a
-              href={gdriveViewUrl}
+              href={fileUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -280,10 +261,10 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
                   <AttachmentCard
                     attachment={{
-                      file_url: gdriveViewUrl,
+                      file_url: doc.file_url,
                       file_name: doc.file_name || `${doc.title}.pdf`,
-                      file_type: 'pdf',
-                      storage_provider: 'GDRIVE'
+                      file_type: doc.file_type || 'pdf',
+                      storage_provider: doc.storage_provider || 'GDRIVE'
                     }}
                   />
 
@@ -296,7 +277,7 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                     </div>
                     <div style={{ marginTop: '4px' }}>
                       <a
-                        href={gdriveViewUrl}
+                        href={doc.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
