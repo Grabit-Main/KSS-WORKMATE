@@ -118,18 +118,11 @@ async def upload_file(
                 except Exception as server_gdrive_err:
                     print(f"[GDRIVE SERVER ERROR] Server Google Drive upload failed: {server_gdrive_err}")
 
-            # 3. Cloudinary fallback
+            # If Google Drive upload fails
             if not upload_success:
-                print(f"[FALLBACK] Falling back to Cloudinary for document: {file.filename}")
-                result = cloudinary_service.upload_file(content, file.filename, folder=f"workmate/projects/{project.id}")
-                attachment = ProjectAttachment(
-                    project_id=project_id,
-                    uploaded_by=user.id,
-                    file_name=file.filename,
-                    file_type="document",
-                    file_url=result["url"],
-                    storage_provider="cloudinary",
-                    cloudinary_public_id=result.get("public_id"),
+                raise HTTPException(
+                    400,
+                    "Google Drive connection is required to upload PDF documents. Please grant Google Drive permission."
                 )
 
         db.add(attachment)
@@ -195,18 +188,11 @@ async def upload_file(
                 except Exception as server_gdrive_err:
                     print(f"[GDRIVE SERVER ERROR] Server Google Drive task upload failed: {server_gdrive_err}")
 
-            # 3. Cloudinary fallback
+            # If Google Drive upload fails
             if not upload_success:
-                print(f"[FALLBACK] Falling back to Cloudinary for task document: {file.filename}")
-                result = cloudinary_service.upload_file(content, file.filename)
-                attachment = TaskAttachment(
-                    task_id=task_id,
-                    uploaded_by=user.id,
-                    file_name=file.filename,
-                    file_type="document",
-                    file_url=result["url"],
-                    storage_provider="cloudinary",
-                    cloudinary_public_id=result.get("public_id"),
+                raise HTTPException(
+                    400,
+                    "Google Drive connection is required to upload PDF documents. Please grant Google Drive permission."
                 )
 
         db.add(attachment)
