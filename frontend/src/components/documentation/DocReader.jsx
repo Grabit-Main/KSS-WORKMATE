@@ -5,7 +5,7 @@ import {
   Download, ExternalLink, FileCheck
 } from 'lucide-react';
 import { DocMarkdownRenderer } from './DocMarkdownRenderer';
-import { AttachmentCard } from '../common/AttachmentCard';
+import { AttachmentCard, getGoogleDriveViewUrl } from '../common/AttachmentCard';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
 export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = false, onEdit, onDelete }) => {
@@ -28,7 +28,9 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
 
   const isPdf = doc?.file_url || doc?.file_type === 'pdf';
 
-  const fileUrl = doc?.file_url || '';
+  const rawUrl = doc?.file_url || '';
+  const gdriveViewUrl = getGoogleDriveViewUrl(rawUrl, doc?.gdrive_file_id);
+  const fileUrl = gdriveViewUrl || rawUrl;
 
   if (!doc) return null;
 
@@ -261,10 +263,11 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
                   <AttachmentCard
                     attachment={{
-                      file_url: doc.file_url,
+                      file_url: fileUrl,
+                      gdrive_file_id: doc.gdrive_file_id,
                       file_name: doc.file_name || `${doc.title}.pdf`,
                       file_type: doc.file_type || 'pdf',
-                      storage_provider: doc.storage_provider || 'GDRIVE'
+                      storage_provider: 'GDRIVE'
                     }}
                   />
 
@@ -277,7 +280,7 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
                     </div>
                     <div style={{ marginTop: '4px' }}>
                       <a
-                        href={doc.file_url}
+                        href={fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{

@@ -44,6 +44,21 @@ const getCleanFileName = (url, name) => {
   }
 };
 
+export const getGoogleDriveViewUrl = (url, gdriveFileId) => {
+  if (gdriveFileId) {
+    return `https://drive.google.com/file/d/${gdriveFileId}/view`;
+  }
+  if (!url) return '';
+  if (url.includes('drive.google.com')) {
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://drive.google.com/file/d/${match[1]}/view`;
+    }
+    return url;
+  }
+  return url;
+};
+
 export const AttachmentCard = ({ attachment, url, name, type, storage }) => {
   const fileUrl = attachment?.file_url || url || '';
   const fileName = getCleanFileName(fileUrl, attachment?.file_name || name);
@@ -54,7 +69,8 @@ export const AttachmentCard = ({ attachment, url, name, type, storage }) => {
   const handleClick = (e) => {
     e.stopPropagation();
     if (fileUrl) {
-      window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      const viewUrl = getGoogleDriveViewUrl(fileUrl, attachment?.gdrive_file_id);
+      window.open(viewUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
