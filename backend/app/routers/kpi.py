@@ -140,6 +140,7 @@ def get_kpi_summary(
     if total == 0:
         return KPISummary(
             total_logs=0,
+            total_days=0,
             average_kpi=0.0,
             status_counts={
                 "Excellent": 0,
@@ -150,6 +151,7 @@ def get_kpi_summary(
             }
         )
 
+    unique_days = len(set(str(l.date) for l in logs if l.date))
     avg_pct = round(sum(l.daily_kpi_percentage for l in logs) / total, 1)
     status_counts = {
         "Excellent": 0,
@@ -167,6 +169,7 @@ def get_kpi_summary(
 
     return KPISummary(
         total_logs=total,
+        total_days=unique_days,
         average_kpi=avg_pct,
         status_counts=status_counts
     )
