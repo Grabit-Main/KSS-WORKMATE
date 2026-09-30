@@ -243,20 +243,20 @@ export default function CollaborationPage() {
   }
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', height: 'calc(100vh - 110px)', display: 'flex', flexDirection: 'column', paddingBottom: '20px' }}>
+    <div style={{ maxWidth: '1400px', margin: '0 auto', minHeight: 'calc(100vh - 110px)', display: 'flex', flexDirection: 'column', paddingBottom: '20px' }}>
       
       {/* HEADER & BANNER */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
         borderRadius: 'var(--radius-xl)',
-        padding: '20px 28px',
-        marginBottom: '20px',
+        padding: '16px 24px',
+        marginBottom: '16px',
         border: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '16px'
+        gap: '14px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
@@ -409,8 +409,8 @@ export default function CollaborationPage() {
           borderRadius: 'var(--radius-lg, 16px)',
           background: 'var(--surface)',
           overflow: 'hidden',
-          height: '600px',
-          minHeight: 0,
+          height: 'calc(100vh - 280px)',
+          minHeight: '680px',
           boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
         }}>
           {/* Channel / DM Switcher Sidebar */}
@@ -612,8 +612,8 @@ export default function CollaborationPage() {
           borderRadius: 'var(--radius-lg, 16px)',
           background: 'var(--surface)',
           overflow: 'hidden',
-          height: '600px',
-          minHeight: 0,
+          height: 'calc(100vh - 280px)',
+          minHeight: '680px',
           boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
         }}>
           <div style={{
@@ -702,8 +702,8 @@ export default function CollaborationPage() {
           borderRadius: 'var(--radius-lg, 16px)',
           background: 'var(--surface)',
           overflow: 'hidden',
-          height: '600px',
-          minHeight: 0,
+          height: 'calc(100vh - 280px)',
+          minHeight: '680px',
           boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
         }}>
           <div style={{
