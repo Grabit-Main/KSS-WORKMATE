@@ -77,5 +77,6 @@ class KPIResponse(BaseModel):
 
 class KPISummary(BaseModel):
     total_logs: int
+    total_days: int = 0
     average_kpi: float
     status_counts: Dict[str, int]

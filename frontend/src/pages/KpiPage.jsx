@@ -1767,6 +1767,15 @@ const KpiPage = () => {
     return Array.from(months);
   }, [logs]);
 
+  // Total unique evaluation days logged
+  const totalUniqueDays = useMemo(() => {
+    if (summary && summary.total_days !== undefined && summary.total_days !== null && summary.total_days > 0) {
+      return summary.total_days;
+    }
+    const dates = new Set(logs.map((l) => String(l.date || '')).filter(Boolean));
+    return dates.size;
+  }, [summary, logs]);
+
   const handleDownloadCSV = async () => {
     try {
       setDownloading(true);
@@ -1980,7 +1989,7 @@ const KpiPage = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
             <span style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
-              {summary ? summary.total_logs : logs.length}
+              {totalUniqueDays}
             </span>
             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>Total Days</span>
           </div>
