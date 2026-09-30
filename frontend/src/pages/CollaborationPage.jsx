@@ -6,7 +6,8 @@ import { getTasks } from '../api/tasks';
 import {
   MessageSquare, Send, Users, Sparkles, Search, Paperclip, Smile, AtSign,
   Pin, Bell, CheckCircle2, Filter, Folder, CheckSquare, Megaphone, HelpCircle,
-  FileText, ArrowUpRight, MessageCircle, AlertCircle, X, ChevronRight, User, ThumbsUp, Heart, BookOpen
+  FileText, ArrowUpRight, MessageCircle, AlertCircle, X, ChevronRight, User, ThumbsUp, Heart, BookOpen,
+  Maximize2, Minimize2
 } from 'lucide-react';
 import { DocumentationHub } from '../components/documentation/DocumentationHub';
 
@@ -20,6 +21,7 @@ export default function CollaborationPage() {
   // Navigation & View Tabs: 'chats', 'projects', 'tasks', 'mentions', 'announcements'
   const [activeTab, setActiveTab] = useState('chats');
   const [showDocHub, setShowDocHub] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Real Data Lists
   const [teamUsers, setTeamUsers] = useState([]);
@@ -319,48 +321,50 @@ export default function CollaborationPage() {
         </button>
       </div>
 
-      {/* TOP SUMMARY METRICS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Bell size={20} />
+      {/* TOP SUMMARY METRICS (Visible on announcements & mentions) */}
+      {!['chats', 'projects', 'tasks'].includes(activeTab) && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bell size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.unread}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Unread Messages</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.unread}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Unread Messages</div>
-          </div>
-        </div>
 
-        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.12)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AtSign size={20} />
+          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.12)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AtSign size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.mentions}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Mentions</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.mentions}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Mentions</div>
-          </div>
-        </div>
 
-        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <MessageCircle size={20} />
+          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <MessageCircle size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.discussions}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Active Threads</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.discussions}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Active Threads</div>
-          </div>
-        </div>
 
-        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.12)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AlertCircle size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.pendingReplies}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pending Reviews</div>
+          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.12)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertCircle size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.pendingReplies}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pending Reviews</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* INTERNAL TAB NAVIGATION BAR */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '16px', gap: '12px' }}>
@@ -402,15 +406,29 @@ export default function CollaborationPage() {
 
       {/* TAB 1: CHATS (DIRECT, TEAM, PROJECT CHANNELS) */}
       {activeTab === 'chats' && (
-        <div style={{
+        <div style={isFullScreen ? {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 9999,
+          background: 'var(--surface)',
+          borderRadius: 0,
+          border: 'none',
+          display: 'flex',
+          overflow: 'hidden'
+        } : {
           flex: 1,
           display: 'flex',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-lg, 16px)',
           background: 'var(--surface)',
           overflow: 'hidden',
-          height: 'calc(100vh - 280px)',
-          minHeight: '680px',
+          height: 'calc(100vh - 210px)',
+          minHeight: '700px',
           boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
         }}>
           {/* Channel / DM Switcher Sidebar */}
@@ -511,6 +529,27 @@ export default function CollaborationPage() {
                 <MessageSquare size={20} color="#5551FF" />
                 <span>{activeChatTarget.name}</span>
               </div>
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface-hover)',
+                  color: 'var(--brand-600)',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                <span>{isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+              </button>
             </div>
 
             {/* Messages Feed */}
@@ -605,15 +644,29 @@ export default function CollaborationPage() {
 
       {/* TAB 2: PROJECT DISCUSSIONS */}
       {activeTab === 'projects' && (
-        <div style={{
+        <div style={isFullScreen ? {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 9999,
+          background: 'var(--surface)',
+          borderRadius: 0,
+          border: 'none',
+          display: 'flex',
+          overflow: 'hidden'
+        } : {
           flex: 1,
           display: 'flex',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-lg, 16px)',
           background: 'var(--surface)',
           overflow: 'hidden',
-          height: 'calc(100vh - 280px)',
-          minHeight: '680px',
+          height: 'calc(100vh - 210px)',
+          minHeight: '700px',
           boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
         }}>
           <div style={{
@@ -695,15 +748,29 @@ export default function CollaborationPage() {
 
       {/* TAB 3: TASK DISCUSSIONS */}
       {activeTab === 'tasks' && (
-        <div style={{
+        <div style={isFullScreen ? {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 9999,
+          background: 'var(--surface)',
+          borderRadius: 0,
+          border: 'none',
+          display: 'flex',
+          overflow: 'hidden'
+        } : {
           flex: 1,
           display: 'flex',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-lg, 16px)',
           background: 'var(--surface)',
           overflow: 'hidden',
-          height: 'calc(100vh - 280px)',
-          minHeight: '680px',
+          height: 'calc(100vh - 210px)',
+          minHeight: '700px',
           boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
         }}>
           <div style={{
