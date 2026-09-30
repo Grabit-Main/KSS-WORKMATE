@@ -402,97 +402,127 @@ export default function CollaborationPage() {
 
       {/* TAB 1: CHATS (DIRECT, TEAM, PROJECT CHANNELS) */}
       {activeTab === 'chats' && (
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '280px 1fr', gap: '16px', minHeight: 0 }}>
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg, 16px)',
+          background: 'var(--surface)',
+          overflow: 'hidden',
+          height: '600px',
+          minHeight: 0,
+          boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
+        }}>
           {/* Channel / DM Switcher Sidebar */}
-          <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
+          <div style={{
+            width: '260px',
+            flexShrink: 0,
+            borderRight: '1px solid var(--border)',
+            padding: '20px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            overflowY: 'auto',
+            background: 'var(--surface)'
+          }}>
             {/* Team Channels */}
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '10px' }}>
                 Team Channels
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {[
-                  { id: 'general', name: 'General Announcements', icon: '📢' },
-                  { id: 'engineering', name: 'Engineering & Tech', icon: '💻' },
-                  { id: 'sprint', name: 'Sprint & Daily Standups', icon: '⚡' }
-                ].map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => setActiveChatTarget({ type: 'team', id: c.id, name: c.name })}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      border: activeChatTarget.id === c.id ? '1px solid var(--brand-500)' : '1px solid transparent',
-                      background: activeChatTarget.id === c.id ? 'var(--brand-50)' : 'transparent',
-                      color: activeChatTarget.id === c.id ? 'var(--brand-600)' : 'var(--text-primary)',
-                      fontSize: '13px',
-                      fontWeight: activeChatTarget.id === c.id ? 600 : 500,
-                      textAlign: 'left',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <span>{c.icon}</span>
-                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
-                  </button>
-                ))}
+                  { id: 'general', name: 'General Announcements', icon: Megaphone },
+                  { id: 'engineering', name: 'Engineering & Tech', icon: FileText },
+                  { id: 'sprint', name: 'Sprint & Daily Standups', icon: Sparkles }
+                ].map(c => {
+                  const Icon = c.icon;
+                  const isSelected = activeChatTarget.id === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setActiveChatTarget({ type: 'team', id: c.id, name: c.name })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: isSelected ? '1px solid #6366F1' : '1px solid transparent',
+                        background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                        color: isSelected ? '#5551FF' : 'var(--text-primary)',
+                        fontSize: '13px',
+                        fontWeight: isSelected ? 600 : 500,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <Icon size={16} color={isSelected ? '#5551FF' : 'var(--text-tertiary)'} />
+                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Direct Messages */}
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '10px' }}>
                 Direct Messages
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {teamUsers.map(u => (
-                  <button
-                    key={u.id}
-                    onClick={() => setActiveChatTarget({ type: 'dm', id: u.id, name: `${u.first_name} ${u.last_name}` })}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      border: activeChatTarget.id === u.id ? '1px solid var(--brand-500)' : '1px solid transparent',
-                      background: activeChatTarget.id === u.id ? 'var(--brand-50)' : 'transparent',
-                      color: activeChatTarget.id === u.id ? 'var(--brand-600)' : 'var(--text-primary)',
-                      fontSize: '13px',
-                      fontWeight: activeChatTarget.id === u.id ? 600 : 500,
-                      textAlign: 'left',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: u.is_active ? '#10B981' : 'var(--border)' }} />
-                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.first_name} {u.last_name}</span>
-                    <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: 'var(--surface-glass)', color: 'var(--text-tertiary)' }}>{u.role}</span>
-                  </button>
-                ))}
+                {teamUsers.map(u => {
+                  const isSelected = activeChatTarget.id === u.id;
+                  return (
+                    <button
+                      key={u.id}
+                      onClick={() => setActiveChatTarget({ type: 'dm', id: u.id, name: `${u.first_name} ${u.last_name}` })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: isSelected ? '1px solid #6366F1' : '1px solid transparent',
+                        background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                        color: isSelected ? '#5551FF' : 'var(--text-primary)',
+                        fontSize: '13px',
+                        fontWeight: isSelected ? 600 : 500,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: u.is_active ? '#10B981' : 'var(--border)' }} />
+                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.first_name} {u.last_name}</span>
+                      <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'var(--surface-hover)', color: 'var(--text-tertiary)', fontWeight: 600 }}>{u.role}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
 
           {/* Main Chat Box */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MessageSquare size={18} color="var(--brand-600)" /> {activeChatTarget.name}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: 'var(--surface)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <MessageSquare size={20} color="#5551FF" />
+                <span>{activeChatTarget.name}</span>
               </div>
             </div>
 
             {/* Messages Feed */}
-            <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', background: 'var(--surface)' }}>
               {messages.map(msg => (
-                <div key={msg.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <div key={msg.id} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
                   <div style={{
-                    width: '36px',
-                    height: '36px',
+                    width: '38px',
+                    height: '38px',
                     borderRadius: '50%',
-                    background: 'var(--brand-500)',
-                    color: '#fff',
+                    background: '#6366F1',
+                    color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -502,20 +532,24 @@ export default function CollaborationPage() {
                   }}>
                     {msg.user_name ? msg.user_name.charAt(0) : 'U'}
                   </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{msg.user_name}</span>
-                      <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', background: 'var(--brand-50)', color: 'var(--brand-600)', fontWeight: 600 }}>{msg.user_role}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{msg.user_name}</span>
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: '#EEF2FF', color: '#6366F1', fontWeight: 600 }}>{msg.user_role}</span>
                       <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                     </div>
                     <div style={{
-                      background: 'var(--surface-glass)',
-                      padding: '10px 14px',
-                      borderRadius: '0 12px 12px 12px',
+                      background: '#FAF9F5',
+                      padding: '12px 18px',
+                      borderRadius: '12px',
                       fontSize: '14px',
                       color: 'var(--text-primary)',
-                      lineHeight: 1.4,
-                      border: '1px solid var(--border)'
+                      lineHeight: '1.5',
+                      border: '1px solid #E5E0D8',
+                      display: 'inline-block',
+                      maxWidth: '100%',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word'
                     }}>
                       {msg.content}
                     </div>
@@ -526,7 +560,7 @@ export default function CollaborationPage() {
             </div>
 
             {/* Input Box */}
-            <form onSubmit={handleSendMessage} style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '12px' }}>
+            <form onSubmit={handleSendMessage} style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <input
                 type="text"
                 value={inputMsg}
@@ -534,17 +568,35 @@ export default function CollaborationPage() {
                 placeholder={`Message #${activeChatTarget.name}...`}
                 style={{
                   flex: 1,
-                  padding: '10px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
+                  padding: '12px 20px',
+                  borderRadius: '9999px',
+                  border: '1px solid #E2E8F0',
+                  background: '#FFFFFF',
                   color: 'var(--text-primary)',
-                  fontSize: '14px',
-                  outline: 'none'
+                  fontSize: '13.5px',
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                 }}
               />
-              <button type="submit" className="btn btn-primary" style={{ padding: '0 18px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Send size={16} /> Send
+              <button
+                type="submit"
+                disabled={!inputMsg.trim()}
+                style={{
+                  padding: '10px 22px',
+                  borderRadius: '12px',
+                  background: !inputMsg.trim() ? '#94A3B8' : '#5551FF',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontWeight: 600,
+                  fontSize: '13.5px',
+                  cursor: !inputMsg.trim() ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Send size={15} /> Send
               </button>
             </form>
           </div>
@@ -553,63 +605,89 @@ export default function CollaborationPage() {
 
       {/* TAB 2: PROJECT DISCUSSIONS */}
       {activeTab === 'projects' && (
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '280px 1fr', gap: '16px', minHeight: 0 }}>
-          <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto' }}>
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg, 16px)',
+          background: 'var(--surface)',
+          overflow: 'hidden',
+          height: '600px',
+          minHeight: 0,
+          boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
+        }}>
+          <div style={{
+            width: '260px',
+            flexShrink: 0,
+            borderRight: '1px solid var(--border)',
+            padding: '20px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            overflowY: 'auto',
+            background: 'var(--surface)'
+          }}>
             <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '8px' }}>
               Select Project
             </div>
-            {projectsList.map(p => (
-              <button
-                key={p.id}
-                onClick={() => setSelectedProjectId(p.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  border: selectedProjectId === p.id ? '1px solid var(--brand-500)' : '1px solid transparent',
-                  background: selectedProjectId === p.id ? 'var(--brand-50)' : 'transparent',
-                  color: selectedProjectId === p.id ? 'var(--brand-600)' : 'var(--text-primary)',
-                  fontSize: '13px',
-                  fontWeight: selectedProjectId === p.id ? 600 : 500,
-                  textAlign: 'left',
-                  cursor: 'pointer'
-                }}
-              >
-                <Folder size={16} />
-                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
-              </button>
-            ))}
+            {projectsList.map(p => {
+              const isSelected = selectedProjectId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedProjectId(p.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    border: isSelected ? '1px solid #6366F1' : '1px solid transparent',
+                    background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                    color: isSelected ? '#5551FF' : 'var(--text-primary)',
+                    fontSize: '13px',
+                    fontWeight: isSelected ? 600 : 500,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <Folder size={16} color={isSelected ? '#5551FF' : 'var(--text-tertiary)'} />
+                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>{activeProjectObj?.name || 'Project Discussions'}</h2>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: 'var(--surface)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>{activeProjectObj?.name || 'Project Discussions'}</h2>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>{activeProjectObj?.description || 'Project discussions, milestones, and architectural notes.'}</p>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {messages.map(msg => (
-                <div key={msg.id} style={{ background: 'var(--surface-glass)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                <div key={msg.id} style={{ background: '#FAF9F5', padding: '14px 18px', borderRadius: '12px', border: '1px solid #E5E0D8' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{msg.user_name}</span>
-                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}</span>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{msg.user_name}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                   </div>
-                  <p style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0 }}>{msg.content}</p>
+                  <p style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
                 </div>
               ))}
             </div>
 
-            <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '12px' }}>
+            <form onSubmit={handleSendMessage} style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <input
                 type="text"
                 value={inputMsg}
                 onChange={(e) => setInputMsg(e.target.value)}
                 placeholder="Post project discussion note..."
-                style={{ flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none' }}
+                style={{ flex: 1, padding: '12px 20px', borderRadius: '9999px', border: '1px solid #E2E8F0', background: '#FFFFFF', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
-              <button type="submit" className="btn btn-primary"><Send size={16} /> Post</button>
+              <button type="submit" disabled={!inputMsg.trim()} style={{ padding: '10px 22px', borderRadius: '12px', background: !inputMsg.trim() ? '#94A3B8' : '#5551FF', color: '#FFFFFF', border: 'none', fontWeight: 600, fontSize: '13.5px', cursor: !inputMsg.trim() ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Send size={15} /> Post
+              </button>
             </form>
           </div>
         </div>
@@ -617,70 +695,96 @@ export default function CollaborationPage() {
 
       {/* TAB 3: TASK DISCUSSIONS */}
       {activeTab === 'tasks' && (
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '280px 1fr', gap: '16px', minHeight: 0 }}>
-          <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto' }}>
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg, 16px)',
+          background: 'var(--surface)',
+          overflow: 'hidden',
+          height: '600px',
+          minHeight: 0,
+          boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
+        }}>
+          <div style={{
+            width: '260px',
+            flexShrink: 0,
+            borderRight: '1px solid var(--border)',
+            padding: '20px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            overflowY: 'auto',
+            background: 'var(--surface)'
+          }}>
             <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '8px' }}>
               Select Task
             </div>
-            {tasksList.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setSelectedTaskId(t.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  border: selectedTaskId === t.id ? '1px solid var(--brand-500)' : '1px solid transparent',
-                  background: selectedTaskId === t.id ? 'var(--brand-50)' : 'transparent',
-                  color: selectedTaskId === t.id ? 'var(--brand-600)' : 'var(--text-primary)',
-                  fontSize: '13px',
-                  fontWeight: selectedTaskId === t.id ? 600 : 500,
-                  textAlign: 'left',
-                  cursor: 'pointer'
-                }}
-              >
-                <CheckSquare size={16} />
-                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
-              </button>
-            ))}
+            {tasksList.map(t => {
+              const isSelected = selectedTaskId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedTaskId(t.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    border: isSelected ? '1px solid #6366F1' : '1px solid transparent',
+                    background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                    color: isSelected ? '#5551FF' : 'var(--text-primary)',
+                    fontSize: '13px',
+                    fontWeight: isSelected ? 600 : 500,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <CheckSquare size={16} color={isSelected ? '#5551FF' : 'var(--text-tertiary)'} />
+                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: 'var(--surface)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{activeTaskObj?.title || 'Task Discussion'}</h2>
-                <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: 'var(--brand-50)', color: 'var(--brand-600)', fontWeight: 600 }}>{activeTaskObj?.status?.toUpperCase()}</span>
+                <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{activeTaskObj?.title || 'Task Discussion'}</h2>
+                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: '#EEF2FF', color: '#6366F1', fontWeight: 600 }}>{activeTaskObj?.status?.toUpperCase()}</span>
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>{activeTaskObj?.description}</p>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {messages.length === 0 ? (
                 <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '40px 0' }}>No comments on this task yet. Start the conversation!</div>
               ) : (
                 messages.map(msg => (
-                  <div key={msg.id} style={{ background: 'var(--surface-glass)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{msg.user_name}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}</span>
+                  <div key={msg.id} style={{ background: '#FAF9F5', padding: '14px 18px', borderRadius: '12px', border: '1px solid #E5E0D8' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{msg.user_name}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                     </div>
-                    <p style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0 }}>{msg.content}</p>
+                    <p style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
                   </div>
                 ))
               )}
             </div>
 
-            <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '12px' }}>
+            <form onSubmit={handleSendMessage} style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <input
                 type="text"
                 value={inputMsg}
                 onChange={(e) => setInputMsg(e.target.value)}
                 placeholder="Post task comment..."
-                style={{ flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none' }}
+                style={{ flex: 1, padding: '12px 20px', borderRadius: '9999px', border: '1px solid #E2E8F0', background: '#FFFFFF', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
-              <button type="submit" className="btn btn-primary"><Send size={16} /> Comment</button>
+              <button type="submit" disabled={!inputMsg.trim()} style={{ padding: '10px 22px', borderRadius: '12px', background: !inputMsg.trim() ? '#94A3B8' : '#5551FF', color: '#FFFFFF', border: 'none', fontWeight: 600, fontSize: '13.5px', cursor: !inputMsg.trim() ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Send size={15} /> Comment
+              </button>
             </form>
           </div>
         </div>
