@@ -321,50 +321,48 @@ export default function CollaborationPage() {
         </button>
       </div>
 
-      {/* TOP SUMMARY METRICS (Visible on announcements & mentions) */}
-      {!['chats', 'projects', 'tasks'].includes(activeTab) && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Bell size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.unread}</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Unread Messages</div>
-            </div>
+      {/* TOP SUMMARY METRICS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Bell size={20} />
           </div>
-
-          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.12)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AtSign size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.mentions}</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Mentions</div>
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <MessageCircle size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.discussions}</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Active Threads</div>
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.12)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AlertCircle size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.pendingReplies}</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pending Reviews</div>
-            </div>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.unread}</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Unread Messages</div>
           </div>
         </div>
-      )}
+
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.12)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AtSign size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.mentions}</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Mentions</div>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <MessageCircle size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.discussions}</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Active Threads</div>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.12)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AlertCircle size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.pendingReplies}</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pending Reviews</div>
+          </div>
+        </div>
+      </div>
 
       {/* INTERNAL TAB NAVIGATION BAR */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '16px', gap: '12px' }}>
