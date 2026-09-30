@@ -954,7 +954,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                       title={currentTask.status === 'blocked' ? "Task is currently blocked. Click to unblock." : "Block task if developer cannot complete in time (TL action)"}
                     >
                       <AlertOctagon size={16} />
-                      <span>{currentTask.status === 'blocked' ? 'Blocked' : 'Blocked'}</span>
+                      <span>{actionLoading ? 'Updating...' : (currentTask.status === 'blocked' ? 'Blocked' : 'Block')}</span>
                     </button>
                   )}
 
