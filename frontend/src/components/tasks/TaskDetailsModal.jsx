@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TaskChat } from '../chat/TaskChat';
-import { startTask, completeTask, confirmTask, reassignTask, updateTask, deleteTask } from '../../api/tasks';
+import { startTask, completeTask, confirmTask, reassignTask, updateTask, deleteTask, blockTask } from '../../api/tasks';
 import { getUsers } from '../../api/users';
 import { getTeams } from '../../api/teams';
 import { AttachmentCard } from '../common/AttachmentCard';
@@ -9,7 +9,7 @@ import { useWebSocket } from '../../context/WebSocketContext';
 import { formatDateTime, normalizeToDDMMYYYY, getDeadlineStatus, isOverdue } from '../../utils/dateUtils';
 import {
   X, Calendar, Clock, Play, CheckCircle2, User,
-  Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle, UserCheck, Trash2, Edit3
+  Flag, AlertCircle, FolderKanban, Users, Shield, AlertTriangle, UserCheck, Trash2, Edit3, AlertOctagon
 } from 'lucide-react';
 
 const formatScheduledDate = (val) => normalizeToDDMMYYYY(val);
@@ -232,6 +232,21 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
       setErrorMsg(err.response?.data?.detail || 'Failed to reassign task.');
     } finally {
       setReassignLoading(false);
+    }
+  };
+
+  const handleBlockTask = async () => {
+    setActionLoading(true);
+    setErrorMsg('');
+    try {
+      const updated = await blockTask(currentTask.id);
+      setCurrentTask(updated);
+      if (onTaskUpdated) onTaskUpdated(updated);
+      if (dispatch) dispatch('task.status_changed', { task_id: updated.id, id: updated.id, status: updated.status, project_id: updated.project_id });
+    } catch (err) {
+      setErrorMsg(err.response?.data?.detail || 'Failed to update task blocked status.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -886,51 +901,82 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                 </button>
               )}
 
-              {/* ASSIGNER ACTIONS: Strictly only who assigned the task has Reassign and Complete Task */}
-              {isAssigner && currentTask.status !== 'completed' && (
+              {/* ASSIGNER & TL ACTIONS */}
+              {(isAssigner || currentUser?.role === 'TL') && currentTask.status !== 'completed' && (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setErrorMsg('');
-                      setReassignCandidate(String(currentTask.assigned_to) || '');
-                      setShowReassignModal(true);
-                    }}
-                    disabled={actionLoading || reassignLoading}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '13px',
-                      padding: '8px 14px',
-                      background: 'var(--subtle)',
-                      color: 'var(--brand-700)',
-                      border: '1px solid rgba(99, 102, 241, 0.3)'
-                    }}
-                    title="Reassign this deliverable"
-                  >
-                    <UserCheck size={16} />
-                    <span>Reassign</span>
-                  </button>
+                  {isAssigner && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setErrorMsg('');
+                        setReassignCandidate(String(currentTask.assigned_to) || '');
+                        setShowReassignModal(true);
+                      }}
+                      disabled={actionLoading || reassignLoading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '13px',
+                        padding: '8px 14px',
+                        background: 'var(--subtle)',
+                        color: 'var(--brand-700)',
+                        border: '1px solid rgba(99, 102, 241, 0.3)'
+                      }}
+                      title="Reassign this deliverable"
+                    >
+                      <UserCheck size={16} />
+                      <span>Reassign</span>
+                    </button>
+                  )}
 
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleConfirm}
-                    disabled={actionLoading || reassignLoading}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '7px',
-                      fontSize: '13px',
-                      padding: '8px 18px',
-                      background: 'var(--status-completed)',
-                      borderColor: 'var(--status-completed)'
-                    }}
-                  >
-                    <CheckCircle2 size={16} />
-                    <span>{actionLoading ? 'Completing...' : 'Complete Task'}</span>
-                  </button>
+                  {/* TL ONLY BLOCK BUTTON */}
+                  {currentUser?.role === 'TL' && (
+                    <button
+                      type="button"
+                      onClick={handleBlockTask}
+                      disabled={actionLoading || reassignLoading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '13px',
+                        padding: '8px 14px',
+                        borderRadius: 'var(--radius-md, 8px)',
+                        border: '1px solid #FCA5A5',
+                        background: currentTask.status === 'blocked' ? '#EF4444' : '#FEF2F2',
+                        color: currentTask.status === 'blocked' ? '#FFFFFF' : '#DC2626',
+                        fontWeight: 600,
+                        cursor: actionLoading || reassignLoading ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title={currentTask.status === 'blocked' ? "Task is currently blocked. Click to unblock." : "Block task if developer cannot complete in time (TL action)"}
+                    >
+                      <AlertOctagon size={16} />
+                      <span>{currentTask.status === 'blocked' ? 'Blocked' : 'Blocked'}</span>
+                    </button>
+                  )}
+
+                  {isAssigner && (
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleConfirm}
+                      disabled={actionLoading || reassignLoading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '7px',
+                        fontSize: '13px',
+                        padding: '8px 18px',
+                        background: 'var(--status-completed)',
+                        borderColor: 'var(--status-completed)'
+                      }}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>{actionLoading ? 'Completing...' : 'Complete Task'}</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>

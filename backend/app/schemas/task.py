@@ -23,6 +23,7 @@ class TaskUpdate(BaseModel):
     deadline: Optional[datetime] = None
     scheduled_date: Optional[str] = None
     project_id: Optional[UUID] = None
+    status: Optional[str] = None
 
 
 class StatusUpdate(BaseModel):

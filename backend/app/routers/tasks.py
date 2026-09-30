@@ -69,7 +69,40 @@ async def update_task(
         task.scheduled_date = req.scheduled_date
     if req.project_id is not None:
         task.project_id = req.project_id
+    if req.status is not None:
+        if req.status == "blocked" and user.role != "TL" and not is_assigner:
+            raise HTTPException(403, "Only Team Leads (TL) can block tasks.")
+        old_s = task.status
+        task.status = req.status
+        _log_status(db, task, old_s, req.status, user.id, f"Status set to {req.status} by {user.role} {user.first_name}")
 
+    task.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(task)
+
+    await _broadcast_task(task, task.team_id, TASK_STATUS_CHANGED)
+    return task
+
+
+@router.put("/{task_id}/block", response_model=TaskResponse)
+async def block_task(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
+    is_assigner = str(task.assigned_by) == str(user.id)
+    # Strictly restricted: Only Team Leads (TL) or task assigners can block tasks
+    if user.role != "TL" and not is_assigner:
+        raise HTTPException(403, "Only Team Leads (TL) can block tasks.")
+
+    old_status = task.status
+    new_status = "in_progress" if task.status == "blocked" else "blocked"
+    _log_status(db, task, old_status, new_status, user.id, f"Task status updated to '{new_status}' by {user.role} {user.first_name} {user.last_name}")
+    task.status = new_status
     task.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(task)
