@@ -974,7 +974,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                       }}
                     >
                       <CheckCircle2 size={16} />
-                      <span>{actionLoading ? 'Completing...' : 'Complete Task'}</span>
+                      <span>{actionLoading ? 'Completing...' : 'Complete'}</span>
                     </button>
                   )}
                 </div>
