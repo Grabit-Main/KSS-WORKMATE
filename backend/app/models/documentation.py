@@ -29,8 +29,12 @@ class Documentation(Base):
     project = relationship("Project", foreign_keys=[project_id])
     author = relationship("User", foreign_keys=[author_id])
 
-# Ensure table exists
+# Ensure table exists and missing columns are safely created
 try:
     Base.metadata.create_all(bind=engine)
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE documentations ADD COLUMN IF NOT EXISTS gdrive_file_id VARCHAR;"))
+        conn.commit()
 except Exception as e:
-    print("Error creating documentations table:", e)
+    print("Error updating documentations table schema:", e)
