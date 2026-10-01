@@ -239,7 +239,8 @@ def update_documentation(
         update_data["project_id"] = resolve_project_id(db, req.project_id, user)
 
     for field, val in update_data.items():
-        setattr(doc, field, val)
+        if hasattr(doc, field):
+            setattr(doc, field, val)
 
     doc.updated_by = user.full_name or f"{user.role} User"
     doc.updated_at = datetime.utcnow()
