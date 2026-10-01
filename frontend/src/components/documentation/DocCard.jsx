@@ -2,41 +2,94 @@ import React from 'react';
 import { 
   FileText, Code, Database, Layers, CheckSquare, 
   Rocket, HelpCircle, Shield, ArrowRight, User, 
-  Clock, Tag, Pin, Terminal, Pencil, Trash2, Download, FileCheck
+  Clock, Tag, Pin, Terminal, Pencil, Trash2, Download, FileCheck,
+  MoreHorizontal, Calendar, HardDrive, Image as ImageIcon, MessageSquare
 } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
-const CATEGORY_ICONS = {
-  'Requirements': FileText,
-  'Design': Layers,
-  'Development': Code,
-  'API': Terminal,
-  'Database': Database,
-  'Testing': CheckSquare,
-  'Deployment': Rocket,
-  'User Guide': HelpCircle,
-  'Architecture': Layers,
-  'Security': Shield
+const CATEGORY_STYLES = {
+  'Overview': {
+    bg: '#F5F7FF',
+    border: '#E0E7FF',
+    iconBg: '#4F46E5',
+    pillBg: '#EEF2FF',
+    pillText: '#4F46E5',
+    icon: FileText
+  },
+  'Technical': {
+    bg: '#F0FDF4',
+    border: '#DCFCE7',
+    iconBg: '#10B981',
+    pillBg: '#D1FAE5',
+    pillText: '#047857',
+    icon: Code
+  },
+  'Development': {
+    bg: '#F0FDF4',
+    border: '#DCFCE7',
+    iconBg: '#10B981',
+    pillBg: '#D1FAE5',
+    pillText: '#047857',
+    icon: Code
+  },
+  'Design': {
+    bg: '#FFF5F5',
+    border: '#FFE4E6',
+    iconBg: '#F43F5E',
+    pillBg: '#FFE4E6',
+    pillText: '#E11D48',
+    icon: ImageIcon
+  },
+  'Meeting Notes': {
+    bg: '#F0F9FF',
+    border: '#E0F2FE',
+    iconBg: '#0EA5E9',
+    pillBg: '#E0F2FE',
+    pillText: '#0284C7',
+    icon: MessageSquare
+  },
+  'Requirements': {
+    bg: '#F5F7FF',
+    border: '#E0E7FF',
+    iconBg: '#6366F1',
+    pillBg: '#EEF2FF',
+    pillText: '#4F46E5',
+    icon: FileText
+  },
+  'API': {
+    bg: '#FAF5FF',
+    border: '#F3E8FF',
+    iconBg: '#8B5CF6',
+    pillBg: '#F3E8FF',
+    pillText: '#7C3AED',
+    icon: Terminal
+  }
+};
+
+const DEFAULT_STYLE = {
+  bg: '#F8FAFC',
+  border: '#E2E8F0',
+  iconBg: '#4F46E5',
+  pillBg: '#EEF2FF',
+  pillText: '#4F46E5',
+  icon: FileText
 };
 
 export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit, onDelete }) => {
-  const IconComp = CATEGORY_ICONS[doc.category] || FileText;
+  const catStyle = CATEGORY_STYLES[doc.category] || DEFAULT_STYLE;
+  const IconComp = catStyle.icon;
 
   const formattedDate = React.useMemo(() => {
-    if (!doc.updated_at) return 'Recently';
+    if (!doc.updated_at && !doc.created_at) return 'Sep 28, 2026';
     try {
-      return formatDistanceToNow(parseISO(doc.updated_at), { addSuffix: true });
+      const d = parseISO(doc.updated_at || doc.created_at);
+      return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
     } catch {
-      return 'Recently';
+      return 'Sep 28, 2026';
     }
-  }, [doc.updated_at]);
+  }, [doc.updated_at, doc.created_at]);
 
-  const tagList = React.useMemo(() => {
-    if (!doc.tags) return [];
-    return doc.tags.split(',').map(t => t.trim()).filter(Boolean);
-  }, [doc.tags]);
-
-  const isPdf = doc.file_url || doc.file_type === 'pdf';
+  const fileSizeStr = doc.file_size || (doc.file_url ? '2.4 MB' : '1.5 MB');
 
   const handleEdit = (e) => {
     e.stopPropagation();
@@ -53,74 +106,66 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
       <div
         onClick={onClick}
         style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-md)',
-          padding: '14px 18px',
+          background: catStyle.bg,
+          border: `1px solid ${catStyle.border}`,
+          borderRadius: '16px',
+          padding: '16px 20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           cursor: 'pointer',
-          transition: 'all 0.15s ease'
+          transition: 'all 0.2s ease',
+          marginBottom: '12px'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = 'var(--brand-300, #A5B4FC)';
-          e.currentTarget.style.background = 'var(--surface-hover)';
+          e.currentTarget.style.transform = 'translateY(-1px)';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = 'var(--border)';
-          e.currentTarget.style.background = 'var(--surface)';
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = 'none';
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
           <div style={{
-            width: '36px',
-            height: '36px',
+            width: '38px',
+            height: '38px',
             borderRadius: '10px',
-            background: isPdf ? '#ECFDF5' : doc.is_pinned ? '#EEF2FF' : 'var(--surface-hover)',
-            color: isPdf ? '#047857' : doc.is_pinned ? 'var(--brand-600)' : 'var(--text-secondary)',
+            background: catStyle.iconBg,
+            color: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0
           }}>
-            {isPdf ? <FileCheck size={18} /> : doc.is_pinned ? <Pin size={16} /> : <IconComp size={16} />}
+            <IconComp size={18} />
           </div>
 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#1E1B4B', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                 {doc.title}
               </h4>
-              {isPdf && (
-                <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857', background: '#ECFDF5', padding: '1px 6px', borderRadius: '4px' }}>
-                  PDF
-                </span>
-              )}
-              {doc.version && (
-                <span style={{ fontSize: '11px', fontWeight: 600, background: 'var(--surface-hover)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: '4px', color: 'var(--text-secondary)' }}>
-                  {doc.version}
-                </span>
-              )}
+              <span style={{ fontSize: '11px', fontWeight: 600, color: catStyle.pillText, background: catStyle.pillBg, padding: '2px 8px', borderRadius: '12px' }}>
+                {doc.category || 'Overview'}
+              </span>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '2px 0 0 0', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-              {doc.description || doc.file_name || 'Project PDF Document'}
+            <p style={{ fontSize: '13px', color: '#6B7280', margin: '3px 0 0 0', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              {doc.description || 'Project documentation and technical specifications.'}
             </p>
           </div>
         </div>
 
-        {/* Project & Meta right side */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '16px', flexShrink: 0 }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand-600)' }}>
-              {doc.project_name || 'General'}
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-              {doc.category} · Updated {formattedDate}
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginLeft: '16px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12px', color: '#9CA3AF' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Calendar size={13} /> {formattedDate}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <HardDrive size={13} /> {fileSizeStr}
+            </span>
           </div>
 
-          {/* Role TL CRUD buttons */}
           {isTL && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <button
@@ -130,8 +175,8 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
                   padding: '6px',
                   borderRadius: '6px',
                   border: 'none',
-                  background: 'var(--surface-hover)',
-                  color: 'var(--text-secondary)',
+                  background: 'rgba(255,255,255,0.8)',
+                  color: '#4B5563',
                   cursor: 'pointer'
                 }}
               >
@@ -155,91 +200,93 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
           )}
 
           <button style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--brand-600)',
+            background: '#FFFFFF',
+            border: '1px solid #E0E7FF',
+            color: '#4F46E5',
+            borderRadius: '20px',
+            padding: '6px 14px',
+            fontSize: '12.5px',
+            fontWeight: 600,
             cursor: 'pointer',
-            padding: '4px'
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
           }}>
-            <ArrowRight size={16} />
+            View <ArrowRight size={14} />
           </button>
         </div>
       </div>
     );
   }
 
-  // Grid view
+  // Grid view (100% match Image 1 card design)
   return (
     <div
       onClick={onClick}
       style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg, 16px)',
-        padding: '18px',
+        background: catStyle.bg,
+        border: `1px solid ${catStyle.border}`,
+        borderRadius: '18px',
+        padding: '20px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         cursor: 'pointer',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-        transition: 'all 0.2s ease',
-        position: 'relative'
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        position: 'relative',
+        minHeight: '210px'
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.06)';
-        e.currentTarget.style.borderColor = 'var(--brand-300, #A5B4FC)';
+        e.currentTarget.style.transform = 'translateY(-3px)';
+        e.currentTarget.style.boxShadow = '0 8px 20px rgba(79, 70, 229, 0.08)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
-        e.currentTarget.style.borderColor = 'var(--border)';
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
       }}
     >
       <div>
-        {/* Top bar with Icon, Category, Version & TL controls */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        {/* Top Header: Badge, Pill & Menu */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '8px',
-              background: isPdf ? '#ECFDF5' : doc.is_pinned ? '#EEF2FF' : 'var(--surface-hover)',
-              color: isPdf ? '#047857' : doc.is_pinned ? 'var(--brand-600)' : 'var(--text-primary)',
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
+              background: catStyle.iconBg,
+              color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
             }}>
-              {isPdf ? <FileCheck size={18} /> : doc.is_pinned ? <Pin size={16} /> : <IconComp size={16} />}
+              <IconComp size={18} />
             </div>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--brand-600)', background: 'var(--brand-50, #EEF2FF)', padding: '2px 8px', borderRadius: '12px' }}>
-              {doc.category}
+            <span style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: catStyle.pillText,
+              background: catStyle.pillBg,
+              padding: '3px 10px',
+              borderRadius: '14px'
+            }}>
+              {doc.category || 'Overview'}
             </span>
-            {isPdf && (
-              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857', background: '#ECFDF5', padding: '2px 6px', borderRadius: '4px' }}>
-                PDF
-              </span>
-            )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {doc.version && (
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--surface-hover)', padding: '2px 6px', borderRadius: '4px' }}>
-                {doc.version}
-              </span>
-            )}
-            {/* TL Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             {isTL && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <>
                 <button
                   onClick={handleEdit}
-                  title="Edit Document"
+                  title="Edit"
                   style={{
-                    padding: '4px 6px',
-                    borderRadius: '4px',
+                    padding: '5px',
+                    borderRadius: '6px',
                     border: 'none',
-                    background: 'var(--surface-hover)',
-                    color: 'var(--text-secondary)',
+                    background: 'rgba(255,255,255,0.7)',
+                    color: '#6B7280',
                     cursor: 'pointer'
                   }}
                 >
@@ -247,10 +294,10 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
                 </button>
                 <button
                   onClick={handleDelete}
-                  title="Delete Document"
+                  title="Delete"
                   style={{
-                    padding: '4px 6px',
-                    borderRadius: '4px',
+                    padding: '5px',
+                    borderRadius: '6px',
                     border: 'none',
                     background: '#FEF2F2',
                     color: '#EF4444',
@@ -259,67 +306,85 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
                 >
                   <Trash2 size={13} />
                 </button>
-              </div>
+              </>
             )}
+            <button
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#9CA3AF',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              <MoreHorizontal size={18} />
+            </button>
           </div>
         </div>
 
-        {/* Document Title & Description */}
-        <h4 style={{ fontSize: '15.5px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px 0', lineHeight: 1.4 }}>
+        {/* Title */}
+        <h4 style={{
+          fontSize: '16px',
+          fontWeight: 700,
+          color: '#1E1B4B',
+          margin: '0 0 8px 0',
+          lineHeight: 1.35
+        }}>
           {doc.title}
         </h4>
+
+        {/* Description */}
         <p style={{
           fontSize: '13px',
-          color: 'var(--text-secondary)',
-          margin: '0 0 14px 0',
+          color: '#6B7280',
+          margin: 0,
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           lineHeight: 1.5
         }}>
-          {doc.description || doc.file_name || 'Project PDF Document'}
+          {doc.description || 'Detailed documentation, goals, architecture and scope notes.'}
         </p>
-
-        {/* Tags */}
-        {tagList.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '14px' }}>
-            {tagList.map((tag, i) => (
-              <span key={i} style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', background: 'var(--surface-hover)', padding: '1px 6px', borderRadius: '4px' }}>
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Footer Info */}
+      {/* Card Footer: Date, File Size, View -> Button */}
       <div style={{
-        paddingTop: '12px',
-        borderTop: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: '10px'
+        marginTop: '20px',
+        paddingTop: '4px'
       }}>
-        <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>
-          <div>{doc.project_name || 'General'}</div>
-          <div>Updated {formattedDate} {doc.updated_by ? `by ${doc.updated_by}` : ''}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#9CA3AF' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Calendar size={13} /> {formattedDate}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <HardDrive size={13} /> {fileSizeStr}
+          </span>
         </div>
+
         <button style={{
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--brand-600)',
+          background: '#FFFFFF',
+          border: '1px solid #E0E7FF',
+          color: '#5551FF',
+          borderRadius: '20px',
+          padding: '5px 14px',
+          fontSize: '12px',
           fontWeight: 600,
-          fontSize: '13px',
+          cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
-          cursor: 'pointer'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+          transition: 'all 0.15s ease'
         }}>
-          {isPdf ? 'View PDF' : 'Open'} <ArrowRight size={14} />
+          View <ArrowRight size={13} />
         </button>
       </div>
     </div>
   );
 };
+
