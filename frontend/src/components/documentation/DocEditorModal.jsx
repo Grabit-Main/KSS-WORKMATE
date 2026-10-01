@@ -91,17 +91,10 @@ export const DocEditorModal = ({
       setUploadingPdf(true);
       setError(null);
 
-      // Check for Google Drive token
-      let googleToken = getStoredGoogleToken();
-      if (!googleToken) {
-        try {
-          googleToken = await requestGoogleAccessToken();
-        } catch (authErr) {
-          console.warn('[GDRIVE] User skipped Google Drive prompt:', authErr);
-        }
-      }
+      // Retrieve Google token if available
+      const googleToken = getStoredGoogleToken();
 
-      // Standalone PDF upload for Documentation Hub via Google Drive
+      // Upload PDF file for Documentation Hub via Google Drive
       const res = await uploadFile(file, null, null, googleToken);
 
       if (!res || !res.url) {
@@ -254,9 +247,41 @@ export const DocEditorModal = ({
 
           {/* PDF File Upload Zone */}
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-              Upload PDF File *
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Upload PDF File *
+              </label>
+              {!getStoredGoogleToken() ? (
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    try {
+                      await requestGoogleAccessToken();
+                      setError(null);
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                  style={{
+                    fontSize: '11.5px',
+                    fontWeight: 600,
+                    color: '#4285F4',
+                    background: '#EEF2FF',
+                    border: '1px solid #C7D2FE',
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  + Connect Google Drive
+                </button>
+              ) : (
+                <span style={{ fontSize: '11px', color: '#10B981', fontWeight: 600 }}>
+                  ✓ Google Drive Connected
+                </span>
+              )}
+            </div>
 
             <input
               ref={fileInputRef}

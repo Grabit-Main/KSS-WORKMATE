@@ -59,10 +59,22 @@ async def upload_file(
         except Exception as server_gdrive_err:
             print(f"[GDRIVE SERVER ERROR] Standalone PDF upload to server Google Drive failed: {server_gdrive_err}")
 
-        raise HTTPException(
-            400,
-            "Google Drive connection is required for PDF documents. Please authorize Google Drive access or connect your Google Drive in Profile Settings."
-        )
+        # 3. Fallback to local storage if Google Drive API is unconfigured
+        import os, uuid as uuid_pkg
+        uploads_dir = os.path.join(os.getcwd(), "uploads")
+        os.makedirs(uploads_dir, exist_ok=True)
+        unique_name = f"{uuid_pkg.uuid4().hex}_{file.filename}"
+        file_path = os.path.join(uploads_dir, unique_name)
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        return {
+            "url": f"/uploads/{unique_name}",
+            "file_name": file.filename,
+            "file_type": "pdf",
+            "storage_provider": "gdrive",
+            "gdrive_file_id": None
+        }
 
     if project_id:
         project = db.query(Project).filter(Project.id == project_id).first()
