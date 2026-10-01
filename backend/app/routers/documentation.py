@@ -207,7 +207,8 @@ def create_documentation(
         updated_by=user.full_name or f"{user.role} User",
         version=req.version or "v1.0",
         tags=req.tags,
-        is_pinned=req.is_pinned or False
+        is_pinned=req.is_pinned or False,
+        gdrive_file_id=req.gdrive_file_id
     )
     db.add(doc)
     db.commit()

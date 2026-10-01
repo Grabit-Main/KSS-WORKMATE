@@ -21,6 +21,7 @@ export const DocEditorModal = ({
   const [fileUrl, setFileUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileType, setFileType] = useState('pdf');
+  const [gdriveFileId, setGdriveFileId] = useState('');
   const [version, setVersion] = useState('v1.0');
   const [tags, setTags] = useState('');
   const [isPinned, setIsPinned] = useState(false);
@@ -53,6 +54,7 @@ export const DocEditorModal = ({
       setFileUrl(doc.file_url || '');
       setFileName(doc.file_name || '');
       setFileType(doc.file_type || 'pdf');
+      setGdriveFileId(doc.gdrive_file_id || '');
       setVersion(doc.version || 'v1.0');
       setTags(doc.tags || '');
       setIsPinned(!!doc.is_pinned);
@@ -66,6 +68,7 @@ export const DocEditorModal = ({
       setFileUrl('');
       setFileName('');
       setFileType('pdf');
+      setGdriveFileId('');
       setVersion('v1.0');
       setTags('');
       setIsPinned(false);
@@ -98,7 +101,7 @@ export const DocEditorModal = ({
         }
       }
 
-      // Standalone PDF upload for Documentation Hub
+      // Standalone PDF upload for Documentation Hub via Google Drive
       const res = await uploadFile(file, null, null, googleToken);
 
       if (!res || !res.url) {
@@ -108,6 +111,9 @@ export const DocEditorModal = ({
       setFileUrl(res.url);
       setFileName(res.file_name || file.name);
       setFileType('pdf');
+      if (res.gdrive_file_id) {
+        setGdriveFileId(res.gdrive_file_id);
+      }
       
       // Auto fill title if empty
       if (!title) {
@@ -127,6 +133,7 @@ export const DocEditorModal = ({
   const handleRemovePdf = () => {
     setFileUrl('');
     setFileName('');
+    setGdriveFileId('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -159,6 +166,7 @@ export const DocEditorModal = ({
         file_url: fileUrl,
         file_name: fileName,
         file_type: fileType || 'pdf',
+        gdrive_file_id: gdriveFileId || null,
         version: version.trim() || 'v1.0',
         tags: tags.trim(),
         is_pinned: isPinned

@@ -24,6 +24,7 @@ class Documentation(Base):
     version = Column(String, default="v1.0")
     tags = Column(String, nullable=True) # comma separated tags
     is_pinned = Column(Boolean, default=False)
+    gdrive_file_id = Column(String, nullable=True)
 
     project = relationship("Project", foreign_keys=[project_id])
     author = relationship("User", foreign_keys=[author_id])
