@@ -15,6 +15,7 @@ class DocumentationBase(BaseModel):
     version: Optional[str] = "v1.0"
     tags: Optional[str] = None
     is_pinned: Optional[bool] = False
+    gdrive_file_id: Optional[str] = None
 
     @field_validator('project_id', mode='before')
     def parse_project_id(cls, v):
@@ -37,6 +38,7 @@ class DocumentationUpdate(BaseModel):
     version: Optional[str] = None
     tags: Optional[str] = None
     is_pinned: Optional[bool] = None
+    gdrive_file_id: Optional[str] = None
 
     @field_validator('project_id', mode='before')
     def parse_project_id(cls, v):
