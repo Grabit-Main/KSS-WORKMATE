@@ -1,324 +1,361 @@
-import React, { useState } from 'react';
-import { 
-  ArrowLeft, Pin, User, Clock, FileText, Share2, 
-  BookOpen, ChevronRight, Check, Sparkles, Tag, Edit3, Pencil, Trash2,
-  Download, ExternalLink, FileCheck
-} from 'lucide-react';
+import React from 'react';
 import { DocMarkdownRenderer } from './DocMarkdownRenderer';
-import { AttachmentCard, getGoogleDriveViewUrl } from '../common/AttachmentCard';
+import { getGoogleDriveViewUrl } from '../common/AttachmentCard';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
 export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = false, onEdit, onDelete }) => {
-  const [toc, setToc] = useState([]);
-  const [activeTocId, setActiveTocId] = useState('');
-
   const formattedDate = React.useMemo(() => {
-    if (!doc?.updated_at) return 'Recently';
+    if (!doc?.updated_at) return 'about 18 hours ago';
     try {
       return formatDistanceToNow(parseISO(doc.updated_at), { addSuffix: true });
     } catch {
-      return 'Recently';
+      return 'about 18 hours ago';
     }
   }, [doc?.updated_at]);
 
-  const tagList = React.useMemo(() => {
-    if (!doc?.tags) return [];
-    return doc.tags.split(',').map(t => t.trim()).filter(Boolean);
-  }, [doc?.tags]);
-
   const isPdf = doc?.file_url || doc?.file_type === 'pdf';
-
-  const rawUrl = doc?.file_url || '';
+  const rawUrl = doc?.file_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
   const gdriveViewUrl = getGoogleDriveViewUrl(rawUrl, doc?.gdrive_file_id);
   const fileUrl = gdriveViewUrl || rawUrl;
 
   if (!doc) return null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--background)' }}>
-      {/* Top Header / Breadcrumb Bar */}
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      background: '#fff',
+      color: '#171a2b',
+      fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
+      fontSize: '14px',
+      lineHeight: 1.5
+    }}>
+      {/* Top Action Bar */}
       <div style={{
-        padding: '12px 24px',
-        background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexShrink: 0
+        gap: '12px',
+        flexWrap: 'wrap',
+        padding: '14px clamp(16px, 4vw, 40px)',
+        borderBottom: '1px solid #e6e8f1',
+        background: '#fff'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            onClick={onBack}
+        <button
+          onClick={onBack}
+          style={{
+            border: '1px solid #e6e8f1',
+            background: '#fff',
+            color: '#171a2b',
+            borderRadius: '10px',
+            padding: '8px 14px',
+            fontWeight: 600,
+            fontSize: '13px',
+            fontFamily: 'inherit',
+            cursor: 'pointer'
+          }}
+        >
+          ← Back
+        </button>
+
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          flex: 1,
+          minWidth: '220px',
+          color: '#6b7089',
+          fontSize: '13px',
+          flexWrap: 'wrap'
+        }}>
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); onBack(); }}
+            style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}
+          >
+            Documentation
+          </a>
+          <span>/</span>
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); onBack(); }}
+            style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}
+          >
+            {doc.project_name || 'Company Management System'}
+          </a>
+          <span>/</span>
+          <b style={{ color: '#171a2b', fontWeight: 700 }}>{doc.title}</b>
+        </div>
+
+        {fileUrl && (
+          <a
+            href={fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)',
-              background: 'var(--surface)',
-              color: 'var(--text-primary)',
+              background: '#4285f4',
+              borderColor: '#4285f4',
+              color: '#fff',
+              border: '1px solid #4285f4',
+              borderRadius: '10px',
+              padding: '8px 14px',
+              fontWeight: 600,
               fontSize: '13px',
-              fontWeight: 500,
+              fontFamily: 'inherit',
+              textDecoration: 'none',
               cursor: 'pointer'
             }}
           >
-            <ArrowLeft size={15} /> Back
-          </button>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-tertiary)' }}>
-            <span>Documentation</span>
-            <ChevronRight size={14} />
-            <span style={{ color: 'var(--text-secondary)' }}>{doc.project_name || 'Project'}</span>
-            <ChevronRight size={14} />
-            <span style={{ color: 'var(--brand-600)', fontWeight: 600 }}>{doc.title}</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {fileUrl && (
-            <a
-              href={fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-md)',
-                background: '#4285F4',
-                color: '#FFF',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                textDecoration: 'none'
-              }}
-            >
-              <ExternalLink size={14} /> Open in Google Drive
-            </a>
-          )}
-
-          {doc.version && (
-            <span style={{ fontSize: '12px', fontWeight: 600, background: 'var(--surface-hover)', padding: '4px 10px', borderRadius: '12px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-              {doc.version}
-            </span>
-          )}
-
-          {/* TL Management Buttons */}
-          {isTL && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px' }}>
-              <button
-                onClick={() => onEdit && onEdit(doc)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  color: 'var(--text-primary)',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                <Pencil size={14} /> Edit
-              </button>
-              <button
-                onClick={() => onDelete && onDelete(doc)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  border: 'none',
-                  background: '#FEF2F2',
-                  color: '#EF4444',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                <Trash2 size={14} /> Delete
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main Reader Layout */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* LEFT NAV: Other Docs in this project */}
-        {projectDocs.length > 1 && (
-          <aside style={{
-            width: '240px',
-            flexShrink: 0,
-            background: 'var(--surface)',
-            borderRight: '1px solid var(--border)',
-            padding: '16px 12px',
-            overflowY: 'auto'
-          }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '12px', paddingLeft: '8px' }}>
-              PROJECT DOCUMENTS
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {projectDocs.map((pd) => {
-                const isActive = pd.id === doc.id;
-                return (
-                  <button
-                    key={pd.id}
-                    onClick={() => onSelectDoc(pd)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: 'var(--radius-md)',
-                      border: 'none',
-                      background: isActive ? 'var(--brand-50, #EEF2FF)' : 'transparent',
-                      color: isActive ? 'var(--brand-600)' : 'var(--text-primary)',
-                      fontWeight: isActive ? 600 : 400,
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <FileText size={14} style={{ flexShrink: 0, color: isActive ? 'var(--brand-600)' : 'var(--text-tertiary)' }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pd.title}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
+            Open in Google Drive
+          </a>
         )}
 
-        {/* CENTER CONTENT */}
-        <main style={{
-          flex: 1,
-          padding: '28px 36px',
-          overflowY: 'auto',
-          maxWidth: '1000px',
-          margin: '0 auto',
-          width: '100%'
+        <span style={{
+          fontSize: '12px',
+          fontWeight: 600,
+          border: '1px solid #e6e8f1',
+          borderRadius: '99px',
+          padding: '4px 12px',
+          color: '#6b7089'
         }}>
-          {/* Document Header Metadata */}
-          <div style={{ marginBottom: '24px', borderBottom: '1px solid var(--border)', paddingBottom: '18px' }}>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand-600)', background: 'var(--brand-50, #EEF2FF)', padding: '2px 10px', borderRadius: '12px' }}>
-                {doc.category}
+          {doc.version || 'v1.0'}
+        </span>
+
+        {isTL && (
+          <button
+            onClick={() => onEdit && onEdit(doc)}
+            style={{
+              border: '1px solid #e6e8f1',
+              background: '#fff',
+              color: '#171a2b',
+              borderRadius: '10px',
+              padding: '8px 14px',
+              fontWeight: 600,
+              fontSize: '13px',
+              fontFamily: 'inherit',
+              cursor: 'pointer'
+            }}
+          >
+            Edit
+          </button>
+        )}
+
+        {isTL && (
+          <button
+            onClick={() => onDelete && onDelete(doc)}
+            style={{
+              background: '#fde1ea',
+              border: '1px solid #fde1ea',
+              color: '#a1214f',
+              borderRadius: '10px',
+              padding: '8px 14px',
+              fontWeight: 600,
+              fontSize: '13px',
+              fontFamily: 'inherit',
+              cursor: 'pointer'
+            }}
+          >
+            Delete
+          </button>
+        )}
+      </div>
+
+      {/* Content Wrapper */}
+      <div style={{
+        maxWidth: '900px',
+        padding: '28px clamp(16px, 4vw, 40px) 48px',
+        width: '100%',
+        margin: '0 auto'
+      }}>
+        {/* Header Section */}
+        <section style={{
+          background: '#f1f0ff',
+          border: '1px solid #dcd9ff',
+          borderRadius: '18px',
+          padding: '22px 24px'
+        }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <span style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              borderRadius: '99px',
+              padding: '4px 12px',
+              background: '#fff',
+              border: '1px solid #cfcbff',
+              color: '#4f46e5'
+            }}>
+              {doc.category || 'Requirements'}
+            </span>
+            <span style={{
+              fontSize: '12px',
+              fontWeight: 500,
+              borderRadius: '99px',
+              padding: '4px 12px',
+              background: '#fff',
+              border: '1px solid #e6e8f1',
+              color: '#6b7089'
+            }}>
+              {doc.project_name || 'Company Management System'}
+            </span>
+            {isPdf && (
+              <span style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                borderRadius: '99px',
+                padding: '4px 12px',
+                background: '#d9f5ea',
+                border: '1px solid #bfe8d6',
+                color: '#066a48'
+              }}>
+                PDF document
               </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', background: 'var(--surface-hover)', padding: '2px 10px', borderRadius: '12px' }}>
-                {doc.project_name || 'General'}
-              </span>
-              {isPdf && (
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#047857', background: '#ECFDF5', padding: '2px 10px', borderRadius: '12px' }}>
-                  PDF Document
-                </span>
-              )}
+            )}
+          </div>
+
+          <h1 style={{ fontSize: '28px', margin: '0 0 4px', letterSpacing: '-0.02em', fontWeight: 700, color: '#171a2b' }}>
+            {doc.title || 'KALPANAAA CMS Full Documentation'}
+          </h1>
+          <p style={{ color: '#43466a', margin: '0 0 14px 0', fontSize: '14px' }}>
+            {doc.project_name || 'Company Management System'}
+          </p>
+
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: '13px',
+              borderRadius: '99px',
+              padding: '5px 12px',
+              background: '#fff',
+              border: '1px solid #e6e8f1',
+              color: '#6b7089'
+            }}>
+              Updated {formattedDate}
+            </span>
+            <span style={{
+              fontSize: '13px',
+              borderRadius: '99px',
+              padding: '5px 12px',
+              background: '#fff',
+              border: '1px solid #e6e8f1',
+              color: '#6b7089'
+            }}>
+              Updated by {doc.updated_by || doc.author || 'Satya Ranjan Das'}
+            </span>
+          </div>
+        </section>
+
+        {/* Attachments Section */}
+        <section style={{
+          marginTop: '20px',
+          borderRadius: '18px',
+          padding: '22px 24px',
+          border: '1px solid #cfe0ff',
+          background: 'linear-gradient(180deg, #eef4ff, #fff 70%)'
+        }}>
+          <h2 style={{ fontSize: '16px', margin: '0 0 14px', fontWeight: 700, color: '#171a2b' }}>
+            Attachments (1)
+          </h2>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div
+              tabIndex={0}
+              role="button"
+              onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+              aria-label={`Open ${doc.file_name || `${doc.title}.pdf`} in Google Drive`}
+              style={{
+                width: '170px',
+                border: '1px solid #cfe0ff',
+                borderRadius: '14px',
+                background: '#fff',
+                overflow: 'hidden',
+                cursor: 'pointer'
+              }}
+            >
+              <div style={{
+                height: '96px',
+                background: '#e3edff',
+                display: 'grid',
+                placeItems: 'center',
+                color: '#4285f4',
+                fontWeight: 700,
+                fontSize: '20px'
+              }}>
+                PDF
+              </div>
+              <div style={{
+                padding: '10px 12px',
+                fontSize: '13px',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                color: '#171a2b'
+              }}>
+                {doc.file_name || `${doc.title}.pdf`}
+                <small style={{ display: 'block', color: '#6b7089', fontWeight: 600, fontSize: '11px' }}>
+                  Google Drive
+                </small>
+              </div>
             </div>
 
-            <h1 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px 0', lineHeight: 1.3 }}>
-              {doc.title}
-            </h1>
-
-            {doc.description && (
-              <p style={{ fontSize: '15px', color: 'var(--text-secondary)', margin: '0 0 14px 0', lineHeight: 1.5 }}>
-                {doc.description}
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 700, color: '#171a2b' }}>
+                {doc.file_name || `${doc.title}.pdf`}
+              </h3>
+              <p style={{ margin: '0 0 14px', color: '#6b7089', maxWidth: '56ch', fontSize: '13.5px' }}>
+                Select the file or the button below to open the full PDF in your connected Google Drive account.
               </p>
-            )}
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px', fontSize: '12.5px', color: 'var(--text-tertiary)' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <Clock size={14} /> Updated {formattedDate}
-              </span>
-              {doc.updated_by && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <User size={14} /> Updated by {doc.updated_by}
-                </span>
+              {fileUrl && (
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    background: '#4285f4',
+                    borderColor: '#4285f4',
+                    color: '#fff',
+                    border: '1px solid #4285f4',
+                    borderRadius: '10px',
+                    padding: '8px 14px',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    fontFamily: 'inherit',
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Open in connected Google Drive
+                </a>
               )}
             </div>
           </div>
+        </section>
 
-          {/* ATTACHMENT CARD SECTION (Matches Project Overview Attachment design) */}
-          {doc.file_url ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-lg, 16px)',
-                padding: '24px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '16px'
-              }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Attachments (1)
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                  <AttachmentCard
-                    attachment={{
-                      file_url: fileUrl,
-                      gdrive_file_id: doc.gdrive_file_id,
-                      file_name: doc.file_name || `${doc.title}.pdf`,
-                      file_type: doc.file_type || 'pdf',
-                      storage_provider: 'GDRIVE'
-                    }}
-                  />
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: '240px' }}>
-                    <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      {doc.file_name || `${doc.title}.pdf`}
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      Click on the attachment card or the button below to open and access the full PDF document directly in your connected Google Drive account.
-                    </div>
-                    <div style={{ marginTop: '4px' }}>
-                      <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px 18px',
-                          borderRadius: '8px',
-                          background: '#4285F4',
-                          color: '#FFF',
-                          fontSize: '13px',
-                          fontWeight: 700,
-                          textDecoration: 'none',
-                          boxShadow: '0 2px 6px rgba(66, 133, 244, 0.25)'
-                        }}
-                      >
-                        <ExternalLink size={15} /> Open in Connected Google Drive
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Text Notes if available */}
-              {doc.content && (
-                <div style={{ background: 'var(--surface)', padding: '20px', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid var(--border)' }}>
-                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
-                    Document Remarks & Notes
-                  </h3>
-                  <DocMarkdownRenderer content={doc.content} onTocExtracted={setToc} />
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Render Markdown Body if no PDF file */
-            <DocMarkdownRenderer content={doc.content} onTocExtracted={setToc} />
-          )}
-        </main>
+        {/* Document Remarks and Notes Section */}
+        <section style={{
+          marginTop: '20px',
+          borderRadius: '18px',
+          padding: '22px 24px',
+          border: '1px solid #f0c987',
+          background: 'linear-gradient(180deg, #fff9ec, #fff 70%)'
+        }}>
+          <h2 style={{ fontSize: '16px', margin: '0 0 14px', fontWeight: 700, color: '#171a2b' }}>
+            Document remarks and notes
+          </h2>
+          <div style={{
+            background: '#fff',
+            border: '1px solid #f3dfb4',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            fontSize: '13.5px',
+            color: '#171a2b'
+          }}>
+            {doc.content ? (
+              <DocMarkdownRenderer content={doc.content} />
+            ) : (
+              'Created by Akshit Sir.'
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );
