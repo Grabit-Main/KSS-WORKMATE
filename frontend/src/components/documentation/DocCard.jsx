@@ -9,11 +9,11 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 
 const CATEGORY_STYLES = {
   'Overview': {
-    bg: '#F4F7FF',
+    bg: '#F5F7FF',
     border: '#E0E7FF',
-    iconBg: '#5551FF',
+    iconBg: '#4F46E5',
     pillBg: '#EEF2FF',
-    pillText: '#5551FF',
+    pillText: '#4F46E5',
     icon: FileText
   },
   'Technical': {
@@ -41,19 +41,19 @@ const CATEGORY_STYLES = {
     icon: ImageIcon
   },
   'Meeting Notes': {
-    bg: '#F5F3FF',
-    border: '#EDE9FE',
-    iconBg: '#3B82F6',
+    bg: '#F0F9FF',
+    border: '#E0F2FE',
+    iconBg: '#0EA5E9',
     pillBg: '#E0F2FE',
     pillText: '#0284C7',
     icon: MessageSquare
   },
   'Requirements': {
-    bg: '#F4F7FF',
+    bg: '#F5F7FF',
     border: '#E0E7FF',
-    iconBg: '#5551FF',
+    iconBg: '#6366F1',
     pillBg: '#EEF2FF',
-    pillText: '#5551FF',
+    pillText: '#4F46E5',
     icon: FileText
   },
   'API': {
@@ -69,9 +69,9 @@ const CATEGORY_STYLES = {
 const DEFAULT_STYLE = {
   bg: '#F8FAFC',
   border: '#E2E8F0',
-  iconBg: '#5551FF',
+  iconBg: '#4F46E5',
   pillBg: '#EEF2FF',
-  pillText: '#5551FF',
+  pillText: '#4F46E5',
   icon: FileText
 };
 
@@ -202,7 +202,7 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
           <button style={{
             background: '#FFFFFF',
             border: '1px solid #E0E7FF',
-            color: '#5551FF',
+            color: '#4F46E5',
             borderRadius: '20px',
             padding: '6px 14px',
             fontSize: '12.5px',
@@ -219,7 +219,7 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
     );
   }
 
-  // Grid view (100% match Image 2 card design)
+  // Grid view (100% match Image 1 card design)
   return (
     <div
       onClick={onClick}
@@ -239,7 +239,7 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-3px)';
-        e.currentTarget.style.boxShadow = '0 8px 20px rgba(85, 81, 255, 0.08)';
+        e.currentTarget.style.boxShadow = '0 8px 20px rgba(79, 70, 229, 0.08)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)';
@@ -259,7 +259,7 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
             }}>
               <IconComp size={18} />
             </div>
