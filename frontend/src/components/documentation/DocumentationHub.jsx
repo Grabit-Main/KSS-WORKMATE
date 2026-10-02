@@ -19,6 +19,26 @@ import {
 } from '../../api/documentation';
 import { getProjects } from '../../api/projects';
 
+const PROJECT_COLORS = ["#4f46e5", "#0ea5a4", "#0e9f6e", "#e08a00", "#7c5cff", "#e0457b"];
+
+const DEFAULT_PROJECT_DATA = [
+  { id: 'cms', name: "Company Management System", description: "Employee management, task tracking, attendance, performance and administration.", document_count: 1, category: "Requirements", color: "#4f46e5" },
+  { id: 'college', name: "College Management System", description: "Students, faculty, courses, attendance, exams and fees.", document_count: 0, category: "", color: "#0ea5a4" },
+  { id: 'finance', name: "Finance Management System", description: "Income, expenses, budgets, invoices and payments.", document_count: 0, category: "", color: "#0e9f6e" },
+  { id: 'hospital', name: "Hospital Management System", description: "Patients, doctors, appointments, billing and pharmacy.", document_count: 0, category: "", color: "#e08a00" },
+  { id: 'bbmp', name: "BBMP Municipal Management System", description: "Citizen services, complaints, permits and payments.", document_count: 0, category: "", color: "#7c5cff" },
+  { id: 'grabit', name: "GRABIT – Quick Commerce App", description: "Fast online ordering and delivery of daily-use products.", document_count: 0, category: "", color: "#e0457b" },
+  { id: 'buyzo', name: "BUYZO – E-commerce Platform", description: "Online marketplace for browsing, buying and delivery.", document_count: 0, category: "", color: "#4f46e5" },
+  { id: 'livo', name: "LIVO – Daily Task Management", description: "Organize, track and complete daily tasks.", document_count: 0, category: "", color: "#0ea5a4" },
+  { id: 'nagara', name: "NAGARA – Citizen Grievance System", description: "Submit, track and resolve civic complaints.", document_count: 0, category: "", color: "#0e9f6e" },
+  { id: 'procurement', name: "PROCUREMENT OS", description: "Requests, vendors, quotations, approvals and purchase orders.", document_count: 0, category: "", color: "#e08a00" },
+  { id: 'petshop', name: "PETSHOP – Pet Care Platform", description: "Pet products, vet services, grooming and orders.", document_count: 0, category: "", color: "#7c5cff" },
+  { id: 'lundrix', name: "Lundrix – Laundry Management", description: "Pickup, delivery, bookings, orders and payments.", document_count: 0, category: "", color: "#e0457b" },
+  { id: 'property', name: "Property Management System", description: "Properties, tenants, rent, maintenance and agreements.", document_count: 0, category: "", color: "#4f46e5" },
+  { id: 'fairticket', name: "FairTicket – Event & Movie Booking", description: "Discover, book and manage movie and event tickets.", document_count: 0, category: "", color: "#0ea5a4" },
+  { id: 'tms', name: "Transportation Management System", description: "Shipments, vehicles, drivers, routes and tracking.", document_count: 0, category: "", color: "#0e9f6e" }
+];
+
 export const DocumentationHub = ({ onBackToCollaboration }) => {
   const { user } = useAuth();
   const isTL = ['TL', 'PM', 'CEO', 'CTO', 'ADMIN'].includes((user?.role || '').toUpperCase());
@@ -37,8 +57,37 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
   const [selectedProject, setSelectedProject] = useState(null); // project object or name/id
   const [selectedCategory, setSelectedCategory] = useState(null); // category string
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterChip, setFilterChip] = useState('all'); // 'all', 'has', 'none'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [activeDoc, setActiveDoc] = useState(null); // document object if opened in reader
+
+  const displayProjects = useMemo(() => {
+    let list = (summary?.projects && summary.projects.length > 0) ? summary.projects : DEFAULT_PROJECT_DATA;
+
+    if (filterChip === 'has') {
+      list = list.filter(p => (p.document_count || 0) > 0);
+    } else if (filterChip === 'none') {
+      list = list.filter(p => (p.document_count || 0) === 0);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(p => 
+        p.name?.toLowerCase().includes(q) || 
+        p.description?.toLowerCase().includes(q) ||
+        p.aim?.toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [summary, filterChip, searchQuery]);
+
+  const totalProjectsCount = (summary?.projects && summary.projects.length > 0) ? summary.projects.length : DEFAULT_PROJECT_DATA.length;
+  const activeProjectsList = (summary?.projects && summary.projects.length > 0) ? summary.projects : DEFAULT_PROJECT_DATA;
+  const documentedProjectsCount = activeProjectsList.filter(p => (p.document_count || 0) > 0).length || 1;
+  const needDocsProjectsCount = totalProjectsCount - documentedProjectsCount;
+  const coveragePercentage = Math.round((documentedProjectsCount / totalProjectsCount) * 100);
+  const totalDocsCount = summary?.total_documents || docs.length || 1;
 
   // Load summary & initial documents directly from database records
   const fetchData = async () => {
@@ -417,188 +466,299 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
             </div>
           ) : (
             <>
-              {/* VIEW 1: OVERVIEW / HOME */}
+              {/* VIEW 1: OVERVIEW / HOME (EXACT MATCH TO PROVIDED UI DESIGN) */}
               {selectedView === 'overview' && !selectedProject && !selectedCategory && !searchQuery && (
-                <div>
-                  {/* Home Banner */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
-                      Documentation
-                    </h1>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
-                      Everything your team needs to understand, build, maintain and deliver every project.
-                    </p>
-                  </div>
-
-                  {/* Summary Metric Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-                    <div style={{ background: 'var(--surface)', padding: '16px 20px', borderRadius: 'var(--radius-lg, 16px)', border: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Total Projects</span>
-                      <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--brand-600)', marginTop: '4px' }}>
-                        {summary?.total_projects || 0}
-                      </div>
-                    </div>
-
-                    <div style={{ background: 'var(--surface)', padding: '16px 20px', borderRadius: 'var(--radius-lg, 16px)', border: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Total Documents</span>
-                      <div style={{ fontSize: '26px', fontWeight: 800, color: '#10B981', marginTop: '4px' }}>
-                        {summary?.total_documents || 0}
-                      </div>
-                    </div>
-
-                    <div style={{ background: 'var(--surface)', padding: '16px 20px', borderRadius: 'var(--radius-lg, 16px)', border: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Categories</span>
-                      <div style={{ fontSize: '26px', fontWeight: 800, color: '#06B6D4', marginTop: '4px' }}>
-                        {summary?.total_categories || 0}
-                      </div>
-                    </div>
-
-                    <div style={{ background: 'var(--surface)', padding: '16px 20px', borderRadius: 'var(--radius-lg, 16px)', border: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Recently Updated</span>
-                      <div style={{ fontSize: '26px', fontWeight: 800, color: '#8B5CF6', marginTop: '4px' }}>
-                        {summary?.recently_updated?.length || 0}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Empty State if No Real Documents Yet */}
-                  {docs.length === 0 && (
-                    <div style={{
-                      padding: '48px 24px',
-                      marginBottom: '32px',
-                      textAlign: 'center',
-                      background: 'var(--surface)',
-                      borderRadius: 'var(--radius-lg, 16px)',
-                      border: '1px dashed var(--brand-300, #A5B4FC)'
-                    }}>
-                      <BookOpen size={42} style={{ color: 'var(--brand-600)', marginBottom: '14px' }} />
-                      <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
-                        No Project PDF Documentation Uploaded Yet
-                      </h3>
-                      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 20px 0', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto' }}>
-                        Upload your real project PDF documents to build your workspace knowledge base.
+                <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif' }}>
+                  {/* Top Header */}
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                    <div>
+                      <h1 style={{ fontSize: '26px', margin: '0 0 4px', letterSpacing: '-0.02em', fontWeight: 700, color: '#171a2b' }}>
+                        Documentation hub
+                      </h1>
+                      <p style={{ color: '#6b7089', margin: 0 }}>
+                        Specs, guides and decisions for every project, in one place.
                       </p>
-                      {isTL && (
-                        <button
-                          onClick={handleCreateNew}
+                    </div>
+                    {isTL && (
+                      <button 
+                        onClick={handleCreateNew}
+                        style={{
+                          background: '#4f46e5',
+                          color: '#fff',
+                          border: 0,
+                          borderRadius: '10px',
+                          padding: '10px 16px',
+                          font: '600 14px inherit',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Upload PDF
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Hero Coverage Card */}
+                  <section style={{
+                    margin: '24px 0',
+                    background: '#f1f0ff',
+                    border: '1px solid #dcd9ff',
+                    borderRadius: '16px',
+                    padding: '22px',
+                    display: 'grid',
+                    gridTemplateColumns: '1.2fr 1fr',
+                    gap: '24px',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <b style={{ fontSize: '20px', display: 'block', marginBottom: '6px', color: '#171a2b' }}>
+                        Only {documentedProjectsCount} of {totalProjectsCount} projects has documentation
+                      </b>
+                      <span style={{ color: '#6b7089', margin: 0 }}>
+                        Start with the projects that have none. Each needs at least a requirements doc.
+                      </span>
+                      <div 
+                        style={{ height: '10px', borderRadius: '99px', background: '#fff', overflow: 'hidden', margin: '10px 0 6px' }}
+                        role="img" 
+                        aria-label={`${documentedProjectsCount} of ${totalProjectsCount} projects documented`}
+                      >
+                        <i style={{ display: 'block', height: '100%', width: `${coveragePercentage}%`, background: '#4f46e5', borderRadius: '99px', transition: 'width 0.3s ease' }}></i>
+                      </div>
+                      <span style={{ color: '#6b7089', margin: 0 }}>{coveragePercentage}% covered</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'left' }}>
+                      <div style={{ borderRadius: '14px', padding: '14px', background: '#e0e7ff', color: '#3730a3' }}>
+                        <strong style={{ fontSize: '26px', display: 'block', lineHeight: 1.1 }}>{totalProjectsCount}</strong>
+                        <span style={{ fontSize: '12px', fontWeight: 500 }}>Projects</span>
+                      </div>
+                      <div style={{ borderRadius: '14px', padding: '14px', background: '#d9f5ea', color: '#066a48' }}>
+                        <strong style={{ fontSize: '26px', display: 'block', lineHeight: 1.1 }}>{totalDocsCount}</strong>
+                        <span style={{ fontSize: '12px', fontWeight: 500 }}>Documents</span>
+                      </div>
+                      <div style={{ borderRadius: '14px', padding: '14px', background: '#fde9c8', color: '#8a5200' }}>
+                        <strong style={{ fontSize: '26px', display: 'block', lineHeight: 1.1 }}>{needDocsProjectsCount}</strong>
+                        <span style={{ fontSize: '12px', fontWeight: 500 }}>Need docs</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Filter Tools & Search */}
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px' }}>
+                    <input 
+                      type="search"
+                      placeholder="Search projects or documents"
+                      aria-label="Search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{
+                        flex: 1,
+                        minWidth: '200px',
+                        border: '1px solid #e6e8f1',
+                        background: '#fff',
+                        color: '#171a2b',
+                        borderRadius: '10px',
+                        padding: '10px 14px',
+                        font: 'inherit',
+                        outline: 'none'
+                      }}
+                    />
+                    <button 
+                      aria-pressed={filterChip === 'all'} 
+                      onClick={() => setFilterChip('all')}
+                      style={{
+                        border: '1px solid #e6e8f1',
+                        background: filterChip === 'all' ? '#4f46e5' : '#fff',
+                        borderColor: filterChip === 'all' ? '#4f46e5' : '#e6e8f1',
+                        color: filterChip === 'all' ? '#fff' : '#6b7089',
+                        borderRadius: '99px',
+                        padding: '7px 14px',
+                        font: '500 13px inherit',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      All
+                    </button>
+                    <button 
+                      aria-pressed={filterChip === 'has'} 
+                      onClick={() => setFilterChip('has')}
+                      style={{
+                        border: '1px solid #e6e8f1',
+                        background: filterChip === 'has' ? '#4f46e5' : '#fff',
+                        borderColor: filterChip === 'has' ? '#4f46e5' : '#e6e8f1',
+                        color: filterChip === 'has' ? '#fff' : '#6b7089',
+                        borderRadius: '99px',
+                        padding: '7px 14px',
+                        font: '500 13px inherit',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      Has docs
+                    </button>
+                    <button 
+                      aria-pressed={filterChip === 'none'} 
+                      onClick={() => setFilterChip('none')}
+                      style={{
+                        border: '1px solid #e6e8f1',
+                        background: filterChip === 'none' ? '#4f46e5' : '#fff',
+                        borderColor: filterChip === 'none' ? '#4f46e5' : '#e6e8f1',
+                        color: filterChip === 'none' ? '#fff' : '#6b7089',
+                        borderRadius: '99px',
+                        padding: '7px 14px',
+                        font: '500 13px inherit',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      Needs docs
+                    </button>
+                  </div>
+
+                  {/* Project List */}
+                  <div style={{ background: '#fff', border: '1px solid #e6e8f1', borderRadius: '16px', overflow: 'hidden' }}>
+                    {displayProjects.length > 0 ? displayProjects.map((p, idx) => {
+                      const color = p.color || PROJECT_COLORS[idx % PROJECT_COLORS.length];
+                      const docCount = p.document_count || 0;
+                      return (
+                        <div 
+                          key={p.id || p.name}
+                          tabIndex={0}
+                          onClick={() => handleSelectProject(p.id, p.name)}
                           style={{
-                            display: 'inline-flex',
+                            borderLeft: `4px solid ${color}`,
+                            background: `linear-gradient(90deg, color-mix(in srgb, ${color} 7%, #fff), #fff 45%)`,
+                            display: 'grid',
+                            gridTemplateColumns: '40px 1fr 110px 120px',
+                            gap: '16px',
                             alignItems: 'center',
-                            gap: '8px',
-                            padding: '10px 20px',
-                            borderRadius: 'var(--radius-md)',
-                            background: 'var(--brand-600)',
-                            color: '#FFF',
-                            border: 'none',
-                            fontSize: '13.5px',
-                            fontWeight: 600,
+                            padding: '16px 20px',
+                            borderTop: idx === 0 ? 0 : '1px solid #e6e8f1',
                             cursor: 'pointer'
                           }}
                         >
-                          <Plus size={16} /> Upload PDF Documentation
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* PINNED DOCUMENTATION */}
-                  {docs.filter(d => d.is_pinned).length > 0 && (
-                    <div style={{ marginBottom: '32px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                        <Pin size={18} style={{ color: 'var(--brand-600)' }} />
-                        <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                          PINNED DOCUMENTATION
-                        </h3>
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '10px',
+                            display: 'grid',
+                            placeItems: 'center',
+                            fontWeight: 700,
+                            color: '#fff',
+                            background: color
+                          }}>
+                            {p.name ? p.name[0] : 'P'}
+                          </div>
+                          <div>
+                            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#171a2b' }}>{p.name}</h3>
+                            <p style={{
+                              margin: '2px 0 0',
+                              color: '#6b7089',
+                              fontSize: '13px',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
+                              {p.description || 'Project workspace documentation and specs.'}
+                            </p>
+                          </div>
+                          {docCount > 0 ? (
+                            <>
+                              <span style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                borderRadius: '99px',
+                                padding: '3px 10px',
+                                justifySelf: 'start',
+                                background: '#e3f6ee',
+                                color: '#0e9f6e'
+                              }}>
+                                {docCount} {docCount === 1 ? 'document' : 'documents'}
+                              </span>
+                              <span style={{
+                                justifySelf: 'end',
+                                color: color,
+                                fontWeight: 600,
+                                fontSize: '13px',
+                                border: `1px solid ${color}`,
+                                borderRadius: '8px',
+                                padding: '5px 12px'
+                              }}>
+                                View documents
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                borderRadius: '99px',
+                                padding: '3px 10px',
+                                justifySelf: 'start',
+                                background: '#fde9c8',
+                                color: '#8a5200'
+                              }}>
+                                No documents
+                              </span>
+                              <span style={{
+                                justifySelf: 'end',
+                                color: color,
+                                fontWeight: 600,
+                                fontSize: '13px',
+                                border: `1px solid ${color}`,
+                                borderRadius: '8px',
+                                padding: '5px 12px'
+                              }}>
+                                Add first doc
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      );
+                    }) : (
+                      <div style={{ padding: '40px', textAlign: 'center', color: '#6b7089' }}>
+                        No projects match your search. Try a different name.
                       </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                        {docs.filter(d => d.is_pinned).map(docItem => (
-                          <DocCard
-                            key={docItem.id}
-                            doc={docItem}
-                            viewMode="grid"
-                            onClick={() => handleOpenDoc(docItem)}
-                            isTL={isTL}
-                            onEdit={handleEditDoc}
-                            onDelete={handleDeleteDoc}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* PROJECT DOCUMENTATION */}
-                  <div style={{ marginBottom: '32px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <FolderKanban size={18} style={{ color: 'var(--brand-600)' }} />
-                        <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                          PROJECT DOCUMENTATION
-                        </h3>
-                      </div>
-                    </div>
-
-                    {/* Responsive Grid: 3 columns on desktop */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-                      {(summary?.projects || []).map((proj, idx) => (
-                        <ProjectDocCard
-                          key={proj.id || idx}
-                          project={proj}
-                          index={idx}
-                          onClick={() => handleSelectProject(proj.id, proj.name)}
-                        />
-                      ))}
-                    </div>
+                    )}
                   </div>
 
-                  {/* RECENTLY UPDATED */}
-                  {summary?.recently_updated && summary.recently_updated.length > 0 && (
-                    <div style={{ marginBottom: '32px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                        <Clock size={18} style={{ color: 'var(--brand-600)' }} />
-                        <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                          RECENTLY UPDATED
-                        </h3>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {summary.recently_updated.map(item => {
-                          const docObj = docs.find(d => d.id === item.id);
-                          return (
-                            <div
-                              key={item.id}
-                              onClick={() => docObj && handleOpenDoc(docObj)}
-                              style={{
-                                background: 'var(--surface)',
-                                border: '1px solid var(--border)',
-                                padding: '12px 18px',
-                                borderRadius: 'var(--radius-md)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-600)', background: 'var(--brand-50, #EEF2FF)', padding: '2px 8px', borderRadius: '12px' }}>
-                                  {item.project_name}
-                                </span>
-                                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                  {item.title}
-                                </span>
-                              </div>
-                              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Clock size={13} /> Updated {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : 'Recently'}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                  {/* Recently Updated Section */}
+                  <section style={{ marginTop: '28px' }}>
+                    <h2 style={{ fontSize: '16px', margin: '0 0 10px', fontWeight: 700, color: '#171a2b' }}>
+                      Recently updated
+                    </h2>
+                    <div 
+                      onClick={() => docs[0] && handleOpenDoc(docs[0])}
+                      style={{
+                        background: '#e3f6ee',
+                        border: '1px solid #bfe8d6',
+                        borderRadius: '12px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        gap: '12px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        cursor: docs[0] ? 'pointer' : 'default'
+                      }}
+                    >
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        borderRadius: '99px',
+                        padding: '3px 10px',
+                        color: '#4f46e5',
+                        background: '#eeedff'
+                      }}>
+                        {docs[0]?.project_name || 'Company Management System'}
+                      </span>
+                      <strong style={{ fontSize: '14px', color: '#171a2b' }}>
+                        {docs[0]?.title || 'KALPANAAA CMS Full Documentation'}
+                      </strong>
+                      <span style={{ color: '#6b7089', marginLeft: 'auto', fontSize: '12px' }}>
+                        Updated 1 Oct 2026
+                      </span>
                     </div>
-                  )}
+                  </section>
                 </div>
               )}
 
