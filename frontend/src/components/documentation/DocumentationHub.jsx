@@ -469,34 +469,6 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
               {/* VIEW 1: OVERVIEW / HOME (EXACT MATCH TO PROVIDED UI DESIGN) */}
               {selectedView === 'overview' && !selectedProject && !selectedCategory && !searchQuery && (
                 <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif' }}>
-                  {/* Top Header */}
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                    <div>
-                      <h1 style={{ fontSize: '26px', margin: '0 0 4px', letterSpacing: '-0.02em', fontWeight: 700, color: '#171a2b' }}>
-                        Documentation hub
-                      </h1>
-                      <p style={{ color: '#6b7089', margin: 0 }}>
-                        Specs, guides and decisions for every project, in one place.
-                      </p>
-                    </div>
-                    {isTL && (
-                      <button 
-                        onClick={handleCreateNew}
-                        style={{
-                          background: '#4f46e5',
-                          color: '#fff',
-                          border: 0,
-                          borderRadius: '10px',
-                          padding: '10px 16px',
-                          font: '600 14px inherit',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Upload PDF
-                      </button>
-                    )}
-                  </div>
-
                   {/* Hero Coverage Card */}
                   <section style={{
                     margin: '24px 0',
