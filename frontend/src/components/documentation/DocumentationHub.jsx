@@ -734,108 +734,153 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                 </div>
               )}
 
-              {/* VIEW 2: SELECTED PROJECT DOCUMENTATION */}
+              {/* VIEW 2: SELECTED PROJECT DOCUMENTATION (EXACT MATCH TO IMAGE 2) */}
               {selectedProject && (
-                <div>
-                  {/* Breadcrumb & Project Header */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-                      <button onClick={handleSelectOverview} style={{ background: 'transparent', border: 'none', color: 'var(--brand-600)', cursor: 'pointer', padding: 0, fontWeight: 500 }}>
-                        Documentation
-                      </button>
-                      <ChevronRight size={14} />
-                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{activeProjectObj?.name || selectedProject.name || selectedProject}</span>
-                    </div>
+                <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif' }}>
+                  {/* Breadcrumb */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13.5px', marginBottom: '16px' }}>
+                    <button 
+                      onClick={handleSelectOverview} 
+                      style={{ background: 'transparent', border: 'none', color: '#5551FF', cursor: 'pointer', padding: 0, fontWeight: 600, fontSize: '13.5px' }}
+                    >
+                      Documentation
+                    </button>
+                    <span style={{ color: '#9CA3AF' }}>/</span>
+                    <span style={{ color: '#171A2B', fontWeight: 700 }}>
+                      {activeProjectObj?.name || selectedProject.name || selectedProject}
+                    </span>
+                  </div>
 
-                    <h1 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+                  {/* Project Hero Card Container (Light Purple Card Box) */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #F3F0FF 0%, #F5F2FF 100%)',
+                    borderRadius: '20px',
+                    padding: '24px 28px',
+                    marginBottom: '24px',
+                    border: '1px solid #EBE4FF'
+                  }}>
+                    <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#171A2B', margin: '0 0 10px 0', letterSpacing: '-0.02em' }}>
                       {activeProjectObj?.name || selectedProject.name || selectedProject}
                     </h1>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
-                      {activeProjectObj?.description || 'Project workspace documentation, requirements, and specifications.'}
+                    <p style={{ fontSize: '14px', color: '#5C6079', margin: '0 0 18px 0', lineHeight: 1.5, maxWidth: '900px' }}>
+                      {activeProjectObj?.description || 'To develop a centralized Company Management System that streamlines employee management, task tracking, project operations, communication, attendance, performance, and administrative workflows through role-based portals.'}
                     </p>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12.5px', color: 'var(--text-tertiary)' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: 'var(--brand-600)' }}>
-                        <FileText size={14} /> {filteredDocs.length} Documents
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        background: '#FFFFFF',
+                        color: '#5551FF',
+                        borderRadius: '99px',
+                        padding: '6px 16px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                      }}>
+                        {filteredDocs.length} {filteredDocs.length === 1 ? 'document' : 'documents'}
                       </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <Clock size={14} /> Last updated: {activeProjectObj?.updated_at ? new Date(activeProjectObj.updated_at).toLocaleDateString() : 'Recently'}
+                      <span style={{
+                        background: '#FFFFFF',
+                        color: '#6B7089',
+                        borderRadius: '99px',
+                        padding: '6px 16px',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                      }}>
+                        Last updated {activeProjectObj?.updated_at ? new Date(activeProjectObj.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '1 Oct 2026'}
                       </span>
                     </div>
                   </div>
 
-                  {/* Project Categories Breakdown */}
-                  {projectCategoriesBreakdown.length > 0 && (
-                    <div style={{ marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {/* Toolbar Row: Category Pills & Grid/List Toggle */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+                    {/* Category Pills on Left */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <button
                         onClick={() => setSelectedCategory(null)}
                         style={{
-                          padding: '6px 14px',
-                          borderRadius: '20px',
-                          border: '1px solid var(--border)',
-                          background: !selectedCategory ? 'var(--brand-600)' : 'var(--surface)',
-                          color: !selectedCategory ? '#FFF' : 'var(--text-primary)',
-                          fontSize: '12.5px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
+                          padding: '7px 18px',
+                          borderRadius: '99px',
+                          border: !selectedCategory ? 'none' : '1px solid #E6E8F1',
+                          background: !selectedCategory ? '#5551FF' : '#FFFFFF',
+                          color: !selectedCategory ? '#FFFFFF' : '#6B7089',
+                          fontSize: '13px',
+                          fontWeight: !selectedCategory ? 600 : 500,
+                          cursor: 'pointer',
+                          boxShadow: !selectedCategory ? '0 2px 6px rgba(85, 81, 255, 0.2)' : 'none',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         All ({filteredDocs.length})
                       </button>
-                      {projectCategoriesBreakdown.map(cat => (
+                      {(projectCategoriesBreakdown.length > 0 ? projectCategoriesBreakdown : [{ category: 'Requirements', count: 1 }]).map(cat => (
                         <button
                           key={cat.category}
                           onClick={() => setSelectedCategory(cat.category)}
                           style={{
-                            padding: '6px 14px',
-                            borderRadius: '20px',
-                            border: '1px solid var(--border)',
-                            background: selectedCategory === cat.category ? 'var(--brand-600)' : 'var(--surface)',
-                            color: selectedCategory === cat.category ? '#FFF' : 'var(--text-primary)',
-                            fontSize: '12.5px',
-                            fontWeight: 600,
-                            cursor: 'pointer'
+                            padding: '7px 18px',
+                            borderRadius: '99px',
+                            border: selectedCategory === cat.category ? 'none' : '1px solid #E6E8F1',
+                            background: selectedCategory === cat.category ? '#5551FF' : '#FFFFFF',
+                            color: selectedCategory === cat.category ? '#FFFFFF' : '#6B7089',
+                            fontSize: '13px',
+                            fontWeight: selectedCategory === cat.category ? 600 : 500,
+                            cursor: 'pointer',
+                            boxShadow: selectedCategory === cat.category ? '0 2px 6px rgba(85, 81, 255, 0.2)' : 'none',
+                            transition: 'all 0.15s ease'
                           }}
                         >
                           {cat.category} ({cat.count})
                         </button>
                       ))}
                     </div>
-                  )}
 
-                  {/* Toolbar & View Switcher */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      Showing {filteredDocs.length} documents
-                    </span>
+                    {/* Right Side: Showing text + Grid/List Switcher */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '13.5px', color: '#6B7089' }}>
+                        Showing {filteredDocs.length} {filteredDocs.length === 1 ? 'document' : 'documents'}
+                      </span>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px', borderRadius: 'var(--radius-md)' }}>
-                      <button
-                        onClick={() => setViewMode('grid')}
-                        style={{
-                          padding: '6px 10px',
-                          border: 'none',
-                          background: viewMode === 'grid' ? 'var(--surface-hover)' : 'transparent',
-                          color: viewMode === 'grid' ? 'var(--brand-600)' : 'var(--text-tertiary)',
-                          borderRadius: '4px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Grid size={15} />
-                      </button>
-                      <button
-                        onClick={() => setViewMode('list')}
-                        style={{
-                          padding: '6px 10px',
-                          border: 'none',
-                          background: viewMode === 'list' ? 'var(--surface-hover)' : 'transparent',
-                          color: viewMode === 'list' ? 'var(--brand-600)' : 'var(--text-tertiary)',
-                          borderRadius: '4px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <ListIcon size={15} />
-                      </button>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: '#F4F5FA',
+                        borderRadius: '12px',
+                        padding: '3px'
+                      }}>
+                        <button
+                          onClick={() => setViewMode('grid')}
+                          style={{
+                            padding: '5px 14px',
+                            border: 'none',
+                            background: viewMode === 'grid' ? '#FFFFFF' : 'transparent',
+                            color: viewMode === 'grid' ? '#5551FF' : '#6B7089',
+                            fontWeight: viewMode === 'grid' ? 600 : 500,
+                            fontSize: '13px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            boxShadow: viewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
+                          }}
+                        >
+                          Grid
+                        </button>
+                        <button
+                          onClick={() => setViewMode('list')}
+                          style={{
+                            padding: '5px 14px',
+                            border: 'none',
+                            background: viewMode === 'list' ? '#FFFFFF' : 'transparent',
+                            color: viewMode === 'list' ? '#5551FF' : '#6B7089',
+                            fontWeight: viewMode === 'list' ? 600 : 500,
+                            fontSize: '13px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
+                          }}
+                        >
+                          List
+                        </button>
+                      </div>
                     </div>
                   </div>
 

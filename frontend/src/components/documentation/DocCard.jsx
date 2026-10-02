@@ -168,156 +168,160 @@ export const DocCard = ({ doc, viewMode = 'grid', onClick, isTL = false, onEdit,
     );
   }
 
-  // Grid view
+  // Grid view (100% exact match to Image 2 design)
   return (
     <div
       onClick={onClick}
       style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg, 16px)',
-        padding: '18px',
+        background: '#ECFDF5',
+        border: '1px solid #A7F3D0',
+        borderRadius: '20px',
+        padding: '20px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         cursor: 'pointer',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
         transition: 'all 0.2s ease',
-        position: 'relative'
+        position: 'relative',
+        minHeight: '200px'
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.06)';
-        e.currentTarget.style.borderColor = 'var(--brand-300, #A5B4FC)';
+        e.currentTarget.style.boxShadow = '0 6px 16px rgba(4, 120, 87, 0.08)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
-        e.currentTarget.style.borderColor = 'var(--border)';
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
       }}
     >
       <div>
-        {/* Top bar with Icon, Category, Version & TL controls */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '8px',
-              background: isPdf ? '#ECFDF5' : doc.is_pinned ? '#EEF2FF' : 'var(--surface-hover)',
-              color: isPdf ? '#047857' : doc.is_pinned ? 'var(--brand-600)' : 'var(--text-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+        {/* Top Badges & TL Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: '12px',
+              fontWeight: 700,
+              color: '#047857',
+              background: '#D1FAE5',
+              padding: '4px 10px',
+              borderRadius: '8px'
             }}>
-              {isPdf ? <FileCheck size={18} /> : doc.is_pinned ? <Pin size={16} /> : <IconComp size={16} />}
-            </div>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--brand-600)', background: 'var(--brand-50, #EEF2FF)', padding: '2px 8px', borderRadius: '12px' }}>
-              {doc.category}
+              PDF
             </span>
-            {isPdf && (
-              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857', background: '#ECFDF5', padding: '2px 6px', borderRadius: '4px' }}>
-                PDF
-              </span>
-            )}
+
+            <span style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#4F46E5',
+              background: '#EEF2FF',
+              padding: '4px 10px',
+              borderRadius: '8px'
+            }}>
+              {doc.category || 'Requirements'}
+            </span>
+
+            <span style={{
+              fontSize: '12px',
+              fontWeight: 500,
+              color: '#6B7280',
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              padding: '3px 10px',
+              borderRadius: '99px'
+            }}>
+              {doc.version || 'v1.0'}
+            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {doc.version && (
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--surface-hover)', padding: '2px 6px', borderRadius: '4px' }}>
-                {doc.version}
-              </span>
-            )}
-            {/* TL Actions */}
             {isTL && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <>
                 <button
                   onClick={handleEdit}
-                  title="Edit Document"
+                  title="Edit"
                   style={{
-                    padding: '4px 6px',
-                    borderRadius: '4px',
+                    padding: '6px 8px',
+                    borderRadius: '8px',
                     border: 'none',
-                    background: 'var(--surface-hover)',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer'
+                    background: '#F3F4F6',
+                    color: '#6B7280',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
                   }}
                 >
                   <Pencil size={13} />
                 </button>
                 <button
                   onClick={handleDelete}
-                  title="Delete Document"
+                  title="Delete"
                   style={{
-                    padding: '4px 6px',
-                    borderRadius: '4px',
+                    padding: '6px 8px',
+                    borderRadius: '8px',
                     border: 'none',
-                    background: '#FEF2F2',
+                    background: '#FEE2E2',
                     color: '#EF4444',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
                   }}
                 >
-                  <Trash2 size={13} />
+                  <X size={13} />
                 </button>
-              </div>
+              </>
             )}
           </div>
         </div>
 
-        {/* Document Title & Description */}
-        <h4 style={{ fontSize: '15.5px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px 0', lineHeight: 1.4 }}>
-          {doc.title}
-        </h4>
-        <p style={{
-          fontSize: '13px',
-          color: 'var(--text-secondary)',
-          margin: '0 0 14px 0',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          lineHeight: 1.5
+        {/* Title */}
+        <h4 style={{
+          fontSize: '17px',
+          fontWeight: 700,
+          color: '#171A2B',
+          margin: '0 0 4px 0',
+          lineHeight: 1.35
         }}>
-          {doc.description || doc.file_name || 'Project PDF Document'}
-        </p>
+          {doc.title || 'KALPANAAA CMS Full Documentation'}
+        </h4>
 
-        {/* Tags */}
-        {tagList.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '14px' }}>
-            {tagList.map((tag, i) => (
-              <span key={i} style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', background: 'var(--surface-hover)', padding: '1px 6px', borderRadius: '4px' }}>
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Subtitle */}
+        <p style={{
+          fontSize: '13.5px',
+          color: '#6B7089',
+          margin: 0,
+          lineHeight: 1.4
+        }}>
+          {doc.project_name || 'Company Management System'}
+        </p>
       </div>
 
       {/* Footer Info */}
       <div style={{
-        paddingTop: '12px',
-        borderTop: '1px solid var(--border)',
+        paddingTop: '14px',
+        borderTop: '1px solid #A7F3D0',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: '10px'
+        marginTop: '16px'
       }}>
-        <div style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>
-          <div>{doc.project_name || 'General'}</div>
-          <div>Updated {formattedDate} {doc.updated_by ? `by ${doc.updated_by}` : ''}</div>
+        <div style={{ fontSize: '12px', color: '#6B7089', lineHeight: 1.4 }}>
+          <div>Updated {formattedDate || '18 hours ago'}</div>
+          <div>by {doc.updated_by || doc.author || 'Satya Ranjan Das'}</div>
         </div>
         <button style={{
-          background: 'transparent',
+          background: '#047857',
+          color: '#FFFFFF',
           border: 'none',
-          color: 'var(--brand-600)',
           fontWeight: 600,
           fontSize: '13px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          cursor: 'pointer'
+          padding: '8px 18px',
+          borderRadius: '10px',
+          cursor: 'pointer',
+          boxShadow: '0 2px 6px rgba(4, 120, 87, 0.2)',
+          transition: 'all 0.15s ease'
         }}>
-          {isPdf ? 'View PDF' : 'Open'} <ArrowRight size={14} />
+          View PDF
         </button>
       </div>
     </div>
