@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   FileText, Code, Database, Layers, CheckSquare, 
   Rocket, HelpCircle, Shield, ArrowRight, User, 
-  Clock, Tag, Pin, Terminal, Pencil, Trash2, Download, FileCheck
+  Clock, Tag, Pin, Terminal, Pencil, Trash2, Download, FileCheck, X
 } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 

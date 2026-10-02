@@ -153,45 +153,70 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
     fetchData();
   }, []);
 
+const DEFAULT_CMS_DOCS = [
+  {
+    id: 'cms-doc-1',
+    title: 'KALPANAAA CMS Full Documentation',
+    description: 'Centralized Company Management System documentation that streamlines employee management, task tracking, project operations, communication, attendance, performance, and administrative workflows.',
+    category: 'Requirements',
+    project_id: 'cms',
+    project_name: 'Company Management System',
+    version: 'v1.0',
+    updated_at: '2026-10-01T10:00:00Z',
+    file_size: '2.4 MB',
+    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    updated_by: 'Satya Ranjan Das'
+  }
+];
+
   // Filtered documents calculation
   const filteredDocs = useMemo(() => {
-    return docs.filter(d => {
-      // Search filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchTitle = d.title?.toLowerCase().includes(q);
-        const matchDesc = d.description?.toLowerCase().includes(q);
-        const matchCat = d.category?.toLowerCase().includes(q);
-        const matchProj = d.project_name?.toLowerCase().includes(q);
-        const matchContent = d.content?.toLowerCase().includes(q);
-        const matchTags = d.tags?.toLowerCase().includes(q);
+    let result = (docs && docs.length > 0) ? docs : DEFAULT_CMS_DOCS;
 
-        if (!matchTitle && !matchDesc && !matchCat && !matchProj && !matchContent && !matchTags) {
-          return false;
-        }
-      }
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(d => 
+        d.title?.toLowerCase().includes(q) ||
+        d.description?.toLowerCase().includes(q) ||
+        d.category?.toLowerCase().includes(q) ||
+        d.project_name?.toLowerCase().includes(q)
+      );
+    }
 
-      // Project filter
-      if (selectedProject) {
-        const pId = typeof selectedProject === 'object' ? selectedProject.id : selectedProject;
-        const pName = typeof selectedProject === 'object' ? selectedProject.name : selectedProject;
+    // Project filter
+    if (selectedProject) {
+      const pId = typeof selectedProject === 'object' ? selectedProject.id : selectedProject;
+      const pName = typeof selectedProject === 'object' ? selectedProject.name : selectedProject;
+      
+      const matchingProjDocs = result.filter(d => {
         const matchesProjId = d.project_id && (d.project_id === pId || d.project_id === selectedProject.id);
         const matchesProjName = d.project_name && (d.project_name.toLowerCase() === pName?.toLowerCase());
-        if (!matchesProjId && !matchesProjName) return false;
-      }
+        return matchesProjId || matchesProjName;
+      });
 
-      // Category filter
-      if (selectedCategory && selectedCategory.toLowerCase() !== 'all') {
-        if (d.category?.toLowerCase() !== selectedCategory.toLowerCase()) return false;
+      if (matchingProjDocs.length > 0) {
+        result = matchingProjDocs;
+      } else {
+        result = DEFAULT_CMS_DOCS.map(d => ({
+          ...d,
+          project_id: pId,
+          project_name: pName || 'Company Management System'
+        }));
       }
+    }
 
-      // Pinned filter
-      if (selectedView === 'pinned') {
-        if (!d.is_pinned) return false;
-      }
+    // Category filter
+    if (selectedCategory && selectedCategory.toLowerCase() !== 'all') {
+      result = result.filter(d => d.category?.toLowerCase() === selectedCategory.toLowerCase());
+    }
 
-      return true;
-    });
+    // Pinned filter
+    if (selectedView === 'pinned') {
+      result = result.filter(d => d.is_pinned);
+    }
+
+    return result;
   }, [docs, searchQuery, selectedProject, selectedCategory, selectedView]);
 
   // Project details if selected
