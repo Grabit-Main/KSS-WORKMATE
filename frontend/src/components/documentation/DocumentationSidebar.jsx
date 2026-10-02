@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  ChevronDown, ChevronRight, Folder, FileText, Sparkles, HelpCircle
+  ChevronDown, ChevronRight, Folder, FileText, Lightbulb
 } from 'lucide-react';
 
 export const DocumentationSidebar = ({
@@ -26,7 +26,6 @@ export const DocumentationSidebar = ({
     }));
   };
 
-  // Default project list matching Image 1 if database is starting up
   const defaultProjectList = [
     { id: 'cms', name: 'Company Management System', document_count: 5 },
     { id: 'college', name: 'College Management System', document_count: 2 },
@@ -40,7 +39,6 @@ export const DocumentationSidebar = ({
 
   const activeProjectList = projects.length > 0 ? projects : defaultProjectList;
 
-  // Sub-items for expanded project
   const cmsSubItems = [
     { title: 'Project Overview', count: 1, category: 'Overview' },
     { title: 'Tech Stack & Architecture', count: 1, category: 'Technical' },
@@ -54,15 +52,17 @@ export const DocumentationSidebar = ({
       width: '280px',
       flexShrink: 0,
       background: '#FFFFFF',
-      borderRight: '1px solid #E5E7EB',
+      borderRadius: '16px',
+      border: '1px solid #E5E7EB',
       display: 'flex',
       flexDirection: 'column',
-      height: '100%',
+      height: 'fit-content',
       overflow: 'hidden',
-      padding: '20px 16px'
+      padding: '20px 16px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
     }}>
       {/* Scrollable Tree Container */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+      <div style={{ overflowY: 'auto', paddingRight: '2px' }}>
         {/* Project Documentation Section Header */}
         <div 
           onClick={() => setIsDocTreeExpanded(!isDocTreeExpanded)}
@@ -72,18 +72,18 @@ export const DocumentationSidebar = ({
             gap: '8px',
             padding: '8px 4px',
             cursor: 'pointer',
-            color: '#374151',
+            color: '#1E1B4B',
             fontSize: '13.5px',
             fontWeight: 700
           }}
         >
           {isDocTreeExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          <Folder size={16} style={{ color: '#6B7280' }} />
+          <Folder size={16} style={{ color: '#5551FF' }} />
           <span>Project Documentation</span>
         </div>
 
         {isDocTreeExpanded && (
-          <div style={{ paddingLeft: '16px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ paddingLeft: '14px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {/* All Documents item */}
             <div
               onClick={onSelectOverview}
@@ -94,7 +94,7 @@ export const DocumentationSidebar = ({
                 padding: '8px 12px',
                 borderRadius: '10px',
                 background: selectedView === 'overview' && !selectedProject && !selectedCategory ? '#EEF2FF' : 'transparent',
-                color: selectedView === 'overview' && !selectedProject && !selectedCategory ? '#4F46E5' : '#4B5563',
+                color: selectedView === 'overview' && !selectedProject && !selectedCategory ? '#5551FF' : '#4B5563',
                 fontWeight: selectedView === 'overview' && !selectedProject && !selectedCategory ? 700 : 500,
                 fontSize: '13px',
                 cursor: 'pointer',
@@ -102,10 +102,10 @@ export const DocumentationSidebar = ({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={15} style={{ color: selectedView === 'overview' ? '#4F46E5' : '#9CA3AF' }} />
+                <FileText size={15} style={{ color: selectedView === 'overview' ? '#5551FF' : '#9CA3AF' }} />
                 <span>All Documents</span>
               </div>
-              <span style={{ fontSize: '11.5px', color: '#6B7280', fontWeight: 600 }}>15</span>
+              <span style={{ fontSize: '11.5px', color: selectedView === 'overview' ? '#5551FF' : '#6B7280', fontWeight: 600 }}>15</span>
             </div>
 
             {/* Render Tree Projects */}
@@ -130,8 +130,8 @@ export const DocumentationSidebar = ({
                       justifyContent: 'space-between',
                       padding: '7px 10px',
                       borderRadius: '8px',
-                      background: isSelected && !selectedCategory ? '#F5F7FF' : 'transparent',
-                      color: isSelected ? '#4F46E5' : '#374151',
+                      background: isSelected && !selectedCategory ? '#EEF2FF' : 'transparent',
+                      color: isSelected ? '#5551FF' : '#374151',
                       fontWeight: isSelected ? 700 : 500,
                       fontSize: '13px',
                       cursor: 'pointer',
@@ -145,10 +145,10 @@ export const DocumentationSidebar = ({
                       >
                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                       </span>
-                      <Folder size={15} style={{ color: isSelected ? '#4F46E5' : '#9CA3AF', flexShrink: 0 }} />
+                      <Folder size={15} style={{ color: isSelected ? '#5551FF' : '#9CA3AF', flexShrink: 0 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{proj.name}</span>
                     </div>
-                    <span style={{ fontSize: '11.5px', color: '#9CA3AF', fontWeight: 500, marginLeft: '6px', flexShrink: 0 }}>
+                    <span style={{ fontSize: '11.5px', color: isSelected ? '#5551FF' : '#9CA3AF', fontWeight: 600, marginLeft: '6px', flexShrink: 0 }}>
                       {proj.document_count || (isCMS ? 5 : 2)}
                     </span>
                   </div>
@@ -169,17 +169,17 @@ export const DocumentationSidebar = ({
                               padding: '6px 10px',
                               borderRadius: '6px',
                               background: isSubSelected ? '#EEF2FF' : 'transparent',
-                              color: isSubSelected ? '#4F46E5' : '#6B7280',
+                              color: isSubSelected ? '#5551FF' : '#6B7280',
                               fontSize: '12.5px',
                               fontWeight: isSubSelected ? 600 : 400,
                               cursor: 'pointer'
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                              <FileText size={14} style={{ color: isSubSelected ? '#4F46E5' : '#9CA3AF', flexShrink: 0 }} />
+                              <FileText size={14} style={{ color: isSubSelected ? '#5551FF' : '#9CA3AF', flexShrink: 0 }} />
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.title}</span>
                             </div>
-                            <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{sub.count}</span>
+                            <span style={{ fontSize: '11px', color: isSubSelected ? '#5551FF' : '#9CA3AF', fontWeight: 500 }}>{sub.count}</span>
                           </div>
                         );
                       })}
@@ -194,7 +194,7 @@ export const DocumentationSidebar = ({
 
       {/* Bottom Help Card ("Need something specific?") */}
       <div style={{
-        marginTop: '16px',
+        marginTop: '20px',
         padding: '16px',
         borderRadius: '16px',
         background: 'linear-gradient(135deg, #F5F7FF 0%, #EFF4FF 100%)',
@@ -211,10 +211,10 @@ export const DocumentationSidebar = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 2px 6px rgba(79, 70, 229, 0.1)',
+          boxShadow: '0 2px 6px rgba(85, 81, 255, 0.12)',
           flexShrink: 0
         }}>
-          <Sparkles size={16} style={{ color: '#5551FF' }} />
+          <Lightbulb size={17} style={{ color: '#5551FF' }} />
         </div>
         <div>
           <h5 style={{ fontSize: '12.5px', fontWeight: 700, color: '#1E1B4B', margin: '0 0 4px 0' }}>
@@ -228,4 +228,5 @@ export const DocumentationSidebar = ({
     </aside>
   );
 };
+
 
