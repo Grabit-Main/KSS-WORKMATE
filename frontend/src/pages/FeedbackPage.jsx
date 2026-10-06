@@ -3,7 +3,7 @@ import { getFeedback, getFeedbackTargets, submitFeedback } from '../api/feedback
 import { getProjects } from '../api/projects';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
-import { Star, MessageSquareQuote, Plus, X, UserCheck, Shield, Send, Truck, CheckCircle2, TrendingUp, FileText, Calendar } from 'lucide-react';
+import { Star, MessageSquareQuote, Plus, X, UserCheck, Shield, Send, FolderKanban, CheckCircle2, TrendingUp, FileText, Calendar } from 'lucide-react';
 
 const parseFeedbackComment = (commentText, rating) => {
   if (!commentText || !commentText.trim()) {
@@ -336,7 +336,7 @@ const FeedbackPage = () => {
 
                 {/* Subheader Project Title */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                  <Truck size={20} style={{ color: '#3B82F6', flexShrink: 0 }} />
+                  <FolderKanban size={20} style={{ color: '#3B82F6', flexShrink: 0 }} />
                   <h4 style={{ fontSize: '15.5px', fontWeight: 700, color: 'var(--text-primary, #0F172A)', margin: 0 }}>
                     {projName}
                   </h4>
