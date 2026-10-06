@@ -525,9 +525,6 @@ const FeedbackPage = () => {
                 <h3 className="font-bold text-lg" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
                   Submit Performance Feedback
                 </h3>
-                <p className="text-xs text-secondary mt-0.5">
-                  {user?.role === 'PM' ? 'Deliver feedback to a designated Team Lead' : 'Provide formal evaluation and rating'}
-                </p>
               </div>
               <button
                 onClick={() => setShowModal(false)}
@@ -536,6 +533,16 @@ const FeedbackPage = () => {
                 <X size={20} />
               </button>
             </div>
+
+            {/* Hidden SVG Gradient Definition for Half Star */}
+            <svg width="0" height="0" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+              <defs>
+                <linearGradient id="half-star-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="50%" stopColor="#F59E0B" />
+                  <stop offset="50%" stopColor="transparent" />
+                </linearGradient>
+              </defs>
+            </svg>
 
             {formError && (
               <div style={{
@@ -590,7 +597,7 @@ const FeedbackPage = () => {
 
               <div>
                 <label className="text-xs font-semibold text-secondary mb-1.5 block">
-                  Related Project (Optional)
+                  Related Project
                 </label>
                 <select
                   value={selectedProjectId}
@@ -608,29 +615,63 @@ const FeedbackPage = () => {
 
               <div>
                 <label className="text-xs font-semibold text-secondary mb-1.5 block">
-                  Rating: <strong style={{ color: '#D97706' }}>{rating} Star{rating === 1 ? '' : 's'}</strong>
+                  Rating: <strong style={{ color: '#D97706' }}>{Number(rating).toFixed(1)} Stars</strong>
                 </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {[1, 2, 3, 4, 5].map(star => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {[1, 2, 3, 4, 5].map(star => {
+                    const currentVal = hoverRating || rating;
+                    const isFull = currentVal >= star;
+                    const isHalf = !isFull && currentVal >= star - 0.5;
+
+                    return (
+                      <div
+                        key={star}
+                        style={{ position: 'relative', display: 'inline-flex', cursor: 'pointer', padding: '2px' }}
+                        onMouseLeave={() => setHoverRating(0)}
+                      >
+                        {/* Left half hover/click overlay */}
+                        <div
+                          style={{ position: 'absolute', left: 0, top: 0, width: '50%', height: '100%', zIndex: 2 }}
+                          onMouseEnter={() => setHoverRating(star - 0.5)}
+                          onClick={() => setRating(star - 0.5)}
+                        />
+                        {/* Right half hover/click overlay */}
+                        <div
+                          style={{ position: 'absolute', right: 0, top: 0, width: '50%', height: '100%', zIndex: 2 }}
+                          onMouseEnter={() => setHoverRating(star)}
+                          onClick={() => setRating(star)}
+                        />
+                        <Star
+                          size={26}
+                          fill={isFull ? '#F59E0B' : isHalf ? 'url(#half-star-grad)' : 'transparent'}
+                          stroke={isFull || isHalf ? '#F59E0B' : '#CBD5E1'}
+                          strokeWidth={1.5}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Quick Select Rating Pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '10px' }}>
+                  {[1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0].map((v) => (
                     <button
-                      key={star}
+                      key={v}
                       type="button"
-                      onClick={() => setRating(star)}
-                      onMouseEnter={() => setHoverRating(star)}
-                      onMouseLeave={() => setHoverRating(0)}
+                      onClick={() => setRating(v)}
                       style={{
-                        background: 'transparent',
-                        border: 'none',
+                        padding: '3px 10px',
+                        borderRadius: '9999px',
+                        fontSize: '11px',
+                        fontWeight: rating === v ? 700 : 500,
+                        background: rating === v ? '#EFF6FF' : '#F8FAFC',
+                        color: rating === v ? '#2563EB' : '#64748B',
+                        border: rating === v ? '1px solid #2563EB' : '1px solid #E2E8F0',
                         cursor: 'pointer',
-                        padding: '4px'
+                        transition: 'all 0.15s ease'
                       }}
                     >
-                      <Star
-                        size={24}
-                        fill={(hoverRating || rating) >= star ? '#F59E0B' : 'transparent'}
-                        stroke="#F59E0B"
-                        style={{ transition: 'transform 0.15s ease' }}
-                      />
+                      {v.toFixed(1)} ★
                     </button>
                   ))}
                 </div>

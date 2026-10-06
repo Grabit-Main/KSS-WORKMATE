@@ -8,7 +8,7 @@ from app.schemas.user import UserResponse
 class ReviewCreate(BaseModel):
     reviewee_id: UUID
     project_id: Optional[UUID] = None
-    rating: int  # 1-5
+    rating: float  # 1.0 - 5.0
     comment: str
 
 
@@ -17,7 +17,7 @@ class ReviewResponse(BaseModel):
     reviewer_id: UUID
     reviewee_id: UUID
     project_id: Optional[UUID] = None
-    rating: int
+    rating: float
     comment: str
     created_at: datetime
     reviewer: UserResponse
