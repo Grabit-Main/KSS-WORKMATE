@@ -64,6 +64,7 @@ export default function CalendarPage() {
 
   // Holidays State
   const [holidaysList, setHolidaysList] = useState(DEFAULT_HOLIDAYS);
+  const [holidayFilter, setHolidayFilter] = useState('all'); // 'all' | 'upcoming' | 'past'
   const [showAddHolidayModal, setShowAddHolidayModal] = useState(false);
   const [holTitle, setHolTitle] = useState('');
   const [holDate, setHolDate] = useState(formatDateKey(new Date()));
@@ -261,6 +262,49 @@ export default function CalendarPage() {
 
   // Filter Events by Category Toggle
   const filteredEvents = allEvents.filter(e => categories[e.category] !== false);
+
+  // Calculate dynamic metadata for Holidays view
+  const calculateHolidayMeta = (dateStr) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(dateStr);
+    target.setHours(0, 0, 0, 0);
+
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const isPast = diffDays < 0;
+    const isSunday = target.getDay() === 0;
+
+    return { diffDays, isPast, isSunday };
+  };
+
+  const holidaysWithMeta = holidaysList.map((h, index) => {
+    const meta = calculateHolidayMeta(h.date);
+    const themes = [
+      { accent: '#B45309', paidBg: 'rgba(245, 158, 11, 0.18)', paidText: '#B45309' },
+      { accent: '#0D9488', paidBg: 'rgba(20, 184, 166, 0.18)', paidText: '#0F766E' },
+      { accent: '#E11D48', paidBg: 'rgba(244, 63, 94, 0.18)', paidText: '#9F1239' },
+      { accent: '#4F46E5', paidBg: 'rgba(99, 102, 241, 0.18)', paidText: '#3730A3' },
+      { accent: '#D97706', paidBg: 'rgba(245, 158, 11, 0.18)', paidText: '#B45309' },
+      { accent: '#059669', paidBg: 'rgba(16, 185, 129, 0.18)', paidText: '#065F46' },
+    ];
+    const theme = themes[index % themes.length];
+    return { ...h, ...meta, theme };
+  });
+
+  const upcomingHolidays = holidaysWithMeta.filter(h => !h.isPast);
+  const pastHolidays = holidaysWithMeta.filter(h => h.isPast);
+  const sundayCount = holidaysWithMeta.filter(h => h.isSunday).length;
+
+  const nextUpcoming = upcomingHolidays.length > 0
+    ? upcomingHolidays.reduce((prev, curr) => (curr.diffDays < prev.diffDays ? curr : prev))
+    : null;
+
+  const displayedHolidays = holidaysWithMeta.filter(h => {
+    if (holidayFilter === 'upcoming') return !h.isPast;
+    if (holidayFilter === 'past') return h.isPast;
+    return true;
+  });
 
   // Weekday Helpers for Week View
   const getWeekDates = (baseDate) => {
@@ -592,86 +636,133 @@ export default function CalendarPage() {
         /* HOLIDAYS VIEW DISPLAY MATCHING USER SCREENSHOT */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* BANNER HEADER */}
+          {/* BANNER HEADER (CARD 1) */}
           <div className="card" style={{
-            padding: '24px',
-            borderRadius: 'var(--radius-xl)',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
+            padding: '24px 28px',
+            borderRadius: '24px',
+            background: 'rgba(99, 102, 241, 0.08)',
+            border: '1px solid rgba(99, 102, 241, 0.2)',
             display: 'flex',
             justify: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: '16px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
               <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '14px',
-                background: 'rgba(99, 102, 241, 0.15)',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
+                width: '56px',
+                height: '56px',
+                borderRadius: '18px',
+                background: '#4F46E5',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#818CF8'
+                color: '#FFFFFF',
+                boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)',
+                flexShrink: 0
               }}>
-                <Sparkles size={24} />
+                <Sparkles size={26} />
               </div>
               <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
-                  Kalpanaaa Software Solutions — 2026 Declared Holidays
+                <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+                  Kalpanaaa Software Solutions: 2026 holidays
                 </h2>
-                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', margin: '4px 0 0 0' }}>
-                  Sundays are standard weekly off days. The following {holidaysList.length} dates are recognized as paid public & state holidays.
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '6px 0 0 0', fontWeight: 500 }}>
+                  Sundays are standard weekly off days. These {holidaysList.length} dates are recognized as paid public and state holidays.
                 </p>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                padding: '8px 18px',
-                borderRadius: '20px',
-                border: '1px solid rgba(99, 102, 241, 0.4)',
-                background: 'rgba(99, 102, 241, 0.1)',
-                color: '#818CF8',
-                fontSize: '13px',
-                fontWeight: 700
-              }}>
-                {holidaysList.length} Official Holidays
-              </div>
+            {role === 'TL' && (
+              <button
+                onClick={() => setShowAddHolidayModal(true)}
+                className="btn btn-primary"
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: '24px',
+                  background: '#4F46E5',
+                  color: '#FFFFFF',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  border: 'none',
+                  boxShadow: '0 4px 14px rgba(79, 70, 229, 0.3)'
+                }}
+              >
+                + Add holiday
+              </button>
+            )}
+          </div>
 
-              {role === 'TL' && (
-                <button
-                  onClick={() => setShowAddHolidayModal(true)}
-                  className="btn btn-primary"
-                  style={{
-                    padding: '8px 18px',
-                    borderRadius: '20px',
-                    background: '#6366F1',
-                    color: '#fff',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    border: 'none',
-                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
-                  }}
-                >
-                  <Plus size={16} /> Add Holiday
-                </button>
-              )}
+          {/* TOP SUMMARY STAT CARDS GRID (ROW 2) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+            {/* Stat Card 1: Official Holidays */}
+            <div className="card" style={{ padding: '20px 24px', borderRadius: '20px', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)' }}>
+              <div style={{ fontSize: '32px', fontWeight: 800, color: '#3730A3', lineHeight: 1.1 }}>
+                {holidaysList.length}
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#4338CA', marginTop: '6px' }}>
+                Official holidays
+              </div>
+            </div>
+
+            {/* Stat Card 2: Days Until Next Holiday */}
+            <div className="card" style={{ padding: '20px 24px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+              <div style={{ fontSize: '32px', fontWeight: 800, color: '#065F46', lineHeight: 1.1 }}>
+                {nextUpcoming ? `${nextUpcoming.diffDays} days` : '0 days'}
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#047857', marginTop: '6px' }}>
+                Until {nextUpcoming ? nextUpcoming.title : 'next holiday'}
+              </div>
+            </div>
+
+            {/* Stat Card 3: Still to Come This Year */}
+            <div className="card" style={{ padding: '20px 24px', borderRadius: '20px', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+              <div style={{ fontSize: '32px', fontWeight: 800, color: '#92400E', lineHeight: 1.1 }}>
+                {upcomingHolidays.length}
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#B45309', marginTop: '6px' }}>
+                Still to come this year
+              </div>
             </div>
           </div>
 
-          {/* HOLIDAYS GRID */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-            gap: '20px'
-          }}>
-            {holidaysList.map((h) => {
+          {/* FILTER BAR & SUNDAY NOTE ROW (ROW 3) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {['all', 'upcoming', 'past'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setHolidayFilter(f)}
+                  style={{
+                    padding: '8px 22px',
+                    borderRadius: '20px',
+                    border: holidayFilter === f ? 'none' : '1px solid var(--border)',
+                    background: holidayFilter === f ? '#4F46E5' : 'var(--surface)',
+                    color: holidayFilter === f ? '#FFFFFF' : 'var(--text-secondary)',
+                    fontWeight: holidayFilter === f ? 600 : 500,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    textTransform: 'capitalize'
+                  }}
+                >
+                  {f === 'all' ? 'All' : f === 'upcoming' ? 'Upcoming' : 'Past'}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-tertiary)' }}>
+              {sundayCount === 1
+                ? 'One holiday falls on a Sunday, so no extra day off.'
+                : `${sundayCount === 2 ? 'Two' : sundayCount} holidays fall on a Sunday, so no extra day off.`}
+            </div>
+          </div>
+
+          {/* HOLIDAY CARDS GRID (2-COLUMN GRID, ROW 4) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
+            {displayedHolidays.map((h) => {
               const dateObj = new Date(h.date);
               const monthStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('en-US', { month: 'short' }).toUpperCase() : 'DEC';
               const dayNum = !isNaN(dateObj.getTime()) ? String(dateObj.getDate()).padStart(2, '0') : '01';
@@ -682,10 +773,11 @@ export default function CalendarPage() {
                   key={h.id}
                   className="card"
                   style={{
-                    padding: '20px',
-                    borderRadius: 'var(--radius-xl)',
+                    padding: '20px 24px',
+                    borderRadius: '20px',
                     background: 'var(--surface)',
                     border: '1px solid var(--border)',
+                    borderLeft: `6px solid ${h.theme.accent}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -693,75 +785,141 @@ export default function CalendarPage() {
                     position: 'relative'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
-                    {/* Date Box */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flex: 1 }}>
+                    {/* Date Badge Box */}
                     <div style={{
-                      width: '54px',
-                      height: '54px',
-                      borderRadius: '14px',
-                      background: 'var(--background)',
-                      border: '1px solid var(--border)',
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '16px',
+                      background: h.theme.accent,
+                      color: '#FFFFFF',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0
                     }}>
-                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#818CF8', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.05em' }}>
                         {monthStr}
                       </span>
-                      <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+                      <span style={{ fontSize: '22px', fontWeight: 800, lineHeight: 1.1 }}>
                         {dayNum}
                       </span>
                     </div>
 
-                    {/* Info Box */}
+                    {/* Info & Badges */}
                     <div style={{ flex: 1 }}>
-                      <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>
+                      <h4 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>
                         {h.title}
                       </h4>
-                      <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '4px', fontWeight: 500 }}>
-                        {dayName} • {h.date}
+                      <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', margin: '4px 0 8px 0', fontWeight: 500 }}>
+                        {dayName} · {h.date}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        {/* Paid off Pill */}
+                        <span style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          padding: '4px 14px',
+                          borderRadius: '16px',
+                          background: h.theme.paidBg,
+                          color: h.theme.paidText,
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {h.type || 'Paid off'}
+                        </span>
+
+                        {/* Days / Past Pill */}
+                        {h.isPast ? (
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            padding: '4px 14px',
+                            borderRadius: '16px',
+                            background: 'rgba(156, 163, 175, 0.15)',
+                            color: 'var(--text-secondary)',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            Past
+                          </span>
+                        ) : (
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            padding: '4px 14px',
+                            borderRadius: '16px',
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            color: '#065F46',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            In {h.diffDays} days
+                          </span>
+                        )}
+
+                        {/* Falls on Sunday Pill */}
+                        {h.isSunday && (
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            padding: '4px 14px',
+                            borderRadius: '16px',
+                            background: 'rgba(245, 158, 11, 0.18)',
+                            color: '#92400E',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            Falls on Sunday
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Right Badge & Action */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '4px 12px',
-                      borderRadius: '16px',
-                      background: 'rgba(99, 102, 241, 0.12)',
-                      color: '#A5B4FC',
-                      border: '1px solid rgba(99, 102, 241, 0.3)',
-                      whiteSpace: 'nowrap'
+                  {/* Right Circle Action Button */}
+                  {role === 'TL' ? (
+                    <button
+                      onClick={() => handleDeleteHoliday(h.id)}
+                      title="Delete Holiday"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: 'rgba(156, 163, 175, 0.15)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--text-tertiary)',
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                        e.currentTarget.style.color = '#EF4444';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(156, 163, 175, 0.15)';
+                        e.currentTarget.style.color = 'var(--text-tertiary)';
+                      }}
+                    >
+                      <X size={16} />
+                    </button>
+                  ) : (
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: 'rgba(156, 163, 175, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-tertiary)',
+                      flexShrink: 0,
+                      opacity: 0.6
                     }}>
-                      {h.type || 'Paid Off'}
-                    </span>
-
-                    {role === 'TL' && (
-                      <button
-                        onClick={() => handleDeleteHoliday(h.id)}
-                        title="Delete Holiday"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-tertiary)',
-                          cursor: 'pointer',
-                          padding: '4px',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#EF4444'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
+                      <X size={16} />
+                    </div>
+                  )}
                 </div>
               );
             })}
