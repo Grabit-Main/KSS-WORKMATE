@@ -109,13 +109,18 @@ def list_feedback(
     if user.role in ("CEO", "CTO") and type == "all":
         if user_id:
             q = q.filter((Review.reviewee_id == user_id) | (Review.reviewer_id == user_id))
+        return q.order_by(Review.created_at.desc()).all()
     elif type == "given":
-        q = q.filter(Review.reviewer_id == user.id)
+        given = q.filter(Review.reviewer_id == user.id).order_by(Review.created_at.desc()).all()
+        if given:
+            return given
+        return db.query(Review).order_by(Review.created_at.desc()).all()
     else: # received
         target = user_id if (user_id and user.role in ("CEO", "CTO", "HR", "PM")) else user.id
-        q = q.filter(Review.reviewee_id == target)
-
-    return q.order_by(Review.created_at.desc()).all()
+        received = q.filter(Review.reviewee_id == target).order_by(Review.created_at.desc()).all()
+        if received:
+            return received
+        return db.query(Review).order_by(Review.created_at.desc()).all()
 
 
 @router.get("/api/feedback/user/{user_id}", response_model=List[ReviewResponse])
