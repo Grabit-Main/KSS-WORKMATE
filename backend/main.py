@@ -35,11 +35,18 @@ init_error = None
 
 try:
     from app.config import settings
+    from app.database import engine, Base
     from app.routers import (
         auth, users, projects, teams, tasks,
-        chat, upload, analytics, reviews, notifications, history, kpi, mywork, documentation
+        chat, upload, analytics, reviews, notifications, history, kpi, mywork, documentation, holidays
     )
     from app.websocket.router import router as websocket_router
+
+    # Auto-create tables for new schema entities if missing
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as db_err:
+        print("Table creation warning:", db_err)
 
     app.include_router(auth.router)
     app.include_router(users.router)
@@ -55,6 +62,7 @@ try:
     app.include_router(kpi.router)
     app.include_router(mywork.router)
     app.include_router(documentation.router)
+    app.include_router(holidays.router)
     app.include_router(websocket_router)
 except Exception as e:
     init_error = traceback.format_exc()
