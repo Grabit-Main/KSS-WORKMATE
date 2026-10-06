@@ -19,8 +19,6 @@ class ReviewResponse(BaseModel):
     project_id: Optional[UUID] = None
     rating: float
     comment: str
-    acknowledged: Optional[bool] = False
-    acknowledged_at: Optional[datetime] = None
     created_at: datetime
     reviewer: UserResponse
     reviewee: UserResponse
