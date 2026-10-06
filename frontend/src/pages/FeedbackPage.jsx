@@ -3,7 +3,65 @@ import { getFeedback, getFeedbackTargets, submitFeedback } from '../api/feedback
 import { getProjects } from '../api/projects';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
-import { Star, MessageSquareQuote, Plus, X, UserCheck, Shield, Send } from 'lucide-react';
+import { Star, MessageSquareQuote, Plus, X, UserCheck, Shield, Send, Truck, CheckCircle2, TrendingUp, FileText, Calendar } from 'lucide-react';
+
+const parseFeedbackComment = (commentText, rating) => {
+  if (!commentText || !commentText.trim()) {
+    return {
+      strengths: 'Successfully completed the assigned tasks on time with good ownership and implementation of core workflows.',
+      improvements: 'Improve testing depth, edge-case validation, documentation and regression testing.',
+      assessment: 'Meets delivery expectations, but needs improvement in testing discipline and production readiness.'
+    };
+  }
+
+  const text = commentText.trim();
+
+  // Try matching explicit section headings if present in text
+  const strengthsMatch = text.match(/(?:strengths?|key strengths?):\s*([^]+?)(?=(?:areas? for improvement|improvements?|final assessment|assessment):|$)/i);
+  const improvementsMatch = text.match(/(?:areas? for improvement|improvements?|focus areas?):\s*([^]+?)(?=(?:final assessment|assessment|strengths?):|$)/i);
+  const assessmentMatch = text.match(/(?:final assessment|assessment|summary):\s*([^]+?)(?=(?:strengths?|areas? for improvement):|$)/i);
+
+  if (strengthsMatch || improvementsMatch || assessmentMatch) {
+    return {
+      strengths: strengthsMatch?.[1]?.trim() || text,
+      improvements: improvementsMatch?.[1]?.trim() || 'Improve testing depth, edge-case validation, documentation and regression testing.',
+      assessment: assessmentMatch?.[1]?.trim() || (rating >= 3 ? 'Meets delivery expectations, maintaining consistent project progress and discipline.' : 'Requires structured performance improvement plan to meet core expectations.')
+    };
+  }
+
+  // Split into sentences
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+
+  if (sentences.length >= 3) {
+    return {
+      strengths: sentences[0],
+      improvements: sentences[1],
+      assessment: sentences.slice(2).join(' ')
+    };
+  } else if (sentences.length === 2) {
+    return {
+      strengths: sentences[0],
+      improvements: sentences[1],
+      assessment: rating >= 4 
+        ? 'Exceeds delivery expectations with strong technical ownership and milestone readiness.'
+        : rating >= 3 
+        ? 'Meets delivery expectations, maintaining consistent project progress and discipline.'
+        : 'Requires targeted improvements in testing discipline and execution consistency.'
+    };
+  } else {
+    return {
+      strengths: text,
+      improvements: rating >= 4
+        ? 'Continue driving code quality, performance optimizations, and technical documentation.'
+        : 'Improve testing depth, edge-case validation, documentation and regression testing.',
+      assessment: rating >= 4
+        ? 'Exceeds delivery expectations with strong technical ownership and milestone readiness.'
+        : rating >= 3
+        ? 'Meets delivery expectations, but needs improvement in testing discipline and production readiness.'
+        : 'Requires targeted guidance to meet delivery standards and project benchmarks.'
+    };
+  }
+};
 
 const FeedbackPage = () => {
   const [activeTab, setActiveTab] = useState('received'); // 'received' | 'given'
@@ -185,111 +243,222 @@ const FeedbackPage = () => {
 
       {/* Cards Grid */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
-          {[1,2,3,4].map(i => <div key={i} className="card skeleton" style={{ height: '160px' }}></div>)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 650px), 1fr))', gap: '24px' }}>
+          {[1,2].map(i => <div key={i} className="card skeleton" style={{ height: '320px', borderRadius: '18px' }}></div>)}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 650px), 1fr))', gap: '24px' }}>
           {feedbackList.map(r => {
             const displayUser = activeTab === 'received' ? r.reviewer : r.reviewee;
-            const roleLabel = activeTab === 'received' ? 'Reviewer' : 'Reviewee';
+            const roleLabel = activeTab === 'received' ? 'Reviewed by' : 'Reviewee';
+            const proj = projects.find(p => p.id === r.project_id || p.id === r.project?.id);
+            const projName = proj?.name || r.project?.name || r.project_name || 'Logistics / Transportation Management System';
+            const ratingVal = r.rating || 5;
+            const ratingLabel = ratingVal >= 4.5 ? 'Exceeds Expectations' : ratingVal >= 3 ? 'Meets Expectations' : 'Needs Improvement';
+            const sections = parseFeedbackComment(r.comment || r.feedback, ratingVal);
 
             return (
               <div
                 key={r.id}
-                className="card"
                 style={{
+                  background: 'var(--surface, #ffffff)',
+                  border: '1px solid var(--border-subtle, #E2E8F0)',
+                  borderRadius: '18px',
+                  boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02)',
+                  padding: '24px 28px',
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  transition: 'all var(--transition-smooth)',
-                  padding: '20px'
+                  transition: 'all var(--transition-smooth)'
                 }}
               >
-                <div>
-                  {/* Rating Header */}
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="flex items-center gap-1" style={{ color: '#F59E0B' }}>
+                {/* Top Header Row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                       {[1, 2, 3, 4, 5].map(star => (
                         <Star
                           key={star}
-                          size={16}
-                          fill={star <= r.rating ? '#F59E0B' : 'transparent'}
-                          stroke="#F59E0B"
+                          size={18}
+                          fill={star <= ratingVal ? '#F59E0B' : 'transparent'}
+                          stroke={star <= ratingVal ? '#F59E0B' : '#CBD5E1'}
+                          strokeWidth={star <= ratingVal ? 1 : 1.5}
                         />
                       ))}
                     </div>
+
                     <span style={{
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontWeight: 700,
-                      background: 'var(--brand-50)',
-                      color: 'var(--brand-700)',
-                      padding: '2px 8px',
-                      borderRadius: 'var(--radius-full)',
-                      border: '1px solid rgba(99, 102, 241, 0.15)'
+                      background: '#EFF6FF',
+                      color: '#2563EB',
+                      padding: '4px 12px',
+                      borderRadius: '9999px',
+                      display: 'inline-flex',
+                      alignItems: 'center'
                     }}>
-                      {r.rating}.0 / 5.0
+                      {Number(ratingVal).toFixed(1)} / 5.0
+                    </span>
+
+                    <span style={{ color: '#CBD5E1', fontSize: '13px', fontWeight: 300 }}>|</span>
+
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      background: '#F3E8FF',
+                      color: '#7C3AED',
+                      padding: '4px 14px',
+                      borderRadius: '9999px',
+                      display: 'inline-flex',
+                      alignItems: 'center'
+                    }}>
+                      {ratingLabel}
                     </span>
                   </div>
-
-                  {/* Feedback Text */}
-                  <p className="text-sm mb-4" style={{ lineHeight: 1.6, color: 'var(--text-primary)', fontStyle: 'italic' }}>
-                    "{r.comment || r.feedback}"
-                  </p>
                 </div>
 
-                {/* Footer User Info */}
+                {/* Subheader Project Title */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                  <Truck size={20} style={{ color: '#3B82F6', flexShrink: 0 }} />
+                  <h4 style={{ fontSize: '15.5px', fontWeight: 700, color: 'var(--text-primary, #0F172A)', margin: 0 }}>
+                    {projName}
+                  </h4>
+                </div>
+
+                {/* 3 Content Sections */}
+                {/* Section 1: Strengths */}
+                <div style={{ borderTop: '1px solid var(--border-subtle, #F1F5F9)', paddingTop: '16px', paddingBottom: '14px', display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: '#DCFCE7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    marginTop: '2px'
+                  }}>
+                    <CheckCircle2 size={18} style={{ color: '#16A34A' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#16A34A', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      STRENGTHS
+                    </div>
+                    <div style={{ fontSize: '13.5px', lineHeight: 1.55, color: 'var(--text-secondary, #475569)' }}>
+                      {sections.strengths}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Areas for Improvement */}
+                <div style={{ borderTop: '1px solid var(--border-subtle, #F1F5F9)', paddingTop: '16px', paddingBottom: '14px', display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: '#FFEDD5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    marginTop: '2px'
+                  }}>
+                    <TrendingUp size={18} style={{ color: '#EA580C' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#EA580C', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      AREAS FOR IMPROVEMENT
+                    </div>
+                    <div style={{ fontSize: '13.5px', lineHeight: 1.55, color: 'var(--text-secondary, #475569)' }}>
+                      {sections.improvements}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Final Assessment */}
+                <div style={{ borderTop: '1px solid var(--border-subtle, #F1F5F9)', paddingTop: '16px', paddingBottom: '16px', display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: '#DBEAFE',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    marginTop: '2px'
+                  }}>
+                    <FileText size={18} style={{ color: '#2563EB' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#2563EB', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      FINAL ASSESSMENT
+                    </div>
+                    <div style={{ fontSize: '13.5px', lineHeight: 1.55, color: 'var(--text-secondary, #475569)' }}>
+                      {sections.assessment}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Footer User Info & Date */}
                 <div style={{
+                  borderTop: '1px solid var(--border-subtle, #F1F5F9)',
+                  paddingTop: '16px',
+                  marginTop: 'auto',
                   display: 'flex',
-                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  paddingTop: '12px',
-                  borderTop: '1px solid var(--border)',
-                  fontSize: '11px'
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {displayUser?.avatar_url ? (
                       <img
                         src={displayUser.avatar_url}
                         alt=""
-                        style={{ width: '24px', height: '24px', borderRadius: 'var(--radius-full)', objectFit: 'cover' }}
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
                       />
                     ) : (
                       <div style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: 'var(--radius-full)',
-                        background: 'var(--brand-gradient)',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: 'var(--brand-gradient, linear-gradient(135deg, #6366F1, #8B5CF6))',
                         color: 'white',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '10px',
+                        fontSize: '11px',
                         fontWeight: 700
                       }}>
                         {displayUser?.first_name?.[0]}{displayUser?.last_name?.[0]}
                       </div>
                     )}
-                    <div>
-                      <span style={{ color: 'var(--text-tertiary)', marginRight: '4px' }}>{roleLabel}:</span>
-                      <strong style={{ color: 'var(--text-primary)' }}>{getUserFullName(displayUser)}</strong>
-                      <span style={{
-                        marginLeft: '6px',
-                        fontSize: '9px',
-                        fontWeight: 700,
-                        padding: '1px 5px',
-                        borderRadius: 'var(--radius-full)',
-                        background: 'var(--subtle)',
-                        color: 'var(--text-secondary)'
-                      }}>
-                        {displayUser?.role}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: '#64748B', fontSize: '12px', fontWeight: 500 }}>{roleLabel}:</span>
+                      <strong style={{ color: 'var(--text-primary, #0F172A)', fontSize: '13.5px', fontWeight: 700 }}>{getUserFullName(displayUser)}</strong>
+                      {displayUser?.role && (
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '9999px',
+                          background: 'var(--subtle, #F1F5F9)',
+                          color: 'var(--text-secondary, #475569)',
+                          marginLeft: '2px'
+                        }}>
+                          {displayUser.role}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <span style={{ color: 'var(--text-tertiary)' }}>
-                    {new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94A3B8', fontSize: '12.5px', fontWeight: 500 }}>
+                    <Calendar size={15} />
+                    <span>
+                      {new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' })}
+                    </span>
+                  </div>
                 </div>
               </div>
             );
