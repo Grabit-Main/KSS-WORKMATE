@@ -266,7 +266,13 @@ const FeedbackPage = () => {
             const proj = projects.find(p => p.id === r.project_id || p.id === r.project?.id);
             const projName = proj?.name || r.project?.name || r.project_name || 'Logistics / Transportation Management System';
             const ratingVal = r.rating || 5;
-            const ratingLabel = ratingVal >= 4.5 ? 'Exceeds Expectations' : ratingVal >= 3 ? 'Meets Expectations' : 'Needs Improvement';
+            const ratingLabel = ratingVal >= 5 
+              ? 'Excellent' 
+              : ratingVal >= 4 
+              ? 'Very Good' 
+              : ratingVal >= 3 
+              ? 'Meets Expectation' 
+              : 'Needs Improvement';
             const sections = parseFeedbackComment(r.comment || r.feedback, ratingVal);
 
             return (
