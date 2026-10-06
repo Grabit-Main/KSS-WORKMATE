@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Integer, Float, Boolean
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Integer, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -15,8 +15,6 @@ class Review(Base):
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
     rating = Column(Float, nullable=False)  # 1.0 - 5.0
     comment = Column(Text, nullable=False)
-    acknowledged = Column(Boolean, default=False)
-    acknowledged_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     reviewer = relationship("User", foreign_keys=[reviewer_id])

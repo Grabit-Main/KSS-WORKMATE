@@ -26,14 +26,6 @@ export const getFeedbackTargets = async () => {
   return (await api.get('/feedback/targets')).data;
 };
 
-export const acknowledgeFeedback = async (id) => {
-  try {
-    return (await api.post(`/feedback/${id}/acknowledge`)).data;
-  } catch (err) {
-    return (await api.post(`/reviews/${id}/acknowledge`)).data;
-  }
-};
-
 // Aliases for backward compatibility
 export const submitReview = submitFeedback;
 export const getUserReviews = getUserFeedback;

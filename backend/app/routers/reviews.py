@@ -125,18 +125,3 @@ def get_user_reviews(user_id: UUID, db: Session = Depends(get_db), user: User = 
         raise HTTPException(403, "Access denied")
     return db.query(Review).filter(Review.reviewee_id == user_id).order_by(Review.created_at.desc()).all()
 
-
-@router.post("/api/feedback/{review_id}/acknowledge", response_model=ReviewResponse)
-@router.post("/api/reviews/{review_id}/acknowledge", response_model=ReviewResponse)
-def acknowledge_review(review_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    review = db.query(Review).filter(Review.id == review_id).first()
-    if not review:
-        raise HTTPException(404, "Feedback not found")
-    if str(review.reviewee_id) != str(user.id) and user.role not in ("CEO", "CTO", "HR"):
-        raise HTTPException(403, "Only the reviewee can acknowledge this feedback")
-    review.acknowledged = True
-    review.acknowledged_at = datetime.utcnow()
-    db.commit()
-    db.refresh(review)
-    return review
-
