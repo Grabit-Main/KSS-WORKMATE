@@ -77,7 +77,9 @@ const FeedbackPage = () => {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
-  const [comment, setComment] = useState('');
+  const [strengthsInput, setStrengthsInput] = useState('');
+  const [improvementsInput, setImprovementsInput] = useState('');
+  const [assessmentInput, setAssessmentInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -121,10 +123,18 @@ const FeedbackPage = () => {
       setFormError('Please select a recipient.');
       return;
     }
-    if (!comment.trim()) {
-      setFormError('Please provide evaluation comments.');
+
+    if (!strengthsInput.trim() && !improvementsInput.trim() && !assessmentInput.trim()) {
+      setFormError('Please fill in evaluation feedback details (Strengths, Areas for Improvement, or Final Assessment).');
       return;
     }
+
+    const parts = [];
+    if (strengthsInput.trim()) parts.push(`STRENGTHS:\n${strengthsInput.trim()}`);
+    if (improvementsInput.trim()) parts.push(`AREAS FOR IMPROVEMENT:\n${improvementsInput.trim()}`);
+    if (assessmentInput.trim()) parts.push(`FINAL ASSESSMENT:\n${assessmentInput.trim()}`);
+    const combinedComment = parts.join('\n\n');
+
     setSubmitting(true);
     setFormError('');
     try {
@@ -132,7 +142,7 @@ const FeedbackPage = () => {
         reviewee_id: selectedTargetId,
         project_id: selectedProjectId || null,
         rating,
-        comment: comment.trim()
+        comment: combinedComment
       });
       setSuccessMsg('Feedback submitted successfully!');
       setTimeout(() => {
@@ -140,7 +150,9 @@ const FeedbackPage = () => {
         setSuccessMsg('');
         setSelectedTargetId('');
         setSelectedProjectId('');
-        setComment('');
+        setStrengthsInput('');
+        setImprovementsInput('');
+        setAssessmentInput('');
         setRating(5);
         setActiveTab('given');
         loadData();
@@ -501,7 +513,7 @@ const FeedbackPage = () => {
         >
           <div className="card modal-animate" style={{
             width: '100%',
-            maxWidth: '520px',
+            maxWidth: '600px',
             maxHeight: '90vh',
             overflowY: 'auto',
             padding: '28px',
@@ -551,7 +563,7 @@ const FeedbackPage = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div>
                 <label className="text-xs font-semibold text-secondary mb-1.5 block">
                   Recipient ({user?.role === 'PM' ? 'Team Lead *' : 'User *'})
@@ -624,18 +636,90 @@ const FeedbackPage = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-secondary mb-1.5 block">
-                  Evaluation Comments *
-                </label>
+              {/* Strengths Field */}
+              <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: '#DCFCE7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <CheckCircle2 size={14} style={{ color: '#16A34A' }} />
+                  </div>
+                  <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#16A34A', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
+                    STRENGTHS
+                  </label>
+                </div>
                 <textarea
-                  rows={4}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Provide qualitative feedback, leadership insights, deliverable quality, and key strengths..."
+                  rows={2}
+                  value={strengthsInput}
+                  onChange={(e) => setStrengthsInput(e.target.value)}
+                  placeholder="Describe key achievements, ownership, UI details, deliverable quality, and core strengths..."
                   className="input"
-                  style={{ resize: 'vertical' }}
-                  required
+                  style={{ resize: 'vertical', background: '#FFFFFF' }}
+                />
+              </div>
+
+              {/* Areas for Improvement Field */}
+              <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: '#FFEDD5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <TrendingUp size={14} style={{ color: '#EA580C' }} />
+                  </div>
+                  <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#EA580C', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
+                    AREAS FOR IMPROVEMENT
+                  </label>
+                </div>
+                <textarea
+                  rows={2}
+                  value={improvementsInput}
+                  onChange={(e) => setImprovementsInput(e.target.value)}
+                  placeholder="Detail target focus areas, testing depth, edge-case validation, documentation, and regression testing..."
+                  className="input"
+                  style={{ resize: 'vertical', background: '#FFFFFF' }}
+                />
+              </div>
+
+              {/* Final Assessment Field */}
+              <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: '#DBEAFE',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <FileText size={14} style={{ color: '#2563EB' }} />
+                  </div>
+                  <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#2563EB', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
+                    FINAL ASSESSMENT
+                  </label>
+                </div>
+                <textarea
+                  rows={2}
+                  value={assessmentInput}
+                  onChange={(e) => setAssessmentInput(e.target.value)}
+                  placeholder="Overall appraisal summary, delivery expectations, production readiness, and final verdict..."
+                  className="input"
+                  style={{ resize: 'vertical', background: '#FFFFFF' }}
                 />
               </div>
 
