@@ -7,27 +7,49 @@ import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Plus, Filter,
   CheckSquare, Folder, Target, Users, AlertTriangle, Sparkles, X, CheckCircle2,
   Video, Bell, Layers, FileText, ArrowUpRight, Search, Lock, AlertCircle, Eye,
-  MoreHorizontal, Activity, Zap, Compass, Check
+  MoreHorizontal, Activity, Zap, Compass, Check, CalendarCheck
 } from 'lucide-react';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
+
+const formatDateKey = (d) => {
+  const dateObj = new Date(d);
+  if (isNaN(dateObj.getTime())) return '';
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseTimeToHour = (timeStr) => {
+  if (!timeStr) return 9;
+  if (timeStr.includes(':')) {
+    const parts = timeStr.split(':');
+    let h = parseInt(parts[0], 10);
+    let m = 0;
+    if (parts[1]) {
+      m = parseInt(parts[1].replace(/[^0-9]/g, ''), 10) || 0;
+      if (parts[1].toUpperCase().includes('PM') && h < 12) h += 12;
+      if (parts[1].toUpperCase().includes('AM') && h === 12) h = 0;
+    }
+    return h + (m / 60);
+  }
+  const h = parseInt(timeStr, 10);
+  return isNaN(h) ? 9 : h;
+};
 
 export default function CalendarPage() {
   const { user } = useAuth();
   const role = user?.role || 'TM';
-  const isExecutive = ['CEO', 'CTO'].includes(role);
-  const isPM = role === 'PM';
-  const isTL = role === 'TL';
 
-  // Active View Mode: 'week', 'month', 'day'
+  // Active View Mode: 'week' | 'month' | 'day'
   const [viewMode, setViewMode] = useState('week');
 
-  // Active Selected Date (Default: Sep 2, 2024 / current date)
-  const [selectedDate, setSelectedDate] = useState(new Date(2026, 8, 26)); // Sep 26, 2026
+  // Active Selected Date (Default: Today's current date)
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Real WorkOS Data
   const [tasksList, setTasksList] = useState([]);
   const [projectsList, setProjectsList] = useState([]);
-  const [goalsList, setGoalsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Selected Task Modal
@@ -46,78 +68,69 @@ export default function CalendarPage() {
   const [customEvents, setCustomEvents] = useState(() => {
     try {
       const saved = localStorage.getItem(`workos_events_${user?.id}`);
-      return saved ? JSON.parse(saved) : [
+      if (saved) return JSON.parse(saved);
+      const todayStr = formatDateKey(new Date());
+      const tomorrowObj = new Date();
+      tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+      const tomorrowStr = formatDateKey(tomorrowObj);
+
+      return [
         {
           id: 'evt_1',
-          title: 'Team Sync',
+          title: 'Sprint Planning & Team Sync',
           category: 'work',
           type: 'Meeting',
-          date: '2026-09-26',
-          startTime: '11:30 AM',
-          endTime: '12:30 PM',
-          startHour: 11.5,
+          date: todayStr,
+          startTime: '10:00 AM',
+          startHour: 10,
           duration: 1,
           hasVideo: true,
           color: '#EFF6FF',
           borderColor: '#3B82F6',
           textColor: '#1E40AF',
-          tag: 'Event'
+          tag: 'Meeting'
         },
         {
           id: 'evt_2',
-          title: 'Design Discussion',
+          title: 'UI Design Review',
           category: 'work',
           type: 'Review',
-          date: '2026-09-26',
-          startTime: '11:00 AM',
-          endTime: '12:00 PM',
-          startHour: 11,
+          date: todayStr,
+          startTime: '02:00 PM',
+          startHour: 14,
           duration: 1,
           color: '#FEF2F2',
           borderColor: '#F87171',
           textColor: '#991B1B',
-          tag: 'High'
+          tag: 'Design'
         },
         {
           id: 'evt_3',
-          title: 'Client Presentation',
+          title: 'Architecture Discussion',
           category: 'work',
           type: 'Meeting',
-          date: '2026-09-27',
-          startTime: '02:00 PM',
-          endTime: '03:00 PM',
-          startHour: 14,
+          date: tomorrowStr,
+          startTime: '11:00 AM',
+          startHour: 11,
           duration: 1,
           color: '#ECFDF5',
           borderColor: '#10B981',
           textColor: '#065F46',
           tag: 'Work'
-        },
-        {
-          id: 'evt_4',
-          title: 'Gym & Fitness',
-          category: 'health',
-          type: 'Habit',
-          date: '2026-09-26',
-          startTime: '05:00 PM',
-          endTime: '06:00 PM',
-          startHour: 17,
-          duration: 1,
-          color: '#FFF7ED',
-          borderColor: '#F97316',
-          textColor: '#9A3412',
-          tag: 'Habit'
         }
       ];
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   });
 
-  // Modal State
+  // Add Event Modal State
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [evtTitle, setEvtTitle] = useState('');
   const [evtCategory, setEvtCategory] = useState('work');
-  const [evtDate, setEvtDate] = useState('2026-09-26');
-  const [evtTime, setEvtTime] = useState('10:00 AM');
+  const [evtDate, setEvtDate] = useState(formatDateKey(new Date()));
+  const [evtTime, setEvtTime] = useState('10:00');
+  const [evtDuration, setEvtDuration] = useState('1');
   const [evtDesc, setEvtDesc] = useState('');
 
   // Fetch WorkOS Data
@@ -131,17 +144,12 @@ export default function CalendarPage() {
 
       if (Array.isArray(resTasks)) setTasksList(resTasks);
       if (Array.isArray(resProj.data)) setProjectsList(resProj.data);
-
-      try {
-        const savedGoals = localStorage.getItem(`workos_goals_${user?.id}`);
-        if (savedGoals) setGoalsList(JSON.parse(savedGoals));
-      } catch {}
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -170,7 +178,7 @@ export default function CalendarPage() {
         color: '#F0FDF4',
         borderColor: '#22C55E',
         textColor: '#15803D',
-        tag: 'Work',
+        tag: 'Task',
         subText: t.description || 'Task deliverable',
         originalTask: t
       });
@@ -182,7 +190,7 @@ export default function CalendarPage() {
     if (p.deadline) {
       allEvents.push({
         id: `proj_${p.id}`,
-        title: `Project Review: ${p.name}`,
+        title: `Project Milestone: ${p.name}`,
         category: 'work',
         type: 'Project',
         date: p.deadline.split('T')[0],
@@ -200,11 +208,14 @@ export default function CalendarPage() {
   // Custom Events
   customEvents.forEach(e => allEvents.push(e));
 
+  // Filter Events by Category Toggle
+  const filteredEvents = allEvents.filter(e => categories[e.category] !== false);
+
   // Weekday Helpers for Week View
   const getWeekDates = (baseDate) => {
     const d = new Date(baseDate);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
     const monday = new Date(d.setDate(diff));
 
     const week = [];
@@ -217,12 +228,84 @@ export default function CalendarPage() {
   };
 
   const weekDates = getWeekDates(selectedDate);
-  const hoursList = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]; // 10 AM to 7 PM
+  const hoursList = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]; // 8 AM to 8 PM
+
+  // Month Grid Helpers
+  const getMonthGridDates = (baseDate) => {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    let startDay = firstDay.getDay() - 1; // Mon = 0
+    if (startDay === -1) startDay = 6;
+
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - startDay);
+
+    const days = [];
+    const totalCells = Math.ceil((startDay + lastDay.getDate()) / 7) * 7;
+    for (let i = 0; i < totalCells; i++) {
+      const next = new Date(startDate);
+      next.setDate(startDate.getDate() + i);
+      days.push(next);
+    }
+    return days;
+  };
+
+  const monthGridDates = getMonthGridDates(selectedDate);
+
+  // Navigation Handlers
+  const handlePrev = () => {
+    const d = new Date(selectedDate);
+    if (viewMode === 'month') {
+      d.setMonth(d.getMonth() - 1);
+    } else if (viewMode === 'day') {
+      d.setDate(d.getDate() - 1);
+    } else {
+      d.setDate(d.getDate() - 7);
+    }
+    setSelectedDate(d);
+  };
+
+  const handleNext = () => {
+    const d = new Date(selectedDate);
+    if (viewMode === 'month') {
+      d.setMonth(d.getMonth() + 1);
+    } else if (viewMode === 'day') {
+      d.setDate(d.getDate() + 1);
+    } else {
+      d.setDate(d.getDate() + 7);
+    }
+    setSelectedDate(d);
+  };
 
   // Add Event Form Handler
   const handleCreateEvent = (e) => {
     e.preventDefault();
     if (!evtTitle.trim()) return;
+
+    const parsedHour = parseTimeToHour(evtTime);
+
+    const catColors = {
+      work: { color: '#EFF6FF', borderColor: '#3B82F6', textColor: '#1E40AF' },
+      personal: { color: '#F5F3FF', borderColor: '#8B5CF6', textColor: '#5B21B6' },
+      learning: { color: '#F0F9FF', borderColor: '#0284C7', textColor: '#075985' },
+      health: { color: '#FFF7ED', borderColor: '#F97316', textColor: '#9A3412' },
+      travel: { color: '#FEF2F2', borderColor: '#EF4444', textColor: '#991B1B' }
+    };
+
+    const scheme = catColors[evtCategory] || catColors.work;
+
+    // Format time display
+    let displayTime = evtTime;
+    if (evtTime.includes(':')) {
+      const [hStr, mStr] = evtTime.split(':');
+      let h = parseInt(hStr, 10);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      displayTime = `${h}:${mStr} ${ampm}`;
+    }
 
     const newEvt = {
       id: `evt_${Date.now()}`,
@@ -230,20 +313,24 @@ export default function CalendarPage() {
       category: evtCategory,
       type: 'Event',
       date: evtDate,
-      startTime: evtTime,
-      startHour: parseInt(evtTime) || 10,
-      duration: 1,
-      color: evtCategory === 'health' ? '#FFF7ED' : evtCategory === 'learning' ? '#F0F9FF' : '#F5F3FF',
-      borderColor: evtCategory === 'health' ? '#F97316' : evtCategory === 'learning' ? '#0284C7' : '#8B5CF6',
-      textColor: evtCategory === 'health' ? '#9A3412' : evtCategory === 'learning' ? '#075985' : '#5B21B6',
-      tag: evtCategory.charAt(0).toUpperCase() + evtCategory.slice(1)
+      startTime: displayTime,
+      startHour: parsedHour,
+      duration: parseFloat(evtDuration) || 1,
+      color: scheme.color,
+      borderColor: scheme.borderColor,
+      textColor: scheme.textColor,
+      tag: evtCategory.charAt(0).toUpperCase() + evtCategory.slice(1),
+      subText: evtDesc.trim() || undefined
     };
 
     const updated = [newEvt, ...customEvents];
     setCustomEvents(updated);
-    localStorage.setItem(`workos_events_${user?.id}`, JSON.stringify(updated));
+    try {
+      localStorage.setItem(`workos_events_${user?.id}`, JSON.stringify(updated));
+    } catch {}
 
     setEvtTitle('');
+    setEvtDesc('');
     setShowAddEventModal(false);
   };
 
@@ -257,9 +344,10 @@ export default function CalendarPage() {
   for (let i = 0; i < (firstDayMini === 0 ? 6 : firstDayMini - 1); i++) miniDaysArray.push(null);
   for (let d = 1; d <= daysInMiniMonth; d++) miniDaysArray.push(d);
 
-  // Today's Agenda Filter
-  const selectedDateStr = selectedDate.toISOString().split('T')[0];
-  const agendaEvents = allEvents.filter(e => e.date === selectedDateStr);
+  // Selected Date Key & Agenda Events
+  const selectedDateStr = formatDateKey(selectedDate);
+  const todayStr = formatDateKey(new Date());
+  const agendaEvents = filteredEvents.filter(e => e.date === selectedDateStr);
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '40px' }}>
@@ -274,13 +362,16 @@ export default function CalendarPage() {
             Calendar
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '4px 0 0 0' }}>
-            Manage your time. Make space for what matters.
+            Manage your schedule, commitments, deliverables, and team activities.
           </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
-            onClick={() => setShowAddEventModal(true)}
+            onClick={() => {
+              setEvtDate(selectedDateStr || formatDateKey(new Date()));
+              setShowAddEventModal(true);
+            }}
             className="btn btn-primary"
             style={{
               padding: '10px 22px',
@@ -304,11 +395,7 @@ export default function CalendarPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
-            onClick={() => {
-              const d = new Date(selectedDate);
-              d.setDate(d.getDate() - 7);
-              setSelectedDate(d);
-            }}
+            onClick={handlePrev}
             className="btn btn-secondary"
             style={{ padding: '8px 12px', borderRadius: '50%', minWidth: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
@@ -316,11 +403,7 @@ export default function CalendarPage() {
           </button>
 
           <button
-            onClick={() => {
-              const d = new Date(selectedDate);
-              d.setDate(d.getDate() + 7);
-              setSelectedDate(d);
-            }}
+            onClick={handleNext}
             className="btn btn-secondary"
             style={{ padding: '8px 12px', borderRadius: '50%', minWidth: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
@@ -340,11 +423,17 @@ export default function CalendarPage() {
             gap: '8px'
           }}>
             <CalendarIcon size={16} color="var(--brand-600)" />
-            <span>Mon, {weekDates[0]?.getDate()} {weekDates[0]?.toLocaleString('en-US', { month: 'short' })} – Sun, {weekDates[6]?.getDate()} {weekDates[6]?.toLocaleString('en-US', { month: 'short', year: 'numeric' })}</span>
+            <span>
+              {viewMode === 'month' && selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+              {viewMode === 'day' && selectedDate.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+              {viewMode === 'week' && (
+                `Mon, ${weekDates[0]?.getDate()} ${weekDates[0]?.toLocaleString('en-US', { month: 'short' })} – Sun, ${weekDates[6]?.getDate()} ${weekDates[6]?.toLocaleString('en-US', { month: 'short', year: 'numeric' })}`
+              )}
+            </span>
           </div>
 
           <button
-            onClick={() => setSelectedDate(new Date(2026, 8, 26))}
+            onClick={() => setSelectedDate(new Date())}
             className="btn btn-secondary"
             style={{ padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600 }}
           >
@@ -379,111 +468,260 @@ export default function CalendarPage() {
       {/* MAIN LAYOUT GRID (LEFT: MAIN CALENDAR, RIGHT: SIDEBAR WIDGETS) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', alignItems: 'start' }}>
         
-        {/* LEFT COLUMN: MAIN WEEK CALENDAR GRID */}
+        {/* LEFT COLUMN: MAIN CALENDAR DISPLAY */}
         <div className="card" style={{ padding: '24px', overflowX: 'auto', borderRadius: 'var(--radius-xl)' }}>
           
-          {/* Weekday Column Headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', gap: '1px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', minWidth: '750px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>GMT+5:30</div>
-            {weekDates.map((wDate, i) => {
-              const dayNum = wDate.getDate();
-              const isToday = wDate.toDateString() === selectedDate.toDateString();
-              const dayName = wDate.toLocaleString('en-US', { weekday: 'short' });
+          {/* VIEW MODE 1: WEEK VIEW */}
+          {viewMode === 'week' && (
+            <>
+              {/* Weekday Column Headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: '70px repeat(7, 1fr)', gap: '1px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', minWidth: '750px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>GMT+5:30</div>
+                {weekDates.map((wDate, i) => {
+                  const dayNum = wDate.getDate();
+                  const isToday = formatDateKey(wDate) === todayStr;
+                  const isSelected = formatDateKey(wDate) === selectedDateStr;
+                  const dayName = wDate.toLocaleString('en-US', { weekday: 'short' });
 
-              return (
-                <div key={i} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: isToday ? '#10B981' : 'var(--text-secondary)', marginBottom: '4px' }}>{dayName}</div>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: isToday ? '#10B981' : 'transparent',
-                    color: isToday ? '#fff' : 'var(--text-primary)',
-                    fontWeight: 700,
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto'
-                  }}>
-                    {dayNum}
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => setSelectedDate(new Date(wDate))}
+                      style={{ textAlign: 'center', cursor: 'pointer' }}
+                    >
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: isToday ? '#10B981' : 'var(--text-secondary)', marginBottom: '4px' }}>{dayName}</div>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: isToday ? '#10B981' : isSelected ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                        color: isToday ? '#fff' : isSelected ? '#10B981' : 'var(--text-primary)',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto'
+                      }}>
+                        {dayNum}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Time Slots Grid (8 AM - 8 PM) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '70px repeat(7, 1fr)', gap: '1px', minWidth: '750px', position: 'relative', minHeight: '560px' }}>
+                
+                {/* Time Labels */}
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingTop: '10px', paddingBottom: '10px' }}>
+                  {hoursList.map(h => (
+                    <div key={h} style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500, height: '40px' }}>
+                      {h === 12 ? '12:00 PM' : h > 12 ? `${h - 12}:00 PM` : `${h}:00 AM`}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day Columns */}
+                {weekDates.map((wDate, colIdx) => {
+                  const cellDateStr = formatDateKey(wDate);
+                  const dayEvts = filteredEvents.filter(e => e.date === cellDateStr);
+
+                  return (
+                    <div key={colIdx} style={{ borderLeft: '1px solid var(--border)', position: 'relative', minHeight: '560px' }}>
+                      {dayEvts.map(evt => {
+                        const startH = evt.startHour || 9;
+                        const topPx = Math.max(0, (startH - 8) * 42);
+                        const heightPx = Math.max(38, (evt.duration || 1) * 40);
+
+                        return (
+                          <div
+                            key={evt.id}
+                            onClick={() => {
+                              if (evt.originalTask) setSelectedTask(evt.originalTask);
+                            }}
+                            style={{
+                              position: 'absolute',
+                              top: `${topPx}px`,
+                              left: '4px',
+                              right: '4px',
+                              height: `${heightPx}px`,
+                              background: evt.color || '#ECFDF5',
+                              borderLeft: `4px solid ${evt.borderColor || '#10B981'}`,
+                              borderRadius: 'var(--radius-md)',
+                              padding: '5px 8px',
+                              fontSize: '11px',
+                              color: evt.textColor || '#065F46',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                              overflow: 'hidden',
+                              zIndex: 5
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>{evt.startTime}</span>
+                              {evt.hasVideo && <Video size={12} color={evt.textColor} />}
+                            </div>
+                            <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {evt.title}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* VIEW MODE 2: MONTH VIEW */}
+          {viewMode === 'month' && (
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', textAlign: 'center', fontWeight: 700, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginTop: '12px' }}>
+                {monthGridDates.map((mDate, idx) => {
+                  const mDateStr = formatDateKey(mDate);
+                  const isCurrentMonth = mDate.getMonth() === selectedDate.getMonth();
+                  const isToday = mDateStr === todayStr;
+                  const isSel = mDateStr === selectedDateStr;
+                  const mEvts = filteredEvents.filter(e => e.date === mDateStr);
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedDate(new Date(mDate))}
+                      style={{
+                        minHeight: '85px',
+                        background: isSel ? 'rgba(16, 185, 129, 0.06)' : 'var(--surface)',
+                        border: isSel ? '2px solid #10B981' : isToday ? '1px solid #10B981' : '1px solid var(--border)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '8px',
+                        cursor: 'pointer',
+                        opacity: isCurrentMonth ? 1 : 0.45,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{
+                          fontWeight: isToday || isSel ? 800 : 600,
+                          fontSize: '13px',
+                          color: isToday ? '#10B981' : 'var(--text-primary)'
+                        }}>
+                          {mDate.getDate()}
+                        </span>
+                        {mEvts.length > 0 && (
+                          <span style={{ fontSize: '10px', fontWeight: 700, background: '#10B981', color: '#fff', padding: '1px 6px', borderRadius: '10px' }}>
+                            {mEvts.length}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
+                        {mEvts.slice(0, 2).map(evt => (
+                          <div
+                            key={evt.id}
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: 600,
+                              background: evt.color || '#EFF6FF',
+                              color: evt.textColor || '#1E40AF',
+                              padding: '2px 4px',
+                              borderRadius: '4px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}
+                          >
+                            {evt.title}
+                          </div>
+                        ))}
+                        {mEvts.length > 2 && (
+                          <div style={{ fontSize: '9.5px', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                            +{mEvts.length - 2} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* VIEW MODE 3: DAY VIEW */}
+          {viewMode === 'day' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                    {selectedDate.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                  </h3>
+                  <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '2px 0 0 0' }}>
+                    {agendaEvents.length} commitment{agendaEvents.length === 1 ? '' : 's'} scheduled for this date
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setEvtDate(selectedDateStr);
+                    setShowAddEventModal(true);
+                  }}
+                  className="btn btn-primary"
+                  style={{ padding: '6px 14px', fontSize: '12px', borderRadius: 'var(--radius-md)', background: '#10B981' }}
+                >
+                  <Plus size={14} /> Add Day Event
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {agendaEvents.length === 0 ? (
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <CalendarCheck size={40} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
+                    <h4 style={{ fontWeight: 700, fontSize: '15px', marginBottom: '4px', color: 'var(--text-primary)' }}>No events scheduled for this day</h4>
+                    <p style={{ fontSize: '13px', margin: 0 }}>Click "+ Add Event" above to schedule a task or meeting.</p>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Time Slots Grid (10 AM - 7 PM) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', gap: '1px', minWidth: '750px', position: 'relative', minHeight: '520px' }}>
-            
-            {/* Current Time Indicator Dashed Line (e.g., 11:30 AM) */}
-            <div style={{
-              position: 'absolute',
-              top: '72px',
-              left: '80px',
-              right: 0,
-              borderTop: '2px dashed #10B981',
-              zIndex: 10,
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <span style={{ position: 'absolute', left: '-75px', top: '-12px', background: '#10B981', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
-                11:30 AM
-              </span>
-            </div>
-
-            {/* Time Labels */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', paddingTop: '10px' }}>
-              {hoursList.map(h => (
-                <div key={h} style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500, height: '20px' }}>
-                  {h === 12 ? '12:00 PM' : h > 12 ? `${h - 12}:00 PM` : `${h}:00 AM`}
-                </div>
-              ))}
-            </div>
-
-            {/* Day Columns */}
-            {weekDates.map((wDate, colIdx) => {
-              const cellDateStr = wDate.toISOString().split('T')[0];
-              const dayEvts = allEvents.filter(e => e.date === cellDateStr);
-
-              return (
-                <div key={colIdx} style={{ borderLeft: '1px solid var(--border)', position: 'relative', minHeight: '520px' }}>
-                  {dayEvts.map(evt => (
+                ) : (
+                  agendaEvents.map(evt => (
                     <div
                       key={evt.id}
                       onClick={() => {
                         if (evt.originalTask) setSelectedTask(evt.originalTask);
                       }}
                       style={{
-                        position: 'absolute',
-                        top: `${((evt.startHour || 10) - 10) * 48}px`,
-                        left: '4px',
-                        right: '4px',
-                        height: `${(evt.duration || 1) * 44}px`,
-                        background: evt.color || '#ECFDF5',
-                        borderLeft: `4px solid ${evt.borderColor || '#10B981'}`,
+                        display: 'flex',
+                        gap: '16px',
+                        alignItems: 'center',
+                        padding: '16px',
+                        background: evt.color || '#EFF6FF',
+                        borderLeft: `5px solid ${evt.borderColor || '#3B82F6'}`,
                         borderRadius: 'var(--radius-md)',
-                        padding: '6px 8px',
-                        fontSize: '11px',
-                        color: evt.textColor || '#065F46',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                        overflow: 'hidden',
-                        zIndex: 5
+                        cursor: 'pointer'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{evt.startTime}</span>
-                        {evt.hasVideo && <Video size={12} color={evt.textColor} />}
+                      <div style={{ minWidth: '80px', fontSize: '13px', fontWeight: 700, color: evt.textColor || '#1E40AF' }}>
+                        {evt.startTime}
                       </div>
-                      <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '2px' }}>{evt.title}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{evt.title}</span>
+                          <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', background: 'rgba(255,255,255,0.7)', color: evt.textColor }}>{evt.tag}</span>
+                        </div>
+                        {evt.subText && <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{evt.subText}</div>}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Bottom Filter & Manage Bar */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -501,14 +739,10 @@ export default function CalendarPage() {
                 </label>
               ))}
             </div>
-
-            <button className="btn btn-secondary" style={{ padding: '6px 14px', fontSize: '12px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Layers size={14} /> Manage calendars
-            </button>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: SIDEBAR WIDGETS (MINI CALENDAR + TODAY'S AGENDA + ASSISTANT CARD) */}
+        {/* RIGHT COLUMN: SIDEBAR WIDGETS (MINI CALENDAR + TODAY'S AGENDA) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* WIDGET 1: MINI MONTH CALENDAR */}
@@ -518,8 +752,18 @@ export default function CalendarPage() {
                 {selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
               </span>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <button onClick={() => setSelectedDate(new Date(miniYear, miniMonth - 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><ChevronLeft size={16} /></button>
-                <button onClick={() => setSelectedDate(new Date(miniYear, miniMonth + 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><ChevronRight size={16} /></button>
+                <button
+                  onClick={() => setSelectedDate(new Date(miniYear, miniMonth - 1, 1))}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  onClick={() => setSelectedDate(new Date(miniYear, miniMonth + 1, 1))}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
             </div>
 
@@ -530,23 +774,32 @@ export default function CalendarPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center' }}>
               {miniDaysArray.map((d, i) => {
                 if (d === null) return <div key={i} />;
-                const isSel = d === selectedDate.getDate();
+                const cellObj = new Date(miniYear, miniMonth, d);
+                const cellStr = formatDateKey(cellObj);
+                const isToday = cellStr === todayStr;
+                const isSel = cellStr === selectedDateStr;
+                const hasEvts = filteredEvents.some(e => e.date === cellStr);
+
                 return (
                   <button
                     key={i}
-                    onClick={() => setSelectedDate(new Date(miniYear, miniMonth, d))}
+                    onClick={() => setSelectedDate(cellObj)}
                     style={{
                       padding: '6px',
                       borderRadius: '50%',
-                      border: 'none',
+                      border: isToday && !isSel ? '1px solid #10B981' : 'none',
                       background: isSel ? '#10B981' : 'transparent',
-                      color: isSel ? '#fff' : 'var(--text-primary)',
-                      fontWeight: isSel ? 700 : 500,
+                      color: isSel ? '#fff' : isToday ? '#10B981' : 'var(--text-primary)',
+                      fontWeight: isSel || isToday ? 700 : 500,
                       fontSize: '12px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      position: 'relative'
                     }}
                   >
                     {d}
+                    {hasEvts && !isSel && (
+                      <span style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', width: '3px', height: '3px', borderRadius: '50%', background: '#10B981' }} />
+                    )}
                   </button>
                 );
               })}
@@ -557,22 +810,39 @@ export default function CalendarPage() {
           <div className="card" style={{ padding: '20px', borderRadius: 'var(--radius-xl)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Today's Agenda</h3>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '2px 0 0 0' }}>Mon, {selectedDate.getDate()} {selectedDate.toLocaleString('en-US', { month: 'short' })}</div>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  {selectedDateStr === todayStr ? "Today's Agenda" : "Selected Day Agenda"}
+                </h3>
+                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '2px 0 0 0' }}>
+                  {selectedDate.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </div>
               </div>
-              <button style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                See all <ArrowUpRight size={14} />
+
+              <button
+                onClick={() => {
+                  setEvtDate(selectedDateStr);
+                  setShowAddEventModal(true);
+                }}
+                style={{ background: 'none', border: 'none', color: '#10B981', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+              >
+                + Add <ArrowUpRight size={14} />
               </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {agendaEvents.length === 0 ? (
                 <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px', padding: '20px 0' }}>
-                  No commitments scheduled for today.
+                  No commitments scheduled for this date.
                 </div>
               ) : (
                 agendaEvents.map(evt => (
-                  <div key={evt.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <div
+                    key={evt.id}
+                    onClick={() => {
+                      if (evt.originalTask) setSelectedTask(evt.originalTask);
+                    }}
+                    style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', cursor: 'pointer' }}
+                  >
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: evt.borderColor || '#10B981', marginTop: '6px', flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -593,47 +863,75 @@ export default function CalendarPage() {
 
       {/* MODAL: ADD EVENT */}
       {showAddEventModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <form onSubmit={handleCreateEvent} className="card" style={{ width: '480px', padding: '28px', borderRadius: 'var(--radius-xl)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
+          <form onSubmit={handleCreateEvent} className="card modal-animate" style={{ width: '500px', padding: '28px', borderRadius: 'var(--radius-xl)', background: 'var(--surface)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
                 <Plus size={20} color="#10B981" /> Schedule New Event
               </h3>
-              <button type="button" onClick={() => setShowAddEventModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={20} /></button>
+              <button type="button" onClick={() => setShowAddEventModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                <X size={20} />
+              </button>
             </div>
 
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Event Title</label>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Event Title *</label>
               <input
                 type="text"
                 value={evtTitle}
                 onChange={(e) => setEvtTitle(e.target.value)}
                 placeholder="e.g. Work on UI Design, Client Meeting..."
                 required
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }}
+                className="input"
               />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Category</label>
-                <select value={evtCategory} onChange={(e) => setEvtCategory(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }}>
+                <select value={evtCategory} onChange={(e) => setEvtCategory(e.target.value)} className="input">
                   <option value="work">Work</option>
                   <option value="personal">Personal</option>
                   <option value="learning">Learning</option>
                   <option value="health">Health</option>
+                  <option value="travel">Travel</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Date</label>
-                <input type="date" value={evtDate} onChange={(e) => setEvtDate(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }} />
+                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Date *</label>
+                <input type="date" value={evtDate} onChange={(e) => setEvtDate(e.target.value)} required className="input" />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Start Time</label>
+                <input type="time" value={evtTime.includes(':') ? evtTime : '10:00'} onChange={(e) => setEvtTime(e.target.value)} className="input" />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Duration (Hours)</label>
+                <select value={evtDuration} onChange={(e) => setEvtDuration(e.target.value)} className="input">
+                  <option value="0.5">0.5 Hour (30m)</option>
+                  <option value="1">1 Hour</option>
+                  <option value="1.5">1.5 Hours</option>
+                  <option value="2">2 Hours</option>
+                  <option value="3">3 Hours</option>
+                </select>
               </div>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Time</label>
-              <input type="text" value={evtTime} onChange={(e) => setEvtTime(e.target.value)} placeholder="11:30 AM" style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }} />
+              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description / Notes (Optional)</label>
+              <textarea
+                rows={2}
+                value={evtDesc}
+                onChange={(e) => setEvtDesc(e.target.value)}
+                placeholder="Add meeting agenda, notes, or links..."
+                className="input"
+                style={{ resize: 'vertical' }}
+              />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
