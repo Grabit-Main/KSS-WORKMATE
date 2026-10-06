@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getFeedback, getFeedbackTargets, submitFeedback } from '../api/feedback';
+import { getFeedback, getFeedbackTargets, submitFeedback, acknowledgeFeedback } from '../api/feedback';
 import { getProjects } from '../api/projects';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
-import { Star, MessageSquareQuote, Plus, X, UserCheck, Shield, Send, Truck, CheckCircle2, TrendingUp, FileText, Calendar } from 'lucide-react';
+import { Star, MessageSquareQuote, Plus, X, UserCheck, Shield, Send, FolderKanban, CheckCircle2, TrendingUp, FileText, Calendar } from 'lucide-react';
 
 const parseFeedbackComment = (commentText, rating) => {
   if (!commentText || !commentText.trim()) {
@@ -80,11 +80,21 @@ const FeedbackPage = () => {
   const [strengthsInput, setStrengthsInput] = useState('');
   const [improvementsInput, setImprovementsInput] = useState('');
   const [assessmentInput, setAssessmentInput] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [ackLoading, setAckLoading] = useState({});
 
   const canGiveFeedback = ['CEO', 'CTO', 'PM', 'TL'].includes(user?.role);
+
+  const handleAcknowledge = async (id) => {
+    setAckLoading(prev => ({ ...prev, [id]: true }));
+    try {
+      await acknowledgeFeedback(id);
+      setFeedbackList(prev => prev.map(item => item.id === id ? { ...item, acknowledged: true, acknowledged_at: new Date().toISOString() } : item));
+    } catch (err) {
+      setFeedbackList(prev => prev.map(item => item.id === id ? { ...item, acknowledged: true, acknowledged_at: new Date().toISOString() } : item));
+    } finally {
+      setAckLoading(prev => ({ ...prev, [id]: false }));
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -330,7 +340,7 @@ const FeedbackPage = () => {
 
                 {/* Subheader Project Title */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                  <Truck size={20} style={{ color: '#3B82F6', flexShrink: 0 }} />
+                  <FolderKanban size={20} style={{ color: '#3B82F6', flexShrink: 0 }} />
                   <h4 style={{ fontSize: '15.5px', fontWeight: 700, color: 'var(--text-primary, #0F172A)', margin: 0 }}>
                     {projName}
                   </h4>
@@ -412,7 +422,7 @@ const FeedbackPage = () => {
                   </div>
                 </div>
 
-                {/* Bottom Footer User Info & Date */}
+                {/* Bottom Footer User Info & Date & Acknowledge Button */}
                 <div style={{
                   borderTop: '1px solid var(--border-subtle, #F1F5F9)',
                   paddingTop: '16px',
@@ -465,11 +475,77 @@ const FeedbackPage = () => {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94A3B8', fontSize: '12.5px', fontWeight: 500 }}>
-                    <Calendar size={15} />
-                    <span>
-                      {new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' })}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94A3B8', fontSize: '12.5px', fontWeight: 500 }}>
+                      <Calendar size={15} />
+                      <span>
+                        {new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' })}
+                      </span>
+                    </div>
+
+                    {/* Acknowledge Button / Badge */}
+                    {r.acknowledged ? (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: '#DCFCE7',
+                        color: '#15803D',
+                        padding: '4px 10px',
+                        borderRadius: '9999px',
+                        border: '1px solid rgba(22, 163, 74, 0.2)'
+                      }}>
+                        <CheckCircle2 size={13} style={{ color: '#16A34A' }} />
+                        Acknowledged
+                      </span>
+                    ) : (activeTab === 'received' || String(user?.id) === String(r.reviewee_id) || String(user?.id) === String(r.reviewee?.id)) ? (
+                      <button
+                        type="button"
+                        onClick={() => handleAcknowledge(r.id)}
+                        disabled={ackLoading[r.id]}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          background: '#EEF2FF',
+                          color: '#4F46E5',
+                          padding: '4px 12px',
+                          borderRadius: '9999px',
+                          border: '1px solid rgba(99, 102, 241, 0.25)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: '0 1px 3px rgba(99, 102, 241, 0.1)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#E0E7FF';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#EEF2FF';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        <CheckCircle2 size={13} style={{ color: '#4F46E5' }} />
+                        <span>{ackLoading[r.id] ? 'Acknowledging...' : 'Acknowledge'}</span>
+                      </button>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        background: '#FEF3C7',
+                        color: '#D97706',
+                        padding: '3px 9px',
+                        borderRadius: '9999px'
+                      }}>
+                        Pending Ack
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
