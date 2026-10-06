@@ -7,7 +7,7 @@ import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Plus, Filter,
   CheckSquare, Folder, Target, Users, AlertTriangle, Sparkles, X, CheckCircle2,
   Video, Bell, Layers, FileText, ArrowUpRight, Search, Lock, AlertCircle, Eye,
-  MoreHorizontal, Activity, Zap, Compass, Check, CalendarCheck
+  MoreHorizontal, Activity, Zap, Compass, Check, CalendarCheck, Trash2
 } from 'lucide-react';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
 
@@ -52,8 +52,17 @@ export default function CalendarPage() {
   const [projectsList, setProjectsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Selected Task Modal
+  // Selected Task / Event Modals
   const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
+  const handleEventClick = (evt) => {
+    if (evt.originalTask) {
+      setSelectedTask(evt.originalTask);
+    } else {
+      setSelectedEvent(evt);
+    }
+  };
 
   // Calendar Category Toggles
   const [categories, setCategories] = useState({
@@ -334,6 +343,15 @@ export default function CalendarPage() {
     setShowAddEventModal(false);
   };
 
+  const handleDeleteCustomEvent = (id) => {
+    const updated = customEvents.filter(e => e.id !== id);
+    setCustomEvents(updated);
+    try {
+      localStorage.setItem(`workos_events_${user?.id}`, JSON.stringify(updated));
+    } catch {}
+    setSelectedEvent(null);
+  };
+
   // Mini Calendar Month Grid
   const miniYear = selectedDate.getFullYear();
   const miniMonth = selectedDate.getMonth();
@@ -537,9 +555,7 @@ export default function CalendarPage() {
                         return (
                           <div
                             key={evt.id}
-                            onClick={() => {
-                              if (evt.originalTask) setSelectedTask(evt.originalTask);
-                            }}
+                            onClick={() => handleEventClick(evt)}
                             style={{
                               position: 'absolute',
                               top: `${topPx}px`,
@@ -628,6 +644,10 @@ export default function CalendarPage() {
                         {mEvts.slice(0, 2).map(evt => (
                           <div
                             key={evt.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEventClick(evt);
+                            }}
                             style={{
                               fontSize: '10px',
                               fontWeight: 600,
@@ -637,7 +657,8 @@ export default function CalendarPage() {
                               borderRadius: '4px',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
-                              textOverflow: 'ellipsis'
+                              textOverflow: 'ellipsis',
+                              cursor: 'pointer'
                             }}
                           >
                             {evt.title}
@@ -692,9 +713,7 @@ export default function CalendarPage() {
                   agendaEvents.map(evt => (
                     <div
                       key={evt.id}
-                      onClick={() => {
-                        if (evt.originalTask) setSelectedTask(evt.originalTask);
-                      }}
+                      onClick={() => handleEventClick(evt)}
                       style={{
                         display: 'flex',
                         gap: '16px',
@@ -838,9 +857,7 @@ export default function CalendarPage() {
                 agendaEvents.map(evt => (
                   <div
                     key={evt.id}
-                    onClick={() => {
-                      if (evt.originalTask) setSelectedTask(evt.originalTask);
-                    }}
+                    onClick={() => handleEventClick(evt)}
                     style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', cursor: 'pointer' }}
                   >
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: evt.borderColor || '#10B981', marginTop: '6px', flexShrink: 0 }} />
@@ -946,9 +963,64 @@ export default function CalendarPage() {
       {selectedTask && (
         <TaskDetailsModal
           task={selectedTask}
+          currentUser={user}
           onClose={() => setSelectedTask(null)}
+          onTaskUpdated={loadData}
           onUpdate={loadData}
         />
+      )}
+
+      {/* EVENT DETAILS MODAL */}
+      {selectedEvent && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
+          <div className="card modal-animate" style={{ width: '480px', padding: '24px', borderRadius: 'var(--radius-xl)', background: 'var(--surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: selectedEvent.color || '#EFF6FF', color: selectedEvent.textColor || '#1E40AF', textTransform: 'uppercase' }}>
+                  {selectedEvent.tag || selectedEvent.category || 'Event'}
+                </span>
+                <h3 style={{ fontSize: '20px', fontWeight: 700, margin: '8px 0 0 0', color: 'var(--text-primary)' }}>
+                  {selectedEvent.title}
+                </h3>
+              </div>
+              <button type="button" onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px', fontSize: '14px', color: 'var(--text-secondary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CalendarIcon size={16} color="#10B981" />
+                <span><strong>Date:</strong> {selectedEvent.date}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={16} color="#10B981" />
+                <span><strong>Time:</strong> {selectedEvent.startTime || 'All day'} {selectedEvent.duration ? `(${selectedEvent.duration} hr${selectedEvent.duration > 1 ? 's' : ''})` : ''}</span>
+              </div>
+              {selectedEvent.subText && (
+                <div style={{ background: 'var(--background)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '4px' }}>Notes / Description</div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{selectedEvent.subText}</div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              {selectedEvent.id?.startsWith('evt_') ? (
+                <button
+                  onClick={() => handleDeleteCustomEvent(selectedEvent.id)}
+                  className="btn btn-secondary"
+                  style={{ color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+                >
+                  <Trash2 size={14} /> Delete Event
+                </button>
+              ) : <div />}
+              <button onClick={() => setSelectedEvent(null)} className="btn btn-primary" style={{ background: '#10B981', padding: '8px 20px' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -136,10 +136,11 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
           pool = usersData;
         }
 
+        const userRole = currentUser?.role || 'TM';
         const filtered = pool.filter(u => {
           if (!u || !u.id) return false;
           if (u.role === 'CEO' || u.role === 'CTO') return false;
-          if (currentUser.role === 'TM' && u.role === 'PM') return false;
+          if (userRole === 'TM' && u.role === 'PM') return false;
           return true;
         });
         setEligibleMembers(filtered);
@@ -149,7 +150,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
     };
 
     fetchEligibleMembers();
-  }, [currentTask?.id, currentTask?.assigned_to, currentTask?.project_id, currentTask?.team_id, currentUser.role]);
+  }, [currentTask?.id, currentTask?.assigned_to, currentTask?.project_id, currentTask?.team_id, currentUser?.role]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -161,11 +162,13 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
 
   if (!currentTask) return null;
 
-  const isAssignee = String(currentTask.assigned_to) === String(currentUser.id);
-  const isAssigner = String(currentTask.assigned_by) === String(currentUser.id);
-  const isLeadership = ['CEO', 'CTO', 'PM'].includes(currentUser.role);
+  const currentUserId = currentUser?.id || '';
+  const currentUserRole = currentUser?.role || 'TM';
+  const isAssignee = String(currentTask.assigned_to) === String(currentUserId);
+  const isAssigner = String(currentTask.assigned_by) === String(currentUserId);
+  const isLeadership = ['CEO', 'CTO', 'PM'].includes(currentUserRole);
   const isReadOnlyObserver = isLeadership && !isAssignee && !isAssigner;
-  const canEditTask = ['TL', 'CEO', 'CTO', 'PM'].includes(currentUser?.role) || (isAssigner && currentUser?.role !== 'TM');
+  const canEditTask = ['TL', 'CEO', 'CTO', 'PM'].includes(currentUserRole) || (isAssigner && currentUserRole !== 'TM');
 
   const handleStart = async () => {
     setActionLoading(true);
