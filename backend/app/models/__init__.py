@@ -5,9 +5,11 @@ from app.models.chat import ChatMessage
 from app.models.review import Review
 from app.models.notification import Notification
 from app.models.kpi import DailyKPILog
+from app.models.holiday import Holiday
 
 __all__ = [
     "User", "Project", "Team", "TeamMembership", "ProjectStatusLog",
     "Task", "TaskAttachment", "TaskStatusLog",
-    "ChatMessage", "Review", "Notification", "DailyKPILog",
+    "ChatMessage", "Review", "Notification", "DailyKPILog", "Holiday",
 ]
+

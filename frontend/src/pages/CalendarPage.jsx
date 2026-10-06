@@ -10,6 +10,16 @@ import {
   MoreHorizontal, Activity, Zap, Compass, Check, CalendarCheck, Trash2
 } from 'lucide-react';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
+import { getHolidays, createHoliday, deleteHoliday } from '../api/holidays';
+
+const DEFAULT_HOLIDAYS = [
+  { id: 'hol_1', title: 'Ganesh Chaturthi', date: '2026-09-14', day_of_week: 'Monday', type: 'Paid Off' },
+  { id: 'hol_2', title: 'Gandhi Jayanti', date: '2026-10-02', day_of_week: 'Friday', type: 'Paid Off' },
+  { id: 'hol_3', title: 'Dussehra / Vijayadashami', date: '2026-10-20', day_of_week: 'Tuesday', type: 'Paid Off' },
+  { id: 'hol_4', title: 'Karnataka Rajyotsava', date: '2026-11-01', day_of_week: 'Sunday', type: 'Paid Off' },
+  { id: 'hol_5', title: 'Diwali / Deepavali', date: '2026-11-08', day_of_week: 'Sunday', type: 'Paid Off' },
+  { id: 'hol_6', title: 'Christmas', date: '2026-12-25', day_of_week: 'Friday', type: 'Paid Off' },
+];
 
 const formatDateKey = (d) => {
   const dateObj = new Date(d);
@@ -41,7 +51,7 @@ export default function CalendarPage() {
   const { user } = useAuth();
   const role = user?.role || 'TM';
 
-  // Active View Mode: 'week' | 'month' | 'day'
+  // Active View Mode: 'week' | 'month' | 'day' | 'holidays'
   const [viewMode, setViewMode] = useState('week');
 
   // Active Selected Date (Default: Today's current date)
@@ -51,6 +61,15 @@ export default function CalendarPage() {
   const [tasksList, setTasksList] = useState([]);
   const [projectsList, setProjectsList] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Holidays State
+  const [holidaysList, setHolidaysList] = useState(DEFAULT_HOLIDAYS);
+  const [showAddHolidayModal, setShowAddHolidayModal] = useState(false);
+  const [holTitle, setHolTitle] = useState('');
+  const [holDate, setHolDate] = useState(formatDateKey(new Date()));
+  const [holType, setHolType] = useState('Paid Off');
+  const [holDesc, setHolDesc] = useState('');
+  const [holidaySaving, setHolidaySaving] = useState(false);
 
   // Selected Task / Event Modals
   const [selectedTask, setSelectedTask] = useState(null);
@@ -146,13 +165,17 @@ export default function CalendarPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [resTasks, resProj] = await Promise.all([
+      const [resTasks, resProj, resHolidays] = await Promise.all([
         getTasks().catch(() => []),
-        api.get('/projects').catch(() => ({ data: [] }))
+        api.get('/projects').catch(() => ({ data: [] })),
+        getHolidays().catch(() => null)
       ]);
 
       if (Array.isArray(resTasks)) setTasksList(resTasks);
       if (Array.isArray(resProj.data)) setProjectsList(resProj.data);
+      if (Array.isArray(resHolidays) && resHolidays.length > 0) {
+        setHolidaysList(resHolidays);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -212,6 +235,25 @@ export default function CalendarPage() {
         tag: 'Project'
       });
     }
+  });
+
+  // Official Holidays as Events
+  holidaysList.forEach(h => {
+    allEvents.push({
+      id: `hol_evt_${h.id}`,
+      title: `🎉 ${h.title}`,
+      category: 'work',
+      type: 'Holiday',
+      date: h.date,
+      startTime: 'All Day',
+      startHour: 9,
+      duration: 1,
+      color: '#F3E8FF',
+      borderColor: '#8B5CF6',
+      textColor: '#6B21A8',
+      tag: h.type || 'Holiday',
+      subText: `${h.day_of_week || ''} • Official Holiday`
+    });
   });
 
   // Custom Events
@@ -352,6 +394,48 @@ export default function CalendarPage() {
     setSelectedEvent(null);
   };
 
+  // Holiday Handlers (TL allowed to create/delete)
+  const handleCreateHoliday = async (e) => {
+    e.preventDefault();
+    if (!holTitle.trim() || !holDate) return;
+    setHolidaySaving(true);
+    try {
+      const created = await createHoliday({
+        title: holTitle.trim(),
+        date: holDate,
+        type: holType,
+        description: holDesc.trim() || undefined
+      });
+      setHolidaysList(prev => [...prev.filter(h => h.id !== created.id), created]);
+      setHolTitle('');
+      setHolDesc('');
+      setShowAddHolidayModal(false);
+    } catch (err) {
+      console.error('Failed to create holiday:', err);
+      const dateObj = new Date(holDate);
+      const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('en-US', { weekday: 'long' }) : '';
+      const localNew = {
+        id: `hol_${Date.now()}`,
+        title: holTitle.trim(),
+        date: holDate,
+        day_of_week: dayName,
+        type: holType,
+        description: holDesc.trim() || undefined
+      };
+      setHolidaysList(prev => [...prev, localNew]);
+      setShowAddHolidayModal(false);
+    } finally {
+      setHolidaySaving(false);
+    }
+  };
+
+  const handleDeleteHoliday = async (id) => {
+    try {
+      await deleteHoliday(id).catch(() => {});
+    } catch {}
+    setHolidaysList(prev => prev.filter(h => h.id !== id));
+  };
+
   // Mini Calendar Month Grid
   const miniYear = selectedDate.getFullYear();
   const miniMonth = selectedDate.getMonth();
@@ -385,6 +469,26 @@ export default function CalendarPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            onClick={() => setViewMode(viewMode === 'holidays' ? 'week' : 'holidays')}
+            className="btn btn-secondary"
+            style={{
+              padding: '10px 20px',
+              borderRadius: 'var(--radius-md)',
+              background: viewMode === 'holidays' ? 'rgba(99, 102, 241, 0.2)' : 'var(--surface)',
+              color: viewMode === 'holidays' ? '#818CF8' : 'var(--text-primary)',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              border: viewMode === 'holidays' ? '1px solid #6366F1' : '1px solid var(--border)',
+              boxShadow: viewMode === 'holidays' ? '0 0 12px rgba(99, 102, 241, 0.3)' : 'none'
+            }}
+          >
+            <Sparkles size={18} color={viewMode === 'holidays' ? '#818CF8' : '#8B5CF6'} />
+            Holidays
+          </button>
+
           <button
             onClick={() => {
               setEvtDate(selectedDateStr || formatDateKey(new Date()));
@@ -461,7 +565,7 @@ export default function CalendarPage() {
 
         {/* View Mode Selector */}
         <div style={{ display: 'flex', background: 'var(--surface)', padding: '3px', borderRadius: '20px', border: '1px solid var(--border)' }}>
-          {['month', 'week', 'day'].map(v => (
+          {['month', 'week', 'day', 'holidays'].map(v => (
             <button
               key={v}
               onClick={() => setViewMode(v)}
@@ -469,7 +573,7 @@ export default function CalendarPage() {
                 padding: '6px 18px',
                 borderRadius: '16px',
                 border: 'none',
-                background: viewMode === v ? '#10B981' : 'transparent',
+                background: viewMode === v ? (v === 'holidays' ? '#6366F1' : '#10B981') : 'transparent',
                 color: viewMode === v ? '#fff' : 'var(--text-secondary)',
                 fontWeight: viewMode === v ? 600 : 500,
                 fontSize: '13px',
@@ -483,8 +587,189 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* MAIN LAYOUT GRID (LEFT: MAIN CALENDAR, RIGHT: SIDEBAR WIDGETS) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', alignItems: 'start' }}>
+      {/* MAIN CONTENT DISPLAY */}
+      {viewMode === 'holidays' ? (
+        /* HOLIDAYS VIEW DISPLAY MATCHING USER SCREENSHOT */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* BANNER HEADER */}
+          <div className="card" style={{
+            padding: '24px',
+            borderRadius: 'var(--radius-xl)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            justify: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '14px',
+                background: 'rgba(99, 102, 241, 0.15)',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#818CF8'
+              }}>
+                <Sparkles size={24} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+                  Kalpanaaa Software Solutions — 2026 Declared Holidays
+                </h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', margin: '4px 0 0 0' }}>
+                  Sundays are standard weekly off days. The following {holidaysList.length} dates are recognized as paid public & state holidays.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                padding: '8px 18px',
+                borderRadius: '20px',
+                border: '1px solid rgba(99, 102, 241, 0.4)',
+                background: 'rgba(99, 102, 241, 0.1)',
+                color: '#818CF8',
+                fontSize: '13px',
+                fontWeight: 700
+              }}>
+                {holidaysList.length} Official Holidays
+              </div>
+
+              {role === 'TL' && (
+                <button
+                  onClick={() => setShowAddHolidayModal(true)}
+                  className="btn btn-primary"
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: '20px',
+                    background: '#6366F1',
+                    color: '#fff',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    border: 'none',
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                  }}
+                >
+                  <Plus size={16} /> Add Holiday
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* HOLIDAYS GRID */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gap: '20px'
+          }}>
+            {holidaysList.map((h) => {
+              const dateObj = new Date(h.date);
+              const monthStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('en-US', { month: 'short' }).toUpperCase() : 'DEC';
+              const dayNum = !isNaN(dateObj.getTime()) ? String(dateObj.getDate()).padStart(2, '0') : '01';
+              const dayName = h.day_of_week || (!isNaN(dateObj.getTime()) ? dateObj.toLocaleString('en-US', { weekday: 'long' }) : '');
+
+              return (
+                <div
+                  key={h.id}
+                  className="card"
+                  style={{
+                    padding: '20px',
+                    borderRadius: 'var(--radius-xl)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '16px',
+                    position: 'relative'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+                    {/* Date Box */}
+                    <div style={{
+                      width: '54px',
+                      height: '54px',
+                      borderRadius: '14px',
+                      background: 'var(--background)',
+                      border: '1px solid var(--border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#818CF8', letterSpacing: '0.05em' }}>
+                        {monthStr}
+                      </span>
+                      <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+                        {dayNum}
+                      </span>
+                    </div>
+
+                    {/* Info Box */}
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>
+                        {h.title}
+                      </h4>
+                      <div style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', marginTop: '4px', fontWeight: 500 }}>
+                        {dayName} • {h.date}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Badge & Action */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '4px 12px',
+                      borderRadius: '16px',
+                      background: 'rgba(99, 102, 241, 0.12)',
+                      color: '#A5B4FC',
+                      border: '1px solid rgba(99, 102, 241, 0.3)',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {h.type || 'Paid Off'}
+                    </span>
+
+                    {role === 'TL' && (
+                      <button
+                        onClick={() => handleDeleteHoliday(h.id)}
+                        title="Delete Holiday"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-tertiary)',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#EF4444'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* MAIN LAYOUT GRID (LEFT: MAIN CALENDAR, RIGHT: SIDEBAR WIDGETS) */
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', alignItems: 'start' }}>
         
         {/* LEFT COLUMN: MAIN CALENDAR DISPLAY */}
         <div className="card" style={{ padding: '24px', overflowX: 'auto', borderRadius: 'var(--radius-xl)' }}>
@@ -874,9 +1159,9 @@ export default function CalendarPage() {
               )}
             </div>
           </div>
-
         </div>
       </div>
+      )}
 
       {/* MODAL: ADD EVENT */}
       {showAddEventModal && (
@@ -954,6 +1239,70 @@ export default function CalendarPage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button type="button" onClick={() => setShowAddEventModal(false)} className="btn btn-secondary">Cancel</button>
               <button type="submit" className="btn btn-primary" style={{ background: '#10B981' }}>Save Event</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL: ADD HOLIDAY (TL ONLY) */}
+      {showAddHolidayModal && role === 'TL' && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
+          <form onSubmit={handleCreateHoliday} className="card modal-animate" style={{ width: '500px', padding: '28px', borderRadius: 'var(--radius-xl)', background: 'var(--surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                <Sparkles size={20} color="#6366F1" /> Declare Official Holiday
+              </h3>
+              <button type="button" onClick={() => setShowAddHolidayModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Holiday Title *</label>
+              <input
+                type="text"
+                value={holTitle}
+                onChange={(e) => setHolTitle(e.target.value)}
+                placeholder="e.g. Ganesh Chaturthi, New Year..."
+                required
+                className="input"
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Date *</label>
+                <input type="date" value={holDate} onChange={(e) => setHolDate(e.target.value)} required className="input" />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Holiday Type</label>
+                <select value={holType} onChange={(e) => setHolType(e.target.value)} className="input">
+                  <option value="Paid Off">Paid Off</option>
+                  <option value="Optional Off">Optional Off</option>
+                  <option value="Restricted Holiday">Restricted Holiday</option>
+                  <option value="Public Holiday">Public Holiday</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description / Notes (Optional)</label>
+              <textarea
+                rows={2}
+                value={holDesc}
+                onChange={(e) => setHolDesc(e.target.value)}
+                placeholder="Add notes about paid leave policies..."
+                className="input"
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button type="button" onClick={() => setShowAddHolidayModal(false)} className="btn btn-secondary">Cancel</button>
+              <button type="submit" disabled={holidaySaving} className="btn btn-primary" style={{ background: '#6366F1' }}>
+                {holidaySaving ? 'Saving...' : 'Add Holiday'}
+              </button>
             </div>
           </form>
         </div>
