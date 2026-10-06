@@ -243,11 +243,11 @@ const FeedbackPage = () => {
 
       {/* Cards Grid */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 650px), 1fr))', gap: '24px' }}>
-          {[1,2].map(i => <div key={i} className="card skeleton" style={{ height: '320px', borderRadius: '18px' }}></div>)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))', gap: '20px' }}>
+          {[1,2,3,4].map(i => <div key={i} className="card skeleton" style={{ height: '320px', borderRadius: '18px' }}></div>)}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 650px), 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))', gap: '20px' }}>
           {feedbackList.map(r => {
             const displayUser = activeTab === 'received' ? r.reviewer : r.reviewee;
             const roleLabel = activeTab === 'received' ? 'Reviewed by' : 'Reviewee';
@@ -265,7 +265,7 @@ const FeedbackPage = () => {
                   border: '1px solid var(--border-subtle, #E2E8F0)',
                   borderRadius: '18px',
                   boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02)',
-                  padding: '24px 28px',
+                  padding: '20px 22px',
                   display: 'flex',
                   flexDirection: 'column',
                   transition: 'all var(--transition-smooth)'
