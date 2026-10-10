@@ -2097,7 +2097,9 @@ const KpiPage = () => {
   const [formData, setFormData] = useState(initialForm);
 
   const isExecutive = ['CEO', 'CTO', 'PM', 'CO'].includes(user?.role);
-  const isCeoOrCto = ['CEO', 'CTO', 'CO'].includes(user?.role);
+  const isCO = user?.role === 'CO' || user?.role === 'CEO';
+  const isCTO = user?.role === 'CTO';
+  const isCeoOrCto = isCO || isCTO;
   const hidePersonalView = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
   const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL'].includes(user?.role);
   const isTL = user?.role === 'TL';
@@ -2170,6 +2172,20 @@ const KpiPage = () => {
     });
   }, [logs, searchTerm]);
 
+  // Helper to match role names flexibly
+  const isRoleMatching = (empRoleStr, roleList) => {
+    if (!empRoleStr) return false;
+    const upper = String(empRoleStr).toUpperCase();
+    return roleList.some((role) => {
+      const r = role.toUpperCase();
+      if (r === 'CO' || r === 'CEO') return upper === 'CO' || upper === 'CEO' || upper.includes('CHIEF OPERATING');
+      if (r === 'CTO') return upper === 'CTO' || upper.includes('CHIEF TECH');
+      if (r === 'TL') return upper === 'TL' || upper.includes('TEAM LEAD') || upper.includes('LEAD');
+      if (r === 'PM') return upper === 'PM' || upper.includes('PROJECT MANAGER');
+      return upper === r;
+    });
+  };
+
   // Unified list of all employees for card dashboard
   const allEmployeesForCards = useMemo(() => {
     const map = new Map();
@@ -2182,8 +2198,20 @@ const KpiPage = () => {
         map.set(String(l.employee.id), l.employee);
       }
     });
-    return Array.from(map.values());
-  }, [teammates, logs, allKpiLogs, showCardsGrid]);
+
+    let list = Array.from(map.values());
+
+    // Role-specific KPI Card exclusions for CO and CTO
+    if (isCO) {
+      // CO: Do not display cards for CO, CTO, TL, or PM employees
+      list = list.filter((emp) => !isRoleMatching(emp.role || emp.department, ['CO', 'CEO', 'CTO', 'TL', 'PM']));
+    } else if (isCTO) {
+      // CTO: Do not display cards for CO, TL, or PM employees (keep CTO)
+      list = list.filter((emp) => !isRoleMatching(emp.role || emp.department, ['CO', 'CEO', 'TL', 'PM']));
+    }
+
+    return list;
+  }, [teammates, logs, allKpiLogs, showCardsGrid, isCO, isCTO]);
 
   const filteredEmployeesForCards = useMemo(() => {
     if (!searchTerm.trim()) return allEmployeesForCards;
@@ -2661,74 +2689,76 @@ const KpiPage = () => {
           </select>
         )}
 
-        {/* Calendar Date Filter (Present & Previous Dates Only) */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '7px 12px',
-          borderRadius: 'var(--radius-sm)',
-          border: selectedDate ? '1.5px solid var(--brand-500)' : '1px solid var(--border)',
-          background: 'var(--bg)',
-          boxShadow: selectedDate ? '0 0 0 2px rgba(99, 102, 241, 0.15)' : 'none',
-          transition: 'all var(--transition-fast)'
-        }}>
-          <Calendar size={15} style={{ color: selectedDate ? 'var(--brand-600)' : 'var(--text-tertiary)', flexShrink: 0 }} />
-          <input
-            type="date"
-            title="Filter by evaluation date (previous and present dates only)"
-            max={getTodayDateString()}
-            value={selectedDate}
-            onChange={(e) => {
-              const val = e.target.value;
-              const maxDate = getTodayDateString();
-              if (val && val > maxDate) {
-                alert("Future dates are not allowed. You can only view present and previous dates.");
-                setSelectedDate(maxDate);
-                return;
-              }
-              setSelectedDate(val);
-            }}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              fontSize: '13px',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              cursor: 'pointer',
-              fontFamily: 'inherit'
-            }}
-          />
-          {selectedDate && (
-            <button
-              type="button"
-              onClick={() => setSelectedDate('')}
-              title="Clear date filter"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-tertiary)',
-                cursor: 'pointer',
-                padding: '2px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                borderRadius: '50%'
+        {/* Calendar Date Filter (Present & Previous Dates Only - Hidden for CO and CTO) */}
+        {!isCeoOrCto && (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '7px 12px',
+            borderRadius: 'var(--radius-sm)',
+            border: selectedDate ? '1.5px solid var(--brand-500)' : '1px solid var(--border)',
+            background: 'var(--bg)',
+            boxShadow: selectedDate ? '0 0 0 2px rgba(99, 102, 241, 0.15)' : 'none',
+            transition: 'all var(--transition-fast)'
+          }}>
+            <Calendar size={15} style={{ color: selectedDate ? 'var(--brand-600)' : 'var(--text-tertiary)', flexShrink: 0 }} />
+            <input
+              type="date"
+              title="Filter by evaluation date (previous and present dates only)"
+              max={getTodayDateString()}
+              value={selectedDate}
+              onChange={(e) => {
+                const val = e.target.value;
+                const maxDate = getTodayDateString();
+                if (val && val > maxDate) {
+                  alert("Future dates are not allowed. You can only view present and previous dates.");
+                  setSelectedDate(maxDate);
+                  return;
+                }
+                setSelectedDate(val);
               }}
-            >
-              <X size={13} />
-            </button>
-          )}
-        </div>
+              style={{
+                border: 'none',
+                background: 'transparent',
+                fontSize: '13px',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit'
+              }}
+            />
+            {selectedDate && (
+              <button
+                type="button"
+                onClick={() => setSelectedDate('')}
+                title="Clear date filter"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  padding: '2px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  borderRadius: '50%'
+                }}
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Reset Filter Button */}
-        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || (selectedDate !== getTodayDateString())) && (
+        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || (!isCeoOrCto && selectedDate !== getTodayDateString())) && (
           <button
             onClick={() => {
               setSearchTerm('');
               setSelectedMonth('');
               setSelectedStatus('');
               setSelectedEmployeeId('');
-              setSelectedDate(getTodayDateString());
+              if (!isCeoOrCto) setSelectedDate(getTodayDateString());
             }}
             style={{
               padding: '8px 12px',
