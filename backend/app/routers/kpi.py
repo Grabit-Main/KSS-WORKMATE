@@ -197,6 +197,8 @@ def get_user_employee_ids(db: Session, user: User) -> list[UUID]:
 
 def get_prev_period_logs(db: Session, employee_ids: list[UUID], period_type: str, offset: int, today: date):
     prev_offset = offset - 1
+def get_prev_period_logs(db: Session, employee_ids: list[UUID], period_type: str, current_offset: int, today: date, is_specific: bool = False):
+    prev_offset = current_offset - 1
     if period_type == "week":
         current_start = today - timedelta(days=today.weekday())
         start_date = current_start + timedelta(weeks=prev_offset)
@@ -215,7 +217,7 @@ def get_prev_period_logs(db: Session, employee_ids: list[UUID], period_type: str
         DailyKPILog.date <= min(end_date, today)
     ).all()
 
-    if not logs:
+    if not logs and not is_specific:
         logs = db.query(DailyKPILog).filter(
             DailyKPILog.date >= start_date,
             DailyKPILog.date <= min(end_date, today)
@@ -224,7 +226,7 @@ def get_prev_period_logs(db: Session, employee_ids: list[UUID], period_type: str
     return logs
 
 
-def get_trend_history(db: Session, employee_ids: list[UUID], period_type: str, current_offset: int):
+def get_trend_history(db: Session, employee_ids: list[UUID], period_type: str, current_offset: int, is_specific: bool = False):
     today = date.today()
     points = []
     # Return 5 historical points ending at current_offset
@@ -255,7 +257,7 @@ def get_trend_history(db: Session, employee_ids: list[UUID], period_type: str, c
             DailyKPILog.date <= min(end_date, today)
         ).all()
 
-        if not period_logs:
+        if not period_logs and not is_specific:
             period_logs = db.query(DailyKPILog).filter(
                 DailyKPILog.date >= start_date,
                 DailyKPILog.date <= min(end_date, today)
@@ -279,12 +281,13 @@ def get_trend_history(db: Session, employee_ids: list[UUID], period_type: str, c
 def get_my_kpi(
     period_type: str = Query("week", regex="^(week|month)$"),
     offset: int = Query(0),
+    employee_id: Optional[UUID] = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
     """
-    Developer Dashboard API (Personal Aggregated KPI View).
-    Provides aggregated weekly/monthly KPI performance for the authenticated user only.
+    Developer / Employee Dashboard API (Aggregated KPI View).
+    Provides aggregated weekly/monthly KPI performance for the authenticated user or specified employee.
     Excludes raw daily records, evaluator identity, internal notes, and peer data.
     """
     today = date.today()
@@ -333,7 +336,25 @@ def get_my_kpi(
         else:
             expected_days = sum(1 for d in range(1, last_day + 1) if date(target_year, target_month, d).weekday() < 5)
 
-    emp_ids = get_user_employee_ids(db, user)
+    is_specific = False
+    if employee_id:
+        if user.role in ("CEO", "CTO", "PM", "CO"):
+            emp_ids = [employee_id]
+            is_specific = True
+        elif is_team_lead(db, user):
+            teammate_ids = get_teammate_ids_for_lead(db, user)
+            if employee_id in teammate_ids or employee_id == user.id:
+                emp_ids = [employee_id]
+                is_specific = True
+            else:
+                raise HTTPException(403, "You can only view KPI details for your teammates")
+        elif employee_id == user.id:
+            emp_ids = [employee_id]
+            is_specific = True
+        else:
+            raise HTTPException(403, "You can only view your own KPI details")
+    else:
+        emp_ids = get_user_employee_ids(db, user)
 
     logs = db.query(DailyKPILog).filter(
         DailyKPILog.employee_id.in_(emp_ids),
@@ -341,8 +362,8 @@ def get_my_kpi(
         DailyKPILog.date <= min(end_date, today)
     ).order_by(DailyKPILog.date.asc()).all()
 
-    # Fallback to overall team KPI logs if personal logs are absent
-    if not logs:
+    # Fallback to overall team KPI logs only if employee_id was not explicitly requested
+    if not logs and not is_specific:
         logs = db.query(DailyKPILog).filter(
             DailyKPILog.date >= start_date,
             DailyKPILog.date <= min(end_date, today)
@@ -363,7 +384,7 @@ def get_my_kpi(
         ("attendance_discipline", "Attendance & Discipline", 2)
     ]
 
-    trend_history = get_trend_history(db, emp_ids, period_type, offset)
+    trend_history = get_trend_history(db, emp_ids, period_type, offset, is_specific=is_specific)
 
     if days_evaluated == 0:
         return {
@@ -433,7 +454,7 @@ def get_my_kpi(
         for item in below_100_sorted[:3]
     ]
 
-    prev_logs = get_prev_period_logs(db, emp_ids, period_type, offset, today)
+    prev_logs = get_prev_period_logs(db, emp_ids, period_type, offset, today, is_specific=is_specific)
     if prev_logs and len(prev_logs) > 0:
         prev_pct = sum(l.daily_kpi_percentage for l in prev_logs) / len(prev_logs)
         if prev_pct > 0:
