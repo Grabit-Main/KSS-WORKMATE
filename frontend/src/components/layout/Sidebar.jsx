@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  LayoutDashboard, CheckSquare, Users, Folders,
+  LayoutDashboard, CheckSquare, Users, Folders, UserCheck,
   Star, History, UserCog, TrendingUp, X, MessageSquare, Target, Calendar as CalendarIcon
 } from 'lucide-react';
 
@@ -20,10 +20,11 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
     { to: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/my-work', icon: <CheckSquare size={20} />, label: workLabel, roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/projects', icon: <Folders size={20} />, label: 'Projects', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
-    { to: '/teams', icon: <Users size={20} />, label: 'Team Directory', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
+    { to: '/teams', icon: <Users size={20} />, label: 'Team', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/tasks', icon: <CheckSquare size={20} />, label: 'Tasks', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/kpi', icon: <TrendingUp size={20} />, label: performanceLabel, roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/collaboration', icon: <MessageSquare size={20} />, label: 'Collaboration', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
+    { to: '/team-directory', icon: <UserCheck size={20} />, label: 'Team Directory', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     ...(isDeveloper ? [{ to: '/goals', icon: <Target size={20} />, label: 'Goals & Growth', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] }] : []),
     { to: '/calendar', icon: <CalendarIcon size={20} />, label: 'Calendar', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/feedback', icon: <Star size={20} />, label: 'Feedback', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },

@@ -14,6 +14,7 @@ import TasksPage from './pages/TasksPage';
 import FeedbackPage from './pages/FeedbackPage';
 import KpiPage from './pages/KpiPage';
 import CollaborationPage from './pages/CollaborationPage';
+import TeamDirectoryPage from './pages/TeamDirectoryPage';
 import GoalsPage from './pages/GoalsPage';
 import CalendarPage from './pages/CalendarPage';
 import HistoryPage from './pages/HistoryPage';
@@ -47,6 +48,7 @@ const AppRoutes = () => {
         <Route path="tasks" element={<TasksPage />} />
         <Route path="kpi" element={<KpiPage />} />
         <Route path="collaboration" element={<CollaborationPage />} />
+        <Route path="team-directory" element={<TeamDirectoryPage />} />
         <Route path="goals" element={<GoalsPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="feedback" element={<FeedbackPage />} />
