@@ -2133,13 +2133,13 @@ const KpiPage = () => {
           employee_id: selectedEmployeeId || undefined,
         }).catch(() => null),
         canGiveOrEdit || isExecutive ? getKPITeammates().catch(() => []) : Promise.resolve([]),
-        showCardsGrid ? getKPIs({}).catch(() => []) : Promise.resolve([]),
+        isExecutive || showCardsGrid ? getKPIs({}).catch(() => []) : Promise.resolve([]),
       ]);
 
       setLogs(kpiData);
       setSummary(summaryData);
       setTeammates(teamData);
-      if (showCardsGrid) {
+      if (isExecutive || showCardsGrid) {
         setAllKpiLogs(allLogsData);
       }
     } catch (err) {
@@ -2158,6 +2158,55 @@ const KpiPage = () => {
   // Real-time refresh on KPI events
   useRealtime('kpi.logged', loadData);
   useRealtime('notification.new', loadData);
+
+  // Calculate Top Performers metrics based on all-time average KPI per unique eligible employee
+  const topPerformersMetrics = useMemo(() => {
+    const todayStr = getTodayDateString();
+    const logsToUse = allKpiLogs && allKpiLogs.length > 0 ? allKpiLogs : logs;
+
+    // Group valid logs by employee ID, deduplicating by (employee_id, date)
+    const empLogsMap = new Map(); // empId -> Map(date -> percentage)
+
+    logsToUse.forEach((l) => {
+      // Exclude future-dated or missing percentage logs
+      if (!l || !l.employee_id || !l.date || l.date > todayStr) return;
+      if (l.daily_kpi_percentage === undefined || l.daily_kpi_percentage === null) return;
+
+      const empId = String(l.employee_id);
+      if (!empLogsMap.has(empId)) {
+        empLogsMap.set(empId, new Map());
+      }
+      const dateMap = empLogsMap.get(empId);
+      dateMap.set(String(l.date), Number(l.daily_kpi_percentage));
+    });
+
+    let topPerformersCount = 0; // All-time average >= 90.0%
+    let excellentCount = 0;      // All-time average >= 95.0%
+    let veryGoodCount = 0;       // All-time average >= 80.0% and < 95.0%
+
+    empLogsMap.forEach((dateMap) => {
+      const percentages = Array.from(dateMap.values());
+      if (percentages.length === 0) return;
+
+      const sum = percentages.reduce((acc, val) => acc + val, 0);
+      const avg = sum / percentages.length;
+
+      if (avg >= 90.0) {
+        topPerformersCount += 1;
+      }
+      if (avg >= 95.0) {
+        excellentCount += 1;
+      } else if (avg >= 80.0) {
+        veryGoodCount += 1;
+      }
+    });
+
+    return {
+      topPerformersCount,
+      excellentCount,
+      veryGoodCount,
+    };
+  }, [allKpiLogs, logs]);
 
   // Filtered logs based on search term
   const filteredLogs = useMemo(() => {
@@ -2512,7 +2561,7 @@ const KpiPage = () => {
           </span>
         </div>
 
-        {/* Excellent & Very Good */}
+        {/* Top Performers */}
         <div style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',
@@ -2531,16 +2580,16 @@ const KpiPage = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
             <span style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-0.03em', color: '#059669' }}>
-              {(summary?.status_counts?.['Excellent'] || 0) + (summary?.status_counts?.['Very Good'] || 0)}
+              {topPerformersMetrics.topPerformersCount}
             </span>
-            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>≥ 80.0% KPI</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>≥90.0% KPI</span>
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px', fontSize: '11px', fontWeight: 600 }}>
             <span style={{ color: '#065F46', background: '#ECFDF5', padding: '2px 6px', borderRadius: '4px' }}>
-              {summary?.status_counts?.['Excellent'] || 0} Excellent
+              {topPerformersMetrics.excellentCount} Excellent
             </span>
             <span style={{ color: '#3730A3', background: '#EEF2FF', padding: '2px 6px', borderRadius: '4px' }}>
-              {summary?.status_counts?.['Very Good'] || 0} Very Good
+              {topPerformersMetrics.veryGoodCount} Very Good
             </span>
           </div>
         </div>
