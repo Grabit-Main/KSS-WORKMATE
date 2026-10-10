@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Users, CheckCircle2, Clock, AlertTriangle, HelpCircle, Flame,
   Search, Filter, Calendar, FolderKanban, Eye, Edit3, Plus, ArrowUpRight,
@@ -8,6 +8,7 @@ import { getTasks, deleteTask, updateTask } from '../../api/tasks';
 import { getUsers } from '../../api/users';
 import { getProjects } from '../../api/projects';
 import { getDailyPulses, getBlockers, getHelpRequests, getFocusSessions } from '../../api/mywork';
+import { useRealtime } from '../../realtime/useRealtime';
 import DeveloperWorkDrawer from './DeveloperWorkDrawer';
 import AddTaskModal from '../quickadd/AddTaskModal';
 
@@ -595,53 +596,123 @@ export default function ManagementMyWorkView({ user }) {
     loadAllData();
   }, [loadAllData]);
 
+  // Real-time metrics refresh
+  useRealtime('analytics.refresh', loadAllData);
+  useRealtime('task.status_changed', loadAllData);
+  useRealtime('blocker.reported', loadAllData);
+  useRealtime('help.requested', loadAllData);
+  useRealtime('focus.completed', loadAllData);
+
   // Eligible developers in scope (exclude executives & management from developer tables)
-  const developersInScope = users.filter((u) => u.role !== 'CEO' && u.role !== 'CTO' && u.role !== 'PM');
+  const developersInScope = useMemo(() => {
+    return users.filter((u) => u.role !== 'CEO' && u.role !== 'CTO' && u.role !== 'PM');
+  }, [users]);
+
+  // Dev IDs in scope set for quick lookup
+  const devIdsInScope = useMemo(() => {
+    return new Set(developersInScope.map((d) => String(d.id)));
+  }, [developersInScope]);
 
   // Filter Developer Tasks (strictly excludes management's own tasks if any)
-  const filteredTasks = tasks.filter((t) => {
-    // Must be assigned to a developer in scope (not management self-assigned tasks)
-    const assigneeId = String(t.assigned_to || t.assignee?.id || '');
-    const isDevTask = developersInScope.some((d) => String(d.id) === assigneeId);
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      // Must be assigned to a developer in scope (not management self-assigned tasks)
+      const assigneeId = String(t.assigned_to || t.assignee?.id || '');
+      const isDevTask = developersInScope.some((d) => String(d.id) === assigneeId);
 
-    if (!isDevTask && String(t.assigned_to) === String(user?.id)) {
-      return false; // Exclude TL/PM/CTO/CEO's own personal tasks
-    }
+      if (!isDevTask && String(t.assigned_to) === String(user?.id)) {
+        return false; // Exclude TL/PM/CTO/CEO's own personal tasks
+      }
 
-    if (selectedDevId !== 'all' && assigneeId !== String(selectedDevId)) {
-      return false;
-    }
-    if (selectedProjectId !== 'all' && String(t.project_id || t.project?.id || '') !== String(selectedProjectId)) {
-      return false;
-    }
-    if (selectedStatus !== 'all' && t.status !== selectedStatus) {
-      return false;
-    }
-    if (selectedPriority !== 'all' && t.priority !== selectedPriority) {
-      return false;
-    }
-    if (selectedDate) {
-      const taskDates = getTaskDateStrings(t);
-      if (!taskDates.includes(selectedDate)) return false;
-    }
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      const titleMatch = (t.title || '').toLowerCase().includes(q);
-      const descMatch = (t.description || '').toLowerCase().includes(q);
-      const devNameMatch = (t.assignee?.full_name || `${t.assignee?.first_name || ''} ${t.assignee?.last_name || ''}`).toLowerCase().includes(q);
-      if (!titleMatch && !descMatch && !devNameMatch) return false;
-    }
-    return true;
-  });
+      if (selectedDevId !== 'all' && assigneeId !== String(selectedDevId)) {
+        return false;
+      }
+      if (selectedProjectId !== 'all' && String(t.project_id || t.project?.id || '') !== String(selectedProjectId)) {
+        return false;
+      }
+      if (selectedStatus !== 'all' && t.status !== selectedStatus) {
+        return false;
+      }
+      if (selectedPriority !== 'all' && t.priority !== selectedPriority) {
+        return false;
+      }
+      if (selectedDate) {
+        const taskDates = getTaskDateStrings(t);
+        if (!taskDates.includes(selectedDate)) return false;
+      }
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        const titleMatch = (t.title || '').toLowerCase().includes(q);
+        const descMatch = (t.description || '').toLowerCase().includes(q);
+        const devNameMatch = (t.assignee?.full_name || `${t.assignee?.first_name || ''} ${t.assignee?.last_name || ''}`).toLowerCase().includes(q);
+        if (!titleMatch && !descMatch && !devNameMatch) return false;
+      }
+      return true;
+    });
+  }, [tasks, developersInScope, user?.id, selectedDevId, selectedProjectId, selectedStatus, selectedPriority, selectedDate, searchTerm]);
 
   // Summary Counts
   const todayStr = new Date().toISOString().split('T')[0];
   const totalDevs = developersInScope.length;
   const activeTasksCount = tasks.filter((t) => ['in_progress', 'not_started'].includes(t.status)).length;
   const completedTodayCount = tasks.filter((t) => t.status === 'completed' && t.updated_at && t.updated_at.startsWith(todayStr)).length;
-  const openBlockersCount = blockers.filter((b) => b.status !== 'resolved').length;
-  const helpNeededCount = helpRequests.filter((h) => h.status === 'open').length;
-  const activeFocusCount = focusSessions.length;
+
+  // 1. Open Blockers Calculation (unresolved MyWorkBlocker records in scope + blocked tasks)
+  const openBlockersCount = useMemo(() => {
+    const openBlockerRecords = blockers.filter((b) => {
+      if (b.status === 'resolved') return false;
+      const bUserId = String(b.user_id || '');
+      if (bUserId && devIdsInScope.size > 0 && !devIdsInScope.has(bUserId) && bUserId !== String(user?.id)) return false;
+      if (selectedDevId !== 'all' && bUserId !== String(selectedDevId)) return false;
+      if (selectedProjectId !== 'all' && String(b.project_id || '') !== String(selectedProjectId)) return false;
+      if (selectedDate && b.created_at) {
+        const bDate = b.created_at.split('T')[0];
+        if (bDate !== selectedDate) return false;
+      }
+      return true;
+    });
+
+    const blockedTaskIds = new Set(openBlockerRecords.map((b) => String(b.task_id)).filter(Boolean));
+
+    const blockedTasksInScope = filteredTasks.filter((t) => {
+      if (t.status !== 'blocked') return false;
+      if (blockedTaskIds.has(String(t.id))) return false;
+      return true;
+    });
+
+    return openBlockerRecords.length + blockedTasksInScope.length;
+  }, [blockers, devIdsInScope, user?.id, selectedDevId, selectedProjectId, selectedDate, filteredTasks]);
+
+  // 2. Need Help Calculation (unresolved MyWorkHelpRequest records in scope)
+  const helpNeededCount = useMemo(() => {
+    return helpRequests.filter((h) => {
+      if (h.status === 'resolved' || h.status === 'completed' || h.status === 'dismissed') return false;
+      const hUserId = String(h.user_id || '');
+      if (hUserId && devIdsInScope.size > 0 && !devIdsInScope.has(hUserId) && hUserId !== String(user?.id)) return false;
+      if (selectedDevId !== 'all' && hUserId !== String(selectedDevId)) return false;
+      if (selectedProjectId !== 'all' && String(h.project_id || '') !== String(selectedProjectId)) return false;
+      if (selectedDate && h.created_at) {
+        const hDate = h.created_at.split('T')[0];
+        if (hDate !== selectedDate) return false;
+      }
+      return true;
+    }).length;
+  }, [helpRequests, devIdsInScope, user?.id, selectedDevId, selectedProjectId, selectedDate]);
+
+  // 3. Focus Sessions Calculation (Focus sessions in scope for selected date/today)
+  const activeFocusCount = useMemo(() => {
+    const targetDate = selectedDate || todayStr;
+    return focusSessions.filter((fs) => {
+      const fsUserId = String(fs.user_id || '');
+      if (fsUserId && devIdsInScope.size > 0 && !devIdsInScope.has(fsUserId) && fsUserId !== String(user?.id)) return false;
+      if (selectedDevId !== 'all' && fsUserId !== String(selectedDevId)) return false;
+      if (fs.created_at) {
+        const fsDate = fs.created_at.split('T')[0];
+        if (fsDate !== targetDate) return false;
+      }
+      return true;
+    }).length;
+  }, [focusSessions, devIdsInScope, user?.id, selectedDevId, selectedDate, todayStr]);
 
   const getDevName = (t) => {
     if (t.assignee) {
@@ -773,30 +844,84 @@ export default function ManagementMyWorkView({ user }) {
         </div>
 
         {/* Open Blockers */}
-        <div className="card" style={{ padding: '16px 20px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FEE2E2' }}>
+        <div
+          className="card"
+          onClick={() => setSelectedStatus(selectedStatus === 'blocked' ? 'all' : 'blocked')}
+          title="Click to filter blocked developer tasks"
+          style={{
+            padding: '16px 20px',
+            background: '#FEF2F2',
+            borderRadius: '14px',
+            border: selectedStatus === 'blocked' ? '2px solid #DC2626' : '1px solid #FEE2E2',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', color: '#DC2626', fontWeight: 600, textTransform: 'uppercase' }}>Open Blockers</span>
             <AlertTriangle size={18} color="#DC2626" />
           </div>
-          <div style={{ fontSize: '26px', fontWeight: 700, color: '#991B1B', marginTop: '6px' }}>{openBlockersCount}</div>
+          <div style={{ fontSize: '26px', fontWeight: 700, color: '#991B1B', marginTop: '6px' }}>
+            {loading ? <span style={{ fontSize: '18px', color: '#DC2626', opacity: 0.6 }}>...</span> : openBlockersCount}
+          </div>
         </div>
 
         {/* Help Requests */}
-        <div className="card" style={{ padding: '16px 20px', background: '#FEF3C7', borderRadius: '14px', border: '1px solid #FDE68A' }}>
+        <div
+          className="card"
+          onClick={() => {
+            const devWithHelp = developersInScope.find((d) => helpRequests.some((h) => h.status !== 'resolved' && String(h.user_id) === String(d.id)));
+            if (devWithHelp) setSelectedDrawerDev(devWithHelp);
+          }}
+          title="Click to inspect developer help requests"
+          style={{
+            padding: '16px 20px',
+            background: '#FEF3C7',
+            borderRadius: '14px',
+            border: '1px solid #FDE68A',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', color: '#D97706', fontWeight: 600, textTransform: 'uppercase' }}>Need Help</span>
             <HelpCircle size={18} color="#D97706" />
           </div>
-          <div style={{ fontSize: '26px', fontWeight: 700, color: '#92400E', marginTop: '6px' }}>{helpNeededCount}</div>
+          <div style={{ fontSize: '26px', fontWeight: 700, color: '#92400E', marginTop: '6px' }}>
+            {loading ? <span style={{ fontSize: '18px', color: '#D97706', opacity: 0.6 }}>...</span> : helpNeededCount}
+          </div>
         </div>
 
         {/* Focus Sessions */}
-        <div className="card" style={{ padding: '16px 20px', background: '#ECFDF5', borderRadius: '14px', border: '1px solid #A7F3D0' }}>
+        <div
+          className="card"
+          onClick={() => {
+            const devWithFocus = developersInScope.find((d) => focusSessions.some((fs) => String(fs.user_id) === String(d.id)));
+            if (devWithFocus) setSelectedDrawerDev(devWithFocus);
+          }}
+          title="Click to inspect focus session activity"
+          style={{
+            padding: '16px 20px',
+            background: '#ECFDF5',
+            borderRadius: '14px',
+            border: '1px solid #A7F3D0',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', color: '#059669', fontWeight: 600, textTransform: 'uppercase' }}>Focus Sessions</span>
             <Flame size={18} color="#059669" />
           </div>
-          <div style={{ fontSize: '26px', fontWeight: 700, color: '#065F46', marginTop: '6px' }}>{activeFocusCount}</div>
+          <div style={{ fontSize: '26px', fontWeight: 700, color: '#065F46', marginTop: '6px' }}>
+            {loading ? <span style={{ fontSize: '18px', color: '#059669', opacity: 0.6 }}>...</span> : activeFocusCount}
+          </div>
         </div>
       </div>
 
