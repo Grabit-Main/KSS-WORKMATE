@@ -303,14 +303,34 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
           boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
+              {developer.avatar_url ? (
+                <img
+                  src={developer.avatar_url}
+                  alt={devName}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
+                    border: '2px solid rgba(255,255,255,0.25)'
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextSibling) {
+                      e.currentTarget.nextSibling.style.display = 'flex';
+                    }
+                  }}
+                />
+              ) : null}
               <div style={{
+                display: developer.avatar_url ? 'none' : 'flex',
                 width: '56px',
                 height: '56px',
                 borderRadius: '50%',
                 background: 'linear-gradient(135deg, #6366F1 0%, #A855F7 100%)',
                 color: '#FFFFFF',
-                display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '22px',

@@ -123,13 +123,16 @@ export default function ManagementMyWorkView({ user }) {
   };
 
   const getDevObj = (t) => {
-    if (t.assignee) return t.assignee;
+    let dev = t.assignee;
     const found = users.find((u) =>
-      String(u.id) === String(t.assigned_to) ||
-      (u.email && u.email === t.assigned_to) ||
+      String(u.id) === String(t.assigned_to || t.assignee?.id) ||
+      (u.email && (u.email === t.assigned_to || u.email === t.assignee?.email)) ||
       (`${u.first_name || ''} ${u.last_name || ''}`.trim() && `${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase() === String(t.assigned_to).toLowerCase())
     );
-    if (found) return found;
+    if (found) {
+      return { ...found, ...dev, avatar_url: dev?.avatar_url || found.avatar_url };
+    }
+    if (dev) return dev;
     return { id: t.assigned_to, first_name: getDevName(t) };
   };
 
@@ -389,18 +392,18 @@ export default function ManagementMyWorkView({ user }) {
           </span>
         </div>
 
-        <div className="table-responsive">
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '750px' }}>
+        <div className="table-responsive" style={{ overflowX: 'auto', width: '100%' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1080px' }}>
             <thead>
               <tr style={{ background: '#F1F5F9', fontSize: '11px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)' }}>Developer</th>
-                <th style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)' }}>Project</th>
-                <th style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)' }}>Task Title</th>
-                <th style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)' }}>Priority</th>
-                <th style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>Progress</th>
-                <th style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)' }}>Due Date</th>
-                <th style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>Action</th>
+                <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', width: '220px', minWidth: '200px' }}>Developer</th>
+                <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', width: '200px', minWidth: '180px' }}>Project</th>
+                <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', minWidth: '260px' }}>Task Title</th>
+                <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', width: '110px', minWidth: '100px', textAlign: 'center' }}>Priority</th>
+                <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', width: '130px', minWidth: '120px', textAlign: 'center' }}>Progress</th>
+                <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', width: '140px', minWidth: '130px', textAlign: 'center' }}>Status</th>
+                <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', width: '110px', minWidth: '100px' }}>Due Date</th>
+                <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', width: '120px', minWidth: '110px', textAlign: 'center' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -409,6 +412,7 @@ export default function ManagementMyWorkView({ user }) {
                 const devName = getDevName(t);
                 const projName = getProjectName(t);
                 const progVal = t.progress !== undefined && t.progress !== null ? t.progress : (t.status === 'completed' ? 100 : (t.status === 'in_progress' ? 50 : 0));
+                const avatarUrl = devObj?.avatar_url;
 
                 return (
                   <tr
@@ -418,105 +422,152 @@ export default function ManagementMyWorkView({ user }) {
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     onClick={() => setSelectedDrawerDev(devObj)}
                   >
-                    {/* Developer Name */}
-                    <td style={{ padding: '14px 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
-                          color: '#FFFFFF',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '12px',
-                          fontWeight: 700
-                        }}>
-                          {devName.charAt(0).toUpperCase()}
+                    {/* Developer Name & Avatar */}
+                    <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '180px' }}>
+                        <div style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0 }}>
+                          {avatarUrl ? (
+                            <img
+                              src={avatarUrl}
+                              alt={devName}
+                              style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                                border: '1px solid rgba(0,0,0,0.08)'
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                if (e.currentTarget.nextSibling) {
+                                  e.currentTarget.nextSibling.style.display = 'flex';
+                                }
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            style={{
+                              display: avatarUrl ? 'none' : 'flex',
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+                              color: '#FFFFFF',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              flexShrink: 0
+                            }}
+                          >
+                            {devName.charAt(0).toUpperCase()}
+                          </div>
                         </div>
-                        <div>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>{devName}</div>
-                          <div style={{ fontSize: '11px', color: '#64748B' }}>{devObj?.role || 'Developer'}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {devName}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#64748B', whiteSpace: 'nowrap' }}>
+                            {devObj?.role || 'Developer'}
+                          </div>
                         </div>
                       </div>
                     </td>
 
                     {/* Project Name */}
-                    <td style={{ padding: '14px 20px' }}>
-                      <span style={{
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        padding: '3px 9px',
-                        borderRadius: '6px',
-                        background: '#EEF2FF',
-                        color: '#4338CA'
-                      }}>
+                    <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          background: '#EEF2FF',
+                          color: '#4338CA',
+                          border: '1px solid rgba(99, 102, 241, 0.15)',
+                          whiteSpace: 'nowrap',
+                          display: 'inline-block',
+                          maxWidth: '220px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          verticalAlign: 'middle'
+                        }}
+                        title={projName}
+                      >
                         {projName}
                       </span>
                     </td>
 
                     {/* Task Title */}
-                    <td style={{ padding: '14px 20px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>{t.title}</div>
+                    <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A', lineHeight: 1.4 }}>{t.title}</div>
                       {t.description && (
-                        <div style={{ fontSize: '11px', color: '#64748B', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '11px', color: '#64748B', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
                           {t.description}
                         </div>
                       )}
                     </td>
 
                     {/* Priority */}
-                    <td style={{ padding: '14px 20px' }}>
+                    <td style={{ padding: '14px 20px', verticalAlign: 'middle', textAlign: 'center' }}>
                       <span style={{
                         fontSize: '11px',
                         fontWeight: 700,
-                        padding: '2px 8px',
+                        padding: '3px 9px',
                         borderRadius: '12px',
                         textTransform: 'uppercase',
+                        letterSpacing: '0.02em',
+                        whiteSpace: 'nowrap',
+                        display: 'inline-block',
                         background: t.priority === 'urgent' ? '#FEF2F2' : (t.priority === 'high' ? '#FFEDD5' : '#F1F5F9'),
-                        color: t.priority === 'urgent' ? '#DC2626' : (t.priority === 'high' ? '#C2410C' : '#475569')
+                        color: t.priority === 'urgent' ? '#DC2626' : (t.priority === 'high' ? '#C2410C' : '#475569'),
+                        border: t.priority === 'urgent' ? '1px solid #FECACA' : (t.priority === 'high' ? '1px solid #FDBA74' : '1px solid #E2E8F0')
                       }}>
                         {t.priority || 'normal'}
                       </span>
                     </td>
 
                     {/* Progress */}
-                    <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        <div style={{ width: '60px', height: '6px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ width: `${progVal}%`, height: '100%', background: progVal === 100 ? '#10B981' : '#3B82F6' }} />
+                    <td style={{ padding: '14px 20px', verticalAlign: 'middle', textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+                        <div style={{ width: '64px', height: '6px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${progVal}%`, height: '100%', background: progVal === 100 ? '#10B981' : '#3B82F6', transition: 'width 0.3s ease' }} />
                         </div>
                         <span style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>{progVal}%</span>
                       </div>
                     </td>
 
                     {/* Status */}
-                    <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                    <td style={{ padding: '14px 20px', verticalAlign: 'middle', textAlign: 'center' }}>
                       <span style={{
                         fontSize: '11px',
                         fontWeight: 700,
-                        padding: '3px 10px',
+                        padding: '4px 11px',
                         borderRadius: '20px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.02em',
+                        whiteSpace: 'nowrap',
+                        display: 'inline-block',
                         background: t.status === 'completed' ? '#ECFDF5' : (t.status === 'blocked' ? '#FEF2F2' : '#EFF6FF'),
-                        color: t.status === 'completed' ? '#059669' : (t.status === 'blocked' ? '#DC2626' : '#2563EB')
+                        color: t.status === 'completed' ? '#059669' : (t.status === 'blocked' ? '#DC2626' : '#2563EB'),
+                        border: t.status === 'completed' ? '1px solid #A7F3D0' : (t.status === 'blocked' ? '1px solid #FECACA' : '1px solid #BFDBFE')
                       }}>
                         {t.status ? t.status.replace('_', ' ').toUpperCase() : 'NOT STARTED'}
                       </span>
                     </td>
 
                     {/* Due Date */}
-                    <td style={{ padding: '14px 20px', fontSize: '12px', color: '#64748B' }}>
+                    <td style={{ padding: '14px 20px', verticalAlign: 'middle', fontSize: '12px', color: '#64748B', whiteSpace: 'nowrap' }}>
                       {t.deadline ? new Date(t.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No due date'}
                     </td>
 
                     {/* Action Button */}
-                    <td style={{ padding: '14px 20px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                    <td style={{ padding: '14px 20px', verticalAlign: 'middle', textAlign: 'center', whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => setSelectedDrawerDev(devObj)}
                         className="btn btn-secondary"
-                        style={{ fontSize: '11px', padding: '4px 10px', fontWeight: 600 }}
+                        style={{ fontSize: '11px', padding: '5px 12px', fontWeight: 600, whiteSpace: 'nowrap' }}
                       >
                         {isTL ? 'Manage Work' : 'Inspect Work'}
                       </button>
