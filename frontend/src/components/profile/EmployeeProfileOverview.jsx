@@ -157,8 +157,8 @@ export default function EmployeeProfileOverview({
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const dateStr = d.toLocaleDateString('en-US', { day: '02-digit', month: 'short' });
-      const fullDateStr = d.toLocaleDateString('en-US', { day: '02-digit', month: 'short', year: 'numeric' });
+      const dateStr = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+      const fullDateStr = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 
       // Find matching log safely checking date string
       const dayLog = (employeeKpiLogs || []).find(k => k && k.date && String(k.date).startsWith(d.toISOString().split('T')[0]));
