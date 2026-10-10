@@ -1648,6 +1648,258 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
   );
 };
 
+// CoCtoEmployeeKpiCards Component (CO and CTO roles only)
+const CoCtoEmployeeKpiCards = ({
+  employees,
+  logs,
+  selectedEmployeeId,
+  onSelectEmployee,
+  onClearSelection
+}) => {
+  // Compute weekly average KPI percentage for each employee from logs
+  const getEmployeeMetrics = (empId) => {
+    const empLogs = logs.filter(
+      (l) => String(l.employee_id || l.employee?.id) === String(empId)
+    );
+
+    if (!empLogs || empLogs.length === 0) {
+      return { curPct: null, prevPct: null };
+    }
+
+    const today = new Date();
+    const currentDay = today.getDay(); // 0: Sun, 1: Mon...
+    const distanceToMonday = (currentDay + 6) % 7;
+
+    const currentWeekStart = new Date(today);
+    currentWeekStart.setDate(today.getDate() - distanceToMonday);
+    currentWeekStart.setHours(0, 0, 0, 0);
+
+    const previousWeekStart = new Date(currentWeekStart);
+    previousWeekStart.setDate(currentWeekStart.getDate() - 7);
+
+    const currentWeekLogs = [];
+    const previousWeekLogs = [];
+
+    empLogs.forEach((l) => {
+      if (!l.date) return;
+      const parts = l.date.split('-').map(Number);
+      if (parts.length !== 3) return;
+      const logDate = new Date(parts[0], parts[1] - 1, parts[2]);
+
+      if (logDate >= currentWeekStart) {
+        currentWeekLogs.push(l.daily_kpi_percentage);
+      } else if (logDate >= previousWeekStart && logDate < currentWeekStart) {
+        previousWeekLogs.push(l.daily_kpi_percentage);
+      }
+    });
+
+    let curAvg = currentWeekLogs.length > 0
+      ? currentWeekLogs.reduce((a, b) => a + b, 0) / currentWeekLogs.length
+      : null;
+
+    let prevAvg = previousWeekLogs.length > 0
+      ? previousWeekLogs.reduce((a, b) => a + b, 0) / previousWeekLogs.length
+      : null;
+
+    // Fallback if logs exist but fall outside exact 7-day windows
+    if (curAvg === null && empLogs.length > 0) {
+      const recent = empLogs.slice(0, 5);
+      curAvg = recent.reduce((a, b) => a + b.daily_kpi_percentage, 0) / recent.length;
+    }
+    if (prevAvg === null && empLogs.length > 5) {
+      const older = empLogs.slice(5, 10);
+      prevAvg = older.reduce((a, b) => a + b.daily_kpi_percentage, 0) / older.length;
+    }
+
+    return {
+      curPct: curAvg !== null ? Math.round(curAvg * 10) / 10 : null,
+      prevPct: prevAvg !== null ? Math.round(prevAvg * 10) / 10 : null
+    };
+  };
+
+  return (
+    <div style={{ marginBottom: '28px' }}>
+      {selectedEmployeeId && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#EEF2FF',
+          border: '1px solid #C7D2FE',
+          borderRadius: '12px',
+          padding: '12px 18px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3730A3', fontWeight: 600, fontSize: '13px' }}>
+            <UserCheck size={18} />
+            <span>
+              Showing detailed KPI records for selected employee. Click card again or "Show All" to reset view.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClearSelection}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              background: '#4F46E5',
+              color: '#FFFFFF',
+              border: 'none',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background 0.15s ease'
+            }}
+          >
+            Show All Employees
+          </button>
+        </div>
+      )}
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+        gap: '20px'
+      }}>
+        {employees.map((emp) => {
+          const isSelected = String(selectedEmployeeId) === String(emp.id);
+          const { curPct, prevPct } = getEmployeeMetrics(emp.id);
+
+          return (
+            <div
+              key={emp.id}
+              onClick={() => onSelectEmployee(emp.id)}
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '18px',
+                border: isSelected ? '2px solid #4F46E5' : '1px solid #E2E8F0',
+                boxShadow: isSelected
+                  ? '0 10px 25px -5px rgba(79, 70, 229, 0.2)'
+                  : '0 4px 14px rgba(0, 0, 0, 0.03)',
+                padding: '20px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                position: 'relative'
+              }}
+              onMouseEnter={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.borderColor = '#C7D2FE';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(99, 102, 241, 0.12)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.03)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }
+              }}
+            >
+              {/* Header Info: Avatar, Name, Designation & Arrow */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    fontSize: '15px'
+                  }}>
+                    {emp.avatar_url ? (
+                      <img
+                        src={emp.avatar_url}
+                        alt={`${emp.first_name || ''} ${emp.last_name || ''}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'inline';
+                        }}
+                      />
+                    ) : null}
+                    <span style={{ display: emp.avatar_url ? 'none' : 'inline' }}>
+                      {emp.first_name?.[0]?.toUpperCase() || 'E'}
+                      {emp.last_name?.[0]?.toUpperCase() || ''}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>
+                      {emp.first_name} {emp.last_name}
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 500, color: '#64748B', marginTop: '3px' }}>
+                      {emp.role || emp.department || 'TM'}
+                    </div>
+                  </div>
+                </div>
+
+                <ChevronRight size={18} color={isSelected ? '#4F46E5' : '#94A3B8'} />
+              </div>
+
+              {/* Weekly Performance Stats Grid (Current Week & Previous Week) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {/* Current Week */}
+                <div style={{
+                  background: '#F8FAFC',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  border: '1px solid #F1F5F9'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981', fontSize: '11px', fontWeight: 600, marginBottom: '6px' }}>
+                    <BarChart3 size={13} color="#10B981" />
+                    <span>Current Week</span>
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
+                    {curPct != null ? `${curPct.toFixed(1)}%` : '--'}
+                  </div>
+                  <div style={{ width: '100%', height: '6px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(curPct || 0, 100)}%`, height: '100%', background: '#10B981', borderRadius: '999px' }} />
+                  </div>
+                </div>
+
+                {/* Previous Week */}
+                <div style={{
+                  background: '#F8FAFC',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  border: '1px solid #F1F5F9'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6366F1', fontSize: '11px', fontWeight: 600, marginBottom: '6px' }}>
+                    <BarChart3 size={13} color="#6366F1" />
+                    <span>Previous Week</span>
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
+                    {prevPct != null ? `${prevPct.toFixed(1)}%` : '--'}
+                  </div>
+                  <div style={{ width: '100%', height: '6px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(prevPct || 0, 100)}%`, height: '100%', background: '#6366F1', borderRadius: '999px' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {employees.length === 0 && (
+          <div style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', color: '#64748B', background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+            No employee cards match your search criteria.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const KpiPage = () => {
   const { user } = useAuth();
 
@@ -1760,6 +2012,31 @@ const KpiPage = () => {
       return empName.includes(term) || empEmail.includes(term) || dept.includes(term) || notes.includes(term);
     });
   }, [logs, searchTerm]);
+
+  // Unified list of all employees for CO/CTO card dashboard
+  const allEmployeesForCards = useMemo(() => {
+    const map = new Map();
+    teammates.forEach((tm) => {
+      if (tm && tm.id) map.set(String(tm.id), tm);
+    });
+    logs.forEach((l) => {
+      if (l.employee && l.employee.id && !map.has(String(l.employee.id))) {
+        map.set(String(l.employee.id), l.employee);
+      }
+    });
+    return Array.from(map.values());
+  }, [teammates, logs]);
+
+  const filteredEmployeesForCards = useMemo(() => {
+    if (!searchTerm.trim()) return allEmployeesForCards;
+    const term = searchTerm.toLowerCase();
+    return allEmployeesForCards.filter((emp) => {
+      const name = `${emp.first_name || ''} ${emp.last_name || ''}`.toLowerCase();
+      const email = (emp.email || '').toLowerCase();
+      const role = (emp.role || emp.department || '').toLowerCase();
+      return name.includes(term) || email.includes(term) || role.includes(term);
+    });
+  }, [allEmployeesForCards, searchTerm]);
 
   // Available months extracted from logs
   const availableMonths = useMemo(() => {
@@ -2259,515 +2536,534 @@ const KpiPage = () => {
         )}
       </div>
 
-      {/* Main KPI Logs Table */}
-      <div style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-md)',
-        overflow: 'hidden',
-        boxShadow: 'var(--shadow-card)'
-      }}>
-        {loading ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-            Loading KPI records...
-          </div>
-        ) : filteredLogs.length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-            <Award size={48} style={{ color: 'var(--brand-300)', marginBottom: '12px' }} />
-            <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
-              No KPI records found
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '400px', margin: '0 auto' }}>
-              {isTL
-                ? 'Click "Give Daily KPI" above to log performance scores for your team mates.'
-                : 'No performance entries match the selected filters.'}
-            </p>
-          </div>
-        ) : (
-          <div>
-            {/* View Mode & Horizontal Scroll Toolbar */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '12px',
-              padding: '12px 18px',
-              background: 'var(--bg)',
-              borderBottom: '1px solid var(--border)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  View Mode:
-                </span>
+      {/* For CO and CTO: Render Employee Profile Cards Dashboard */}
+      {isCeoOrCto && (
+        <CoCtoEmployeeKpiCards
+          employees={filteredEmployeesForCards}
+          logs={logs}
+          selectedEmployeeId={selectedEmployeeId}
+          onSelectEmployee={(empId) => {
+            if (String(selectedEmployeeId) === String(empId)) {
+              setSelectedEmployeeId('');
+            } else {
+              setSelectedEmployeeId(empId);
+            }
+          }}
+          onClearSelection={() => setSelectedEmployeeId('')}
+        />
+      )}
+
+      {/* Main KPI Logs Table (For TL, PM, OR for CO/CTO when an employee card is selected) */}
+      {(!isCeoOrCto || selectedEmployeeId) && (
+        <div style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          overflow: 'hidden',
+          boxShadow: 'var(--shadow-card)'
+        }}>
+          {loading ? (
+            <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+              Loading KPI records...
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+              <Award size={48} style={{ color: 'var(--brand-300)', marginBottom: '12px' }} />
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                No KPI records found
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '400px', margin: '0 auto' }}>
+                {isTL
+                  ? 'Click "Give Daily KPI" above to log performance scores for your team mates.'
+                  : 'No performance entries match the selected filters.'}
+              </p>
+            </div>
+          ) : (
+            <div>
+              {/* View Mode & Horizontal Scroll Toolbar */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+                padding: '12px 18px',
+                background: 'var(--bg)',
+                borderBottom: '1px solid var(--border)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    View Mode:
+                  </span>
+                  <div style={{
+                    display: 'inline-flex',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '2px'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setTableViewMode('detailed')}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        background: tableViewMode === 'detailed' ? 'var(--brand-50, #EEF2FF)' : 'transparent',
+                        color: tableViewMode === 'detailed' ? 'var(--brand-700, #4338CA)' : 'var(--text-secondary)',
+                        fontWeight: tableViewMode === 'detailed' ? 700 : 500,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        boxShadow: tableViewMode === 'detailed' ? 'var(--shadow-subtle)' : 'none',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      All 10 Criteria Columns
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTableViewMode('compact')}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        background: tableViewMode === 'compact' ? 'var(--brand-50, #EEF2FF)' : 'transparent',
+                        color: tableViewMode === 'compact' ? 'var(--brand-700, #4338CA)' : 'var(--text-secondary)',
+                        fontWeight: tableViewMode === 'compact' ? 700 : 500,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        boxShadow: tableViewMode === 'compact' ? 'var(--shadow-subtle)' : 'none',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      Compact Strip
+                    </button>
+                  </div>
+                </div>
+
                 <div style={{
                   display: 'inline-flex',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '2px'
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '12px',
+                  color: 'var(--brand-700, #4338CA)',
+                  background: 'var(--brand-50, #EEF2FF)',
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  fontWeight: 600
                 }}>
-                  <button
-                    type="button"
-                    onClick={() => setTableViewMode('detailed')}
-                    style={{
-                      padding: '4px 12px',
-                      borderRadius: '4px',
-                      border: 'none',
-                      background: tableViewMode === 'detailed' ? 'var(--brand-50, #EEF2FF)' : 'transparent',
-                      color: tableViewMode === 'detailed' ? 'var(--brand-700, #4338CA)' : 'var(--text-secondary)',
-                      fontWeight: tableViewMode === 'detailed' ? 700 : 500,
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      boxShadow: tableViewMode === 'detailed' ? 'var(--shadow-subtle)' : 'none',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                  >
-                    All 10 Criteria Columns
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTableViewMode('compact')}
-                    style={{
-                      padding: '4px 12px',
-                      borderRadius: '4px',
-                      border: 'none',
-                      background: tableViewMode === 'compact' ? 'var(--brand-50, #EEF2FF)' : 'transparent',
-                      color: tableViewMode === 'compact' ? 'var(--brand-700, #4338CA)' : 'var(--text-secondary)',
-                      fontWeight: tableViewMode === 'compact' ? 700 : 500,
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      boxShadow: tableViewMode === 'compact' ? 'var(--shadow-subtle)' : 'none',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                  >
-                    Compact Strip
-                  </button>
+                  <span>↔ Scroll table horizontally to view all 10 criteria (1 to 5)</span>
                 </div>
               </div>
 
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                color: 'var(--brand-700, #4338CA)',
-                background: 'var(--brand-50, #EEF2FF)',
-                padding: '4px 10px',
-                borderRadius: 'var(--radius-full)',
-                fontWeight: 600
-              }}>
-                <span>↔ Scroll table horizontally to view all 10 criteria (1 to 5)</span>
-              </div>
-            </div>
-
-            <div
-              className="table-responsive"
-              style={{
-                width: '100%',
-                overflowX: 'auto',
-                WebkitOverflowScrolling: 'touch'
-              }}
-            >
-              <table
+              <div
+                className="table-responsive"
                 style={{
                   width: '100%',
-                  minWidth: tableViewMode === 'detailed' ? '1720px' : '1080px',
-                  borderCollapse: 'collapse',
-                  textAlign: 'left',
-                  fontSize: '13px'
+                  overflowX: 'auto',
+                  WebkitOverflowScrolling: 'touch'
                 }}
               >
-                <thead>
-                  <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{
-                      padding: '14px 18px',
-                      fontWeight: 700,
-                      color: 'var(--text-secondary)',
-                      whiteSpace: 'nowrap',
-                      position: 'sticky',
-                      left: 0,
-                      background: 'var(--bg)',
-                      zIndex: 3,
-                      borderRight: '1px solid var(--border)'
-                    }}>
-                      Date
-                    </th>
-                    <th style={{
-                      padding: '14px 18px',
-                      fontWeight: 700,
-                      color: 'var(--text-secondary)',
-                      whiteSpace: 'nowrap',
-                      position: 'sticky',
-                      left: '125px',
-                      background: 'var(--bg)',
-                      zIndex: 3,
-                      borderRight: '1px solid var(--border)'
-                    }}>
-                      Employee
-                    </th>
-                    <th style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                      Daily KPI %
-                    </th>
-                    <th style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                      Status
-                    </th>
-
-                    {/* All 10 Evaluation Criteria Columns (Scores 1 to 5) */}
-                    {tableViewMode === 'detailed' ? (
-                      <>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="1. Task Completion (Weight: 3, Max 15%)">
-                          1. Task (15%)
-                        </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="2. Quality (Weight: 3, Max 15%)">
-                          2. Quality (15%)
-                        </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="3. Productivity (Weight: 3, Max 15%)">
-                          3. Prod (15%)
-                        </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="4. Deadline Adherence (Weight: 2, Max 10%)">
-                          4. Deadline (10%)
-                        </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="5. Ownership (Weight: 2, Max 10%)">
-                          5. Ownership (10%)
-                        </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="6. Problem Solving (Weight: 2, Max 10%)">
-                          6. Problem (10%)
-                        </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="7. Communication (Weight: 1, Max 5%)">
-                          7. Comm (5%)
-                        </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="8. Team Collaboration (Weight: 1, Max 5%)">
-                          8. Collab (5%)
-                        </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="9. Learning / Improvement (Weight: 1, Max 5%)">
-                          9. Learn (5%)
-                        </th>
-                        <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="10. Attendance & Discipline (Weight: 2, Max 10%)">
-                          10. Attend (10%)
-                        </th>
-                      </>
-                    ) : (
-                      <th style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                        All 10 Criteria (Scores 1–5 • Scrollable)
+                <table
+                  style={{
+                    width: '100%',
+                    minWidth: tableViewMode === 'detailed' ? '1720px' : '1080px',
+                    borderCollapse: 'collapse',
+                    textAlign: 'left',
+                    fontSize: '13px'
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{
+                        padding: '14px 18px',
+                        fontWeight: 700,
+                        color: 'var(--text-secondary)',
+                        whiteSpace: 'nowrap',
+                        position: 'sticky',
+                        left: 0,
+                        background: 'var(--bg)',
+                        zIndex: 3,
+                        borderRight: '1px solid var(--border)'
+                      }}>
+                        Date
                       </th>
-                    )}
+                      <th style={{
+                        padding: '14px 18px',
+                        fontWeight: 700,
+                        color: 'var(--text-secondary)',
+                        whiteSpace: 'nowrap',
+                        position: 'sticky',
+                        left: '125px',
+                        background: 'var(--bg)',
+                        zIndex: 3,
+                        borderRight: '1px solid var(--border)'
+                      }}>
+                        Employee
+                      </th>
+                      <th style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        Daily KPI %
+                      </th>
+                      <th style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        Status
+                      </th>
 
-                    <th style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                      Evaluator
-                    </th>
-                    <th style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-secondary)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLogs.map((log) => {
-                    const statusStyle = getStatusColor(log.status);
-                    const isOwnTeammate = isTL && teammates.some((t) => t.id === log.employee_id);
+                      {/* All 10 Evaluation Criteria Columns (Scores 1 to 5) */}
+                      {tableViewMode === 'detailed' ? (
+                        <>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="1. Task Completion (Weight: 3, Max 15%)">
+                            1. Task (15%)
+                          </th>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="2. Quality (Weight: 3, Max 15%)">
+                            2. Quality (15%)
+                          </th>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="3. Productivity (Weight: 3, Max 15%)">
+                            3. Prod (15%)
+                          </th>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="4. Deadline Adherence (Weight: 2, Max 10%)">
+                            4. Deadline (10%)
+                          </th>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="5. Ownership (Weight: 2, Max 10%)">
+                            5. Ownership (10%)
+                          </th>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="6. Problem Solving (Weight: 2, Max 10%)">
+                            6. Problem (10%)
+                          </th>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="7. Communication (Weight: 1, Max 5%)">
+                            7. Comm (5%)
+                          </th>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="8. Team Collaboration (Weight: 1, Max 5%)">
+                            8. Collab (5%)
+                          </th>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="9. Learning / Improvement (Weight: 1, Max 5%)">
+                            9. Learn (5%)
+                          </th>
+                          <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }} title="10. Attendance & Discipline (Weight: 2, Max 10%)">
+                            10. Attend (10%)
+                          </th>
+                        </>
+                      ) : (
+                        <th style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                          All 10 Criteria (Scores 1–5 • Scrollable)
+                        </th>
+                      )}
 
-                    return (
-                      <tr
-                        key={log.id}
-                        style={{
-                          borderBottom: '1px solid var(--border)',
-                          transition: 'background var(--transition-fast)'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--subtle-glass)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        {/* Date - Sticky Column */}
-                        <td style={{
-                          padding: '14px 18px',
-                          whiteSpace: 'nowrap',
-                          position: 'sticky',
-                          left: 0,
-                          background: 'var(--surface)',
-                          zIndex: 2,
-                          borderRight: '1px solid var(--border)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Calendar size={14} style={{ color: 'var(--text-tertiary)' }} />
-                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                              {log.date}
-                            </span>
-                          </div>
-                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                            {log.month}
-                          </span>
-                        </td>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        Evaluator
+                      </th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-secondary)', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLogs.map((log) => {
+                      const statusStyle = getStatusColor(log.status);
+                      const isOwnTeammate = isTL && teammates.some((t) => t.id === log.employee_id);
 
-                        {/* Employee - Sticky Column */}
-                        <td style={{
-                          padding: '14px 18px',
-                          whiteSpace: 'nowrap',
-                          position: 'sticky',
-                          left: '125px',
-                          background: 'var(--surface)',
-                          zIndex: 2,
-                          borderRight: '1px solid var(--border)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '50%',
-                              background: 'var(--brand-100)',
-                              color: 'var(--brand-700)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 700,
-                              fontSize: '12px',
-                              flexShrink: 0,
-                              overflow: 'hidden',
-                              position: 'relative'
-                            }}>
-                              {log.employee?.avatar_url ? (
-                                <img
-                                  src={log.employee.avatar_url}
-                                  alt={`${log.employee.first_name || ''} ${log.employee.last_name || ''}`}
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                                  onError={(e) => {
-                                    e.currentTarget.onerror = null;
-                                    e.currentTarget.style.display = 'none';
-                                    const span = e.currentTarget.parentNode?.querySelector('.kpi-avatar-initials');
-                                    if (span) span.style.display = 'inline';
-                                  }}
-                                />
-                              ) : null}
-                              <span className="kpi-avatar-initials" style={{ display: log.employee?.avatar_url ? 'none' : 'inline' }}>
-                                {log.employee?.first_name?.[0] || 'E'}
-                                {log.employee?.last_name?.[0] || ''}
+                      return (
+                        <tr
+                          key={log.id}
+                          style={{
+                            borderBottom: '1px solid var(--border)',
+                            transition: 'background var(--transition-fast)'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--subtle-glass)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {/* Date - Sticky Column */}
+                          <td style={{
+                            padding: '14px 18px',
+                            whiteSpace: 'nowrap',
+                            position: 'sticky',
+                            left: 0,
+                            background: 'var(--surface)',
+                            zIndex: 2,
+                            borderRight: '1px solid var(--border)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Calendar size={14} style={{ color: 'var(--text-tertiary)' }} />
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                {log.date}
                               </span>
                             </div>
-                            <div>
-                              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                                {log.employee?.first_name} {log.employee?.last_name}
-                              </div>
-                              <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                                {log.employee?.role || log.employee?.department || log.employee?.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Daily KPI % */}
-                        <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', minWidth: '46px' }}>
-                              {log.daily_kpi_percentage.toFixed(1)}%
+                            <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                              {log.month}
                             </span>
-                            <div style={{ width: '56px', height: '6px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
-                              <div style={{
-                                width: `${Math.min(log.daily_kpi_percentage, 100)}%`,
-                                height: '100%',
-                                background: statusStyle.bar,
-                                borderRadius: '999px'
-                              }} />
-                            </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Status Badge */}
-                        <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '4px 10px',
-                            borderRadius: 'var(--radius-full)',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            background: statusStyle.bg,
-                            color: statusStyle.text,
-                            border: `1px solid ${statusStyle.border}`
+                          {/* Employee - Sticky Column */}
+                          <td style={{
+                            padding: '14px 18px',
+                            whiteSpace: 'nowrap',
+                            position: 'sticky',
+                            left: '125px',
+                            background: 'var(--surface)',
+                            zIndex: 2,
+                            borderRight: '1px solid var(--border)'
                           }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusStyle.bar }} />
-                            {log.status}
-                          </span>
-                        </td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                background: 'var(--brand-100)',
+                                color: 'var(--brand-700)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                fontSize: '12px',
+                                flexShrink: 0,
+                                overflow: 'hidden',
+                                position: 'relative'
+                              }}>
+                                {log.employee?.avatar_url ? (
+                                  <img
+                                    src={log.employee.avatar_url}
+                                    alt={`${log.employee.first_name || ''} ${log.employee.last_name || ''}`}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                    onError={(e) => {
+                                      e.currentTarget.onerror = null;
+                                      e.currentTarget.style.display = 'none';
+                                      const span = e.currentTarget.parentNode?.querySelector('.kpi-avatar-initials');
+                                      if (span) span.style.display = 'inline';
+                                    }}
+                                  />
+                                ) : null}
+                                <span className="kpi-avatar-initials" style={{ display: log.employee?.avatar_url ? 'none' : 'inline' }}>
+                                  {log.employee?.first_name?.[0] || 'E'}
+                                  {log.employee?.last_name?.[0] || ''}
+                                </span>
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                  {log.employee?.first_name} {log.employee?.last_name}
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                                  {log.employee?.role || log.employee?.department || log.employee?.email}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
 
-                        {/* Detailed 10 Columns View */}
-                        {tableViewMode === 'detailed' ? (
-                          CRITERIA.map((crit) => {
-                            const score = log[crit.key] ?? 0;
-                            const tier = KPI_TIER_CONFIG.find((t) => t.level === score) || KPI_TIER_CONFIG[2];
-                            return (
-                              <td
-                                key={crit.key}
-                                style={{
-                                  padding: '12px 10px',
-                                  textAlign: 'center',
-                                  whiteSpace: 'nowrap'
-                                }}
-                              >
-                                <span
-                                  title={`${crit.num}. ${crit.label}: Score ${score}/5 (${score * crit.weight}%)\nLevel ${score} (${tier.name}): "${crit.rubric[score]}"`}
+                          {/* Daily KPI % */}
+                          <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', minWidth: '46px' }}>
+                                {log.daily_kpi_percentage.toFixed(1)}%
+                              </span>
+                              <div style={{ width: '56px', height: '6px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
+                                <div style={{
+                                  width: `${Math.min(log.daily_kpi_percentage, 100)}%`,
+                                  height: '100%',
+                                  background: statusStyle.bar,
+                                  borderRadius: '999px'
+                                }} />
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Status Badge */}
+                          <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 10px',
+                              borderRadius: 'var(--radius-full)',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              background: statusStyle.bg,
+                              color: statusStyle.text,
+                              border: `1px solid ${statusStyle.border}`
+                            }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusStyle.bar }} />
+                              {log.status}
+                            </span>
+                          </td>
+
+                          {/* Detailed 10 Columns View */}
+                          {tableViewMode === 'detailed' ? (
+                            CRITERIA.map((crit) => {
+                              const score = log[crit.key] ?? 0;
+                              const tier = KPI_TIER_CONFIG.find((t) => t.level === score) || KPI_TIER_CONFIG[2];
+                              return (
+                                <td
+                                  key={crit.key}
                                   style={{
+                                    padding: '12px 10px',
+                                    textAlign: 'center',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  <span
+                                    title={`${crit.num}. ${crit.label}: Score ${score}/5 (${score * crit.weight}%)\nLevel ${score} (${tier.name}): "${crit.rubric[score]}"`}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: '30px',
+                                      height: '30px',
+                                      borderRadius: '6px',
+                                      fontSize: '13px',
+                                      fontWeight: 800,
+                                      background: tier.bg,
+                                      color: tier.text,
+                                      border: `1px solid ${tier.border}`,
+                                      cursor: 'help',
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                                    }}
+                                  >
+                                    {score}
+                                  </span>
+                                </td>
+                              );
+                            })
+                          ) : (
+                            /* Compact Strip with All 10 Criteria */
+                            <td style={{ padding: '12px 18px' }}>
+                              <div style={{
+                                display: 'flex',
+                                gap: '6px',
+                                overflowX: 'auto',
+                                maxWidth: '460px',
+                                padding: '4px 0',
+                                scrollbarWidth: 'thin'
+                              }}>
+                                {CRITERIA.map((crit) => {
+                                  const score = log[crit.key] ?? 0;
+                                  const tier = KPI_TIER_CONFIG.find((t) => t.level === score) || KPI_TIER_CONFIG[2];
+                                  const shortLabel = {
+                                    task_completion: 'Task',
+                                    quality: 'Qual',
+                                    productivity: 'Prod',
+                                    deadline_adherence: 'Deadl',
+                                    ownership: 'Owner',
+                                    problem_solving: 'Prob',
+                                    communication: 'Comm',
+                                    team_collaboration: 'Collab',
+                                    learning_improvement: 'Learn',
+                                    attendance_discipline: 'Attend'
+                                  }[crit.key] || crit.label;
+
+                                  return (
+                                    <span
+                                      key={crit.key}
+                                      title={`${crit.num}. ${crit.label}: Score ${score}/5 (${score * crit.weight}%)\nLevel ${score} (${tier.name}): "${crit.rubric[score]}"`}
+                                      style={{
+                                        fontSize: '11px',
+                                        padding: '3px 8px',
+                                        background: tier.bg,
+                                        border: `1px solid ${tier.border}`,
+                                        color: tier.text,
+                                        borderRadius: '4px',
+                                        whiteSpace: 'nowrap',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        flexShrink: 0,
+                                        cursor: 'help'
+                                      }}
+                                    >
+                                      <span style={{ opacity: 0.85 }}>{shortLabel}:</span>
+                                      <strong style={{ fontWeight: 800 }}>{score}</strong>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          )}
+
+                          {/* Evaluator */}
+                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              {log.evaluator ? `${log.evaluator.first_name} ${log.evaluator.last_name}` : 'Team Lead'}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                            <button
+                              onClick={() => setDetailsLog(log)}
+                              title="View Full Breakdown"
+                              style={{
+                                padding: '6px',
+                                borderRadius: 'var(--radius-xs)',
+                                border: '1px solid var(--border)',
+                                background: 'transparent',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Eye size={15} />
+                            </button>
+
+                            {/* Only Team Lead can edit/delete their teammates' KPIs */}
+                            {canGiveOrEdit && isOwnTeammate && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenEditModal(log)}
+                                  title="Edit KPI"
+                                  style={{
+                                    padding: '6px 10px',
+                                    borderRadius: 'var(--radius-xs)',
+                                    border: '1px solid var(--brand-300)',
+                                    background: 'var(--brand-50)',
+                                    color: 'var(--brand-700)',
+                                    fontWeight: 600,
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <Edit2 size={13} />
+                                  <span>Edit</span>
+                                </button>
+
+                                <button
+                                  onClick={() => handleDeleteKPI(log.id, log.employee ? `${log.employee.first_name} ${log.employee.last_name}` : 'teammate', log.date)}
+                                  title="Delete KPI log"
+                                  style={{
+                                    padding: '6px',
+                                    borderRadius: 'var(--radius-xs)',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                    background: 'rgba(239, 68, 68, 0.06)',
+                                    color: '#EF4444',
+                                    cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    width: '30px',
-                                    height: '30px',
-                                    borderRadius: '6px',
-                                    fontSize: '13px',
-                                    fontWeight: 800,
-                                    background: tier.bg,
-                                    color: tier.text,
-                                    border: `1px solid ${tier.border}`,
-                                    cursor: 'help',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                                    e.currentTarget.style.borderColor = '#EF4444';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)';
+                                    e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
                                   }}
                                 >
-                                  {score}
-                                </span>
-                              </td>
-                            );
-                          })
-                        ) : (
-                          /* Compact Strip with All 10 Criteria */
-                          <td style={{ padding: '12px 18px' }}>
-                            <div style={{
-                              display: 'flex',
-                              gap: '6px',
-                              overflowX: 'auto',
-                              maxWidth: '460px',
-                              padding: '4px 0',
-                              scrollbarWidth: 'thin'
-                            }}>
-                              {CRITERIA.map((crit) => {
-                                const score = log[crit.key] ?? 0;
-                                const tier = KPI_TIER_CONFIG.find((t) => t.level === score) || KPI_TIER_CONFIG[2];
-                                const shortLabel = {
-                                  task_completion: 'Task',
-                                  quality: 'Qual',
-                                  productivity: 'Prod',
-                                  deadline_adherence: 'Deadl',
-                                  ownership: 'Owner',
-                                  problem_solving: 'Prob',
-                                  communication: 'Comm',
-                                  team_collaboration: 'Collab',
-                                  learning_improvement: 'Learn',
-                                  attendance_discipline: 'Attend'
-                                }[crit.key] || crit.label;
-
-                                return (
-                                  <span
-                                    key={crit.key}
-                                    title={`${crit.num}. ${crit.label}: Score ${score}/5 (${score * crit.weight}%)\nLevel ${score} (${tier.name}): "${crit.rubric[score]}"`}
-                                    style={{
-                                      fontSize: '11px',
-                                      padding: '3px 8px',
-                                      background: tier.bg,
-                                      border: `1px solid ${tier.border}`,
-                                      color: tier.text,
-                                      borderRadius: '4px',
-                                      whiteSpace: 'nowrap',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      flexShrink: 0,
-                                      cursor: 'help'
-                                    }}
-                                  >
-                                    <span style={{ opacity: 0.85 }}>{shortLabel}:</span>
-                                    <strong style={{ fontWeight: 800 }}>{score}</strong>
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          </td>
-                        )}
-
-                        {/* Evaluator */}
-                        <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            {log.evaluator ? `${log.evaluator.first_name} ${log.evaluator.last_name}` : 'Team Lead'}
-                          </span>
+                                  <Trash2 size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
-
-                        {/* Actions */}
-                        <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
-                          <button
-                            onClick={() => setDetailsLog(log)}
-                            title="View Full Breakdown"
-                            style={{
-                              padding: '6px',
-                              borderRadius: 'var(--radius-xs)',
-                              border: '1px solid var(--border)',
-                              background: 'transparent',
-                              color: 'var(--text-secondary)',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <Eye size={15} />
-                          </button>
-
-                          {/* Only Team Lead can edit/delete their teammates' KPIs */}
-                          {canGiveOrEdit && isOwnTeammate && (
-                            <>
-                              <button
-                                onClick={() => handleOpenEditModal(log)}
-                                title="Edit KPI"
-                                style={{
-                                  padding: '6px 10px',
-                                  borderRadius: 'var(--radius-xs)',
-                                  border: '1px solid var(--brand-300)',
-                                  background: 'var(--brand-50)',
-                                  color: 'var(--brand-700)',
-                                  fontWeight: 600,
-                                  fontSize: '12px',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px'
-                                }}
-                              >
-                                <Edit2 size={13} />
-                                <span>Edit</span>
-                              </button>
-
-                              <button
-                                onClick={() => handleDeleteKPI(log.id, log.employee ? `${log.employee.first_name} ${log.employee.last_name}` : 'teammate', log.date)}
-                                title="Delete KPI log"
-                                style={{
-                                  padding: '6px',
-                                  borderRadius: 'var(--radius-xs)',
-                                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                                  background: 'rgba(239, 68, 68, 0.06)',
-                                  color: '#EF4444',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  transition: 'all 0.15s ease'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
-                                  e.currentTarget.style.borderColor = '#EF4444';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)';
-                                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                                }}
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
+      )}
 
       {/* Give / Edit Modal (Team Lead only) */}
       {modalOpen && (
