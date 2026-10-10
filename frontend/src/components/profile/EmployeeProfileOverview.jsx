@@ -27,7 +27,14 @@ export default function EmployeeProfileOverview({
   const [allKpiLogs, setAllKpiLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const targetEmpId = String(userObj?.id || employeeId || '');
+  // Sync prop changes to userObj state
+  useEffect(() => {
+    if (employee) {
+      setUserObj(employee);
+    }
+  }, [employee]);
+
+  const targetEmpId = String(userObj?.id || employee?.id || employeeId || '');
 
   // Load all required data for the employee
   useEffect(() => {
@@ -46,7 +53,7 @@ export default function EmployeeProfileOverview({
 
         // Find current employee object if not passed
         if (!userObj && targetEmpId) {
-          const found = usersData.find(u => String(u.id) === targetEmpId || String(u.user_id) === targetEmpId || u.email === targetEmpId);
+          const found = (usersData || []).find(u => String(u.id) === targetEmpId || String(u.user_id) === targetEmpId || u.email === targetEmpId);
           if (found) setUserObj(found);
         }
 
@@ -62,7 +69,7 @@ export default function EmployeeProfileOverview({
 
     loadEmployeeData();
     return () => { isMounted = false; };
-  }, [employeeId, targetEmpId]);
+  }, [employeeId, targetEmpId, employee]);
 
   // Derived Employee Info
   const empName = useMemo(() => {
