@@ -32,6 +32,36 @@ const formatDateLabel = (dateStr) => {
   return target;
 };
 
+const getTaskDateStrings = (t) => {
+  const dates = [];
+  const addDate = (val) => {
+    if (!val) return;
+    if (typeof val === 'string') {
+      const match = val.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (match) {
+        dates.push(match[1]);
+        return;
+      }
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      dates.push(`${y}-${m}-${day}`);
+    }
+  };
+
+  addDate(t.scheduled_date);
+  addDate(t.deadline);
+  addDate(t.due_date);
+  addDate(t.target_date);
+  if (dates.length === 0) {
+    addDate(t.created_at);
+  }
+  return dates;
+};
+
 // DatePickerPopover Component
 const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,7 +79,7 @@ const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
     return parts.length === 3 ? parts[1] - 1 : new Date().getMonth();
   });
 
-  const [tempSelectedDate, setTempSelectedDate] = useState(selectedDate || '');
+  const [tempSelectedDate, setTempSelectedDate] = useState(selectedDate || getTodayDateStr());
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -66,7 +96,7 @@ const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
   }, [isOpen]);
 
   useEffect(() => {
-    const target = selectedDate || '';
+    const target = selectedDate || getTodayDateStr();
     setTempSelectedDate(target);
     if (target) {
       const parts = target.split('-').map(Number);
@@ -141,7 +171,8 @@ const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
   };
 
   const handleClear = () => {
-    setTempSelectedDate('');
+    const today = getTodayDateStr();
+    setTempSelectedDate(today);
     onClear();
     setIsOpen(false);
   };
@@ -527,7 +558,7 @@ export default function ManagementMyWorkView({ user }) {
   const [selectedProjectId, setSelectedProjectId] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedPriority, setSelectedPriority] = useState('all');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(getTodayDateStr());
 
   // Drawer & Modal State
   const [selectedDrawerDev, setSelectedDrawerDev] = useState(null);
@@ -590,11 +621,8 @@ export default function ManagementMyWorkView({ user }) {
       return false;
     }
     if (selectedDate) {
-      const taskDeadlineDate = t.deadline ? new Date(t.deadline).toISOString().split('T')[0] : '';
-      const taskSchedDate = t.scheduled_date ? t.scheduled_date.split('T')[0] : '';
-      const taskCreatedDate = t.created_at ? t.created_at.split('T')[0] : '';
-      const matchesDate = taskDeadlineDate === selectedDate || taskSchedDate === selectedDate || taskCreatedDate === selectedDate;
-      if (!matchesDate) return false;
+      const taskDates = getTaskDateStrings(t);
+      if (!taskDates.includes(selectedDate)) return false;
     }
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
@@ -780,13 +808,14 @@ export default function ManagementMyWorkView({ user }) {
         padding: '16px 20px',
         marginBottom: '24px',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '14px'
+        flexDirection: 'column',
+        gap: '14px',
+        position: 'relative',
+        zIndex: 30,
+        overflow: 'visible'
       }}>
-        {/* Search */}
-        <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+        {/* Row 1: Search */}
+        <div style={{ position: 'relative', width: '100%' }}>
           <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
@@ -795,17 +824,18 @@ export default function ManagementMyWorkView({ user }) {
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
               width: '100%',
-              padding: '8px 12px 8px 36px',
+              padding: '9px 12px 9px 36px',
               borderRadius: '8px',
               border: '1px solid var(--border)',
               fontSize: '13px',
-              outline: 'none'
+              outline: 'none',
+              background: '#F8FAFC'
             }}
           />
         </div>
 
-        {/* Filter Dropdowns & Popovers (1 Row Sequence: Dev -> Project -> Status -> Priority -> Date) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%', paddingBottom: '2px' }}>
+        {/* Row 2: Filter Dropdowns & Popovers (1 Row Sequence: Dev -> Project -> Status -> Priority -> Date) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', overflow: 'visible' }}>
           {/* 1. Developer Filter */}
           <select
             value={selectedDevId}
@@ -857,10 +887,10 @@ export default function ManagementMyWorkView({ user }) {
           <DatePickerPopover
             selectedDate={selectedDate}
             onApply={(d) => setSelectedDate(d)}
-            onClear={() => setSelectedDate('')}
+            onClear={() => setSelectedDate(getTodayDateStr())}
           />
 
-          {(searchTerm || selectedDevId !== 'all' || selectedProjectId !== 'all' || selectedStatus !== 'all' || selectedPriority !== 'all' || selectedDate !== '') && (
+          {(searchTerm || selectedDevId !== 'all' || selectedProjectId !== 'all' || selectedStatus !== 'all' || selectedPriority !== 'all' || selectedDate !== getTodayDateStr()) && (
             <button
               onClick={() => {
                 setSearchTerm('');
@@ -868,7 +898,7 @@ export default function ManagementMyWorkView({ user }) {
                 setSelectedProjectId('all');
                 setSelectedStatus('all');
                 setSelectedPriority('all');
-                setSelectedDate('');
+                setSelectedDate(getTodayDateStr());
               }}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: '12px', fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}
             >
@@ -1084,7 +1114,9 @@ export default function ManagementMyWorkView({ user }) {
               {filteredTasks.length === 0 && (
                 <tr>
                   <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: '#64748B', fontSize: '13px' }}>
-                    No developer work items match the selected filter criteria.
+                    {selectedDate === getTodayDateStr() && !searchTerm && selectedDevId === 'all' && selectedProjectId === 'all' && selectedStatus === 'all' && selectedPriority === 'all'
+                      ? "No tasks scheduled for today."
+                      : "No developer work items match the selected filter criteria."}
                   </td>
                 </tr>
               )}
