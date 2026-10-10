@@ -1719,6 +1719,24 @@ const CoCtoEmployeeKpiCards = ({
 
   return (
     <div style={{ marginBottom: '28px' }}>
+      <style>{`
+        .co-cto-cards-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+        }
+        @media (max-width: 1023px) {
+          .co-cto-cards-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+        @media (max-width: 639px) {
+          .co-cto-cards-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
       {selectedEmployeeId && (
         <div style={{
           display: 'flex',
@@ -1756,11 +1774,7 @@ const CoCtoEmployeeKpiCards = ({
         </div>
       )}
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-        gap: '20px'
-      }}>
+      <div className="co-cto-cards-grid">
         {employees.map((emp) => {
           const isSelected = String(selectedEmployeeId) === String(emp.id);
           const { curPct, prevPct } = getEmployeeMetrics(emp.id);
@@ -1800,11 +1814,11 @@ const CoCtoEmployeeKpiCards = ({
               }}
             >
               {/* Header Info: Avatar, Name, Designation & Arrow */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
                   <div style={{
-                    width: '46px',
-                    height: '46px',
+                    width: '44px',
+                    height: '44px',
                     borderRadius: '50%',
                     overflow: 'hidden',
                     flexShrink: 0,
@@ -1833,31 +1847,47 @@ const CoCtoEmployeeKpiCards = ({
                     </span>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontSize: '15px',
+                      fontWeight: 700,
+                      color: '#0F172A',
+                      lineHeight: 1.2,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
                       {emp.first_name} {emp.last_name}
                     </div>
-                    <div style={{ fontSize: '12px', fontWeight: 500, color: '#64748B', marginTop: '3px' }}>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: '#64748B',
+                      marginTop: '3px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
                       {emp.role || emp.department || 'TM'}
                     </div>
                   </div>
                 </div>
 
-                <ChevronRight size={18} color={isSelected ? '#4F46E5' : '#94A3B8'} />
+                <ChevronRight size={18} color={isSelected ? '#4F46E5' : '#94A3B8'} style={{ flexShrink: 0 }} />
               </div>
 
               {/* Weekly Performance Stats Grid (Current Week & Previous Week) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 {/* Current Week */}
                 <div style={{
                   background: '#F8FAFC',
                   borderRadius: '12px',
-                  padding: '12px 14px',
+                  padding: '10px 12px',
                   border: '1px solid #F1F5F9'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981', fontSize: '11px', fontWeight: 600, marginBottom: '6px' }}>
-                    <BarChart3 size={13} color="#10B981" />
-                    <span>Current Week</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#10B981', fontSize: '11px', fontWeight: 600, marginBottom: '6px' }}>
+                    <BarChart3 size={13} color="#10B981" style={{ flexShrink: 0 }} />
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Current Week</span>
                   </div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
                     {curPct != null ? `${curPct.toFixed(1)}%` : 'N/A'}
@@ -1871,12 +1901,12 @@ const CoCtoEmployeeKpiCards = ({
                 <div style={{
                   background: '#F8FAFC',
                   borderRadius: '12px',
-                  padding: '12px 14px',
+                  padding: '10px 12px',
                   border: '1px solid #F1F5F9'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6366F1', fontSize: '11px', fontWeight: 600, marginBottom: '6px' }}>
-                    <BarChart3 size={13} color="#6366F1" />
-                    <span>Previous Week</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#6366F1', fontSize: '11px', fontWeight: 600, marginBottom: '6px' }}>
+                    <BarChart3 size={13} color="#6366F1" style={{ flexShrink: 0 }} />
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Previous Week</span>
                   </div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
                     {prevPct != null ? `${prevPct.toFixed(1)}%` : 'N/A'}
