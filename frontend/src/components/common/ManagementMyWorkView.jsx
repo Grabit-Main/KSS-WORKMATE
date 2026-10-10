@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users, CheckCircle2, Clock, AlertTriangle, HelpCircle, Flame,
   Search, Filter, Calendar, FolderKanban, Eye, Edit3, Plus, ArrowUpRight,
-  TrendingUp, RefreshCw, X, ShieldAlert
+  TrendingUp, RefreshCw, X, ShieldAlert, ChevronLeft, ChevronRight, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { getTasks, deleteTask, updateTask } from '../../api/tasks';
 import { getUsers } from '../../api/users';
@@ -10,6 +10,328 @@ import { getProjects } from '../../api/projects';
 import { getDailyPulses, getBlockers, getHelpRequests, getFocusSessions } from '../../api/mywork';
 import DeveloperWorkDrawer from './DeveloperWorkDrawer';
 import AddTaskModal from '../quickadd/AddTaskModal';
+
+// DatePickerPopover Component
+const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const popoverRef = useRef(null);
+
+  const [viewYear, setViewYear] = useState(() => {
+    if (selectedDate) {
+      const parts = selectedDate.split('-');
+      if (parts.length === 3) return parseInt(parts[0], 10);
+    }
+    return new Date().getFullYear();
+  });
+
+  const [viewMonth, setViewMonth] = useState(() => {
+    if (selectedDate) {
+      const parts = selectedDate.split('-');
+      if (parts.length === 3) return parseInt(parts[1], 10) - 1;
+    }
+    return new Date().getMonth();
+  });
+
+  const [tempSelectedDate, setTempSelectedDate] = useState(selectedDate || '');
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    setTempSelectedDate(selectedDate || '');
+    if (selectedDate) {
+      const parts = selectedDate.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        if (!isNaN(y) && !isNaN(m)) {
+          setViewYear(y);
+          setViewMonth(m);
+        }
+      }
+    }
+  }, [selectedDate]);
+
+  const handlePrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(viewYear - 1);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(viewYear + 1);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+  };
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+  const calendarCells = [];
+
+  for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+    calendarCells.push({
+      dayNum: daysInPrevMonth - i,
+      isCurrentMonth: false,
+      dateStr: ''
+    });
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mStr = String(viewMonth + 1).padStart(2, '0');
+    const dStr = String(d).padStart(2, '0');
+    const dateStr = `${viewYear}-${mStr}-${dStr}`;
+    calendarCells.push({
+      dayNum: d,
+      isCurrentMonth: true,
+      dateStr
+    });
+  }
+
+  const remainingCells = (7 - (calendarCells.length % 7)) % 7;
+  for (let i = 1; i <= remainingCells; i++) {
+    calendarCells.push({
+      dayNum: i,
+      isCurrentMonth: false,
+      dateStr: ''
+    });
+  }
+
+  const handleApply = () => {
+    onApply(tempSelectedDate);
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setTempSelectedDate('');
+    onClear();
+    setIsOpen(false);
+  };
+
+  const formatButtonLabel = () => {
+    if (!selectedDate) return 'Select Date';
+    const parts = selectedDate.split('-');
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    }
+    return selectedDate;
+  };
+
+  return (
+    <div ref={popoverRef} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 14px',
+          borderRadius: '8px',
+          fontSize: '12px',
+          fontWeight: 600,
+          background: selectedDate ? '#EEF2FF' : (isOpen ? '#FFFFFF' : '#F8FAFC'),
+          color: (selectedDate || isOpen) ? '#4F46E5' : '#334155',
+          border: (selectedDate || isOpen) ? '1.5px solid #4F46E5' : '1px solid var(--border)',
+          boxShadow: (selectedDate || isOpen) ? '0 0 0 3px rgba(79, 70, 229, 0.12)' : 'none',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease'
+        }}
+      >
+        <Calendar size={15} color={(selectedDate || isOpen) ? '#4F46E5' : '#64748B'} />
+        <span>{formatButtonLabel()}</span>
+        {isOpen ? <ChevronUp size={14} color="#4F46E5" /> : <ChevronDown size={14} color={selectedDate ? '#4F46E5' : '#64748B'} />}
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            right: 0,
+            zIndex: 100,
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.06)',
+            padding: '20px',
+            width: '290px',
+            userSelect: 'none'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#475569'
+              }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>
+              {monthNames[viewMonth]} {viewYear}
+            </span>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#475569'
+              }}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', marginBottom: '8px' }}>
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+              <span key={day} style={{ fontSize: '11px', fontWeight: 600, color: '#64748B' }}>
+                {day}
+              </span>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center', marginBottom: '18px' }}>
+            {calendarCells.map((cell, idx) => {
+              if (!cell.isCurrentMonth) {
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: '6px 0',
+                      fontSize: '12px',
+                      color: '#CBD5E1',
+                      cursor: 'default',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {cell.dayNum}
+                  </div>
+                );
+              }
+
+              const isSelected = tempSelectedDate === cell.dateStr;
+
+              return (
+                <div
+                  key={idx}
+                  onClick={() => setTempSelectedDate(cell.dateStr)}
+                  style={{
+                    padding: '6px 0',
+                    fontSize: '12px',
+                    fontWeight: isSelected ? 700 : 500,
+                    color: isSelected ? '#FFFFFF' : '#1E293B',
+                    background: isSelected ? '#4F46E5' : 'transparent',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    margin: '0 auto',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) e.currentTarget.style.background = '#F1F5F9';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  {cell.dayNum}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={handleClear}
+              style={{
+                flex: 1,
+                padding: '9px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                background: '#EEF2FF',
+                color: '#4F46E5',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'background 0.15s ease'
+              }}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={handleApply}
+              style={{
+                flex: 1,
+                padding: '9px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                background: '#4F46E5',
+                color: '#FFFFFF',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(79, 70, 229, 0.3)',
+                transition: 'background 0.15s ease'
+              }}
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function ManagementMyWorkView({ user }) {
   const role = user?.role || 'TL';
@@ -33,6 +355,7 @@ export default function ManagementMyWorkView({ user }) {
   const [selectedProjectId, setSelectedProjectId] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedPriority, setSelectedPriority] = useState('all');
+  const [selectedDate, setSelectedDate] = useState('');
 
   // Drawer & Modal State
   const [selectedDrawerDev, setSelectedDrawerDev] = useState(null);
@@ -93,6 +416,13 @@ export default function ManagementMyWorkView({ user }) {
     }
     if (selectedPriority !== 'all' && t.priority !== selectedPriority) {
       return false;
+    }
+    if (selectedDate) {
+      const taskDeadlineDate = t.deadline ? new Date(t.deadline).toISOString().split('T')[0] : '';
+      const taskSchedDate = t.scheduled_date ? t.scheduled_date.split('T')[0] : '';
+      const taskCreatedDate = t.created_at ? t.created_at.split('T')[0] : '';
+      const matchesDate = taskDeadlineDate === selectedDate || taskSchedDate === selectedDate || taskCreatedDate === selectedDate;
+      if (!matchesDate) return false;
     }
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
@@ -356,7 +686,14 @@ export default function ManagementMyWorkView({ user }) {
             <option value="low">Low</option>
           </select>
 
-          {(searchTerm || selectedDevId !== 'all' || selectedProjectId !== 'all' || selectedStatus !== 'all' || selectedPriority !== 'all') && (
+          {/* Select Date Filter (CO, CTO, PM, TL) */}
+          <DatePickerPopover
+            selectedDate={selectedDate}
+            onApply={(d) => setSelectedDate(d)}
+            onClear={() => setSelectedDate('')}
+          />
+
+          {(searchTerm || selectedDevId !== 'all' || selectedProjectId !== 'all' || selectedStatus !== 'all' || selectedPriority !== 'all' || selectedDate !== '') && (
             <button
               onClick={() => {
                 setSearchTerm('');
@@ -364,6 +701,7 @@ export default function ManagementMyWorkView({ user }) {
                 setSelectedProjectId('all');
                 setSelectedStatus('all');
                 setSelectedPriority('all');
+                setSelectedDate('');
               }}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: '12px', fontWeight: 600 }}
             >
