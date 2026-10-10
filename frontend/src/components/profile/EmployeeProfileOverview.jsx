@@ -422,9 +422,6 @@ export default function EmployeeProfileOverview({
           { id: 'projects', label: 'Projects', icon: <Folders size={16} /> },
           { id: 'tasks', label: 'Tasks', icon: <CheckSquare size={16} /> },
           { id: 'kpi', label: 'KPI', icon: <TrendingUp size={16} /> },
-          { id: 'activity', label: 'Activity', icon: <Clock size={16} /> },
-          { id: 'files', label: 'Files', icon: <Folders size={16} /> },
-          { id: 'calendar', label: 'Calendar', icon: <Calendar size={16} /> },
         ].map(tab => {
           const isActive = activeTab === tab.id;
           return (

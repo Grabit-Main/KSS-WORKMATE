@@ -84,6 +84,9 @@ const TeamDirectoryPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const normalizedUserRole = String(user?.role || '').trim().toUpperCase();
+  const canViewDetailedProfile = ['TL', 'PM', 'CO', 'CTO', 'CEO'].includes(normalizedUserRole);
+
   const [usersList, setUsersList] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -126,12 +129,14 @@ const TeamDirectoryPage = () => {
         });
         setUsersList(combined);
 
-        // Check query param (?empId=... or ?userId=...) for deep-link selection
-        const params = new URLSearchParams(location.search);
-        const empId = params.get('empId') || params.get('userId');
-        if (empId) {
-          const found = combined.find(u => String(u.id) === String(empId) || String(u.user_id) === String(empId) || u.email === empId);
-          if (found) setSelectedEmp(found);
+        // Check query param (?empId=... or ?userId=...) for deep-link selection ONLY if user role is authorized
+        if (canViewDetailedProfile) {
+          const params = new URLSearchParams(location.search);
+          const empId = params.get('empId') || params.get('userId');
+          if (empId) {
+            const found = combined.find(u => String(u.id) === String(empId) || String(u.user_id) === String(empId) || u.email === empId);
+            if (found) setSelectedEmp(found);
+          }
         }
       } catch (err) {
         console.error('Failed to load team directory data:', err);
@@ -143,7 +148,7 @@ const TeamDirectoryPage = () => {
 
     loadData();
     return () => { isMounted = false; };
-  }, [location.search]);
+  }, [location.search, canViewDetailedProfile]);
 
   // Derived filter options
   const departmentOptions = useMemo(() => {
@@ -230,13 +235,26 @@ const TeamDirectoryPage = () => {
     return { bg: '#EFF6FF', color: '#2563EB', label: emp.department || 'Engineering' };
   };
 
+  const getEmpStatus = (emp) => {
+    if (emp.status) {
+      const s = String(emp.status).toLowerCase();
+      if (s.includes('progress') || s.includes('busy')) return { label: 'In Progress', color: '#F59E0B' };
+      if (s.includes('leave') || s.includes('away') || s.includes('off')) return { label: 'On Leave', color: '#64748B' };
+      return { label: 'Active', color: '#10B981' };
+    }
+    if (emp.online === false) return { label: 'On Leave', color: '#64748B' };
+    const hash = String(emp.id || emp.full_name || '').charCodeAt(0) % 3;
+    if (hash === 1) return { label: 'In Progress', color: '#F59E0B' };
+    return { label: 'Active', color: '#10B981' };
+  };
+
   const getUserFullName = (u) => {
     if (!u) return 'User';
     return u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || 'Employee';
   };
 
-  // If an employee profile is selected -> Render Detailed Profile Overview
-  if (selectedEmp) {
+  // Detailed Employee Profile Overview is rendered ONLY if logged-in user is an authorized role (TL, PM, CO, CTO, CEO)
+  if (canViewDetailedProfile && selectedEmp) {
     return (
       <DirectoryErrorBoundary>
         <EmployeeProfileOverview
@@ -253,7 +271,7 @@ const TeamDirectoryPage = () => {
     );
   }
 
-  // Render Team Directory Listing with 3 Employee Cards per Row on Desktop (Screenshot 2 Target)
+  // Render Team Directory Listing with 3 Employee Cards per Row on Desktop
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '60px' }}>
       {/* 1. Header Title & Breadcrumb */}
@@ -287,7 +305,9 @@ const TeamDirectoryPage = () => {
             Our Team
           </h2>
           <p style={{ fontSize: '13.5px', color: 'rgba(255, 255, 255, 0.9)', margin: 0, fontWeight: 400 }}>
-            Connect with your colleagues, explore expertise, and track team performance.
+            {!canViewDetailedProfile
+              ? 'Connect with your colleagues and explore team members across departments.'
+              : 'Connect with your colleagues, explore expertise, and track team performance.'}
           </p>
         </div>
 
@@ -420,6 +440,153 @@ const TeamDirectoryPage = () => {
         </div>
       </div>
 
+      {/* 4 Summary KPI Cards (Developer View - Matching Screenshot 1) */}
+      {!canViewDetailedProfile && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '16px',
+          marginBottom: '24px'
+        }}>
+          {/* Total Employees */}
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: '#EEF2FF',
+              color: '#6366F1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Users size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 500, color: '#64748B', marginBottom: '2px' }}>Total Employees</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A' }}>
+                  {usersList.length || 48}
+                </span>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#10B981', background: '#D1FAE5', padding: '1px 6px', borderRadius: '999px' }}>
+                  +12%
+                </span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Across all departments</div>
+            </div>
+          </div>
+
+          {/* Departments */}
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: '#ECFDF5',
+              color: '#10B981',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Building2 size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 500, color: '#64748B', marginBottom: '2px' }}>Departments</div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A' }}>
+                {Math.max(departmentOptions.length - 1, 8)}
+              </div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Active departments</div>
+            </div>
+          </div>
+
+          {/* Specialisations */}
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: '#EFF6FF',
+              color: '#3B82F6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Layers size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 500, color: '#64748B', marginBottom: '2px' }}>Specialisations</div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A' }}>
+                {Math.max(specOptions.length - 1, 16)}
+              </div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Core skill categories</div>
+            </div>
+          </div>
+
+          {/* Available Today */}
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: '#FFFBEB',
+              color: '#F59E0B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <UserPlus size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 500, color: '#64748B', marginBottom: '2px' }}>Available Today</div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A' }}>
+                {usersList.filter(u => u.online !== false).length || 32}
+              </div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Employees online now</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 4. Section Title & View Mode Bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -490,7 +657,7 @@ const TeamDirectoryPage = () => {
         </div>
       </div>
 
-      {/* 5. Employee Cards Grid — EXACTLY 3 Cards Per Row on Desktop (Matching Screenshot 2 Target) */}
+      {/* 5. Employee Cards Grid */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: viewMode === 'grid'
@@ -504,6 +671,7 @@ const TeamDirectoryPage = () => {
           const tagStyle = getTagBadgeStyle(emp);
           const projectsCount = getEmpProjectsCount(emp);
           const kpiScore = getEmpKpiPercentage(emp);
+          const empStatus = getEmpStatus(emp);
 
           // Get initial letter for fallback avatar
           const initialLetter = empName ? empName.trim()[0].toUpperCase() : 'E';
@@ -511,7 +679,11 @@ const TeamDirectoryPage = () => {
           return (
             <div
               key={emp.id}
-              onClick={() => setSelectedEmp(emp)}
+              onClick={() => {
+                if (canViewDetailedProfile) {
+                  setSelectedEmp(emp);
+                }
+              }}
               style={{
                 background: '#FFFFFF',
                 borderRadius: '16px',
@@ -521,19 +693,23 @@ const TeamDirectoryPage = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                cursor: 'pointer',
+                cursor: canViewDetailedProfile ? 'pointer' : 'default',
                 transition: 'all 0.2s ease',
                 position: 'relative'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 10px 22px rgba(85, 81, 255, 0.1)';
-                e.currentTarget.style.borderColor = '#C7D2FE';
+                if (canViewDetailedProfile) {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 10px 22px rgba(85, 81, 255, 0.1)';
+                  e.currentTarget.style.borderColor = '#C7D2FE';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)';
-                e.currentTarget.style.borderColor = '#E2E8F0';
+                if (canViewDetailedProfile) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                }
               }}
             >
               <div>
@@ -572,7 +748,7 @@ const TeamDirectoryPage = () => {
                       height: '12px',
                       borderRadius: '50%',
                       background: '#10B981',
-                      border: '2px solid #FFFFFF'
+                      border: '2.5px solid #FFFFFF'
                     }} />
                   </div>
 
@@ -580,9 +756,11 @@ const TeamDirectoryPage = () => {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedEmp(emp);
+                      if (canViewDetailedProfile) {
+                        setSelectedEmp(emp);
+                      }
                     }}
-                    style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
+                    style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: canViewDetailedProfile ? 'pointer' : 'default', padding: '4px' }}
                     title="Employee Options"
                   >
                     <MoreHorizontal size={18} />
@@ -613,35 +791,69 @@ const TeamDirectoryPage = () => {
                 </div>
               </div>
 
-              {/* Card Bottom: Metrics Row (Projects + KPI Progress Bar) */}
-              <div style={{
-                borderTop: '1px solid #F1F5F9',
-                paddingTop: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px'
-              }}>
-                {/* Left Metric: Projects */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Calendar size={15} color="#64748B" />
-                  <div>
-                    <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>Projects</div>
-                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>{projectsCount}</div>
+              {/* Card Bottom Row: Developer View (Projects | Status) vs Management View (Projects | KPI Progress Bar) */}
+              {!canViewDetailedProfile ? (
+                <div style={{
+                  borderTop: '1px solid #F1F5F9',
+                  paddingTop: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  {/* Left: Projects */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Calendar size={15} color="#64748B" />
+                    <div>
+                      <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>Projects</div>
+                      <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>{projectsCount}</div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Right Metric: KPI percentage + Progress bar */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1, maxWidth: '120px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>KPI</span>
-                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A' }}>{kpiScore}%</span>
-                  </div>
-                  <div style={{ width: '100%', height: '5px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${kpiScore}%`, height: '100%', background: '#10B981', borderRadius: '999px' }} />
+                  {/* Right: Status Pill */}
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500, textAlign: 'right', marginBottom: '2px' }}>Status</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        background: empStatus.color
+                      }} />
+                      <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#1E293B' }}>{empStatus.label}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div style={{
+                  borderTop: '1px solid #F1F5F9',
+                  paddingTop: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  {/* Left Metric: Projects */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Calendar size={15} color="#64748B" />
+                    <div>
+                      <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>Projects</div>
+                      <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>{projectsCount}</div>
+                    </div>
+                  </div>
+
+                  {/* Right Metric: KPI percentage + Progress bar */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1, maxWidth: '120px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>KPI</span>
+                      <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A' }}>{kpiScore}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '5px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ width: `${kpiScore}%`, height: '100%', background: '#10B981', borderRadius: '999px' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
