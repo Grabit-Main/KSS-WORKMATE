@@ -11,9 +11,12 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
 
   if (!user) return null;
 
+  const isManagementRole = ['CEO', 'CTO', 'PM', 'TL'].includes(user?.role);
+  const workLabel = isManagementRole ? 'All Work' : 'My Work';
+
   const links = [
     { to: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
-    { to: '/my-work', icon: <CheckSquare size={20} />, label: 'My Work', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
+    { to: '/my-work', icon: <CheckSquare size={20} />, label: workLabel, roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/projects', icon: <Folders size={20} />, label: 'Projects', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/teams', icon: <Users size={20} />, label: 'Team', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/tasks', icon: <CheckSquare size={20} />, label: 'Tasks', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
