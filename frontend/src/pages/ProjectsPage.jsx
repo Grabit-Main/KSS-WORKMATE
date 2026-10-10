@@ -633,28 +633,28 @@ const ProjectsPage = () => {
           </div>
         </div>
 
-        {/* In review */}
+        {/* On Hold / Blocked */}
         <div
-          onClick={() => setFilterStatus('in_review')}
+          onClick={() => setFilterStatus('on_hold')}
           style={{
             background: '#FFF7ED',
-            border: filterStatus === 'in_review' ? '2px solid #D97706' : '1px solid rgba(217, 119, 6, 0.18)',
+            border: filterStatus === 'on_hold' ? '2px solid #D97706' : '1px solid rgba(217, 119, 6, 0.18)',
             borderRadius: '16px',
             padding: '20px 22px',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            boxShadow: filterStatus === 'in_review' ? '0 4px 14px rgba(217, 119, 6, 0.12)' : 'none'
+            boxShadow: filterStatus === 'on_hold' ? '0 4px 14px rgba(217, 119, 6, 0.12)' : 'none'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#D97706' }}>In review</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#D97706' }}>On Hold / Blocked</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <AlertCircle size={16} color="#D97706" />
+              <AlertTriangle size={16} color="#D97706" />
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A' }}>{inReviewProjects}</span>
-            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>Awaiting verification</span>
+            <span style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A' }}>{onHoldProjects}</span>
+            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>Paused & blocked</span>
           </div>
         </div>
 
