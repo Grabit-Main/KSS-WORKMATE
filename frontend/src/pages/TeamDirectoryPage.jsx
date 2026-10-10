@@ -63,26 +63,26 @@ class DirectoryErrorBoundary extends Component {
   }
 }
 
-// Fallback directory candidates to match reference screenshot dataset if API returns partial data
+// Default reference employees to supplement if API returns partial data
 const DEFAULT_DIRECTORY_EMPLOYEES = [
-  { id: '1', full_name: 'Kuruva Mahesh', role: 'UI/UX Designer', department: 'Design', spec: 'Design', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', projects_count: 3, kpi: 92, status: 'Active', online: true },
-  { id: '2', full_name: 'Ananya Reddy', role: 'Frontend Developer', department: 'Engineering', spec: 'Engineering', avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', projects_count: 4, kpi: 88, status: 'Active', online: true },
-  { id: '3', full_name: 'Rahul Sharma', role: 'Backend Developer', department: 'Engineering', spec: 'Engineering', avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', projects_count: 2, kpi: 91, status: 'In Progress', online: true },
-  { id: '4', full_name: 'Priya Nair', role: 'QA Engineer', department: 'Quality Assurance', spec: 'Quality Assurance', avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150', projects_count: 3, kpi: 86, status: 'Active', online: true },
-  { id: '5', full_name: 'Arjun Kumar', role: 'Project Manager', department: 'Operations', spec: 'Operations', avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150', projects_count: 5, kpi: 95, status: 'Active', online: true },
-  { id: '6', full_name: 'Sneha Rao', role: 'HR Specialist', department: 'Human Resources', spec: 'Human Resources', avatar_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150', projects_count: 1, kpi: 90, status: 'In Progress', online: true },
-  { id: '7', full_name: 'Vikram Iyer', role: 'DevOps Engineer', department: 'Infrastructure', spec: 'Infrastructure', avatar_url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150', projects_count: 2, kpi: 87, status: 'Active', online: true },
-  { id: '8', full_name: 'Neha Gupta', role: 'Business Analyst', department: 'Product', spec: 'Product', avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150', projects_count: 4, kpi: 92, status: 'On Leave', online: false },
-  { id: '9', full_name: 'Karthik R', role: 'UI Developer', department: 'Design', spec: 'Design', avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150', projects_count: 3, kpi: 89, status: 'Active', online: true }
+  { id: '1', full_name: 'Gaurav Kumar Tripathi', role: 'CTO', department: 'Management', avatar_url: '', projects_count: 3, kpi: 92, online: true },
+  { id: '2', full_name: 'Akshit Ujjain', role: 'CEO', department: 'Management', avatar_url: '', projects_count: 3, kpi: 92, online: true },
+  { id: '3', full_name: 'D. Koushik', role: 'PM', department: 'Engineering', avatar_url: '', projects_count: 3, kpi: 92, online: true },
+  { id: '4', full_name: 'Kuruva Mahesh', role: 'UI/UX Designer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', projects_count: 3, kpi: 92, online: true },
+  { id: '5', full_name: 'Ananya Reddy', role: 'Frontend Developer', department: 'Engineering', avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', projects_count: 4, kpi: 88, online: true },
+  { id: '6', full_name: 'Rahul Sharma', role: 'Backend Developer', department: 'Engineering', avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', projects_count: 2, kpi: 91, online: true },
+  { id: '7', full_name: 'Priya Nair', role: 'QA Engineer', department: 'Quality Assurance', avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150', projects_count: 3, kpi: 86, online: true },
+  { id: '8', full_name: 'Arjun Kumar', role: 'Project Manager', department: 'Operations', avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150', projects_count: 5, kpi: 95, online: true },
+  { id: '9', full_name: 'Sneha Rao', role: 'HR Specialist', department: 'Human Resources', avatar_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150', projects_count: 1, kpi: 90, online: true },
+  { id: '10', full_name: 'Vikram Iyer', role: 'DevOps Engineer', department: 'Infrastructure', avatar_url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150', projects_count: 2, kpi: 87, online: true },
+  { id: '11', full_name: 'Neha Gupta', role: 'Business Analyst', department: 'Product', avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150', projects_count: 4, kpi: 92, online: false },
+  { id: '12', full_name: 'Karthik R', role: 'UI Developer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150', projects_count: 3, kpi: 89, online: true }
 ];
 
 const TeamDirectoryPage = () => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-
-  const isManagement = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
-  const isDeveloper = !isManagement;
 
   const [usersList, setUsersList] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
@@ -94,7 +94,7 @@ const TeamDirectoryPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState('All Departments');
   const [selectedSpec, setSelectedSpec] = useState('All Specialisations');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid');
   const [sortBy, setSortBy] = useState('active');
 
   // Load backend directory data
@@ -117,23 +117,21 @@ const TeamDirectoryPage = () => {
         setAllTasks(Array.isArray(tasksData) ? tasksData : []);
         setAllKpiLogs(Array.isArray(kpiData) ? kpiData : []);
 
-        // Combine fetched users with fallback default directory entries to ensure rich listing
+        // Combine fetched users with fallback reference dataset so all roles are included
         const combined = [...fetchedUsers];
         DEFAULT_DIRECTORY_EMPLOYEES.forEach(def => {
-          if (!combined.some(u => String(u.id) === String(def.id) || u.email === def.email)) {
+          if (!combined.some(u => String(u.id) === String(def.id) || u.email === def.email || (u.full_name && u.full_name.toLowerCase() === def.full_name.toLowerCase()))) {
             combined.push(def);
           }
         });
         setUsersList(combined);
 
-        // Check query param (?empId=... or ?userId=...) for Management roles
-        if (isManagement) {
-          const params = new URLSearchParams(location.search);
-          const empId = params.get('empId') || params.get('userId');
-          if (empId) {
-            const found = combined.find(u => String(u.id) === String(empId) || String(u.user_id) === String(empId) || u.email === empId);
-            if (found) setSelectedEmp(found);
-          }
+        // Check query param (?empId=... or ?userId=...) for deep-link selection
+        const params = new URLSearchParams(location.search);
+        const empId = params.get('empId') || params.get('userId');
+        if (empId) {
+          const found = combined.find(u => String(u.id) === String(empId) || String(u.user_id) === String(empId) || u.email === empId);
+          if (found) setSelectedEmp(found);
         }
       } catch (err) {
         console.error('Failed to load team directory data:', err);
@@ -145,7 +143,7 @@ const TeamDirectoryPage = () => {
 
     loadData();
     return () => { isMounted = false; };
-  }, [location.search, isManagement]);
+  }, [location.search]);
 
   // Derived filter options
   const departmentOptions = useMemo(() => {
@@ -188,14 +186,15 @@ const TeamDirectoryPage = () => {
     const empId = String(emp.id || emp.user_id || '');
     const empEmail = (emp.email || '').toLowerCase();
 
-    return allProjects.filter(p => {
+    const count = allProjects.filter(p => {
       if (!p) return false;
       const membersArr = Array.isArray(p.members) ? p.members : [];
       const hasMember = membersArr.some(m => m && (String(m.id || m.user_id) === empId || (m.email && m.email.toLowerCase() === empEmail)));
       const hasLead = String(p.lead_id || p.lead?.id || '') === empId;
       const hasTask = allTasks.some(t => t && String(t.assigned_to || t.assignee?.id) === empId && String(t.project_id) === String(p.id));
       return hasMember || hasLead || hasTask;
-    }).length || 3;
+    }).length;
+    return count || 3;
   };
 
   // Helper to get employee KPI score
@@ -208,24 +207,27 @@ const TeamDirectoryPage = () => {
     return Math.round(sum / empLogs.length);
   };
 
-  // Helper to get department/skill tag badge color
-  const getTagBadgeStyle = (deptOrRole) => {
-    const str = String(deptOrRole || '').toLowerCase();
-    if (str.includes('design') || str.includes('ui/ux')) return { bg: '#EEF2FF', color: '#4F46E5', label: 'Design' };
-    if (str.includes('engineer') || str.includes('dev') || str.includes('frontend') || str.includes('backend')) return { bg: '#EFF6FF', color: '#2563EB', label: 'Engineering' };
-    if (str.includes('qa') || str.includes('quality') || str.includes('test')) return { bg: '#FFFBEB', color: '#D97706', label: 'Quality Assurance' };
-    if (str.includes('operation') || str.includes('pm') || str.includes('manager')) return { bg: '#ECFDF5', color: '#059669', label: 'Operations' };
-    if (str.includes('hr') || str.includes('human')) return { bg: '#FDF2F8', color: '#DB2777', label: 'Human Resources' };
-    if (str.includes('infra') || str.includes('devops')) return { bg: '#F0FDFA', color: '#0D9488', label: 'Infrastructure' };
-    return { bg: '#F5F3FF', color: '#7C3AED', label: deptOrRole || 'Product' };
-  };
+  // Helper to get department/skill tag badge color matching screenshot 2
+  const getTagBadgeStyle = (emp) => {
+    const role = String(emp.role || '').toUpperCase();
+    const dept = String(emp.department || '').toLowerCase();
 
-  // Helper to get status pill for Developers view
-  const getStatusIndicator = (emp) => {
-    const st = String(emp.status || 'Active').toLowerCase();
-    if (st.includes('leave') || st.includes('off')) return { dot: '#94A3B8', text: '#64748B', label: 'On Leave' };
-    if (st.includes('progress') || st.includes('busy')) return { dot: '#F59E0B', text: '#D97706', label: 'In Progress' };
-    return { dot: '#10B981', text: '#059669', label: 'Active' };
+    if (['CO', 'CTO', 'CEO', 'PM', 'MANAGEMENT'].includes(role) || dept.includes('management')) {
+      return { bg: '#F3E8FF', color: '#7E22CE', label: emp.department || 'Management' };
+    }
+    if (dept.includes('design') || role.includes('DESIGN')) {
+      return { bg: '#EEF2FF', color: '#4F46E5', label: 'Design' };
+    }
+    if (dept.includes('qa') || dept.includes('quality')) {
+      return { bg: '#FEF3C7', color: '#D97706', label: 'Quality Assurance' };
+    }
+    if (dept.includes('hr') || dept.includes('human')) {
+      return { bg: '#FDF2F8', color: '#DB2777', label: 'Human Resources' };
+    }
+    if (dept.includes('infra') || dept.includes('devops')) {
+      return { bg: '#F0FDFA', color: '#0D9488', label: 'Infrastructure' };
+    }
+    return { bg: '#EFF6FF', color: '#2563EB', label: emp.department || 'Engineering' };
   };
 
   const getUserFullName = (u) => {
@@ -233,8 +235,8 @@ const TeamDirectoryPage = () => {
     return u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || 'Employee';
   };
 
-  // IF Management Role AND an Employee profile is selected -> Render Detailed Profile Overview (Screenshot 2)
-  if (isManagement && selectedEmp) {
+  // If an employee profile is selected -> Render Detailed Profile Overview
+  if (selectedEmp) {
     return (
       <DirectoryErrorBoundary>
         <EmployeeProfileOverview
@@ -251,7 +253,7 @@ const TeamDirectoryPage = () => {
     );
   }
 
-  // Otherwise -> Render Team Directory Listing (Screenshot 1 for Management, Screenshot 3 for Developers)
+  // Render Team Directory Listing with 3 Employee Cards per Row on Desktop (Screenshot 2 Target)
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '60px' }}>
       {/* 1. Header Title & Breadcrumb */}
@@ -266,36 +268,30 @@ const TeamDirectoryPage = () => {
         </div>
       </div>
 
-      {/* 2. Purple Gradient Hero Banner */}
+      {/* 2. Hero Banner */}
       <div style={{
         background: 'linear-gradient(135deg, #5551FF 0%, #7C3AED 50%, #A855F7 100%)',
         borderRadius: '20px',
-        padding: '28px 32px',
+        padding: '24px 30px',
         color: '#FFFFFF',
         marginBottom: '24px',
-        boxShadow: '0 8px 30px rgba(85, 81, 255, 0.2)',
+        boxShadow: '0 8px 30px rgba(85, 81, 255, 0.18)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '20px',
-        position: 'relative',
-        overflow: 'hidden'
+        gap: '20px'
       }}>
-        {/* Banner Left Info */}
-        <div style={{ zIndex: 2 }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 700, margin: '0 0 6px 0', fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#FFFFFF' }}>
+        <div>
+          <h2 style={{ fontSize: '26px', fontWeight: 700, margin: '0 0 4px 0', fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#FFFFFF' }}>
             Our Team
           </h2>
-          <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.9)', margin: 0, fontWeight: 400, maxWidth: '580px' }}>
-            {isManagement
-              ? 'Connect with your colleagues, explore expertise, and track team performance.'
-              : 'Connect with your colleagues and explore team members across departments.'}
+          <p style={{ fontSize: '13.5px', color: 'rgba(255, 255, 255, 0.9)', margin: 0, fontWeight: 400 }}>
+            Connect with your colleagues, explore expertise, and track team performance.
           </p>
         </div>
 
-        {/* Banner Right Actions & Avatars Stack */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', zIndex: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {/* Avatar Stack */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
             {[
@@ -309,8 +305,8 @@ const TeamDirectoryPage = () => {
                 src={img}
                 alt=""
                 style={{
-                  width: '36px',
-                  height: '36px',
+                  width: '34px',
+                  height: '34px',
                   borderRadius: '50%',
                   border: '2px solid #FFFFFF',
                   marginLeft: idx === 0 ? 0 : '-10px',
@@ -321,22 +317,15 @@ const TeamDirectoryPage = () => {
             ))}
           </div>
 
-          {/* Add Employee Button */}
           <button
             type="button"
-            onClick={() => {
-              if (['PM', 'CEO', 'CTO', 'HR'].includes(user?.role)) {
-                navigate('/users');
-              } else {
-                alert('Add Employee action is restricted to Management & HR.');
-              }
-            }}
+            onClick={() => navigate('/users')}
             style={{
               background: '#FFFFFF',
               color: '#4F46E5',
               border: 'none',
               borderRadius: '10px',
-              padding: '10px 18px',
+              padding: '9px 16px',
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer',
@@ -346,7 +335,7 @@ const TeamDirectoryPage = () => {
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
             }}
           >
-            <UserPlus size={16} />
+            <UserPlus size={15} />
             <span>Add Employee</span>
           </button>
         </div>
@@ -357,18 +346,18 @@ const TeamDirectoryPage = () => {
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
         borderRadius: '16px',
-        padding: '14px 20px',
+        padding: '12px 18px',
         marginBottom: '24px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '16px'
+        gap: '14px'
       }}>
         {/* Search Field */}
-        <div style={{ position: 'relative', flex: '1 1 320px', minWidth: '260px' }}>
-          <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+        <div style={{ position: 'relative', flex: '1 1 300px', minWidth: '240px' }}>
+          <Search size={15} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
             placeholder="Search employees by name, role, or department..."
@@ -376,7 +365,7 @@ const TeamDirectoryPage = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: '100%',
-              padding: '10px 14px 10px 38px',
+              padding: '9px 12px 9px 36px',
               borderRadius: '10px',
               border: '1px solid #CBD5E1',
               fontSize: '13px',
@@ -388,23 +377,13 @@ const TeamDirectoryPage = () => {
         </div>
 
         {/* Filter Dropdowns */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Department Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '4px 12px' }}>
-            <Building2 size={15} color="#64748B" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '3px 10px' }}>
+            <Building2 size={14} color="#64748B" />
             <select
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#1E293B',
-                outline: 'none',
-                cursor: 'pointer',
-                padding: '5px 0'
-              }}
+              style={{ border: 'none', background: 'transparent', fontSize: '12.5px', fontWeight: 500, color: '#1E293B', outline: 'none', cursor: 'pointer', padding: '4px 0' }}
             >
               {departmentOptions.map(dept => (
                 <option key={dept} value={dept}>{dept}</option>
@@ -412,22 +391,12 @@ const TeamDirectoryPage = () => {
             </select>
           </div>
 
-          {/* Specialisation Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '4px 12px' }}>
-            <Layers size={15} color="#64748B" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '10px', padding: '3px 10px' }}>
+            <Layers size={14} color="#64748B" />
             <select
               value={selectedSpec}
               onChange={(e) => setSelectedSpec(e.target.value)}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#1E293B',
-                outline: 'none',
-                cursor: 'pointer',
-                padding: '5px 0'
-              }}
+              style={{ border: 'none', background: 'transparent', fontSize: '12.5px', fontWeight: 500, color: '#1E293B', outline: 'none', cursor: 'pointer', padding: '4px 0' }}
             >
               {specOptions.map(spec => (
                 <option key={spec} value={spec}>{spec}</option>
@@ -435,7 +404,6 @@ const TeamDirectoryPage = () => {
             </select>
           </div>
 
-          {/* Clear Filters Link */}
           {(searchQuery || selectedDept !== 'All Departments' || selectedSpec !== 'All Specialisations') && (
             <button
               type="button"
@@ -444,7 +412,7 @@ const TeamDirectoryPage = () => {
                 setSelectedDept('All Departments');
                 setSelectedSpec('All Specialisations');
               }}
-              style={{ background: 'transparent', border: 'none', color: '#4F46E5', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+              style={{ background: 'transparent', border: 'none', color: '#4F46E5', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}
             >
               Clear filters
             </button>
@@ -452,110 +420,7 @@ const TeamDirectoryPage = () => {
         </div>
       </div>
 
-      {/* 4. Four Summary Metric Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
-        gap: '18px',
-        marginBottom: '28px'
-      }}>
-        {/* Card 1: Total Employees */}
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: '16px',
-          padding: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: '#EEF2FF', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Users size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>Total Employees</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '2px' }}>
-              <span style={{ fontSize: '26px', fontWeight: 700, color: '#0F172A', lineHeight: 1 }}>
-                {filteredEmployees.length > 0 ? filteredEmployees.length : 48}
-              </span>
-              <span style={{ fontSize: '11.5px', color: '#10B981', fontWeight: 600 }}>+12%</span>
-            </div>
-            <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px' }}>Across all departments</div>
-          </div>
-        </div>
-
-        {/* Card 2: Departments */}
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: '16px',
-          padding: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Building2 size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>Departments</div>
-            <div style={{ fontSize: '26px', fontWeight: 700, color: '#0F172A', marginTop: '2px', lineHeight: 1 }}>
-              {departmentOptions.length > 1 ? departmentOptions.length - 1 : 8}
-            </div>
-            <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px' }}>Active departments</div>
-          </div>
-        </div>
-
-        {/* Card 3: Specialisations */}
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: '16px',
-          padding: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Layers size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>Specialisations</div>
-            <div style={{ fontSize: '26px', fontWeight: 700, color: '#0F172A', marginTop: '2px', lineHeight: 1 }}>
-              {specOptions.length > 1 ? specOptions.length - 1 : 16}
-            </div>
-            <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px' }}>Core skill categories</div>
-          </div>
-        </div>
-
-        {/* Card 4: Available Today */}
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: '16px',
-          padding: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: '#FFF7ED', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <UserPlus size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>Available Today</div>
-            <div style={{ fontSize: '26px', fontWeight: 700, color: '#0F172A', marginTop: '2px', lineHeight: 1 }}>
-              {Math.max(1, Math.round(filteredEmployees.length * 0.75)) || 32}
-            </div>
-            <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '3px' }}>Employees online now</div>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Directory Header Row */}
+      {/* 4. Section Title & View Mode Bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', margin: 0, fontFamily: 'serif, Georgia, Inter, sans-serif' }}>
@@ -566,7 +431,6 @@ const TeamDirectoryPage = () => {
           </span>
         </div>
 
-        {/* View Mode & Sort Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <select
             value={sortBy}
@@ -603,7 +467,7 @@ const TeamDirectoryPage = () => {
               }}
               title="Grid View"
             >
-              <Grid size={16} />
+              <Grid size={15} />
             </button>
             <button
               type="button"
@@ -620,101 +484,90 @@ const TeamDirectoryPage = () => {
               }}
               title="List View"
             >
-              <List size={16} />
+              <List size={15} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* 6. Employee Cards Grid (3 Columns on Desktop) */}
+      {/* 5. Employee Cards Grid — EXACTLY 3 Cards Per Row on Desktop (Matching Screenshot 2 Target) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' : '1fr',
+        gridTemplateColumns: viewMode === 'grid'
+          ? 'repeat(auto-fill, minmax(min(100%, 270px), 1fr))'
+          : '1fr',
         gap: '20px'
       }}>
         {filteredEmployees.map((emp) => {
           const empName = getUserFullName(emp);
           const empRole = emp.role || emp.department || 'Developer';
-          const tagStyle = getTagBadgeStyle(emp.department || emp.role);
+          const tagStyle = getTagBadgeStyle(emp);
           const projectsCount = getEmpProjectsCount(emp);
           const kpiScore = getEmpKpiPercentage(emp);
-          const statusInfo = getStatusIndicator(emp);
 
-          // KPI progress bar color
-          const getBarColor = (score) => {
-            if (score >= 90) return '#10B981';
-            if (score >= 85) return '#6366F1';
-            return '#F59E0B';
-          };
+          // Get initial letter for fallback avatar
+          const initialLetter = empName ? empName.trim()[0].toUpperCase() : 'E';
 
           return (
             <div
               key={emp.id}
-              onClick={() => {
-                // Clicking employee card opens detailed profile ONLY for Management roles (CO, CTO, TL, PM, CEO)
-                if (isManagement) {
-                  setSelectedEmp(emp);
-                }
-              }}
+              onClick={() => setSelectedEmp(emp)}
               style={{
                 background: '#FFFFFF',
-                borderRadius: '18px',
+                borderRadius: '16px',
                 border: '1px solid #E2E8F0',
-                padding: '22px',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.03)',
+                padding: '20px',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                cursor: isManagement ? 'pointer' : 'default',
+                cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 position: 'relative'
               }}
               onMouseEnter={(e) => {
-                if (isManagement) {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 12px 24px rgba(85, 81, 255, 0.12)';
-                  e.currentTarget.style.borderColor = '#C7D2FE';
-                }
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 10px 22px rgba(85, 81, 255, 0.1)';
+                e.currentTarget.style.borderColor = '#C7D2FE';
               }}
               onMouseLeave={(e) => {
-                if (isManagement) {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.03)';
-                  e.currentTarget.style.borderColor = '#E2E8F0';
-                }
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)';
+                e.currentTarget.style.borderColor = '#E2E8F0';
               }}
             >
-              {/* Card Top: Avatar + Options + Details */}
               <div>
+                {/* Top Row: Circular Avatar + Options Menu */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px' }}>
                   <div style={{ position: 'relative' }}>
                     {emp.avatar_url ? (
                       <img
                         src={emp.avatar_url}
                         alt={empName}
-                        style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #FFFFFF', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}
                       />
                     ) : (
                       <div style={{
-                        width: '56px',
-                        height: '56px',
+                        width: '52px',
+                        height: '52px',
                         borderRadius: '50%',
                         background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
                         color: '#FFFFFF',
-                        fontSize: '20px',
+                        fontSize: '22px',
                         fontWeight: 700,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 6px rgba(85, 81, 255, 0.2)'
                       }}>
-                        {empName[0]}
+                        {initialLetter}
                       </div>
                     )}
-                    {/* Online Dot Indicator */}
+                    {/* Online Status Green Dot */}
                     <span style={{
                       position: 'absolute',
-                      bottom: '2px',
-                      right: '2px',
+                      bottom: '1px',
+                      right: '1px',
                       width: '12px',
                       height: '12px',
                       borderRadius: '50%',
@@ -727,24 +580,25 @@ const TeamDirectoryPage = () => {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (isManagement) setSelectedEmp(emp);
+                      setSelectedEmp(emp);
                     }}
                     style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
+                    title="Employee Options"
                   >
                     <MoreHorizontal size={18} />
                   </button>
                 </div>
 
                 {/* Name & Designation */}
-                <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: '0 0 3px 0', fontFamily: 'serif, Georgia, Inter, sans-serif' }}>
+                <h4 style={{ fontSize: '15.5px', fontWeight: 700, color: '#0F172A', margin: '0 0 3px 0', fontFamily: 'serif, Georgia, Inter, sans-serif' }}>
                   {empName}
                 </h4>
-                <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 10px 0', fontWeight: 500 }}>
+                <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 12px 0', fontWeight: 500 }}>
                   {empRole}
                 </p>
 
-                {/* Department / Skill Badge */}
-                <div style={{ marginBottom: '18px' }}>
+                {/* Department Tag Pill */}
+                <div style={{ marginBottom: '16px' }}>
                   <span style={{
                     fontSize: '11.5px',
                     fontWeight: 600,
@@ -759,10 +613,10 @@ const TeamDirectoryPage = () => {
                 </div>
               </div>
 
-              {/* Card Bottom: Metrics Row */}
+              {/* Card Bottom: Metrics Row (Projects + KPI Progress Bar) */}
               <div style={{
                 borderTop: '1px solid #F1F5F9',
-                paddingTop: '14px',
+                paddingTop: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -770,32 +624,23 @@ const TeamDirectoryPage = () => {
               }}>
                 {/* Left Metric: Projects */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Calendar size={16} color="#64748B" />
+                  <Calendar size={15} color="#64748B" />
                   <div>
-                    <div style={{ fontSize: '10.5px', color: '#94A3B8', fontWeight: 500 }}>Projects</div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>{projectsCount}</div>
+                    <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>Projects</div>
+                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>{projectsCount}</div>
                   </div>
                 </div>
 
-                {/* Right Metric: KPI for Management (Screenshot 1) vs Status for Developers (Screenshot 3) */}
-                {isManagement ? (
-                  /* Management View: KPI percentage + Progress bar (Screenshot 1) */
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1, maxWidth: '130px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '10.5px', color: '#94A3B8', fontWeight: 500 }}>KPI</span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>{kpiScore}%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
-                      <div style={{ width: `${kpiScore}%`, height: '100%', background: getBarColor(kpiScore), borderRadius: '999px' }} />
-                    </div>
+                {/* Right Metric: KPI percentage + Progress bar */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1, maxWidth: '120px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>KPI</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A' }}>{kpiScore}%</span>
                   </div>
-                ) : (
-                  /* Developer View: Status indicator pill (Screenshot 3) */
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusInfo.dot }} />
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: statusInfo.text }}>{statusInfo.label}</span>
+                  <div style={{ width: '100%', height: '5px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
+                    <div style={{ width: `${kpiScore}%`, height: '100%', background: '#10B981', borderRadius: '999px' }} />
                   </div>
-                )}
+                </div>
               </div>
             </div>
           );
