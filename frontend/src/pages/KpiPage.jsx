@@ -1658,8 +1658,8 @@ const CoCtoEmployeeKpiCards = ({
 }) => {
   // Compute weekly average KPI percentage for each employee from logs
   const getEmployeeMetrics = (empId) => {
-    const empLogs = logs.filter(
-      (l) => String(l.employee_id || l.employee?.id) === String(empId)
+    const empLogs = (logs || []).filter(
+      (l) => String(l.employee_id || l.employee?.id).toLowerCase() === String(empId).toLowerCase()
     );
 
     if (!empLogs || empLogs.length === 0) {
@@ -1667,49 +1667,49 @@ const CoCtoEmployeeKpiCards = ({
     }
 
     const today = new Date();
-    const currentDay = today.getDay(); // 0: Sun, 1: Mon...
+    const currentDay = today.getDay(); // 0: Sun, 1: Mon... 6: Sat
     const distanceToMonday = (currentDay + 6) % 7;
 
-    const currentWeekStart = new Date(today);
-    currentWeekStart.setDate(today.getDate() - distanceToMonday);
-    currentWeekStart.setHours(0, 0, 0, 0);
+    const curMon = new Date(today.getFullYear(), today.getMonth(), today.getDate() - distanceToMonday);
+    const curSun = new Date(curMon.getFullYear(), curMon.getMonth(), curMon.getDate() + 6);
+    const prevMon = new Date(curMon.getFullYear(), curMon.getMonth(), curMon.getDate() - 7);
+    const prevSun = new Date(curMon.getFullYear(), curMon.getMonth(), curMon.getDate() - 1);
 
-    const previousWeekStart = new Date(currentWeekStart);
-    previousWeekStart.setDate(currentWeekStart.getDate() - 7);
+    const formatDateStr = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const curWeekStartStr = formatDateStr(curMon);
+    const curWeekEndStr = formatDateStr(curSun);
+    const prevWeekStartStr = formatDateStr(prevMon);
+    const prevWeekEndStr = formatDateStr(prevSun);
 
     const currentWeekLogs = [];
     const previousWeekLogs = [];
 
     empLogs.forEach((l) => {
       if (!l.date) return;
-      const parts = l.date.split('-').map(Number);
-      if (parts.length !== 3) return;
-      const logDate = new Date(parts[0], parts[1] - 1, parts[2]);
+      const dateStr = String(l.date).split('T')[0];
+      const val = Number(l.daily_kpi_percentage);
+      if (isNaN(val)) return;
 
-      if (logDate >= currentWeekStart) {
-        currentWeekLogs.push(l.daily_kpi_percentage);
-      } else if (logDate >= previousWeekStart && logDate < currentWeekStart) {
-        previousWeekLogs.push(l.daily_kpi_percentage);
+      if (dateStr >= curWeekStartStr && dateStr <= curWeekEndStr) {
+        currentWeekLogs.push(val);
+      } else if (dateStr >= prevWeekStartStr && dateStr <= prevWeekEndStr) {
+        previousWeekLogs.push(val);
       }
     });
 
-    let curAvg = currentWeekLogs.length > 0
+    const curAvg = currentWeekLogs.length > 0
       ? currentWeekLogs.reduce((a, b) => a + b, 0) / currentWeekLogs.length
       : null;
 
-    let prevAvg = previousWeekLogs.length > 0
+    const prevAvg = previousWeekLogs.length > 0
       ? previousWeekLogs.reduce((a, b) => a + b, 0) / previousWeekLogs.length
       : null;
-
-    // Fallback if logs exist but fall outside exact 7-day windows
-    if (curAvg === null && empLogs.length > 0) {
-      const recent = empLogs.slice(0, 5);
-      curAvg = recent.reduce((a, b) => a + b.daily_kpi_percentage, 0) / recent.length;
-    }
-    if (prevAvg === null && empLogs.length > 5) {
-      const older = empLogs.slice(5, 10);
-      prevAvg = older.reduce((a, b) => a + b.daily_kpi_percentage, 0) / older.length;
-    }
 
     return {
       curPct: curAvg !== null ? Math.round(curAvg * 10) / 10 : null,
@@ -1860,10 +1860,10 @@ const CoCtoEmployeeKpiCards = ({
                     <span>Current Week</span>
                   </div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
-                    {curPct != null ? `${curPct.toFixed(1)}%` : '--'}
+                    {curPct != null ? `${curPct.toFixed(1)}%` : 'N/A'}
                   </div>
                   <div style={{ width: '100%', height: '6px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(curPct || 0, 100)}%`, height: '100%', background: '#10B981', borderRadius: '999px' }} />
+                    <div style={{ width: `${curPct != null ? Math.min(Math.max(curPct, 0), 100) : 0}%`, height: '100%', background: '#10B981', borderRadius: '999px' }} />
                   </div>
                 </div>
 
@@ -1879,10 +1879,10 @@ const CoCtoEmployeeKpiCards = ({
                     <span>Previous Week</span>
                   </div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
-                    {prevPct != null ? `${prevPct.toFixed(1)}%` : '--'}
+                    {prevPct != null ? `${prevPct.toFixed(1)}%` : 'N/A'}
                   </div>
                   <div style={{ width: '100%', height: '6px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(prevPct || 0, 100)}%`, height: '100%', background: '#6366F1', borderRadius: '999px' }} />
+                    <div style={{ width: `${prevPct != null ? Math.min(Math.max(prevPct, 0), 100) : 0}%`, height: '100%', background: '#6366F1', borderRadius: '999px' }} />
                   </div>
                 </div>
               </div>
@@ -1904,6 +1904,7 @@ const KpiPage = () => {
   const { user } = useAuth();
 
   const [logs, setLogs] = useState([]);
+  const [allKpiLogs, setAllKpiLogs] = useState([]);
   const [summary, setSummary] = useState(null);
   const [teammates, setTeammates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1966,7 +1967,7 @@ const KpiPage = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [kpiData, summaryData, teamData] = await Promise.all([
+      const [kpiData, summaryData, teamData, allLogsData] = await Promise.all([
         getKPIs({
           month: selectedMonth || undefined,
           status: selectedStatus || undefined,
@@ -1978,17 +1979,21 @@ const KpiPage = () => {
           employee_id: selectedEmployeeId || undefined,
         }).catch(() => null),
         canGiveOrEdit || isExecutive ? getKPITeammates().catch(() => []) : Promise.resolve([]),
+        isCeoOrCto ? getKPIs({}).catch(() => []) : Promise.resolve([]),
       ]);
 
       setLogs(kpiData);
       setSummary(summaryData);
       setTeammates(teamData);
+      if (isCeoOrCto) {
+        setAllKpiLogs(allLogsData);
+      }
     } catch (err) {
       console.error('Failed to load KPI data:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive]);
+  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, isCeoOrCto]);
 
   useEffect(() => {
     if (user) {
@@ -2019,13 +2024,14 @@ const KpiPage = () => {
     teammates.forEach((tm) => {
       if (tm && tm.id) map.set(String(tm.id), tm);
     });
-    logs.forEach((l) => {
+    const logsToUse = isCeoOrCto && allKpiLogs.length > 0 ? allKpiLogs : logs;
+    logsToUse.forEach((l) => {
       if (l.employee && l.employee.id && !map.has(String(l.employee.id))) {
         map.set(String(l.employee.id), l.employee);
       }
     });
     return Array.from(map.values());
-  }, [teammates, logs]);
+  }, [teammates, logs, allKpiLogs, isCeoOrCto]);
 
   const filteredEmployeesForCards = useMemo(() => {
     if (!searchTerm.trim()) return allEmployeesForCards;
@@ -2540,13 +2546,16 @@ const KpiPage = () => {
       {isCeoOrCto && (
         <CoCtoEmployeeKpiCards
           employees={filteredEmployeesForCards}
-          logs={logs}
+          logs={allKpiLogs}
           selectedEmployeeId={selectedEmployeeId}
           onSelectEmployee={(empId) => {
             if (String(selectedEmployeeId) === String(empId)) {
               setSelectedEmployeeId('');
             } else {
               setSelectedEmployeeId(empId);
+              if (selectedDate === getTodayDateString()) {
+                setSelectedDate('');
+              }
             }
           }}
           onClearSelection={() => setSelectedEmployeeId('')}
