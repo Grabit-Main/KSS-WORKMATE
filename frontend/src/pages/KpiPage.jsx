@@ -502,7 +502,15 @@ const KPIHeaderBanner = ({
   );
 };
 
-const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToManagement, isManagementUser }) => {
+const DeveloperDashboardView = ({
+  showRulesModal,
+  setShowRulesModal,
+  onSwitchToManagement,
+  isManagementUser,
+  employeeId,
+  employeeInfo,
+  onBack
+}) => {
   const [periodType, setPeriodType] = useState('week');
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState(null);
@@ -513,15 +521,15 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
     try {
       setLoading(true);
       setError('');
-      const res = await getMyKPI({ period_type: periodType, offset });
+      const res = await getMyKPI({ period_type: periodType, offset, employee_id: employeeId || undefined });
       setData(res);
     } catch (err) {
       console.error('Failed to load personal KPI data:', err);
-      setError('Unable to load your KPI data. Please try again.');
+      setError('Unable to load KPI data. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [periodType, offset]);
+  }, [periodType, offset, employeeId]);
 
   useEffect(() => {
     fetchDeveloperKPI();
@@ -553,12 +561,125 @@ const DeveloperDashboardView = ({ showRulesModal, setShowRulesModal, onSwitchToM
   return (
     <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
       {/* Top Header Banner matching exact design */}
-      <KPIHeaderBanner
-        viewMode="personal"
-        setViewMode={onSwitchToManagement ? () => onSwitchToManagement() : undefined}
-        isManagementUser={isManagementUser}
-        onShowRulesModal={() => setShowRulesModal(true)}
-      />
+      {employeeId ? (
+        <div style={{
+          background: 'linear-gradient(135deg, #F0F4FF 0%, #F5F3FF 100%)',
+          borderRadius: '24px',
+          border: '1px solid rgba(85, 81, 255, 0.12)',
+          padding: '24px 32px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 16px',
+                  borderRadius: '12px',
+                  background: '#FFFFFF',
+                  color: '#4F46E5',
+                  border: '1.5px solid #C7D2FE',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ChevronLeft size={16} />
+                <span>All Performance</span>
+              </button>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                flexShrink: 0,
+                background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF',
+                fontWeight: 700,
+                fontSize: '18px',
+                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
+              }}>
+                {employeeInfo?.avatar_url ? (
+                  <img
+                    src={employeeInfo.avatar_url}
+                    alt={`${employeeInfo.first_name || ''} ${employeeInfo.last_name || ''}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'inline';
+                    }}
+                  />
+                ) : null}
+                <span style={{ display: employeeInfo?.avatar_url ? 'none' : 'inline' }}>
+                  {employeeInfo?.first_name?.[0]?.toUpperCase() || 'E'}
+                  {employeeInfo?.last_name?.[0]?.toUpperCase() || ''}
+                </span>
+              </div>
+
+              <div>
+                <h1 style={{
+                  fontSize: '24px',
+                  fontWeight: 800,
+                  color: '#0F172A',
+                  margin: 0,
+                  lineHeight: 1.2
+                }}>
+                  {employeeInfo?.first_name ? `${employeeInfo.first_name} ${employeeInfo.last_name || ''}` : 'Employee Performance'}
+                </h1>
+                <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0 0', fontWeight: 500 }}>
+                  {employeeInfo?.role || employeeInfo?.department || 'Team Member'} • Performance Tracker Overview
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowRulesModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '12px',
+              background: '#FFFFFF',
+              color: '#1E293B',
+              border: '1.5px solid rgba(37, 99, 235, 0.2)',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
+            <BookOpen size={16} style={{ color: '#2563EB' }} />
+            <span>Scoring Rules</span>
+          </button>
+        </div>
+      ) : (
+        <KPIHeaderBanner
+          viewMode="personal"
+          setViewMode={onSwitchToManagement ? () => onSwitchToManagement() : undefined}
+          isManagementUser={isManagementUser}
+          onShowRulesModal={() => setShowRulesModal(true)}
+        />
+      )}
 
       {/* Period Filter & Navigation Bar */}
       <div style={{
@@ -2212,8 +2333,44 @@ const KpiPage = () => {
     }
   };
 
+  // Sync selectedEmployeeId with URL search params for browser back/forward support
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const empIdFromUrl = params.get('employee_id');
+    if (empIdFromUrl && empIdFromUrl !== selectedEmployeeId) {
+      setSelectedEmployeeId(empIdFromUrl);
+    }
+
+    const handlePopState = () => {
+      const currentParams = new URLSearchParams(window.location.search);
+      setSelectedEmployeeId(currentParams.get('employee_id') || '');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleSelectEmployee = useCallback((empId) => {
+    const newEmpId = String(selectedEmployeeId) === String(empId) ? '' : empId;
+    setSelectedEmployeeId(newEmpId);
+
+    const url = new URL(window.location.href);
+    if (newEmpId) {
+      url.searchParams.set('employee_id', newEmpId);
+    } else {
+      url.searchParams.delete('employee_id');
+    }
+    window.history.pushState({}, '', url.toString());
+  }, [selectedEmployeeId]);
+
+  const selectedEmployeeObj = useMemo(() => {
+    if (!selectedEmployeeId) return null;
+    return allEmployeesForCards.find((e) => String(e.id).toLowerCase() === String(selectedEmployeeId).toLowerCase()) || null;
+  }, [selectedEmployeeId, allEmployeesForCards]);
+
   const liveMetrics = useMemo(() => calculateLiveMetrics(formData), [formData]);
 
+  // If TM or viewing personal overview
   if (!hidePersonalView && (isTM || viewMode === 'personal')) {
     return (
       <DeveloperDashboardView
@@ -2221,6 +2378,21 @@ const KpiPage = () => {
         setShowRulesModal={setShowRulesModal}
         onSwitchToManagement={() => setViewMode('management')}
         isManagementUser={!isTM}
+      />
+    );
+  }
+
+  // If management user (CO, CTO, PM, TL) clicked an employee card, render Employee Performance Dashboard (Screen 2)
+  if (hidePersonalView && selectedEmployeeId) {
+    return (
+      <DeveloperDashboardView
+        showRulesModal={showRulesModal}
+        setShowRulesModal={setShowRulesModal}
+        onSwitchToManagement={() => setViewMode('management')}
+        isManagementUser={true}
+        employeeId={selectedEmployeeId}
+        employeeInfo={selectedEmployeeObj}
+        onBack={() => handleSelectEmployee('')}
       />
     );
   }
@@ -2572,23 +2744,14 @@ const KpiPage = () => {
         )}
       </div>
 
-      {/* For CO and CTO: Render Employee Profile Cards Dashboard */}
-      {isCeoOrCto && (
+      {/* For CO, CTO, PM, TL: Render Employee Profile Cards Dashboard */}
+      {hidePersonalView && (
         <CoCtoEmployeeKpiCards
           employees={filteredEmployeesForCards}
           logs={allKpiLogs}
           selectedEmployeeId={selectedEmployeeId}
-          onSelectEmployee={(empId) => {
-            if (String(selectedEmployeeId) === String(empId)) {
-              setSelectedEmployeeId('');
-            } else {
-              setSelectedEmployeeId(empId);
-              if (selectedDate === getTodayDateString()) {
-                setSelectedDate('');
-              }
-            }
-          }}
-          onClearSelection={() => setSelectedEmployeeId('')}
+          onSelectEmployee={(empId) => handleSelectEmployee(empId)}
+          onClearSelection={() => handleSelectEmployee('')}
         />
       )}
 
