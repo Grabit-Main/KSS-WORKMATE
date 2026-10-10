@@ -2130,13 +2130,13 @@ const KpiPage = () => {
           employee_id: selectedEmployeeId || undefined,
         }).catch(() => null),
         canGiveOrEdit || isExecutive ? getKPITeammates().catch(() => []) : Promise.resolve([]),
-        isCeoOrCto ? getKPIs({}).catch(() => []) : Promise.resolve([]),
+        hidePersonalView ? getKPIs({}).catch(() => []) : Promise.resolve([]),
       ]);
 
       setLogs(kpiData);
       setSummary(summaryData);
       setTeammates(teamData);
-      if (isCeoOrCto) {
+      if (hidePersonalView) {
         setAllKpiLogs(allLogsData);
       }
     } catch (err) {
@@ -2144,7 +2144,7 @@ const KpiPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, isCeoOrCto]);
+  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, hidePersonalView]);
 
   useEffect(() => {
     if (user) {
@@ -2169,20 +2169,20 @@ const KpiPage = () => {
     });
   }, [logs, searchTerm]);
 
-  // Unified list of all employees for CO/CTO card dashboard
+  // Unified list of all employees for card dashboard
   const allEmployeesForCards = useMemo(() => {
     const map = new Map();
     teammates.forEach((tm) => {
       if (tm && tm.id) map.set(String(tm.id), tm);
     });
-    const logsToUse = isCeoOrCto && allKpiLogs.length > 0 ? allKpiLogs : logs;
+    const logsToUse = hidePersonalView && allKpiLogs.length > 0 ? allKpiLogs : logs;
     logsToUse.forEach((l) => {
       if (l.employee && l.employee.id && !map.has(String(l.employee.id))) {
         map.set(String(l.employee.id), l.employee);
       }
     });
     return Array.from(map.values());
-  }, [teammates, logs, allKpiLogs, isCeoOrCto]);
+  }, [teammates, logs, allKpiLogs, hidePersonalView]);
 
   const filteredEmployeesForCards = useMemo(() => {
     if (!searchTerm.trim()) return allEmployeesForCards;
