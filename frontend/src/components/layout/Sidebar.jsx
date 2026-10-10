@@ -20,7 +20,7 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
     { to: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/my-work', icon: <CheckSquare size={20} />, label: workLabel, roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/projects', icon: <Folders size={20} />, label: 'Projects', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
-    { to: '/teams', icon: <Users size={20} />, label: 'Team', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
+    { to: '/teams', icon: <Users size={20} />, label: 'Team Directory', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/tasks', icon: <CheckSquare size={20} />, label: 'Tasks', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/kpi', icon: <TrendingUp size={20} />, label: performanceLabel, roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/collaboration', icon: <MessageSquare size={20} />, label: 'Collaboration', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
