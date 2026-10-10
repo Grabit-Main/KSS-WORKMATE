@@ -2099,6 +2099,7 @@ const KpiPage = () => {
   const isExecutive = ['CEO', 'CTO', 'PM', 'CO'].includes(user?.role);
   const isCeoOrCto = ['CEO', 'CTO', 'CO'].includes(user?.role);
   const hidePersonalView = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
+  const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL'].includes(user?.role);
   const isTL = user?.role === 'TL';
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
@@ -2130,13 +2131,13 @@ const KpiPage = () => {
           employee_id: selectedEmployeeId || undefined,
         }).catch(() => null),
         canGiveOrEdit || isExecutive ? getKPITeammates().catch(() => []) : Promise.resolve([]),
-        hidePersonalView ? getKPIs({}).catch(() => []) : Promise.resolve([]),
+        showCardsGrid ? getKPIs({}).catch(() => []) : Promise.resolve([]),
       ]);
 
       setLogs(kpiData);
       setSummary(summaryData);
       setTeammates(teamData);
-      if (hidePersonalView) {
+      if (showCardsGrid) {
         setAllKpiLogs(allLogsData);
       }
     } catch (err) {
@@ -2144,7 +2145,7 @@ const KpiPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, hidePersonalView]);
+  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, showCardsGrid]);
 
   useEffect(() => {
     if (user) {
@@ -2175,14 +2176,14 @@ const KpiPage = () => {
     teammates.forEach((tm) => {
       if (tm && tm.id) map.set(String(tm.id), tm);
     });
-    const logsToUse = hidePersonalView && allKpiLogs.length > 0 ? allKpiLogs : logs;
+    const logsToUse = showCardsGrid && allKpiLogs.length > 0 ? allKpiLogs : logs;
     logsToUse.forEach((l) => {
       if (l.employee && l.employee.id && !map.has(String(l.employee.id))) {
         map.set(String(l.employee.id), l.employee);
       }
     });
     return Array.from(map.values());
-  }, [teammates, logs, allKpiLogs, hidePersonalView]);
+  }, [teammates, logs, allKpiLogs, showCardsGrid]);
 
   const filteredEmployeesForCards = useMemo(() => {
     if (!searchTerm.trim()) return allEmployeesForCards;
@@ -2382,8 +2383,8 @@ const KpiPage = () => {
     );
   }
 
-  // If management user (CO, CTO, PM, TL) clicked an employee card, render Employee Performance Dashboard (Screen 2)
-  if (hidePersonalView && selectedEmployeeId) {
+  // If management user with cards grid (CO, CTO, TL) clicked an employee card, render Employee Performance Dashboard (Screen 2)
+  if (showCardsGrid && selectedEmployeeId) {
     return (
       <DeveloperDashboardView
         showRulesModal={showRulesModal}
@@ -2744,8 +2745,8 @@ const KpiPage = () => {
         )}
       </div>
 
-      {/* For CO, CTO, PM, TL: Render Employee Profile Cards Dashboard */}
-      {hidePersonalView && (
+      {/* For CO, CTO, TL: Render Employee Profile Cards Dashboard */}
+      {showCardsGrid && (
         <CoCtoEmployeeKpiCards
           employees={filteredEmployeesForCards}
           logs={allKpiLogs}
@@ -2755,8 +2756,8 @@ const KpiPage = () => {
         />
       )}
 
-      {/* Main KPI Logs Table (For TL, PM, OR for CO/CTO when an employee card is selected) */}
-      {(!isCeoOrCto || selectedEmployeeId) && (
+      {/* Main KPI Logs Table (For PM, or for CO/CTO/TL when an employee card is selected) */}
+      {(!showCardsGrid || selectedEmployeeId) && (
         <div style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',
