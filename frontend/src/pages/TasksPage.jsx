@@ -13,7 +13,8 @@ import { AttachmentCard } from '../components/common/AttachmentCard';
 import { formatDeadlineWithTime, isUpcomingDate, isDeadlineOverdue } from '../components/projects/DayWiseTaskPlanner';
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
-  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2, Trash2, Shield
+  Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2, Trash2, Shield,
+  LayoutGrid, List, Eye
 } from 'lucide-react';
 
 const normalizeToYYYYMMDD = (val) => {
@@ -88,6 +89,7 @@ const TasksPage = () => {
     return !localStorage.getItem(cacheKey);
   });
   const [filterTab, setFilterTab] = useState('today'); // 'today', 'projects', 'standalone', 'all', 'review'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [selectedDateFilter, setSelectedDateFilter] = useState(() => getTodayYYYYMMDD());
   const dateInputRef = useRef(null);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -644,7 +646,7 @@ const TasksPage = () => {
           </p>
         </div>
 
-        {/* Leadership actions: CEO, CTO, PM, TL can assign tasks */}
+        {/* Header actions: New Task button and Grid/List View Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           {['CEO', 'CTO', 'PM', 'TL'].includes(user.role) && (
             <button
@@ -656,6 +658,57 @@ const TasksPage = () => {
               <span>New Task</span>
             </button>
           )}
+
+          {/* Grid / List View Toggle */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: '10px',
+            padding: '3px',
+            gap: '2px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          }}>
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              title="Grid View"
+              style={{
+                background: viewMode === 'grid' ? '#5551FF' : 'transparent',
+                color: viewMode === 'grid' ? '#FFFFFF' : '#64748B',
+                border: 'none',
+                borderRadius: '7px',
+                padding: '7px 10px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <LayoutGrid size={17} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              title="List View"
+              style={{
+                background: viewMode === 'list' ? '#5551FF' : 'transparent',
+                color: viewMode === 'list' ? '#FFFFFF' : '#64748B',
+                border: 'none',
+                borderRadius: '7px',
+                padding: '7px 10px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <List size={17} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -901,7 +954,7 @@ const TasksPage = () => {
           <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--text-primary)' }}>No Tasks Found</h3>
           <p className="text-secondary text-sm">There are no tasks matching your current view filter.</p>
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: '20px' }}>
           {filteredTasks.map(task => {
             const isAssignedToMe = String(task.assigned_to) === String(user?.id);
@@ -1270,6 +1323,226 @@ const TasksPage = () => {
               </div>
             );
           })}
+        </div>
+      ) : (
+        /* List View Presentation */
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '16px',
+          border: '1px solid #E2E8F0',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02)',
+          overflow: 'hidden'
+        }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#64748B', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '14px 16px', width: '40px', textAlign: 'center' }}>
+                    <input type="checkbox" style={{ borderRadius: '4px', cursor: 'pointer' }} readOnly />
+                  </th>
+                  <th style={{ padding: '14px 16px', minWidth: '240px' }}>Task</th>
+                  <th style={{ padding: '14px 16px', width: '120px' }}>Type</th>
+                  <th style={{ padding: '14px 16px', width: '130px' }}>Project</th>
+                  <th style={{ padding: '14px 16px', width: '130px' }}>Status</th>
+                  <th style={{ padding: '14px 16px', minWidth: '180px' }}>Due Date & Time</th>
+                  <th style={{ padding: '14px 16px', minWidth: '170px' }}>Assignee</th>
+                  <th style={{ padding: '14px 16px', width: '100px', textAlign: 'center' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTasks.map(task => {
+                  const isAssignedToMe = String(task.assigned_to) === String(user?.id);
+                  const isAssignedByMe = String(task.assigned_by) === String(user?.id);
+                  const isOverdue = isDeadlineOverdue(task.deadline, task.status);
+
+                  const assigneeName = isAssignedToMe
+                    ? 'You'
+                    : (task.assignee ? `${task.assignee.first_name || ''} ${task.assignee.last_name || ''}`.trim() : 'Unassigned');
+                  const assigneeAvatar = isAssignedToMe ? user?.avatar_url : task.assignee?.avatar_url;
+                  const assigneeInitials = isAssignedToMe
+                    ? (user?.first_name?.[0] || 'Y')
+                    : (task.assignee?.first_name?.[0] || 'U') + (task.assignee?.last_name?.[0] || '');
+
+                  const isStandalone = !task.project_id;
+                  const projectName = task.project?.name || task.project_name || (isStandalone ? '—' : 'Project');
+
+                  const getStatusBadge = (st) => {
+                    switch (st) {
+                      case 'completed':
+                        return { label: 'Completed', bg: '#ECFDF5', color: '#059669', border: '#A7F3D0' };
+                      case 'in_progress':
+                        return { label: 'In Progress', bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' };
+                      case 'in_review':
+                        return { label: 'In Review', bg: '#FFF7ED', color: '#D97706', border: '#FDE68A' };
+                      case 'not_started':
+                      default:
+                        return { label: (st || 'Not Started').replace('_', ' '), bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' };
+                    }
+                  };
+
+                  const statusBadge = getStatusBadge(task.status);
+
+                  return (
+                    <tr
+                      key={task.id}
+                      onClick={() => setSelectedTask(task)}
+                      style={{
+                        borderBottom: '1px solid #F1F5F9',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" style={{ borderRadius: '4px', cursor: 'pointer' }} readOnly />
+                      </td>
+
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontWeight: 600, color: '#0F172A', fontSize: '13.5px', marginBottom: task.description ? '2px' : '0' }}>
+                          {task.title}
+                        </div>
+                        {task.description && (
+                          <div style={{
+                            fontSize: '12px',
+                            color: '#64748B',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '380px'
+                          }}>
+                            {task.description}
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          padding: '3px 9px',
+                          borderRadius: '9999px',
+                          background: isStandalone ? '#EEF2FF' : '#EFF6FF',
+                          color: isStandalone ? '#4F46E5' : '#2563EB',
+                          border: isStandalone ? '1px solid #C7D2FE' : '1px solid #BFDBFE',
+                          display: 'inline-block',
+                          textTransform: 'capitalize'
+                        }}>
+                          {isStandalone ? 'Standalone' : 'Project'}
+                        </span>
+                      </td>
+
+                      <td style={{ padding: '14px 16px', color: '#475569', fontWeight: 500 }}>
+                        {projectName}
+                      </td>
+
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          padding: '3px 9px',
+                          borderRadius: '9999px',
+                          background: statusBadge.bg,
+                          color: statusBadge.color,
+                          border: `1px solid ${statusBadge.border}`,
+                          display: 'inline-block',
+                          textTransform: 'capitalize'
+                        }}>
+                          {statusBadge.label}
+                        </span>
+                      </td>
+
+                      <td style={{ padding: '14px 16px', color: isOverdue ? '#B91C1C' : '#475569', fontWeight: 500, fontSize: '12.5px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <Calendar size={13} color={isOverdue ? '#B91C1C' : '#64748B'} />
+                          <span>{formatDeadlineWithTime(task.deadline || task.scheduled_date)}</span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {assigneeAvatar ? (
+                            <img
+                              src={assigneeAvatar}
+                              alt={assigneeName}
+                              style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '50%',
+                              background: '#E0E7FF',
+                              color: '#4338CA',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              {assigneeInitials}
+                            </div>
+                          )}
+                          <span style={{ fontWeight: 500, color: '#1E293B' }}>{assigneeName}</span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTask(task);
+                            }}
+                            title="View Details"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#64748B',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#4F46E5'; e.currentTarget.style.background = '#EEF2FF'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = '#64748B'; e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <Eye size={15} />
+                          </button>
+
+                          {isAssignedByMe && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteTask(task.id, e)}
+                              title="Delete Task"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#94A3B8',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = '#FEF2F2'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
