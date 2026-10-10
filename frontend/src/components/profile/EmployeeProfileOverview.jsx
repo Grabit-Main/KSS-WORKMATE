@@ -198,9 +198,32 @@ export default function EmployeeProfileOverview({
       {/* 1. Page Header & Breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: '#0F172A', margin: '0 0 4px 0', fontFamily: 'serif, Georgia, Inter, sans-serif' }}>
-            Team Directory
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                style={{
+                  background: '#EEF2FF',
+                  border: '1px solid #C7D2FE',
+                  color: '#4F46E5',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                ← Back to Team Directory
+              </button>
+            )}
+            <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: '#0F172A', margin: 0, fontFamily: 'serif, Georgia, Inter, sans-serif' }}>
+              Team Directory
+            </h1>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748B' }}>
             <span style={{ cursor: 'pointer', color: '#4F46E5', fontWeight: 500 }} onClick={onBack}>Team</span>
             <ChevronRight size={14} color="#94A3B8" />
@@ -250,7 +273,7 @@ export default function EmployeeProfileOverview({
                 border: '3px solid #FFFFFF',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
               }}>
-                {empName[0]}
+                {(empName && empName[0]) || 'U'}
               </div>
             )}
             <span style={{
@@ -391,13 +414,17 @@ export default function EmployeeProfileOverview({
         gap: '24px',
         borderBottom: '1px solid #E2E8F0',
         marginBottom: '24px',
-        paddingLeft: '4px'
+        paddingLeft: '4px',
+        overflowX: 'auto'
       }}>
         {[
           { id: 'overview', label: 'Overview', icon: <Users size={16} /> },
           { id: 'projects', label: 'Projects', icon: <Folders size={16} /> },
           { id: 'tasks', label: 'Tasks', icon: <CheckSquare size={16} /> },
           { id: 'kpi', label: 'KPI', icon: <TrendingUp size={16} /> },
+          { id: 'activity', label: 'Activity', icon: <Clock size={16} /> },
+          { id: 'files', label: 'Files', icon: <Folders size={16} /> },
+          { id: 'calendar', label: 'Calendar', icon: <Calendar size={16} /> },
         ].map(tab => {
           const isActive = activeTab === tab.id;
           return (
@@ -420,7 +447,8 @@ export default function EmployeeProfileOverview({
                 borderRight: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
-                marginBottom: '-1px'
+                marginBottom: '-1px',
+                whiteSpace: 'nowrap'
               }}
             >
               {tab.icon}
