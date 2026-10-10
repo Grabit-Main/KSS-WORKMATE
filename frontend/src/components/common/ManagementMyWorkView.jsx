@@ -11,25 +11,42 @@ import { getDailyPulses, getBlockers, getHelpRequests, getFocusSessions } from '
 import DeveloperWorkDrawer from './DeveloperWorkDrawer';
 import AddTaskModal from '../quickadd/AddTaskModal';
 
+// Helper date functions
+const getTodayDateStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateLabel = (dateStr) => {
+  const target = dateStr || getTodayDateStr();
+  const parts = target.split('-').map(Number);
+  if (parts.length === 3) {
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  }
+  return target;
+};
+
 // DatePickerPopover Component
 const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef(null);
 
   const [viewYear, setViewYear] = useState(() => {
-    if (selectedDate) {
-      const parts = selectedDate.split('-');
-      if (parts.length === 3) return parseInt(parts[0], 10);
-    }
-    return new Date().getFullYear();
+    const target = selectedDate || getTodayDateStr();
+    const parts = target.split('-').map(Number);
+    return parts.length === 3 ? parts[0] : new Date().getFullYear();
   });
 
   const [viewMonth, setViewMonth] = useState(() => {
-    if (selectedDate) {
-      const parts = selectedDate.split('-');
-      if (parts.length === 3) return parseInt(parts[1], 10) - 1;
-    }
-    return new Date().getMonth();
+    const target = selectedDate || getTodayDateStr();
+    const parts = target.split('-').map(Number);
+    return parts.length === 3 ? parts[1] - 1 : new Date().getMonth();
   });
 
   const [tempSelectedDate, setTempSelectedDate] = useState(selectedDate || '');
@@ -49,16 +66,13 @@ const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
   }, [isOpen]);
 
   useEffect(() => {
-    setTempSelectedDate(selectedDate || '');
-    if (selectedDate) {
-      const parts = selectedDate.split('-');
-      if (parts.length === 3) {
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        if (!isNaN(y) && !isNaN(m)) {
-          setViewYear(y);
-          setViewMonth(m);
-        }
+    const target = selectedDate || '';
+    setTempSelectedDate(target);
+    if (target) {
+      const parts = target.split('-').map(Number);
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        setViewYear(parts[0]);
+        setViewMonth(parts[1] - 1);
       }
     }
   }, [selectedDate]);
@@ -121,7 +135,8 @@ const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
   }
 
   const handleApply = () => {
-    onApply(tempSelectedDate);
+    const finalDate = tempSelectedDate || getTodayDateStr();
+    onApply(finalDate);
     setIsOpen(false);
   };
 
@@ -131,20 +146,11 @@ const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
     setIsOpen(false);
   };
 
-  const formatButtonLabel = () => {
-    if (!selectedDate) return 'Select Date';
-    const parts = selectedDate.split('-');
-    if (parts.length === 3) {
-      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-    }
-    return selectedDate;
-  };
+  const isFilterActive = Boolean(selectedDate);
+  const activeHighlightDate = tempSelectedDate || selectedDate || getTodayDateStr();
 
   return (
-    <div ref={popoverRef} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={popoverRef} style={{ position: 'relative', display: 'inline-block', flexShrink: 0 }}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -156,17 +162,18 @@ const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
           borderRadius: '8px',
           fontSize: '12px',
           fontWeight: 600,
-          background: selectedDate ? '#EEF2FF' : (isOpen ? '#FFFFFF' : '#F8FAFC'),
-          color: (selectedDate || isOpen) ? '#4F46E5' : '#334155',
-          border: (selectedDate || isOpen) ? '1.5px solid #4F46E5' : '1px solid var(--border)',
-          boxShadow: (selectedDate || isOpen) ? '0 0 0 3px rgba(79, 70, 229, 0.12)' : 'none',
+          background: isFilterActive ? '#EEF2FF' : (isOpen ? '#FFFFFF' : '#F8FAFC'),
+          color: (isFilterActive || isOpen) ? '#4F46E5' : '#334155',
+          border: (isFilterActive || isOpen) ? '1.5px solid #4F46E5' : '1px solid var(--border)',
+          boxShadow: (isFilterActive || isOpen) ? '0 0 0 3px rgba(79, 70, 229, 0.12)' : 'none',
           cursor: 'pointer',
-          transition: 'all 0.15s ease'
+          transition: 'all 0.15s ease',
+          whiteSpace: 'nowrap'
         }}
       >
-        <Calendar size={15} color={(selectedDate || isOpen) ? '#4F46E5' : '#64748B'} />
-        <span>{formatButtonLabel()}</span>
-        {isOpen ? <ChevronUp size={14} color="#4F46E5" /> : <ChevronDown size={14} color={selectedDate ? '#4F46E5' : '#64748B'} />}
+        <Calendar size={15} color={(isFilterActive || isOpen) ? '#4F46E5' : '#64748B'} />
+        <span>{formatDateLabel(selectedDate)}</span>
+        {isOpen ? <ChevronUp size={14} color="#4F46E5" /> : <ChevronDown size={14} color={isFilterActive ? '#4F46E5' : '#64748B'} />}
       </button>
 
       {isOpen && (
@@ -253,7 +260,7 @@ const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
                 );
               }
 
-              const isSelected = tempSelectedDate === cell.dateStr;
+              const isSelected = activeHighlightDate === cell.dateStr;
 
               return (
                 <div
@@ -326,6 +333,171 @@ const DatePickerPopover = ({ selectedDate, onApply, onClear }) => {
             >
               Apply
             </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ProjectFilterPopover Component
+const ProjectFilterPopover = ({ projects, selectedProjectId, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const popoverRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const selectedProj = projects.find((p) => String(p.id) === String(selectedProjectId));
+  const isFiltered = selectedProjectId !== 'all';
+
+  const formatLabel = () => {
+    if (!isFiltered || !selectedProj) return '📁 All Projects';
+    return `📁 ${selectedProj.name}`;
+  };
+
+  const filteredProjects = projects.filter((p) =>
+    (p.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div ref={popoverRef} style={{ position: 'relative', display: 'inline-block', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 12px',
+          borderRadius: '8px',
+          fontSize: '12px',
+          fontWeight: 600,
+          background: isFiltered ? '#EEF2FF' : (isOpen ? '#FFFFFF' : '#F8FAFC'),
+          color: (isFiltered || isOpen) ? '#4F46E5' : '#334155',
+          border: (isFiltered || isOpen) ? '1.5px solid #4F46E5' : '1px solid var(--border)',
+          boxShadow: (isFiltered || isOpen) ? '0 0 0 3px rgba(79, 70, 229, 0.12)' : 'none',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          whiteSpace: 'nowrap',
+          maxWidth: '180px'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {formatLabel()}
+        </span>
+        {isOpen ? <ChevronUp size={14} color="#4F46E5" /> : <ChevronDown size={14} color={isFiltered ? '#4F46E5' : '#64748B'} />}
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 100,
+            background: '#FFFFFF',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.06)',
+            padding: '12px',
+            width: '240px',
+            userSelect: 'none'
+          }}
+        >
+          {projects.length > 5 && (
+            <div style={{ marginBottom: '8px', position: 'relative' }}>
+              <input
+                type="text"
+                placeholder="Search projects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px 6px 28px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border)',
+                  fontSize: '11px',
+                  outline: 'none',
+                  background: '#F8FAFC'
+                }}
+              />
+              <Search size={12} color="#94A3B8" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)' }} />
+            </div>
+          )}
+
+          <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div
+              onClick={() => {
+                onChange('all');
+                setIsOpen(false);
+              }}
+              style={{
+                padding: '7px 10px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: selectedProjectId === 'all' ? 700 : 500,
+                color: selectedProjectId === 'all' ? '#4F46E5' : '#1E293B',
+                background: selectedProjectId === 'all' ? '#EEF2FF' : 'transparent',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => { if (selectedProjectId !== 'all') e.currentTarget.style.background = '#F1F5F9'; }}
+              onMouseLeave={(e) => { if (selectedProjectId !== 'all') e.currentTarget.style.background = 'transparent'; }}
+            >
+              <span>📁 All Projects</span>
+            </div>
+
+            {filteredProjects.map((p) => {
+              const isSelected = String(selectedProjectId) === String(p.id);
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => {
+                    onChange(p.id);
+                    setIsOpen(false);
+                  }}
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: isSelected ? 700 : 500,
+                    color: isSelected ? '#4F46E5' : '#1E293B',
+                    background: isSelected ? '#EEF2FF' : 'transparent',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    transition: 'background 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = '#F1F5F9'; }}
+                  onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                </div>
+              );
+            })}
+
+            {filteredProjects.length === 0 && (
+              <div style={{ padding: '10px', fontSize: '11px', color: '#94A3B8', textAlign: 'center' }}>
+                No projects found
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -632,13 +804,13 @@ export default function ManagementMyWorkView({ user }) {
           />
         </div>
 
-        {/* Filter Dropdowns */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          {/* Developer Filter */}
+        {/* Filter Dropdowns & Popovers (1 Row Sequence: Dev -> Project -> Status -> Priority -> Date) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%', paddingBottom: '2px' }}>
+          {/* 1. Developer Filter */}
           <select
             value={selectedDevId}
             onChange={(e) => setSelectedDevId(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, background: '#F8FAFC' }}
+            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, background: '#F8FAFC', flexShrink: 0, maxWidth: '160px' }}
           >
             <option value="all">👤 All Developers</option>
             {developersInScope.map((d) => (
@@ -648,23 +820,18 @@ export default function ManagementMyWorkView({ user }) {
             ))}
           </select>
 
-          {/* Project Filter */}
-          <select
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, background: '#F8FAFC' }}
-          >
-            <option value="all">📁 All Projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          {/* 2. Project Filter Popover */}
+          <ProjectFilterPopover
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onChange={(id) => setSelectedProjectId(id)}
+          />
 
-          {/* Status Filter */}
+          {/* 3. Status Filter */}
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, background: '#F8FAFC' }}
+            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, background: '#F8FAFC', flexShrink: 0 }}
           >
             <option value="all">⚡ All Statuses</option>
             <option value="in_progress">In Progress</option>
@@ -673,11 +840,11 @@ export default function ManagementMyWorkView({ user }) {
             <option value="not_started">Not Started</option>
           </select>
 
-          {/* Priority Filter */}
+          {/* 4. Priority Filter */}
           <select
             value={selectedPriority}
             onChange={(e) => setSelectedPriority(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, background: '#F8FAFC' }}
+            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, background: '#F8FAFC', flexShrink: 0 }}
           >
             <option value="all">🎯 All Priorities</option>
             <option value="urgent">Urgent</option>
@@ -686,7 +853,7 @@ export default function ManagementMyWorkView({ user }) {
             <option value="low">Low</option>
           </select>
 
-          {/* Select Date Filter (CO, CTO, PM, TL) */}
+          {/* 5. Select Date Filter (CO, CTO, PM, TL) */}
           <DatePickerPopover
             selectedDate={selectedDate}
             onApply={(d) => setSelectedDate(d)}
@@ -703,7 +870,7 @@ export default function ManagementMyWorkView({ user }) {
                 setSelectedPriority('all');
                 setSelectedDate('');
               }}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: '12px', fontWeight: 600 }}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: '12px', fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}
             >
               Reset Filters
             </button>
