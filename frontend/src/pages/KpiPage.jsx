@@ -1692,9 +1692,9 @@ const KpiPage = () => {
   };
   const [formData, setFormData] = useState(initialForm);
 
-  const isExecutive = ['CEO', 'CTO', 'PM'].includes(user?.role);
-  const isCeoOrCto = ['CEO', 'CTO'].includes(user?.role);
-  const hidePersonalView = ['CEO', 'CTO', 'PM', 'TL'].includes(user?.role);
+  const isExecutive = ['CEO', 'CTO', 'PM', 'CO'].includes(user?.role);
+  const isCeoOrCto = ['CEO', 'CTO', 'CO'].includes(user?.role);
+  const hidePersonalView = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
   const isTL = user?.role === 'TL';
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;

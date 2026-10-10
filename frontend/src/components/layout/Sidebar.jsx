@@ -11,8 +11,9 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
 
   if (!user) return null;
 
-  const isManagementRole = ['CEO', 'CTO', 'PM', 'TL'].includes(user?.role);
+  const isManagementRole = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
   const workLabel = isManagementRole ? 'All Work' : 'My Work';
+  const performanceLabel = isManagementRole ? 'All Performance' : 'My Performance';
 
   const links = [
     { to: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
@@ -20,7 +21,7 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
     { to: '/projects', icon: <Folders size={20} />, label: 'Projects', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/teams', icon: <Users size={20} />, label: 'Team', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/tasks', icon: <CheckSquare size={20} />, label: 'Tasks', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
-    { to: '/kpi', icon: <TrendingUp size={20} />, label: 'My Performance', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
+    { to: '/kpi', icon: <TrendingUp size={20} />, label: performanceLabel, roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/collaboration', icon: <MessageSquare size={20} />, label: 'Collaboration', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/goals', icon: <Target size={20} />, label: 'Goals & Growth', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/calendar', icon: <CalendarIcon size={20} />, label: 'Calendar', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
