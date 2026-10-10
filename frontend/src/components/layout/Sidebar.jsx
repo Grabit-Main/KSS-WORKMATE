@@ -12,6 +12,7 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
   if (!user) return null;
 
   const isManagementRole = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
+  const isDeveloper = ['TM', 'Developer', 'DEV'].includes(user?.role) || (!isManagementRole && user?.role !== 'HR');
   const workLabel = isManagementRole ? 'All Work' : 'My Work';
   const performanceLabel = isManagementRole ? 'All Performance' : 'My Performance';
 
@@ -23,7 +24,7 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
     { to: '/tasks', icon: <CheckSquare size={20} />, label: 'Tasks', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/kpi', icon: <TrendingUp size={20} />, label: performanceLabel, roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/collaboration', icon: <MessageSquare size={20} />, label: 'Collaboration', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
-    { to: '/goals', icon: <Target size={20} />, label: 'Goals & Growth', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
+    ...(isDeveloper ? [{ to: '/goals', icon: <Target size={20} />, label: 'Goals & Growth', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] }] : []),
     { to: '/calendar', icon: <CalendarIcon size={20} />, label: 'Calendar', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/feedback', icon: <Star size={20} />, label: 'Feedback', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
     { to: '/history', icon: <History size={20} />, label: 'Activity History', roles: ['CEO', 'CTO', 'PM', 'TL', 'TM', 'HR'] },
