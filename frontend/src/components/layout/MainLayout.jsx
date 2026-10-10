@@ -19,6 +19,7 @@ export const MainLayout = () => {
     if (path.startsWith('/tasks')) return 'Tasks';
     if (path.startsWith('/kpi')) return 'KPI Tracker';
     if (path.startsWith('/teams')) return 'Teams';
+    if (path.startsWith('/team-directory')) return 'Team Directory';
     if (path.startsWith('/users')) return 'Users';
     if (path.startsWith('/feedback') || path.startsWith('/reviews')) return 'Feedback';
     if (path.startsWith('/history')) return 'History';

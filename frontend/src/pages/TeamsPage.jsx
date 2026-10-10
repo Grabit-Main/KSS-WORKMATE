@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 
 import DeveloperWorkDrawer from '../components/common/DeveloperWorkDrawer';
-import EmployeeProfileOverview from '../components/profile/EmployeeProfileOverview';
 
 const TeamsPage = () => {
   const [teams, setTeams] = useState(() => {
@@ -22,7 +21,6 @@ const TeamsPage = () => {
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(() => !localStorage.getItem('cache_teams'));
   const [selectedDrawerDev, setSelectedDrawerDev] = useState(null);
-  const [selectedProfileEmp, setSelectedProfileEmp] = useState(null);
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -218,38 +216,11 @@ const TeamsPage = () => {
     }
   };
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const empId = params.get('empId') || params.get('userId');
-    if (empId) {
-      const found = usersList.find(u => String(u.id) === String(empId) || u.email === empId);
-      if (found) {
-        setSelectedProfileEmp(found);
-      } else {
-        setSelectedProfileEmp({ id: empId });
-      }
-    }
-  }, [location.search, usersList]);
-
-  // If an employee profile is selected, render the Employee Profile Overview page
-  if (selectedProfileEmp) {
-    return (
-      <EmployeeProfileOverview
-        employee={selectedProfileEmp}
-        employeeId={selectedProfileEmp.id}
-        onBack={() => {
-          setSelectedProfileEmp(null);
-          navigate('/teams', { replace: true });
-        }}
-        onAssignTask={() => {
-          navigate('/tasks');
-        }}
-        onSendMessage={() => {
-          navigate('/collaboration');
-        }}
-      />
+  const toggleMemberSelection = (userId) => {
+    setTeamMemberIds(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
-  }
+  };
 
   if (loading) {
     return (
@@ -500,11 +471,7 @@ const TeamsPage = () => {
                   </div>
                   {leadMembership ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div
-                        onClick={() => setSelectedProfileEmp(leadMembership.user)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-                        title="View Employee Profile"
-                      >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {leadMembership.user?.avatar_url ? (
                           <img
                             src={leadMembership.user.avatar_url}
@@ -625,11 +592,7 @@ const TeamsPage = () => {
                             border: '1px solid var(--border)'
                           }}
                         >
-                          <div
-                            onClick={() => setSelectedProfileEmp(m.user)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-                            title="View Employee Profile"
-                          >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '12px', color: 'var(--text-primary)' }}>
                               {getUserFullName(m.user)}
                             </span>
