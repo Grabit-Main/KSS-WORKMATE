@@ -1,9 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getUsers } from '../api/users';
 import { useAuth } from '../context/AuthContext';
 import { Users, Search } from 'lucide-react';
 import EmployeeProfileOverview from '../components/profile/EmployeeProfileOverview';
+
+class DirectoryErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("Team Directory ErrorBoundary caught an error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          padding: '40px 24px',
+          textAlign: 'center',
+          background: '#FFFFFF',
+          borderRadius: '16px',
+          border: '1px solid #E2E8F0',
+          margin: '20px 0',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+        }}>
+          <h3 style={{ fontSize: '18px', color: '#DC2626', fontWeight: 700, marginBottom: '8px' }}>
+            Profile Overview Encountered an Issue
+          </h3>
+          <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 16px 0' }}>
+            {String(this.state.error?.message || 'Unable to render employee profile metrics')}
+          </p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, error: null })}
+            style={{
+              padding: '8px 18px',
+              background: '#5551FF',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '13px'
+            }}
+          >
+            Retry Loading
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const TeamDirectoryPage = () => {
   const [usersList, setUsersList] = useState([]);
@@ -184,16 +236,18 @@ const TeamDirectoryPage = () => {
         </div>
       )}
 
-      {/* Selected Employee Profile Overview */}
-      <EmployeeProfileOverview
-        employee={activeEmp}
-        employeeId={activeEmp.id}
-        onBack={() => {
-          if (usersList.length > 0) setSelectedEmp(usersList[0]);
-        }}
-        onAssignTask={() => navigate('/tasks')}
-        onSendMessage={() => navigate('/collaboration')}
-      />
+      {/* Selected Employee Profile Overview wrapped in Error Boundary */}
+      <DirectoryErrorBoundary>
+        <EmployeeProfileOverview
+          employee={activeEmp}
+          employeeId={activeEmp.id}
+          onBack={() => {
+            if (usersList.length > 0) setSelectedEmp(usersList[0]);
+          }}
+          onAssignTask={() => navigate('/tasks')}
+          onSendMessage={() => navigate('/collaboration')}
+        />
+      </DirectoryErrorBoundary>
     </div>
   );
 };

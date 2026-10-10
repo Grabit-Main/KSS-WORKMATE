@@ -106,7 +106,8 @@ export default function EmployeeProfileOverview({
   // Filter Tasks assigned to employee
   const employeeTasks = useMemo(() => {
     if (!targetEmpId) return [];
-    return allTasks.filter(t => {
+    return (allTasks || []).filter(t => {
+      if (!t) return false;
       const assignedTo = String(t.assigned_to || t.assignee?.id || '');
       const empEmail = (userObj?.email || '').toLowerCase();
       return assignedTo === targetEmpId || (t.assignee?.email && t.assignee.email.toLowerCase() === empEmail);
@@ -118,38 +119,39 @@ export default function EmployeeProfileOverview({
     if (!targetEmpId) return [];
     const empEmail = (userObj?.email || '').toLowerCase();
 
-    return allProjects.filter(p => {
-      // Check project members, assigned leads, or tasks belonging to employee
-      const hasMember = (p.members || []).some(m => String(m.id || m.user_id) === targetEmpId || (m.email && m.email.toLowerCase() === empEmail));
-      const hasLead = String(p.lead_id || p.lead?.id) === targetEmpId;
-      const hasTaskInProject = employeeTasks.some(t => String(t.project_id || t.project?.id) === String(p.id));
+    return (allProjects || []).filter(p => {
+      if (!p) return false;
+      // Check project members safely handling non-array members property
+      const membersArr = Array.isArray(p.members) ? p.members : [];
+      const hasMember = membersArr.some(m => m && (String(m.id || m.user_id) === targetEmpId || (m.email && m.email.toLowerCase() === empEmail)));
+      const hasLead = String(p.lead_id || p.lead?.id || '') === targetEmpId;
+      const hasTaskInProject = employeeTasks.some(t => t && String(t.project_id || t.project?.id || '') === String(p.id));
       return hasMember || hasLead || hasTaskInProject;
     });
   }, [allProjects, targetEmpId, userObj?.email, employeeTasks]);
 
   // Active Projects Count
   const activeProjectsCount = useMemo(() => {
-    return employeeProjects.filter(p => p.status !== 'completed').length || employeeProjects.length;
+    return (employeeProjects || []).filter(p => p && p.status !== 'completed').length || (employeeProjects ? employeeProjects.length : 0);
   }, [employeeProjects]);
 
   // Total Tasks Count
-  const totalTasksCount = employeeTasks.length;
+  const totalTasksCount = (employeeTasks || []).length;
 
   // Employee KPI Logs & Overall KPI Calculation
   const employeeKpiLogs = useMemo(() => {
     if (!targetEmpId) return [];
-    return allKpiLogs.filter(k => String(k.employee_id || k.employee?.id) === targetEmpId);
+    return (allKpiLogs || []).filter(k => k && String(k.employee_id || k.employee?.id || '') === targetEmpId);
   }, [allKpiLogs, targetEmpId]);
 
   const overallKpiPercentage = useMemo(() => {
-    if (employeeKpiLogs.length === 0) return 92; // Default realistic score if no logs logged yet
-    const sum = employeeKpiLogs.reduce((acc, l) => acc + (Number(l.daily_kpi_percentage) || 0), 0);
+    if (!employeeKpiLogs || employeeKpiLogs.length === 0) return 92; // Default realistic score if no logs logged yet
+    const sum = employeeKpiLogs.reduce((acc, l) => acc + (Number(l?.daily_kpi_percentage) || 0), 0);
     return Math.round(sum / employeeKpiLogs.length);
   }, [employeeKpiLogs]);
 
   // KPI Chart Data Points for Daily/Weekly/Monthly/Yearly
   const kpiChartData = useMemo(() => {
-    // Generate dates for last 7 entries or last 7 days
     const today = new Date();
     const days = [];
     for (let i = 6; i >= 0; i--) {
@@ -158,8 +160,8 @@ export default function EmployeeProfileOverview({
       const dateStr = d.toLocaleDateString('en-US', { day: '02-digit', month: 'short' });
       const fullDateStr = d.toLocaleDateString('en-US', { day: '02-digit', month: 'short', year: 'numeric' });
 
-      // Find matching log or generate realistic curve around overall KPI
-      const dayLog = employeeKpiLogs.find(k => k.date && k.date.startsWith(d.toISOString().split('T')[0]));
+      // Find matching log safely checking date string
+      const dayLog = (employeeKpiLogs || []).find(k => k && k.date && String(k.date).startsWith(d.toISOString().split('T')[0]));
       const mockCurve = [35, 58, 70, 58, 73, 62, 68];
       const defaultVal = mockCurve[6 - i] !== undefined ? mockCurve[6 - i] : overallKpiPercentage;
       const val = dayLog ? Math.round(Number(dayLog.daily_kpi_percentage)) : defaultVal;
@@ -167,7 +169,7 @@ export default function EmployeeProfileOverview({
       days.push({
         label: dateStr,
         fullDate: fullDateStr,
-        value: val,
+        value: isNaN(val) ? 75 : val,
       });
     }
     return days;
@@ -176,17 +178,18 @@ export default function EmployeeProfileOverview({
   // Filter Tasks for Current Tasks Widget based on tab
   const currentTasksFiltered = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
+    const validTasks = employeeTasks || [];
     switch (taskFilterTab) {
       case 'today':
-        return employeeTasks.filter(t => (t.scheduled_date && t.scheduled_date.startsWith(todayStr)) || t.status === 'in_progress');
+        return validTasks.filter(t => (t && t.scheduled_date && String(t.scheduled_date).startsWith(todayStr)) || t.status === 'in_progress');
       case 'in_progress':
-        return employeeTasks.filter(t => t.status === 'in_progress');
+        return validTasks.filter(t => t && t.status === 'in_progress');
       case 'upcoming':
-        return employeeTasks.filter(t => t.status === 'not_started');
+        return validTasks.filter(t => t && t.status === 'not_started');
       case 'completed':
-        return employeeTasks.filter(t => t.status === 'completed');
+        return validTasks.filter(t => t && t.status === 'completed');
       default:
-        return employeeTasks;
+        return validTasks;
     }
   }, [employeeTasks, taskFilterTab]);
 
