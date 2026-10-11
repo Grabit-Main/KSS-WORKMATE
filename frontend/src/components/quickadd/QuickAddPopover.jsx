@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckSquare, TrendingUp, FileText, AlertTriangle, HelpCircle } from 'lucide-react';
+import { CheckSquare, TrendingUp, FileText, HelpCircle } from 'lucide-react';
 
 export default function QuickAddPopover({ isOpen, onClose, onSelectOption }) {
   const popoverRef = useRef(null);
@@ -29,14 +29,6 @@ export default function QuickAddPopover({ isOpen, onClose, onSelectOption }) {
       description: "Share today's work status",
       badge: 'Pulse',
       color: '#F59E0B'
-    },
-    {
-      id: 'report_blocker',
-      icon: AlertTriangle,
-      title: 'Report Blocker',
-      description: 'Tell your team what is blocking your work',
-      badge: 'Blocker',
-      color: '#EF4444'
     },
     {
       id: 'ask_help',
