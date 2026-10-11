@@ -84,7 +84,7 @@ async def submit_daily_pulse(
         db.commit()
         db.refresh(pulse)
 
-    await manager.broadcast({"type": ANALYTICS_REFRESH, "data": {"user_id": str(user.id), "event": "daily_pulse"}})
+    await manager.broadcast("global:all", {"type": ANALYTICS_REFRESH, "data": {"user_id": str(user.id), "event": "daily_pulse"}})
     return pulse
 
 
@@ -132,7 +132,7 @@ async def report_blocker(
     db.commit()
     db.refresh(blocker)
 
-    await manager.broadcast({"type": ANALYTICS_REFRESH, "data": {"user_id": str(user.id), "event": "blocker_reported"}})
+    await manager.broadcast("global:all", {"type": ANALYTICS_REFRESH, "data": {"user_id": str(user.id), "event": "blocker_reported"}})
     return blocker
 
 
@@ -200,7 +200,7 @@ async def request_help(
     db.commit()
     db.refresh(help_req)
 
-    await manager.broadcast({"type": ANALYTICS_REFRESH, "data": {"user_id": str(user.id), "event": "help_requested"}})
+    await manager.broadcast("global:all", {"type": ANALYTICS_REFRESH, "data": {"user_id": str(user.id), "event": "help_requested"}})
     return help_req
 
 
@@ -230,16 +230,60 @@ async def save_focus_session(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
+    # Verify task existence to satisfy FK constraint if task_id provided
+    valid_task_id = None
+    if req.task_id:
+        task_exists = db.query(Task.id).filter(Task.id == req.task_id).first()
+        if task_exists:
+            valid_task_id = req.task_id
+
+    accomplishment_text = (req.accomplishment or req.accomplishment_summary or "").strip() or None
+    remaining_work_text = (req.remaining_work or "").strip() or None
+    start_dt = req.started_at or req.start_time
+    end_dt = req.ended_at or req.end_time or datetime.utcnow()
+    duration_minutes = req.duration_mins or (round(req.active_duration_secs / 60) if req.active_duration_secs else 25)
+
+    # Prevent duplicate submissions / duplicate records if session_id provided
+    if req.session_id:
+        existing = db.query(MyWorkFocusSession).filter(
+            MyWorkFocusSession.user_id == user.id,
+            MyWorkFocusSession.session_id == req.session_id
+        ).first()
+        if existing:
+            if accomplishment_text is not None:
+                existing.accomplishment = accomplishment_text
+            if remaining_work_text is not None:
+                existing.remaining_work = remaining_work_text
+            if valid_task_id:
+                existing.task_id = valid_task_id
+            if req.active_duration_secs:
+                existing.active_duration_secs = req.active_duration_secs
+            if duration_minutes:
+                existing.duration_mins = duration_minutes
+            if req.status:
+                existing.status = req.status
+            if end_dt:
+                existing.ended_at = end_dt
+            db.commit()
+            db.refresh(existing)
+            await manager.broadcast("global:all", {"type": ANALYTICS_REFRESH, "data": {"user_id": str(user.id), "event": "focus_completed"}})
+            return existing
+
     session = MyWorkFocusSession(
+        session_id=req.session_id,
         user_id=user.id,
-        task_id=req.task_id,
-        duration_mins=req.duration_mins or 25,
+        task_id=valid_task_id,
+        duration_mins=duration_minutes,
         active_duration_secs=req.active_duration_secs or 0,
-        status=req.status or "completed"
+        status=req.status or "completed",
+        accomplishment=accomplishment_text,
+        remaining_work=remaining_work_text,
+        started_at=start_dt,
+        ended_at=end_dt
     )
     db.add(session)
     db.commit()
     db.refresh(session)
 
-    await manager.broadcast({"type": ANALYTICS_REFRESH, "data": {"user_id": str(user.id), "event": "focus_completed"}})
+    await manager.broadcast("global:all", {"type": ANALYTICS_REFRESH, "data": {"user_id": str(user.id), "event": "focus_completed"}})
     return session

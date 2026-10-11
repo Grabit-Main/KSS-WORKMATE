@@ -29,8 +29,14 @@ class ConnectionManager:
         if room in self.rooms:
             self.rooms[room].discard((user_id, ws))
 
-    async def broadcast(self, room: str, event: dict, exclude: str = None):
-        """Send event to all sockets in a room."""
+    async def broadcast(self, room: str = "global:all", event: dict = None, exclude: str = None):
+        """Send event to all sockets in a room. Supports broadcast(event_dict) defaulting to global:all."""
+        if isinstance(room, dict) and event is None:
+            event = room
+            room = "global:all"
+        elif event is None:
+            return
+
         dead = set()
         for uid, ws in list(self.rooms.get(room, set())):
             if uid == exclude:

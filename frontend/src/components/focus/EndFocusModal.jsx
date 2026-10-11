@@ -14,46 +14,98 @@ export default function EndFocusModal({ isOpen, onClose, session, onContinueFocu
   const [newProgress, setNewProgress] = useState(session.currentProgress || 50);
 
   const [submitting, setSubmitting] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (submitting || saveSuccess) return;
+
     setSubmitting(true);
     setErrorMsg('');
 
     try {
       let updatedTaskObj = null;
 
-      if (updateProgress && session.taskId && session.taskId !== 'general') {
-        try {
-          const finalStatus = Number(newProgress) === 100 ? 'completed' : session.status;
+      // 1. Update task progress if requested
+      if (updateProgress) {
+        const parsedProgress = Number(newProgress);
+        if (isNaN(parsedProgress) || parsedProgress < 0 || parsedProgress > 100) {
+          setErrorMsg('Please enter a valid progress percentage between 0 and 100.');
+          setSubmitting(false);
+          return;
+        }
+
+        if (session.taskId && session.taskId !== 'general') {
+          const finalStatus = parsedProgress === 100 ? 'completed' : (session.status === 'completed' ? 'in_progress' : session.status);
           updatedTaskObj = await updateTask(session.taskId, {
             status: finalStatus,
-            progress: Number(newProgress)
+            progress: parsedProgress
           });
-        } catch (err) {
-          console.warn('Task progress update warning:', err);
         }
       }
 
-const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+      // 2. Calculate accurate duration and timestamps
+      const durationMins = Math.max(1, Math.round((session.activeDurationSecs || session.plannedDurationSecs || 1500) / 60));
+      const startTimeIso = session.startTime || new Date(Date.now() - (session.activeDurationSecs || 0) * 1000).toISOString();
+      const endTimeIso = new Date().toISOString();
 
-      await saveFocusSession({
+      // 3. Persist focus session summary to backend
+      const payload = {
+        session_id: session.id || undefined,
         task_id: isUUID(session.taskId) ? session.taskId : null,
-        duration_mins: session.durationMins || 25,
+        duration_mins: durationMins,
         active_duration_secs: session.activeDurationSecs || 0,
-        status: 'completed'
-      });
+        status: session.remainingSecs <= 0 ? 'completed' : 'stopped',
+        accomplishment: accomplishment.trim() || null,
+        accomplishment_summary: accomplishment.trim() || null,
+        remaining_work: remainingWork.trim() || null,
+        started_at: startTimeIso,
+        ended_at: endTimeIso
+      };
 
-      onSaveAndEnd({
-        accomplishment: accomplishment.trim(),
-        remainingWork: remainingWork.trim(),
-        updatedProgress: updateProgress ? Number(newProgress) : session.currentProgress,
-        updatedTaskObj
-      });
+      const savedSession = await saveFocusSession(payload);
+
+      // 4. Confirm success and notify parent
+      setSaveSuccess(true);
+      setTimeout(() => {
+        onSaveAndEnd({
+          savedSession,
+          accomplishment: accomplishment.trim(),
+          remainingWork: remainingWork.trim(),
+          updatedProgress: updateProgress ? Number(newProgress) : session.currentProgress,
+          updatedTaskObj
+        });
+      }, 600);
     } catch (err) {
       console.error('Error saving focus session:', err);
-      setErrorMsg('Failed to save session summary.');
+      let message = 'Failed to save session summary. Please try again.';
+      if (err.response) {
+        const status = err.response.status;
+        const detail = err.response.data?.detail || err.response.data?.message;
+        if (status === 400) {
+          message = typeof detail === 'string' ? detail : 'Invalid session data provided. Please check your inputs.';
+        } else if (status === 401) {
+          message = 'Authentication expired. Please log in again.';
+        } else if (status === 403) {
+          message = 'You do not have permission to save this focus session.';
+        } else if (status === 404) {
+          message = 'Selected task or resource not found.';
+        } else if (status === 409) {
+          message = 'This focus session has already been saved.';
+        } else if (status >= 500) {
+          message = 'Server encountered an issue saving your summary. Please try again.';
+        } else if (typeof detail === 'string') {
+          message = detail;
+        }
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        message = 'Connection timed out. Please check your internet connection and retry.';
+      } else if (err.message && !err.response) {
+        message = err.message.includes('valid progress') ? err.message : 'Network error. Please check your connection and retry.';
+      }
+      setErrorMsg(message);
     } finally {
       setSubmitting(false);
     }
@@ -143,6 +195,23 @@ const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-
             <X size={18} />
           </button>
         </div>
+
+        {saveSuccess && (
+          <div style={{
+            background: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            marginBottom: '16px',
+            fontSize: '13px',
+            color: '#059669',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <CheckCircle2 size={16} /> Focus session summary saved successfully!
+          </div>
+        )}
 
         {errorMsg && (
           <div style={{
@@ -255,6 +324,7 @@ const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-
               type="button"
               onClick={onContinueFocusing}
               className="btn btn-secondary"
+              disabled={submitting || saveSuccess}
               style={{ padding: '10px 20px', borderRadius: '10px' }}
             >
               Continue Focusing
@@ -262,10 +332,10 @@ const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={submitting}
-              style={{ padding: '10px 24px', background: '#10B981', borderRadius: '10px', fontWeight: 600 }}
+              disabled={submitting || saveSuccess}
+              style={{ padding: '10px 24px', background: '#10B981', borderRadius: '10px', fontWeight: 600, opacity: (submitting || saveSuccess) ? 0.8 : 1 }}
             >
-              {submitting ? 'Saving...' : 'End & Save'}
+              {saveSuccess ? 'Saved!' : submitting ? 'Saving...' : 'End & Save'}
             </button>
           </div>
         </form>

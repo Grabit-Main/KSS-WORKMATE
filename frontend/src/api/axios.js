@@ -22,6 +22,11 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // Prevent duplicate /api/ prefix if baseURL already contains /api
+  if (config.url && config.url.startsWith('/api/')) {
+    config.url = config.url.slice(4);
+  }
+
   const isPublicAuthUrl =
     config.url?.includes('/auth/login') ||
     config.url?.includes('/auth/warmup') ||

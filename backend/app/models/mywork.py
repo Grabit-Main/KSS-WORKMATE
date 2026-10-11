@@ -55,12 +55,21 @@ class MyWorkFocusSession(Base):
     __tablename__ = "mywork_focus_sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(String, nullable=True, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=True)
     duration_mins = Column(Integer, default=25)
     active_duration_secs = Column(Integer, default=0)
     status = Column(String, default="completed") # completed, stopped
+    accomplishment = Column(Text, nullable=True)
+    remaining_work = Column(Text, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    ended_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")
     task = relationship("Task")
+
+    @property
+    def accomplishment_summary(self):
+        return self.accomplishment

@@ -780,9 +780,19 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
                   <div key={i} style={{ padding: '18px', borderRadius: '14px', border: '1px solid #E2E8F0', background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>Focus Session</span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#6366F1' }}>{f.duration_mins || 25} mins</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#6366F1' }}>{f.duration_mins || f.durationMins || Math.round((f.active_duration_secs || f.activeDurationSecs || 0) / 60) || 25} mins</span>
                     </div>
                     <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Status: {f.status}</div>
+                    {(f.accomplishment || f.accomplishment_summary) && (
+                      <div style={{ fontSize: '13px', color: '#334155', marginTop: '8px', background: '#F8FAFC', padding: '8px 12px', borderRadius: '8px' }}>
+                        <span style={{ fontWeight: 600, color: '#0F172A' }}>Accomplished: </span>{f.accomplishment || f.accomplishment_summary}
+                      </div>
+                    )}
+                    {f.remaining_work && (
+                      <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px', paddingLeft: '4px' }}>
+                        <span style={{ fontWeight: 600 }}>Remaining: </span>{f.remaining_work}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

@@ -8,10 +8,16 @@ export default function FocusSummaryCard({ focusHistory = [], activeSession = nu
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const todaySessions = focusHistory.filter((s) => s.date === todayStr || (s.startTime && s.startTime.startsWith(todayStr)));
-  const completedSessions = todaySessions.filter((s) => s.status === 'Completed' || s.status === 'Ended Early');
+  const todaySessions = focusHistory.filter((s) => {
+    const sDate = s.date || (s.startTime ? s.startTime.split('T')[0] : '') || (s.started_at ? String(s.started_at).split('T')[0] : '') || (s.created_at ? String(s.created_at).split('T')[0] : '');
+    return sDate === todayStr;
+  });
+  const completedSessions = todaySessions.filter((s) => {
+    const st = (s.status || '').toLowerCase();
+    return st === 'completed' || st === 'ended early';
+  });
 
-  const totalFocusedSecs = todaySessions.reduce((acc, s) => acc + (s.activeDurationSecs || 0), 0);
+  const totalFocusedSecs = todaySessions.reduce((acc, s) => acc + (s.activeDurationSecs || s.active_duration_secs || (s.duration_mins ? s.duration_mins * 60 : 0)), 0);
   const totalFocusedMins = Math.round(totalFocusedSecs / 60);
 
   const formatHoursMins = (mins) => {

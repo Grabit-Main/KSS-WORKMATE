@@ -227,8 +227,41 @@ export default function MyWorkPage() {
       }
       setBlockersList(uniqueBlockers);
 
-      if (Array.isArray(focusRes) && focusRes.length > 0) {
-        setFocusHistory(focusRes);
+      if (Array.isArray(focusRes)) {
+        let localHistory = [];
+        try {
+          const savedHist = localStorage.getItem(`mywork_focus_history_${user?.id}`);
+          if (savedHist) localHistory = JSON.parse(savedHist);
+        } catch (e) {}
+
+        const normalizedBackend = focusRes.map(s => {
+          const createdStr = s.created_at ? new Date(s.created_at).toISOString() : new Date().toISOString();
+          const startStr = s.started_at ? new Date(s.started_at).toISOString() : createdStr;
+          const dateStr = startStr.split('T')[0];
+          return {
+            ...s,
+            date: dateStr,
+            startTime: startStr,
+            taskId: s.task_id,
+            activeDurationSecs: s.active_duration_secs || (s.duration_mins ? s.duration_mins * 60 : 0),
+            durationMins: s.duration_mins,
+            status: s.status ? (s.status.charAt(0).toUpperCase() + s.status.slice(1).toLowerCase()) : 'Completed',
+            accomplishment: s.accomplishment || s.accomplishment_summary || '',
+            remainingWork: s.remaining_work || ''
+          };
+        });
+
+        const combined = [...normalizedBackend, ...localHistory];
+        const unique = [];
+        const seen = new Set();
+        for (const item of combined) {
+          const key = item.id || item.session_id || `${item.date}_${item.durationMins}_${item.activeDurationSecs}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(item);
+          }
+        }
+        setFocusHistory(unique);
       }
     } catch (err) {
       console.error('Error fetching developer mywork data:', err);
@@ -452,22 +485,24 @@ export default function MyWorkPage() {
     setShowEndFocusModal(true);
   };
 
-  const handleSaveAndEndFocus = ({ accomplishment, remainingWork, updatedProgress, updatedTaskObj }) => {
+  const handleSaveAndEndFocus = ({ savedSession, accomplishment, remainingWork, updatedProgress, updatedTaskObj }) => {
     if (!focusSession) return;
 
     const completedRecord = {
       ...focusSession,
+      id: savedSession?.id || focusSession.id,
+      session_id: savedSession?.session_id || focusSession.id,
       active: false,
       paused: false,
-      endedAt: new Date().toISOString(),
-      date: new Date().toISOString().split('T')[0],
+      endedAt: savedSession?.ended_at || new Date().toISOString(),
+      date: (savedSession?.started_at || new Date().toISOString()).split('T')[0],
       status: focusSession.remainingSecs <= 0 ? 'Completed' : 'Ended Early',
       accomplishment,
       remainingWork,
       finalProgress: updatedProgress
     };
 
-    const updatedHistory = [completedRecord, ...focusHistory];
+    const updatedHistory = [completedRecord, ...focusHistory.filter(f => f.id !== completedRecord.id && f.session_id !== completedRecord.session_id)];
     setFocusHistory(updatedHistory);
     localStorage.setItem(`mywork_focus_history_${user?.id}`, JSON.stringify(updatedHistory));
 
@@ -478,6 +513,7 @@ export default function MyWorkPage() {
     setShowActiveFocusOverlay(false);
 
     loadTasks();
+    loadMyWorkData();
   };
 
   // Quick Add Personal Task / Note

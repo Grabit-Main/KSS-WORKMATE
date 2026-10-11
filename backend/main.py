@@ -31,6 +31,13 @@ app.add_middleware(
     max_age=3600,
 )
 
+@app.middleware("http")
+async def normalize_api_path(request, call_next):
+    if request.scope.get("path", "").startswith("/api/api/"):
+        request.scope["path"] = request.scope["path"].replace("/api/api/", "/api/", 1)
+    response = await call_next(request)
+    return response
+
 init_error = None
 
 try:
@@ -45,6 +52,16 @@ try:
     # Auto-create tables for new schema entities if missing
     try:
         Base.metadata.create_all(bind=engine)
+        from sqlalchemy import text
+        with engine.begin() as conn:
+            conn.execute(text("""
+                ALTER TABLE mywork_focus_sessions 
+                ADD COLUMN IF NOT EXISTS session_id VARCHAR,
+                ADD COLUMN IF NOT EXISTS accomplishment TEXT,
+                ADD COLUMN IF NOT EXISTS remaining_work TEXT,
+                ADD COLUMN IF NOT EXISTS started_at TIMESTAMP,
+                ADD COLUMN IF NOT EXISTS ended_at TIMESTAMP;
+            """))
     except Exception as db_err:
         print("Table creation warning:", db_err)
 

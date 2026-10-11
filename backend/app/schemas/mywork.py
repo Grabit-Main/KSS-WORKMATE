@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
@@ -63,19 +63,44 @@ class HelpRequestResponse(BaseModel):
 
 
 class FocusSessionCreate(BaseModel):
+    session_id: Optional[str] = None
     task_id: Optional[UUID] = None
     duration_mins: Optional[int] = 25
     active_duration_secs: Optional[int] = 0
     status: Optional[str] = "completed"
+    accomplishment: Optional[str] = None
+    accomplishment_summary: Optional[str] = None
+    remaining_work: Optional[str] = None
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+
+    @field_validator("task_id", mode="before")
+    def validate_task_id(cls, v):
+        if not v or v == "" or v == "general" or v == "undefined" or v == "null":
+            return None
+        if isinstance(v, UUID):
+            return v
+        try:
+            return UUID(str(v))
+        except (ValueError, TypeError):
+            return None
 
 
 class FocusSessionResponse(BaseModel):
     id: UUID
+    session_id: Optional[str] = None
     user_id: UUID
-    task_id: Optional[UUID]
+    task_id: Optional[UUID] = None
     duration_mins: int
     active_duration_secs: int
     status: str
+    accomplishment: Optional[str] = None
+    accomplishment_summary: Optional[str] = None
+    remaining_work: Optional[str] = None
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
