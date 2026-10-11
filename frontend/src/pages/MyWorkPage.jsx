@@ -12,7 +12,7 @@ import {
   ListOrdered, Lock, Send, Target, Award, Eye, Users
 } from 'lucide-react';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
-import { getDailyPulses, getBlockers, reportBlocker, getHelpRequests, getFocusSessions } from '../api/mywork';
+import { getDailyPulses, getBlockers, getHelpRequests, getFocusSessions } from '../api/mywork';
 
 const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
@@ -92,11 +92,6 @@ export default function MyWorkPage() {
   const [progressVal, setProgressVal] = useState(50);
   const [progressStatus, setProgressStatus] = useState('in_progress');
   const [progressNote, setProgressNote] = useState('');
-
-  const [blockerType, setBlockerType] = useState('Technical');
-  const [blockerSeverity, setBlockerSeverity] = useState('High');
-  const [blockerDesc, setBlockerDesc] = useState('');
-  const [blockerHelper, setBlockerHelper] = useState('');
 
   const [deadlineReason, setDeadlineReason] = useState('');
   const [requestedDate, setRequestedDate] = useState('');
@@ -405,53 +400,6 @@ export default function MyWorkPage() {
     } catch (err) {
       console.error(err);
     }
-  };
-
-  // Submit Blocker
-  const handleReportBlocker = async (e) => {
-    e.preventDefault();
-    if (!blockerDesc.trim()) return;
-
-    try {
-      const validTaskId = isUUID(reportBlockerModalTask?.id) ? reportBlockerModalTask.id : null;
-      await reportBlocker({
-        task_id: validTaskId,
-        description: `[${blockerType}] ${blockerDesc.trim()}`,
-        severity: (blockerSeverity || 'high').toLowerCase()
-      });
-    } catch (err) {
-      console.error('Error reporting blocker to backend:', err);
-    }
-
-    const newBlocker = {
-      id: Date.now(),
-      taskId: reportBlockerModalTask?.id,
-      taskTitle: reportBlockerModalTask?.title || 'General Blocker',
-      project: reportBlockerModalTask?.project?.name || 'General Project',
-      type: blockerType,
-      severity: blockerSeverity,
-      description: blockerDesc,
-      helper: blockerHelper,
-      reportedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'active'
-    };
-
-    const updated = [newBlocker, ...blockersList];
-    setBlockersList(updated);
-    localStorage.setItem(`mywork_blockers_${user?.id}`, JSON.stringify(updated));
-
-    // Update task status to blocked if task selected
-    if (reportBlockerModalTask && !reportBlockerModalTask.isPersonal) {
-      try {
-        await updateTask(reportBlockerModalTask.id, { status: 'blocked' });
-      } catch (err) {}
-    }
-
-    loadTasks();
-    loadMyWorkData();
-    setReportBlockerModalTask(null);
-    setBlockerDesc('');
-    setBlockerHelper('');
   };
 
   // Focus Handlers
@@ -1172,57 +1120,24 @@ export default function MyWorkPage() {
       )}
 
       {/* MODAL 2: REPORT BLOCKER */}
-      {reportBlockerModalTask && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <form onSubmit={handleReportBlocker} className="card" style={{ width: '480px', padding: '28px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#EF4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <AlertTriangle size={20} /> Report Blocker
-              </h3>
-              <button type="button" onClick={() => setReportBlockerModalTask(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={20} /></button>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Blocker Type</label>
-              <select value={blockerType} onChange={(e) => setBlockerType(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }}>
-                <option value="Technical">Technical</option>
-                <option value="Dependency">Dependency</option>
-                <option value="Requirement">Requirement</option>
-                <option value="Access">Access</option>
-                <option value="Environment">Environment</option>
-                <option value="Review">Review</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Severity</label>
-              <select value={blockerSeverity} onChange={(e) => setBlockerSeverity(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }}>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Critical">Critical</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Description</label>
-              <textarea
-                value={blockerDesc}
-                onChange={(e) => setBlockerDesc(e.target.value)}
-                rows={3}
-                placeholder="Explain what is blocking your work..."
-                required
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button type="button" onClick={() => setReportBlockerModalTask(null)} className="btn btn-secondary">Cancel</button>
-              <button type="submit" className="btn btn-primary" style={{ background: '#EF4444' }}>Submit Blocker</button>
-            </div>
-          </form>
-        </div>
-      )}
+      <ReportBlockerModal
+        isOpen={Boolean(reportBlockerModalTask)}
+        onClose={() => setReportBlockerModalTask(null)}
+        initialTask={reportBlockerModalTask}
+        tasks={allWorkItems.length > 0 ? allWorkItems : tasks}
+        users={users}
+        projects={projects}
+        user={user}
+        onSuccess={() => {
+          loadTasks();
+          loadMyWorkData();
+          setReportBlockerModalTask(null);
+        }}
+        onViewBlockers={() => {
+          setReportBlockerModalTask(null);
+          setActiveTab('today');
+        }}
+      />
 
       {/* QUICK ADD MODALS (EXACTLY 5 ACTIONS) */}
       <AddTaskModal

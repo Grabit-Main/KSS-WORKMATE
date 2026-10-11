@@ -114,17 +114,23 @@ async def report_blocker(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
+    valid_task_id = None
+    if req.task_id:
+        task_exists = db.query(Task.id).filter(Task.id == req.task_id).first()
+        if task_exists:
+            valid_task_id = req.task_id
+
     blocker = MyWorkBlocker(
         user_id=user.id,
-        task_id=req.task_id,
+        task_id=valid_task_id,
         description=req.description,
         severity=req.severity or "high",
         status="open"
     )
     db.add(blocker)
 
-    if req.task_id:
-        task = db.query(Task).filter(Task.id == req.task_id).first()
+    if valid_task_id:
+        task = db.query(Task).filter(Task.id == valid_task_id).first()
         if task:
             task.status = "blocked"
             task.updated_at = datetime.utcnow()

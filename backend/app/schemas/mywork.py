@@ -28,6 +28,17 @@ class BlockerCreate(BaseModel):
     description: str
     severity: Optional[str] = "high"
 
+    @field_validator("task_id", mode="before")
+    def validate_task_id(cls, v):
+        if not v or v == "" or v == "general" or v == "undefined" or v == "null":
+            return None
+        if isinstance(v, UUID):
+            return v
+        try:
+            return UUID(str(v))
+        except (ValueError, TypeError):
+            return None
+
 
 class BlockerResponse(BaseModel):
     id: UUID
