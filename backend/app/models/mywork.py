@@ -35,6 +35,22 @@ class MyWorkBlocker(Base):
     user = relationship("User")
     task = relationship("Task")
 
+    @property
+    def blocker_type(self):
+        if self.description and self.description.startswith("[") and "]" in self.description:
+            return self.description[1:self.description.index("]")].strip()
+        return "Technical"
+
+    @property
+    def task_title(self):
+        return self.task.title if self.task else None
+
+    @property
+    def project_name(self):
+        if self.task and self.task.project:
+            return self.task.project.name
+        return None
+
 
 class MyWorkHelpRequest(Base):
     __tablename__ = "mywork_help_requests"
@@ -49,6 +65,16 @@ class MyWorkHelpRequest(Base):
 
     user = relationship("User")
     task = relationship("Task")
+
+    @property
+    def task_title(self):
+        return self.task.title if self.task else None
+
+    @property
+    def project_name(self):
+        if self.task and self.task.project:
+            return self.task.project.name
+        return None
 
 
 class MyWorkFocusSession(Base):
@@ -73,3 +99,14 @@ class MyWorkFocusSession(Base):
     @property
     def accomplishment_summary(self):
         return self.accomplishment
+
+    @property
+    def task_title(self):
+        return self.task.title if self.task else None
+
+    @property
+    def project_name(self):
+        if self.task and self.task.project:
+            return self.task.project.name
+        return None
+

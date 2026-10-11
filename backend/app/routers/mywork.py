@@ -25,23 +25,38 @@ Base.metadata.create_all(bind=engine)
 router = APIRouter(prefix="/api/mywork", tags=["mywork"])
 
 
+def _parse_uuid(val: Optional[str]) -> Optional[UUID]:
+    if not val:
+        return None
+    val_str = str(val).strip().lower()
+    if val_str in ("undefined", "null", "", "all", "none"):
+        return None
+    try:
+        return UUID(str(val).strip())
+    except (ValueError, TypeError):
+        return None
+
+
 def _can_access_user_data(user: User, target_user_id: UUID, db: Session) -> bool:
-    return True
+    if user.role in ("CEO", "CTO", "PM", "TL"):
+        return True
+    return str(user.id) == str(target_user_id)
 
 
 # --- DAILY PULSE ---
 
 @router.get("/pulse", response_model=List[DailyPulseResponse])
 def get_daily_pulses(
-    user_id: Optional[UUID] = Query(None),
+    user_id: Optional[str] = Query(None),
     date: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    if user_id:
-        if not _can_access_user_data(user, user_id, db):
+    parsed_user_id = _parse_uuid(user_id)
+    if parsed_user_id:
+        if not _can_access_user_data(user, parsed_user_id, db):
             raise HTTPException(403, "Not authorized to view this developer's daily pulse")
-        q = db.query(DailyPulse).filter(DailyPulse.user_id == user_id)
+        q = db.query(DailyPulse).filter(DailyPulse.user_id == parsed_user_id)
     elif user.role in ("CEO", "CTO", "PM", "TL"):
         q = db.query(DailyPulse)
     else:
@@ -92,14 +107,15 @@ async def submit_daily_pulse(
 
 @router.get("/blockers", response_model=List[BlockerResponse])
 def get_blockers(
-    user_id: Optional[UUID] = Query(None),
+    user_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    if user_id:
-        if not _can_access_user_data(user, user_id, db):
+    parsed_user_id = _parse_uuid(user_id)
+    if parsed_user_id:
+        if not _can_access_user_data(user, parsed_user_id, db):
             raise HTTPException(403, "Not authorized to view this developer's blockers")
-        q = db.query(MyWorkBlocker).filter(MyWorkBlocker.user_id == user_id)
+        q = db.query(MyWorkBlocker).filter(MyWorkBlocker.user_id == parsed_user_id)
     elif user.role in ("CEO", "CTO", "PM", "TL"):
         q = db.query(MyWorkBlocker)
     else:
@@ -173,14 +189,15 @@ async def resolve_blocker(
 
 @router.get("/help", response_model=List[HelpRequestResponse])
 def get_help_requests(
-    user_id: Optional[UUID] = Query(None),
+    user_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    if user_id:
-        if not _can_access_user_data(user, user_id, db):
+    parsed_user_id = _parse_uuid(user_id)
+    if parsed_user_id:
+        if not _can_access_user_data(user, parsed_user_id, db):
             raise HTTPException(403, "Not authorized to view this developer's help requests")
-        q = db.query(MyWorkHelpRequest).filter(MyWorkHelpRequest.user_id == user_id)
+        q = db.query(MyWorkHelpRequest).filter(MyWorkHelpRequest.user_id == parsed_user_id)
     elif user.role in ("CEO", "CTO", "PM", "TL"):
         q = db.query(MyWorkHelpRequest)
     else:
@@ -214,20 +231,22 @@ async def request_help(
 
 @router.get("/focus", response_model=List[FocusSessionResponse])
 def get_focus_sessions(
-    user_id: Optional[UUID] = Query(None),
+    user_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    if user_id:
-        if not _can_access_user_data(user, user_id, db):
+    parsed_user_id = _parse_uuid(user_id)
+    if parsed_user_id:
+        if not _can_access_user_data(user, parsed_user_id, db):
             raise HTTPException(403, "Not authorized to view this developer's focus sessions")
-        q = db.query(MyWorkFocusSession).filter(MyWorkFocusSession.user_id == user_id)
+        q = db.query(MyWorkFocusSession).filter(MyWorkFocusSession.user_id == parsed_user_id)
     elif user.role in ("CEO", "CTO", "PM", "TL"):
         q = db.query(MyWorkFocusSession)
     else:
         q = db.query(MyWorkFocusSession).filter(MyWorkFocusSession.user_id == user.id)
 
     return q.order_by(MyWorkFocusSession.created_at.desc()).all()
+
 
 
 @router.post("/focus", response_model=FocusSessionResponse)

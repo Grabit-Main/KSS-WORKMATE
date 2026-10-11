@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getChat, sendMessage } from '../../api/chat';
+import {
+  getChat,
+  sendMessage,
+  getDirectChat,
+  sendDirectMessage,
+  getChannelChat,
+  sendChannelMessage,
+  getProjectChat,
+  sendProjectMessage
+} from '../../api/chat';
 import { uploadFile } from '../../api/upload';
 import { useRealtime } from '../../realtime/useRealtime';
 import { useWebSocket } from '../../context/WebSocketContext';
 import { AttachmentCard } from '../common/AttachmentCard';
-import { Send, Paperclip, X, Loader2, ShieldCheck, CheckCheck, Lock } from 'lucide-react';
+import { Send, Paperclip, X, Loader2, ShieldCheck, CheckCheck, Lock, Hash, Folder, MessageSquare } from 'lucide-react';
 import { parseUTC } from '../../utils/dateUtils';
 
 const formatTimeOnly = (dateStr) => {
@@ -29,7 +38,18 @@ const formatDateGroup = (dateStr) => {
   return `${day}/${month}/${year}`;
 };
 
-export const TaskChat = ({ task, currentUser }) => {
+export const TaskChat = ({
+  task,
+  currentUser,
+  mode = 'task', // 'task' | 'direct' | 'channel' | 'project'
+  partnerUser: partnerUserProp,
+  channelId,
+  channelName,
+  project,
+  showHeader = true,
+  headerExtra = null,
+  style = {}
+}) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -43,51 +63,111 @@ export const TaskChat = ({ task, currentUser }) => {
 
   const { joinRoom, leaveRoom, dispatch } = useWebSocket() || {};
 
-  // Verify privacy membership
+  // Verify privacy membership for task chat
   const isAssignee = String(task?.assigned_to) === String(currentUser?.id);
   const isAssigner = String(task?.assigned_by) === String(currentUser?.id);
-  const isParticipant = isAssignee || isAssigner;
-  const partnerUser = isAssignee ? task?.assigner : task?.assignee;
+  const isParticipant = mode === 'task' ? (isAssignee || isAssigner) : true;
+  const effectivePartnerUser = mode === 'direct' ? partnerUserProp : (isAssignee ? task?.assigner : task?.assignee);
 
   const scrollToBottom = (behavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
   const loadMessages = async () => {
-    if (!task?.id) return;
-    if (!isParticipant) {
-      setAccessDenied(true);
-      setLoading(false);
-      return;
-    }
-    try {
-      setAccessDenied(false);
-      const data = await getChat(task.id);
-      setMessages(data || []);
-    } catch (err) {
-      if (err.response?.status === 403) {
+    if (mode === 'task') {
+      if (!task?.id) return;
+      if (!isParticipant) {
         setAccessDenied(true);
-      } else {
-        console.error('Failed to load task messages:', err);
+        setLoading(false);
+        return;
       }
-    } finally {
-      setLoading(false);
+      try {
+        setAccessDenied(false);
+        const data = await getChat(task.id);
+        setMessages(data || []);
+      } catch (err) {
+        if (err.response?.status === 403) {
+          setAccessDenied(true);
+        } else {
+          console.error('Failed to load task messages:', err);
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else if (mode === 'direct') {
+      if (!effectivePartnerUser?.id) {
+        setMessages([]);
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        setAccessDenied(false);
+        const data = await getDirectChat(effectivePartnerUser.id);
+        setMessages(data || []);
+      } catch (err) {
+        console.error('Failed to load direct messages:', err);
+      } finally {
+        setLoading(false);
+      }
+    } else if (mode === 'channel') {
+      if (!channelId) return;
+      try {
+        setLoading(true);
+        setAccessDenied(false);
+        const data = await getChannelChat(channelId);
+        setMessages(data || []);
+      } catch (err) {
+        console.error('Failed to load channel messages:', err);
+      } finally {
+        setLoading(false);
+      }
+    } else if (mode === 'project') {
+      if (!project?.id) return;
+      try {
+        setLoading(true);
+        setAccessDenied(false);
+        const data = await getProjectChat(project.id);
+        setMessages(data || []);
+      } catch (err) {
+        console.error('Failed to load project messages:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  // Join task room for real-time WebSocket events
+  // Join rooms and initial load
   useEffect(() => {
-    if (task?.id && isParticipant) {
-      if (joinRoom) joinRoom(`task:${task.id}`);
-      loadMessages();
-      return () => {
-        if (leaveRoom) leaveRoom(`task:${task.id}`);
-      };
-    } else {
-      setLoading(false);
-      if (!isParticipant) setAccessDenied(true);
+    if (mode === 'task') {
+      if (task?.id && isParticipant) {
+        if (joinRoom) joinRoom(`task:${task.id}`);
+        loadMessages();
+        return () => {
+          if (leaveRoom) leaveRoom(`task:${task.id}`);
+        };
+      } else {
+        setLoading(false);
+        if (!isParticipant) setAccessDenied(true);
+      }
+    } else if (mode === 'project') {
+      if (project?.id) {
+        if (joinRoom) joinRoom(`project:${project.id}`);
+        loadMessages();
+        return () => {
+          if (leaveRoom) leaveRoom(`project:${project.id}`);
+        };
+      }
+    } else if (mode === 'direct') {
+      if (effectivePartnerUser?.id) {
+        loadMessages();
+      }
+    } else if (mode === 'channel') {
+      if (channelId) {
+        loadMessages();
+      }
     }
-  }, [task?.id, currentUser?.id, isParticipant]);
+  }, [mode, task?.id, project?.id, effectivePartnerUser?.id, channelId, currentUser?.id, isParticipant]);
 
   useEffect(() => {
     scrollToBottom('auto');
@@ -95,7 +175,23 @@ export const TaskChat = ({ task, currentUser }) => {
 
   // Realtime new message listener via WebSocket & EventBus
   useRealtime('chat.new_message', (eventData) => {
-    if (String(eventData?.task_id) === String(task?.id) && isParticipant) {
+    let isRelevant = false;
+    if (mode === 'task') {
+      isRelevant = String(eventData?.task_id) === String(task?.id) && isParticipant;
+    } else if (mode === 'direct') {
+      const isDirect = eventData?.chat_type === 'direct';
+      const sId = String(eventData?.sender_id);
+      const rId = String(eventData?.receiver_id);
+      const myId = String(currentUser?.id);
+      const partnerId = String(effectivePartnerUser?.id);
+      isRelevant = isDirect && ((sId === partnerId && rId === myId) || (sId === myId && rId === partnerId));
+    } else if (mode === 'channel') {
+      isRelevant = eventData?.chat_type === `channel:${channelId}` || eventData?.channel_name === channelId;
+    } else if (mode === 'project') {
+      isRelevant = String(eventData?.project_id) === String(project?.id);
+    }
+
+    if (isRelevant) {
       setMessages(prev => {
         const cleaned = prev.filter(m => !m.isOptimistic || m.message !== eventData.message);
         if (cleaned.some(m => String(m.id) === String(eventData.id))) return cleaned;
@@ -107,12 +203,24 @@ export const TaskChat = ({ task, currentUser }) => {
 
   // High-frequency smart fallback sync (every 800ms when chat is open)
   useEffect(() => {
-    if (!task?.id || !isParticipant) return;
+    if (mode === 'task' && (!task?.id || !isParticipant)) return;
+    if (mode === 'direct' && !effectivePartnerUser?.id) return;
+    if (mode === 'channel' && !channelId) return;
+    if (mode === 'project' && !project?.id) return;
+
     let isFetching = false;
+    const fetchFn = () => {
+      if (mode === 'task') return getChat(task.id);
+      if (mode === 'direct') return getDirectChat(effectivePartnerUser.id);
+      if (mode === 'channel') return getChannelChat(channelId);
+      if (mode === 'project') return getProjectChat(project.id);
+      return Promise.resolve([]);
+    };
+
     const interval = setInterval(() => {
       if (isFetching || document.hidden) return;
       isFetching = true;
-      getChat(task.id)
+      fetchFn()
         .then(data => {
           if (data && Array.isArray(data)) {
             setMessages(prev => {
@@ -129,7 +237,7 @@ export const TaskChat = ({ task, currentUser }) => {
         .finally(() => { isFetching = false; });
     }, 800);
     return () => clearInterval(interval);
-  }, [task?.id, isParticipant]);
+  }, [mode, task?.id, effectivePartnerUser?.id, channelId, project?.id, isParticipant]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
@@ -143,6 +251,9 @@ export const TaskChat = ({ task, currentUser }) => {
     if (e) e.preventDefault();
     const textToSend = newMessage.trim();
     if ((!textToSend && !selectedFile) || sending || fileUploading || !isParticipant) return;
+    if (mode === 'direct' && !effectivePartnerUser?.id) return;
+    if (mode === 'project' && !project?.id) return;
+    if (mode === 'channel' && !channelId) return;
 
     setSending(true);
     setNewMessage('');
@@ -156,9 +267,12 @@ export const TaskChat = ({ task, currentUser }) => {
       tempId = 'opt_' + Date.now();
       const optimisticMsg = {
         id: tempId,
-        task_id: task.id,
-        sender_id: currentUser.id,
-        sender_name: currentUser.full_name || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim(),
+        task_id: mode === 'task' ? task?.id : null,
+        project_id: mode === 'project' ? project?.id : null,
+        receiver_id: mode === 'direct' ? effectivePartnerUser?.id : null,
+        chat_type: mode === 'channel' ? `channel:${channelId}` : mode,
+        sender_id: currentUser?.id,
+        sender_name: currentUser?.full_name || `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`.trim(),
         message: textToSend,
         attachment_url: null,
         attachment_type: null,
@@ -176,7 +290,7 @@ export const TaskChat = ({ task, currentUser }) => {
     try {
       if (selectedFile) {
         setFileUploading(true);
-        const uploadRes = await uploadFile(selectedFile, task.id);
+        const uploadRes = await uploadFile(selectedFile, task?.id || null, project?.id || null);
         attachmentUrl = uploadRes.url;
         attachmentType = uploadRes.file_type;
         storageProvider = uploadRes.storage_provider;
@@ -190,10 +304,20 @@ export const TaskChat = ({ task, currentUser }) => {
         storage_provider: storageProvider
       };
 
-      const sentMsg = await sendMessage(task.id, payload);
+      let sentMsg;
+      if (mode === 'task') {
+        sentMsg = await sendMessage(task.id, payload);
+      } else if (mode === 'direct') {
+        sentMsg = await sendDirectMessage(effectivePartnerUser.id, payload);
+      } else if (mode === 'channel') {
+        sentMsg = await sendChannelMessage(channelId, payload);
+      } else if (mode === 'project') {
+        sentMsg = await sendProjectMessage(project.id, payload);
+      }
+
       setMessages(prev => {
         const withoutOpt = tempId ? prev.filter(m => m.id !== tempId) : prev;
-        if (withoutOpt.some(m => String(m.id) === String(sentMsg.id))) return withoutOpt;
+        if (withoutOpt.some(m => String(m.id) === String(sentMsg?.id))) return withoutOpt;
         return [...withoutOpt, sentMsg];
       });
       if (dispatch) {
@@ -223,10 +347,8 @@ export const TaskChat = ({ task, currentUser }) => {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       if (e.shiftKey) {
-        // Shift+Enter creates a new line inside textarea
         return;
       }
-      // Enter without Shift submits message
       e.preventDefault();
       handleSend();
     }
@@ -238,8 +360,16 @@ export const TaskChat = ({ task, currentUser }) => {
   };
 
   const getPartnerFirstName = () => {
-    if (!partnerUser) return 'Member';
-    return partnerUser.first_name || partnerUser.full_name?.split(' ')[0] || 'Member';
+    if (!effectivePartnerUser) return 'Member';
+    return effectivePartnerUser.first_name || effectivePartnerUser.full_name?.split(' ')[0] || 'Member';
+  };
+
+  const getPlaceholder = () => {
+    if (selectedFile) return 'Add a caption (optional)...';
+    if (mode === 'direct') return `Message ${effectivePartnerUser?.first_name || 'team member'}...`;
+    if (mode === 'channel') return `Message #${channelName || channelId}...`;
+    if (mode === 'project') return `Post discussion note in ${project?.name || 'project'}...`;
+    return `Message ${getPartnerFirstName()}...`;
   };
 
   // Group messages by date for WhatsApp-style date headers
@@ -259,8 +389,8 @@ export const TaskChat = ({ task, currentUser }) => {
     return groups;
   }, [messages]);
 
-  // Handle Privacy Blocked View for non-participants (e.g. PM, CEO, CTO, or other members)
-  if (accessDenied || !isParticipant) {
+  // Handle Privacy Blocked View for non-participants (only for task mode)
+  if (mode === 'task' && (accessDenied || !isParticipant)) {
     const assigneeName = getUserName(task?.assignee);
     const assignerName = getUserName(task?.assigner);
     return (
@@ -273,7 +403,8 @@ export const TaskChat = ({ task, currentUser }) => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '32px',
-        textAlign: 'center'
+        textAlign: 'center',
+        ...style
       }}>
         <div style={{
           width: '56px',
@@ -304,65 +435,143 @@ export const TaskChat = ({ task, currentUser }) => {
       flexDirection: 'column',
       height: '100%',
       background: '#FAF8F5', // Soft off-white / light cream background as in reference image
-      borderLeft: '1px solid #E2E8F0',
+      borderLeft: mode === 'task' && !showHeader ? '1px solid #E2E8F0' : 'none',
       overflow: 'hidden',
-      fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      ...style
     }}>
       {/* Top Header matching reference image */}
-      <div style={{
-        padding: '16px 20px',
-        background: '#FFFFFF',
-        borderBottom: '1px solid #F1F5F9',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        flexShrink: 0
-      }}>
-        {partnerUser?.avatar_url ? (
-          <img
-            src={partnerUser.avatar_url}
-            alt=""
-            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }}
-          />
-        ) : (
-          <div style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '50%',
-            background: '#6366F1',
-            color: '#FFFFFF',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '13px',
-            fontWeight: 700
-          }}>
-            {partnerUser?.first_name?.[0]}{partnerUser?.last_name?.[0]}
-          </div>
-        )}
+      {showHeader && (
+        <div style={{
+          padding: '16px 20px',
+          background: '#FFFFFF',
+          borderBottom: '1px solid #F1F5F9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {mode === 'direct' ? (
+              effectivePartnerUser?.avatar_url ? (
+                <img
+                  src={effectivePartnerUser.avatar_url}
+                  alt=""
+                  style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  background: '#6366F1',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '13px',
+                  fontWeight: 700
+                }}>
+                  {effectivePartnerUser?.first_name?.[0] || 'U'}{effectivePartnerUser?.last_name?.[0] || ''}
+                </div>
+              )
+            ) : mode === 'channel' ? (
+              <div style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                background: 'rgba(99, 102, 241, 0.12)',
+                color: '#6366F1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Hash size={20} />
+              </div>
+            ) : mode === 'project' ? (
+              <div style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                background: 'rgba(99, 102, 241, 0.12)',
+                color: '#6366F1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Folder size={20} />
+              </div>
+            ) : (
+              effectivePartnerUser?.avatar_url ? (
+                <img
+                  src={effectivePartnerUser.avatar_url}
+                  alt=""
+                  style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  background: '#6366F1',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '13px',
+                  fontWeight: 700
+                }}>
+                  {effectivePartnerUser?.first_name?.[0]}{effectivePartnerUser?.last_name?.[0]}
+                </div>
+              )
+            )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
-              {getUserName(partnerUser)}
-            </span>
-            <span style={{
-              fontSize: '10px',
-              fontWeight: 700,
-              padding: '2px 7px',
-              borderRadius: '6px',
-              background: '#EEF2FF',
-              color: '#6366F1',
-              textTransform: 'uppercase'
-            }}>
-              {partnerUser?.role || (isAssignee ? 'TL' : 'TM')}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
+                  {mode === 'direct'
+                    ? getUserName(effectivePartnerUser)
+                    : mode === 'channel'
+                    ? (channelName || `#${channelId}`)
+                    : mode === 'project'
+                    ? (project?.name || 'Project Discussion')
+                    : getUserName(effectivePartnerUser)}
+                </span>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  padding: '2px 7px',
+                  borderRadius: '6px',
+                  background: '#EEF2FF',
+                  color: '#6366F1',
+                  textTransform: 'uppercase'
+                }}>
+                  {mode === 'direct'
+                    ? (effectivePartnerUser?.role || 'MEMBER')
+                    : mode === 'channel'
+                    ? 'TEAM CHANNEL'
+                    : mode === 'project'
+                    ? 'PROJECT'
+                    : (effectivePartnerUser?.role || (isAssignee ? 'TL' : 'TM'))}
+                </span>
+              </div>
+              <span style={{ fontSize: '12px', color: '#94A3B8' }}>
+                {mode === 'direct'
+                  ? (effectivePartnerUser?.job_title || 'Direct Conversation')
+                  : mode === 'channel'
+                  ? 'Team-wide Communication Channel'
+                  : mode === 'project'
+                  ? (project?.aim || 'Milestones, Requirements & Coordination')
+                  : (isAssignee ? 'Team Lead Direct Channel' : 'Assigned Member Channel')}
+              </span>
+            </div>
           </div>
-          <span style={{ fontSize: '12px', color: '#94A3B8' }}>
-            {isAssignee ? 'Team Lead Direct Channel' : 'Assigned Member Channel'}
-          </span>
+
+          {headerExtra && (
+            <div>{headerExtra}</div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Messages Scroll Area */}
       <div style={{
@@ -399,11 +608,19 @@ export const TaskChat = ({ task, currentUser }) => {
               justifyContent: 'center',
               marginBottom: '10px'
             }}>
-              <ShieldCheck size={22} />
+              {mode === 'channel' ? <Hash size={22} /> : mode === 'project' ? <Folder size={22} /> : <ShieldCheck size={22} />}
             </div>
-            <p style={{ fontSize: '14px', fontWeight: 600, color: '#475569' }}>Private Channel Ready</p>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: '#475569' }}>
+              {mode === 'direct' ? 'Direct Conversation Ready' : mode === 'channel' ? `Welcome to #${channelName || channelId}` : mode === 'project' ? 'Project Discussion Ready' : 'Private Channel Ready'}
+            </p>
             <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', maxWidth: '240px' }}>
-              Send a direct message regarding this task to {getPartnerFirstName()}.
+              {mode === 'direct'
+                ? `Send a direct message to ${effectivePartnerUser?.first_name || 'this team member'}.`
+                : mode === 'channel'
+                ? 'Start the discussion with the squad.'
+                : mode === 'project'
+                ? 'Share notes, questions, and updates with the team.'
+                : `Send a direct message regarding this task to ${getPartnerFirstName()}.`}
             </p>
           </div>
         ) : (
@@ -427,7 +644,9 @@ export const TaskChat = ({ task, currentUser }) => {
 
               {group.items.map((m, idx) => {
                 const isMe = String(m.sender_id) === String(currentUser?.id);
-                const senderDisplayName = isMe ? 'You' : (m.sender_name || getUserName(partnerUser));
+                const senderDisplayName = isMe
+                  ? 'You'
+                  : (m.sender_name || (m.sender ? `${m.sender.first_name} ${m.sender.last_name}`.trim() : (mode === 'direct' ? getUserName(effectivePartnerUser) : 'Team Member')));
                 const timeFormatted = formatTimeOnly(m.created_at);
 
                 return (
@@ -445,7 +664,7 @@ export const TaskChat = ({ task, currentUser }) => {
                     <div style={{
                       padding: m.attachment_url ? '10px' : '14px 18px',
                       borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                      background: isMe ? '#EEF2FF' : '#EFECE6', // #EFECE6 matches exact off-white beige bubble in uploaded screenshot
+                      background: isMe ? '#EEF2FF' : '#EFECE6', // #EFECE6 matches exact off-white beige bubble in screenshot
                       border: isMe ? '1px solid #C7D2FE' : '1px solid #E5E0D8',
                       color: isMe ? '#1E1B4B' : '#1E293B',
                       fontSize: '13px',
@@ -469,7 +688,7 @@ export const TaskChat = ({ task, currentUser }) => {
                       )}
                     </div>
 
-                    {/* Sub-meta line e.g. "Jingyasha Priyadarsini Rout · 06:39 PM" */}
+                    {/* Sub-meta line e.g. "Name · 06:39 PM" */}
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -577,7 +796,7 @@ export const TaskChat = ({ task, currentUser }) => {
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder={selectedFile ? 'Add a caption (optional)...' : `Message ${getPartnerFirstName()}...`}
+          placeholder={getPlaceholder()}
           value={newMessage}
           onChange={handleTextareaChange}
           onKeyDown={handleKeyDown}

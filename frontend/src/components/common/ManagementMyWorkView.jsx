@@ -560,6 +560,7 @@ export default function ManagementMyWorkView({ user }) {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedPriority, setSelectedPriority] = useState('all');
   const [selectedDate, setSelectedDate] = useState(getTodayDateStr());
+  const [summaryFilter, setSummaryFilter] = useState(null); // null, 'help', 'focus'
 
   // Drawer & Modal State
   const [selectedDrawerDev, setSelectedDrawerDev] = useState(null);
@@ -610,10 +611,129 @@ export default function ManagementMyWorkView({ user }) {
 
   // Dev IDs in scope set for quick lookup
   const devIdsInScope = useMemo(() => {
-    return new Set(developersInScope.map((d) => String(d.id)));
+    return new Set(developersInScope.map((d) => String(d.id).toLowerCase()));
   }, [developersInScope]);
 
-  // Filter Developer Tasks (strictly excludes management's own tasks if any)
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // 1. Need Help Calculation & Sets (unresolved MyWorkHelpRequest records in scope)
+  // 1. Need Help Calculation & Sets (unresolved MyWorkHelpRequest records in scope)
+  const activeHelpRequestsInScope = useMemo(() => {
+    return helpRequests.filter((h) => {
+      if (h.status === 'resolved' || h.status === 'completed' || h.status === 'dismissed') return false;
+      const hUserId = String(h.user_id || '').toLowerCase();
+      if (hUserId && devIdsInScope.size > 0 && !devIdsInScope.has(hUserId) && hUserId !== String(user?.id).toLowerCase()) return false;
+      if (selectedDevId !== 'all' && hUserId !== String(selectedDevId).toLowerCase()) return false;
+      if (selectedProjectId !== 'all') {
+        const relatedTask = tasks.find(t => String(t.id).toLowerCase() === String(h.task_id || h.taskId || '').toLowerCase());
+        const taskProjId = String(relatedTask?.project_id || relatedTask?.project?.id || h.project_id || '');
+        if (taskProjId && taskProjId !== String(selectedProjectId)) return false;
+        if (!taskProjId && h.project_name) {
+          const matchedProj = projects.find(p => p.name === h.project_name);
+          if (matchedProj && String(matchedProj.id) !== String(selectedProjectId)) return false;
+        }
+      }
+      if (selectedDate) {
+        const hDate = (h.created_at || '').split('T')[0];
+        const relatedTask = tasks.find(t => String(t.id).toLowerCase() === String(h.task_id || h.taskId || '').toLowerCase());
+        const taskDates = relatedTask ? getTaskDateStrings(relatedTask) : [];
+        const matchesDate = (hDate === selectedDate) || taskDates.includes(selectedDate);
+        if (!matchesDate) return false;
+      }
+      return true;
+    });
+  }, [helpRequests, tasks, projects, devIdsInScope, user?.id, selectedDevId, selectedProjectId, selectedDate]);
+
+  const helpNeededCount = activeHelpRequestsInScope.length;
+
+  const { helpTaskIds, helpUserIdsWithoutTask } = useMemo(() => {
+    const taskIds = new Set();
+    const userIds = new Set();
+    activeHelpRequestsInScope.forEach((h) => {
+      const tid = h.task_id || h.taskId || h.task?.id;
+      if (tid) {
+        taskIds.add(String(tid).toLowerCase());
+      } else if (h.user_id) {
+        userIds.add(String(h.user_id).toLowerCase());
+      }
+    });
+    return { helpTaskIds: taskIds, helpUserIdsWithoutTask: userIds };
+  }, [activeHelpRequestsInScope]);
+
+  // 2. Focus Sessions Calculation & Sets (Focus sessions in scope for selected date/today)
+  const activeFocusSessionsInScope = useMemo(() => {
+    const targetDate = selectedDate || todayStr;
+    return focusSessions.filter((fs) => {
+      const fsUserId = String(fs.user_id || '').toLowerCase();
+      if (fsUserId && devIdsInScope.size > 0 && !devIdsInScope.has(fsUserId) && fsUserId !== String(user?.id).toLowerCase()) return false;
+      if (selectedDevId !== 'all' && fsUserId !== String(selectedDevId).toLowerCase()) return false;
+      if (selectedProjectId !== 'all') {
+        const relatedTask = tasks.find(t => String(t.id).toLowerCase() === String(fs.task_id || fs.taskId || '').toLowerCase());
+        const taskProjId = String(relatedTask?.project_id || relatedTask?.project?.id || fs.project_id || '');
+        if (taskProjId && taskProjId !== String(selectedProjectId)) return false;
+        if (!taskProjId && fs.project_name) {
+          const matchedProj = projects.find(p => p.name === fs.project_name);
+          if (matchedProj && String(matchedProj.id) !== String(selectedProjectId)) return false;
+        }
+      }
+      const fsDate = (fs.started_at || fs.created_at || '').split('T')[0];
+      if (fsDate && fsDate !== targetDate) return false;
+      return true;
+    });
+  }, [focusSessions, tasks, projects, devIdsInScope, user?.id, selectedDevId, selectedProjectId, selectedDate, todayStr]);
+
+  const activeFocusCount = activeFocusSessionsInScope.length;
+
+  const { focusTaskIds, focusUserIdsWithoutTask } = useMemo(() => {
+    const taskIds = new Set();
+    const userIds = new Set();
+    activeFocusSessionsInScope.forEach((fs) => {
+      const tid = fs.task_id || fs.taskId || fs.task?.id;
+      if (tid) {
+        taskIds.add(String(tid).toLowerCase());
+      } else if (fs.user_id) {
+        userIds.add(String(fs.user_id).toLowerCase());
+      }
+    });
+    return { focusTaskIds: taskIds, focusUserIdsWithoutTask: userIds };
+  }, [activeFocusSessionsInScope]);
+
+  // 3. Open Blockers Calculation (unresolved MyWorkBlocker records in scope + blocked tasks)
+  const openBlockersCount = useMemo(() => {
+    const openBlockerRecords = blockers.filter((b) => {
+      if (b.status === 'resolved') return false;
+      const bUserId = String(b.user_id || '').toLowerCase();
+      if (bUserId && devIdsInScope.size > 0 && !devIdsInScope.has(bUserId) && bUserId !== String(user?.id).toLowerCase()) return false;
+      if (selectedDevId !== 'all' && bUserId !== String(selectedDevId).toLowerCase()) return false;
+      if (selectedProjectId !== 'all' && String(b.project_id || '') !== String(selectedProjectId)) return false;
+      if (selectedDate && b.created_at) {
+        const bDate = b.created_at.split('T')[0];
+        if (bDate !== selectedDate) return false;
+      }
+      return true;
+    });
+
+    const blockedTaskIds = new Set(openBlockerRecords.map((b) => String(b.task_id || '').toLowerCase()).filter(Boolean));
+
+    const blockedTasksInScope = tasks.filter((t) => {
+      const assigneeId = String(t.assigned_to || t.assignee?.id || '');
+      const isDevTask = developersInScope.some((d) => String(d.id) === assigneeId);
+      if (!isDevTask && String(t.assigned_to) === String(user?.id)) return false;
+      if (selectedDevId !== 'all' && assigneeId !== String(selectedDevId)) return false;
+      if (selectedProjectId !== 'all' && String(t.project_id || t.project?.id || '') !== String(selectedProjectId)) return false;
+      if (selectedDate) {
+        const taskDates = getTaskDateStrings(t);
+        if (!taskDates.includes(selectedDate)) return false;
+      }
+      if (t.status !== 'blocked') return false;
+      if (blockedTaskIds.has(String(t.id).toLowerCase())) return false;
+      return true;
+    });
+
+    return openBlockerRecords.length + blockedTasksInScope.length;
+  }, [blockers, tasks, developersInScope, devIdsInScope, user?.id, selectedDevId, selectedProjectId, selectedDate]);
+
+  // Filter Developer Tasks (combines status, priority, developer, project, date, search, and summary card filters)
   const filteredTasks = useMemo(() => {
     return tasks.filter((t) => {
       // Must be assigned to a developer in scope (not management self-assigned tasks)
@@ -638,7 +758,13 @@ export default function ManagementMyWorkView({ user }) {
       }
       if (selectedDate) {
         const taskDates = getTaskDateStrings(t);
-        if (!taskDates.includes(selectedDate)) return false;
+        const taskDateMatches = taskDates.includes(selectedDate);
+        const taskAssigneeStr = String(t.assigned_to || t.assignee?.id || '').toLowerCase();
+        const matchesActiveFocusSessionOnDate = summaryFilter === 'focus' && (focusTaskIds.has(String(t.id).toLowerCase()) || focusUserIdsWithoutTask.has(taskAssigneeStr));
+        const matchesActiveHelpRequestOnDate = summaryFilter === 'help' && (helpTaskIds.has(String(t.id).toLowerCase()) || helpUserIdsWithoutTask.has(taskAssigneeStr));
+        if (!taskDateMatches && !matchesActiveFocusSessionOnDate && !matchesActiveHelpRequestOnDate) {
+          return false;
+        }
       }
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
@@ -647,72 +773,34 @@ export default function ManagementMyWorkView({ user }) {
         const devNameMatch = (t.assignee?.full_name || `${t.assignee?.first_name || ''} ${t.assignee?.last_name || ''}`).toLowerCase().includes(q);
         if (!titleMatch && !descMatch && !devNameMatch) return false;
       }
+
+      const taskIdStr = String(t.id || '').toLowerCase();
+      const taskAssigneeIdStr = String(t.assigned_to || t.assignee?.id || '').toLowerCase();
+
+      // Summary Card Filters
+      if (summaryFilter === 'help') {
+        const matchesHelp = helpTaskIds.has(taskIdStr) || helpUserIdsWithoutTask.has(taskAssigneeIdStr);
+        if (!matchesHelp) return false;
+      }
+
+      if (summaryFilter === 'focus') {
+        const matchesFocus = focusTaskIds.has(taskIdStr) || focusUserIdsWithoutTask.has(taskAssigneeIdStr);
+        if (!matchesFocus) return false;
+      }
+
       return true;
     });
-  }, [tasks, developersInScope, user?.id, selectedDevId, selectedProjectId, selectedStatus, selectedPriority, selectedDate, searchTerm]);
+  }, [
+    tasks, developersInScope, user?.id, selectedDevId, selectedProjectId,
+    selectedStatus, selectedPriority, selectedDate, searchTerm,
+    summaryFilter, helpTaskIds, helpUserIdsWithoutTask, focusTaskIds, focusUserIdsWithoutTask
+  ]);
 
   // Summary Counts
-  const todayStr = new Date().toISOString().split('T')[0];
   const totalDevs = developersInScope.length;
   const activeTasksCount = tasks.filter((t) => ['in_progress', 'not_started'].includes(t.status)).length;
   const completedTodayCount = tasks.filter((t) => t.status === 'completed' && t.updated_at && t.updated_at.startsWith(todayStr)).length;
 
-  // 1. Open Blockers Calculation (unresolved MyWorkBlocker records in scope + blocked tasks)
-  const openBlockersCount = useMemo(() => {
-    const openBlockerRecords = blockers.filter((b) => {
-      if (b.status === 'resolved') return false;
-      const bUserId = String(b.user_id || '');
-      if (bUserId && devIdsInScope.size > 0 && !devIdsInScope.has(bUserId) && bUserId !== String(user?.id)) return false;
-      if (selectedDevId !== 'all' && bUserId !== String(selectedDevId)) return false;
-      if (selectedProjectId !== 'all' && String(b.project_id || '') !== String(selectedProjectId)) return false;
-      if (selectedDate && b.created_at) {
-        const bDate = b.created_at.split('T')[0];
-        if (bDate !== selectedDate) return false;
-      }
-      return true;
-    });
-
-    const blockedTaskIds = new Set(openBlockerRecords.map((b) => String(b.task_id)).filter(Boolean));
-
-    const blockedTasksInScope = filteredTasks.filter((t) => {
-      if (t.status !== 'blocked') return false;
-      if (blockedTaskIds.has(String(t.id))) return false;
-      return true;
-    });
-
-    return openBlockerRecords.length + blockedTasksInScope.length;
-  }, [blockers, devIdsInScope, user?.id, selectedDevId, selectedProjectId, selectedDate, filteredTasks]);
-
-  // 2. Need Help Calculation (unresolved MyWorkHelpRequest records in scope)
-  const helpNeededCount = useMemo(() => {
-    return helpRequests.filter((h) => {
-      if (h.status === 'resolved' || h.status === 'completed' || h.status === 'dismissed') return false;
-      const hUserId = String(h.user_id || '');
-      if (hUserId && devIdsInScope.size > 0 && !devIdsInScope.has(hUserId) && hUserId !== String(user?.id)) return false;
-      if (selectedDevId !== 'all' && hUserId !== String(selectedDevId)) return false;
-      if (selectedProjectId !== 'all' && String(h.project_id || '') !== String(selectedProjectId)) return false;
-      if (selectedDate && h.created_at) {
-        const hDate = h.created_at.split('T')[0];
-        if (hDate !== selectedDate) return false;
-      }
-      return true;
-    }).length;
-  }, [helpRequests, devIdsInScope, user?.id, selectedDevId, selectedProjectId, selectedDate]);
-
-  // 3. Focus Sessions Calculation (Focus sessions in scope for selected date/today)
-  const activeFocusCount = useMemo(() => {
-    const targetDate = selectedDate || todayStr;
-    return focusSessions.filter((fs) => {
-      const fsUserId = String(fs.user_id || '');
-      if (fsUserId && devIdsInScope.size > 0 && !devIdsInScope.has(fsUserId) && fsUserId !== String(user?.id)) return false;
-      if (selectedDevId !== 'all' && fsUserId !== String(selectedDevId)) return false;
-      if (fs.created_at) {
-        const fsDate = fs.created_at.split('T')[0];
-        if (fsDate !== targetDate) return false;
-      }
-      return true;
-    }).length;
-  }, [focusSessions, devIdsInScope, user?.id, selectedDevId, selectedDate, todayStr]);
 
   const getDevName = (t) => {
     if (t.assignee) {
@@ -846,13 +934,21 @@ export default function ManagementMyWorkView({ user }) {
         {/* Open Blockers */}
         <div
           className="card"
-          onClick={() => setSelectedStatus(selectedStatus === 'blocked' ? 'all' : 'blocked')}
-          title="Click to filter blocked developer tasks"
+          onClick={() => {
+            if (selectedStatus === 'blocked' && !summaryFilter) {
+              setSelectedStatus('all');
+            } else {
+              setSelectedStatus('blocked');
+              setSummaryFilter(null);
+            }
+          }}
+          title={selectedStatus === 'blocked' && !summaryFilter ? "Click to clear blocked filter" : "Click to filter blocked developer tasks"}
           style={{
             padding: '16px 20px',
             background: '#FEF2F2',
             borderRadius: '14px',
-            border: selectedStatus === 'blocked' ? '2px solid #DC2626' : '1px solid #FEE2E2',
+            border: (selectedStatus === 'blocked' && !summaryFilter) ? '2px solid #DC2626' : '1px solid #FEE2E2',
+            boxShadow: (selectedStatus === 'blocked' && !summaryFilter) ? '0 4px 14px rgba(220, 38, 38, 0.25)' : 'none',
             cursor: 'pointer',
             transition: 'transform 0.15s ease, box-shadow 0.15s ease'
           }}
@@ -868,19 +964,26 @@ export default function ManagementMyWorkView({ user }) {
           </div>
         </div>
 
-        {/* Help Requests */}
+        {/* Need Help */}
         <div
           className="card"
           onClick={() => {
-            const devWithHelp = developersInScope.find((d) => helpRequests.some((h) => h.status !== 'resolved' && String(h.user_id) === String(d.id)));
-            if (devWithHelp) setSelectedDrawerDev(devWithHelp);
+            if (summaryFilter === 'help') {
+              setSummaryFilter(null);
+            } else {
+              setSummaryFilter('help');
+              if (selectedStatus === 'blocked') {
+                setSelectedStatus('all');
+              }
+            }
           }}
-          title="Click to inspect developer help requests"
+          title={summaryFilter === 'help' ? "Click to clear Need Help filter" : "Click to filter developer tasks needing help"}
           style={{
             padding: '16px 20px',
             background: '#FEF3C7',
             borderRadius: '14px',
-            border: '1px solid #FDE68A',
+            border: summaryFilter === 'help' ? '2px solid #D97706' : '1px solid #FDE68A',
+            boxShadow: summaryFilter === 'help' ? '0 4px 14px rgba(217, 119, 6, 0.25)' : 'none',
             cursor: 'pointer',
             transition: 'transform 0.15s ease, box-shadow 0.15s ease'
           }}
@@ -900,15 +1003,22 @@ export default function ManagementMyWorkView({ user }) {
         <div
           className="card"
           onClick={() => {
-            const devWithFocus = developersInScope.find((d) => focusSessions.some((fs) => String(fs.user_id) === String(d.id)));
-            if (devWithFocus) setSelectedDrawerDev(devWithFocus);
+            if (summaryFilter === 'focus') {
+              setSummaryFilter(null);
+            } else {
+              setSummaryFilter('focus');
+              if (selectedStatus === 'blocked') {
+                setSelectedStatus('all');
+              }
+            }
           }}
-          title="Click to inspect focus session activity"
+          title={summaryFilter === 'focus' ? "Click to clear Focus Sessions filter" : "Click to filter developer tasks with focus sessions"}
           style={{
             padding: '16px 20px',
             background: '#ECFDF5',
             borderRadius: '14px',
-            border: '1px solid #A7F3D0',
+            border: summaryFilter === 'focus' ? '2px solid #059669' : '1px solid #A7F3D0',
+            boxShadow: summaryFilter === 'focus' ? '0 4px 14px rgba(5, 150, 105, 0.25)' : 'none',
             cursor: 'pointer',
             transition: 'transform 0.15s ease, box-shadow 0.15s ease'
           }}
@@ -985,7 +1095,12 @@ export default function ManagementMyWorkView({ user }) {
           {/* 3. Status Filter */}
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            onChange={(e) => {
+              setSelectedStatus(e.target.value);
+              if (e.target.value === 'blocked') {
+                setSummaryFilter(null);
+              }
+            }}
             style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, background: '#F8FAFC', flexShrink: 0 }}
           >
             <option value="all">⚡ All Statuses</option>
@@ -1015,7 +1130,57 @@ export default function ManagementMyWorkView({ user }) {
             onClear={() => setSelectedDate(getTodayDateStr())}
           />
 
-          {(searchTerm || selectedDevId !== 'all' || selectedProjectId !== 'all' || selectedStatus !== 'all' || selectedPriority !== 'all' || selectedDate !== getTodayDateStr()) && (
+          {summaryFilter === 'help' && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              background: '#FEF3C7',
+              border: '1px solid #FDE68A',
+              color: '#92400E',
+              fontSize: '12px',
+              fontWeight: 600
+            }}>
+              <HelpCircle size={14} color="#D97706" /> Need Help
+              <button
+                type="button"
+                onClick={() => setSummaryFilter(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', color: '#B45309' }}
+                title="Remove Need Help filter"
+              >
+                <X size={14} />
+              </button>
+            </span>
+          )}
+
+          {summaryFilter === 'focus' && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              background: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              color: '#065F46',
+              fontSize: '12px',
+              fontWeight: 600
+            }}>
+              <Flame size={14} color="#059669" /> Focus Sessions
+              <button
+                type="button"
+                onClick={() => setSummaryFilter(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', color: '#047857' }}
+                title="Remove Focus Sessions filter"
+              >
+                <X size={14} />
+              </button>
+            </span>
+          )}
+
+          {(searchTerm || selectedDevId !== 'all' || selectedProjectId !== 'all' || selectedStatus !== 'all' || selectedPriority !== 'all' || selectedDate !== getTodayDateStr() || summaryFilter) && (
             <button
               onClick={() => {
                 setSearchTerm('');
@@ -1024,6 +1189,7 @@ export default function ManagementMyWorkView({ user }) {
                 setSelectedStatus('all');
                 setSelectedPriority('all');
                 setSelectedDate(getTodayDateStr());
+                setSummaryFilter(null);
               }}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: '12px', fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}
             >
@@ -1160,7 +1326,41 @@ export default function ManagementMyWorkView({ user }) {
 
                     {/* Task Title */}
                     <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A', lineHeight: 1.4 }}>{t.title}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A', lineHeight: 1.4 }}>{t.title}</span>
+                        {(helpTaskIds.has(String(t.id).toLowerCase()) || helpUserIdsWithoutTask.has(String(t.assigned_to || t.assignee?.id || '').toLowerCase())) && (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            color: '#D97706',
+                            background: '#FEF3C7',
+                            padding: '2px 6px',
+                            borderRadius: '6px',
+                            border: '1px solid #FDE68A'
+                          }}>
+                            <HelpCircle size={10} /> Need Help
+                          </span>
+                        )}
+                        {(focusTaskIds.has(String(t.id).toLowerCase()) || focusUserIdsWithoutTask.has(String(t.assigned_to || t.assignee?.id || '').toLowerCase())) && (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            color: '#059669',
+                            background: '#ECFDF5',
+                            padding: '2px 6px',
+                            borderRadius: '6px',
+                            border: '1px solid #A7F3D0'
+                          }}>
+                            <Flame size={10} /> Focus Active
+                          </span>
+                        )}
+                      </div>
                       {t.description && (
                         <div style={{ fontSize: '11px', color: '#64748B', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
                           {t.description}
@@ -1239,7 +1439,13 @@ export default function ManagementMyWorkView({ user }) {
               {filteredTasks.length === 0 && (
                 <tr>
                   <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: '#64748B', fontSize: '13px' }}>
-                    {selectedDate === getTodayDateStr() && !searchTerm && selectedDevId === 'all' && selectedProjectId === 'all' && selectedStatus === 'all' && selectedPriority === 'all'
+                    {summaryFilter === 'help'
+                      ? "No developer tasks found with active help requests matching the current filters."
+                      : summaryFilter === 'focus'
+                      ? "No developer tasks found with focus sessions matching the current filters."
+                      : selectedStatus === 'blocked'
+                      ? "No blocked developer tasks found matching the current filters."
+                      : selectedDate === getTodayDateStr() && !searchTerm && selectedDevId === 'all' && selectedProjectId === 'all' && selectedStatus === 'all' && selectedPriority === 'all'
                       ? "No tasks scheduled for today."
                       : "No developer work items match the selected filter criteria."}
                   </td>
@@ -1256,6 +1462,9 @@ export default function ManagementMyWorkView({ user }) {
         onClose={() => setSelectedDrawerDev(null)}
         developer={selectedDrawerDev}
         role={role}
+        tasks={tasks}
+        projects={projects}
+        users={users}
         onRefresh={loadAllData}
       />
 

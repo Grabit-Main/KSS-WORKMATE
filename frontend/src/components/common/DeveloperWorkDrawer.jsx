@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   X, User, CheckSquare, TrendingUp, FileText, AlertTriangle, HelpCircle,
   Flame, Activity, ShieldAlert, ShieldCheck, Lock, Eye, Edit3, Trash2, Calendar,
@@ -11,12 +11,24 @@ import TaskDetailsModal from '../tasks/TaskDetailsModal';
 
 const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
-export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role = 'TM', projectContext = null, onRefresh }) {
+export default function DeveloperWorkDrawer({
+  isOpen,
+  onClose,
+  developer,
+  role = 'TM',
+  projectContext = null,
+  tasks: propTasks = null,
+  projects: propProjects = null,
+  users: propUsers = null,
+  onRefresh
+}) {
   const isTL = role === 'TL';
   const isReadOnly = ['PM', 'CTO', 'CEO'].includes(role);
 
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'tasks', 'progress', 'pulse', 'blockers', 'help', 'focus'
   const [developerTasks, setDeveloperTasks] = useState([]);
+  const [allTasksList, setAllTasksList] = useState([]);
+  const [allUsersList, setAllUsersList] = useState([]);
   const [dailyPulse, setDailyPulse] = useState(null);
   const [blockersList, setBlockersList] = useState([]);
   const [helpRequests, setHelpRequests] = useState([]);
@@ -26,148 +38,141 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
   const [editProgressTask, setEditProgressTask] = useState(null);
   const [newProgressVal, setNewProgressVal] = useState(50);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const targetDevId = developer?.id || developer?.user_id || developer?._id;
+  const prevDevIdRef = useRef(null);
 
-  // Load Developer Data from Backend DB
+  // Instant state reset when switching developers to avoid stale data
+  useEffect(() => {
+    const curDevId = developer?.id || developer?.user_id || developer?._id;
+    if (curDevId && curDevId !== prevDevIdRef.current) {
+      prevDevIdRef.current = curDevId;
+      setDeveloperTasks([]);
+      setDailyPulse(null);
+      setBlockersList([]);
+      setHelpRequests([]);
+      setFocusHistory([]);
+    }
+  }, [developer]);
+
+  // Load Developer Data strictly scoped to this developer
   const loadDevData = useCallback(async () => {
     if (!developer) return;
     setLoading(true);
     try {
-      let activeUuid = isUUID(targetDevId) ? targetDevId : null;
-      let allUsers = [];
+      const rawTargetId = developer?.id || developer?.user_id || developer?._id;
+      let activeUuid = isUUID(rawTargetId) ? rawTargetId : null;
+      let fetchedUsers = Array.isArray(propUsers) && propUsers.length > 0 ? propUsers : [];
 
-      if (!activeUuid) {
+      if (!activeUuid || fetchedUsers.length === 0) {
         try {
-          allUsers = await getUsers();
-          const devEmail = developer?.email?.toLowerCase();
-          const devFullName = `${developer?.first_name || ''} ${developer?.last_name || ''}`.trim().toLowerCase();
-          const found = allUsers.find(
-            (u) => (devEmail && u.email?.toLowerCase() === devEmail) ||
-                   (`${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase() === devFullName)
-          );
-          if (found) activeUuid = found.id;
+          fetchedUsers = await getUsers();
         } catch (e) {
-          console.warn('Failed to resolve developer UUID:', e);
+          console.warn('Failed to fetch users:', e);
         }
       }
+      setAllUsersList(Array.isArray(fetchedUsers) ? fetchedUsers : []);
 
-      const queryUuid = activeUuid || targetDevId;
+      if (!activeUuid && Array.isArray(fetchedUsers)) {
+        const devEmail = developer?.email?.toLowerCase();
+        const devFullName = `${developer?.first_name || ''} ${developer?.last_name || ''}`.trim().toLowerCase();
+        const found = fetchedUsers.find(
+          (u) => (devEmail && u.email?.toLowerCase() === devEmail) ||
+                 (`${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase() === devFullName)
+        );
+        if (found) activeUuid = found.id;
+      }
 
-      const [allTasks, pulseRes, blockersRes, helpRes, focusRes, allBlockersRes] = await Promise.all([
-        getTasks().catch(() => []),
+      const queryUuid = activeUuid || rawTargetId;
+
+      // Concurrently fetch this developer's specific data using canonical queryUuid
+      const [allTasksRes, pulseRes, blockersRes, helpRes, focusRes] = await Promise.all([
+        (Array.isArray(propTasks) && propTasks.length > 0) ? Promise.resolve(propTasks) : getTasks().catch(() => []),
         getDailyPulses(queryUuid).catch(() => []),
         getBlockers(queryUuid).catch(() => []),
         getHelpRequests(queryUuid).catch(() => []),
-        getFocusSessions(queryUuid).catch(() => []),
-        getBlockers().catch(() => [])
+        getFocusSessions(queryUuid).catch(() => [])
       ]);
 
+      const allTasks = Array.isArray(allTasksRes) ? allTasksRes : [];
+      setAllTasksList(allTasks);
+
+      // Tasks strictly assigned to this developer
       let filtered = [];
-      if (Array.isArray(allTasks)) {
-        const devIdStr = String(queryUuid || '').toLowerCase();
-        const devEmailStr = String(developer?.email || '').toLowerCase();
-        const devNameStr = `${developer?.first_name || ''} ${developer?.last_name || ''}`.trim().toLowerCase();
+      const devIdStr = String(queryUuid || '').toLowerCase();
+      const devEmailStr = String(developer?.email || '').toLowerCase();
+      const devNameStr = `${developer?.first_name || ''} ${developer?.last_name || ''}`.trim().toLowerCase();
 
-        filtered = allTasks.filter((t) => {
-          const assignedTo = String(t.assigned_to || '').toLowerCase();
-          const assignedBy = String(t.assigned_by || '').toLowerCase();
-          const assigneeId = String(t.assignee?.id || '').toLowerCase();
-          const assigneeEmail = String(t.assignee?.email || '').toLowerCase();
+      filtered = allTasks.filter((t) => {
+        const assignedTo = String(t.assigned_to || '').toLowerCase();
+        const assigneeId = String(t.assignee?.id || '').toLowerCase();
+        const assigneeEmail = String(t.assignee?.email || '').toLowerCase();
+        const assigneeName = `${t.assignee?.first_name || ''} ${t.assignee?.last_name || ''}`.trim().toLowerCase();
 
-          return (
-            (devIdStr && (assignedTo === devIdStr || assignedBy === devIdStr || assigneeId === devIdStr)) ||
-            (devEmailStr && (assignedTo === devEmailStr || assigneeEmail === devEmailStr)) ||
-            (devNameStr && (assignedTo === devNameStr))
-          );
-        });
-        setDeveloperTasks(filtered);
-      }
+        return (
+          (devIdStr && (assignedTo === devIdStr || assigneeId === devIdStr)) ||
+          (devEmailStr && (assignedTo === devEmailStr || assigneeEmail === devEmailStr)) ||
+          (devNameStr && (assignedTo === devNameStr || assigneeName === devNameStr))
+        );
+      });
+      setDeveloperTasks(filtered);
 
-      // 1. Daily Pulse (backend or local fallback)
+      // 1. Daily Pulse (backend or local fallback scoped strictly to this developer)
       if (Array.isArray(pulseRes) && pulseRes.length > 0) {
         setDailyPulse(pulseRes[0]);
       } else {
         try {
-          const savedPulse = localStorage.getItem(`mywork_pulse_${queryUuid}`) || localStorage.getItem(`mywork_pulse_${developer?.id}`);
+          const savedPulse = localStorage.getItem(`mywork_pulse_${queryUuid}`);
           setDailyPulse(savedPulse ? JSON.parse(savedPulse) : null);
         } catch {
           setDailyPulse(null);
         }
       }
 
-      // 2. Blockers (combine user DB, general DB, and all localStorage keys)
-      const isDemoBlocker = (item) => {
-        if (!item) return false;
-        const str = JSON.stringify(item).toLowerCase();
-        return (
-          str.includes('i need this') ||
-          str.includes('i am facing an issue') ||
-          str.includes('satya ranjan das') ||
-          str.includes('requirement blocker') ||
-          str.includes('dependency blocker') ||
-          (str.includes('blocker') && str.includes('petshop'))
-        );
-      };
-
-      const dbDevBlockers = (Array.isArray(allBlockersRes) ? allBlockersRes : []).filter((b) => {
-        const bUserId = String(b.user_id || '').toLowerCase();
-        const targetId = String(queryUuid || developer?.id || '').toLowerCase();
-        return bUserId === targetId || bUserId === String(developer?.user_id || '').toLowerCase();
-      }).filter(b => !isDemoBlocker(b));
-
+      // 2. Blockers (backend query strictly filtered by queryUuid, merged only with developer's own localStorage)
       let localBlockers = [];
       try {
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith('mywork_blockers')) {
-            const val = localStorage.getItem(k);
-            if (val) {
-              const parsed = JSON.parse(val);
-              if (Array.isArray(parsed)) {
-                const cleaned = parsed.filter(b => !isDemoBlocker(b));
-                if (cleaned.length !== parsed.length) {
-                  if (cleaned.length === 0) localStorage.removeItem(k);
-                  else localStorage.setItem(k, JSON.stringify(cleaned));
-                }
-                localBlockers.push(...cleaned);
-              }
-            }
-          }
+        const savedBlockers = localStorage.getItem(`mywork_blockers_${queryUuid}`);
+        if (savedBlockers) {
+          const parsed = JSON.parse(savedBlockers);
+          if (Array.isArray(parsed)) localBlockers = parsed;
         }
       } catch (e) {}
 
       const rawBlockers = [
-        ...(Array.isArray(blockersRes) ? blockersRes : []).filter(b => !isDemoBlocker(b)),
-        ...dbDevBlockers,
+        ...(Array.isArray(blockersRes) ? blockersRes : []),
         ...localBlockers
       ];
 
       const mergedBlockers = [];
       const seenBlockerKeys = new Set();
       for (const item of rawBlockers) {
+        if (!item) continue;
         const key = item.id || item.description;
-        if (!seenBlockerKeys.has(key) && !isDemoBlocker(item)) {
+        if (!seenBlockerKeys.has(key)) {
           seenBlockerKeys.add(key);
           mergedBlockers.push(item);
         }
       }
       setBlockersList(mergedBlockers);
 
-      // 3. Help Requests (backend or localStorage)
+      // 3. Help Requests (backend query strictly filtered by queryUuid, merged only with developer's own localStorage)
       let localHelp = [];
       try {
-        const savedHelp = localStorage.getItem(`mywork_help_requests_${queryUuid}`) || localStorage.getItem(`mywork_help_requests_${developer?.id}`);
-        if (savedHelp) localHelp = JSON.parse(savedHelp);
+        const savedHelp = localStorage.getItem(`mywork_help_requests_${queryUuid}`);
+        if (savedHelp) {
+          const parsed = JSON.parse(savedHelp);
+          if (Array.isArray(parsed)) localHelp = parsed;
+        }
       } catch (e) {}
 
       const rawHelp = [
         ...(Array.isArray(helpRes) ? helpRes : []),
         ...localHelp
       ];
+
       const mergedHelp = [];
       const seenHelpKeys = new Set();
       for (const item of rawHelp) {
+        if (!item) continue;
         const key = item.id || item.details || item.topic;
         if (!seenHelpKeys.has(key)) {
           seenHelpKeys.add(key);
@@ -176,21 +181,26 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
       }
       setHelpRequests(mergedHelp);
 
-      // 4. Focus Sessions (backend or localStorage)
+      // 4. Focus Sessions (backend query strictly filtered by queryUuid, merged only with developer's own localStorage)
       let localFocus = [];
       try {
-        const savedFocus = localStorage.getItem(`mywork_focus_history_${queryUuid}`) || localStorage.getItem(`mywork_focus_history_${developer?.id}`);
-        if (savedFocus) localFocus = JSON.parse(savedFocus);
+        const savedFocus = localStorage.getItem(`mywork_focus_history_${queryUuid}`);
+        if (savedFocus) {
+          const parsed = JSON.parse(savedFocus);
+          if (Array.isArray(parsed)) localFocus = parsed;
+        }
       } catch (e) {}
 
       const rawFocus = [
         ...(Array.isArray(focusRes) ? focusRes : []),
         ...localFocus
       ];
+
       const mergedFocus = [];
       const seenFocusKeys = new Set();
       for (const item of rawFocus) {
-        const key = item.id || `${item.created_at}_${item.duration_mins}`;
+        if (!item) continue;
+        const key = item.id || item.session_id || `${item.created_at}_${item.duration_mins}`;
         if (!seenFocusKeys.has(key)) {
           seenFocusKeys.add(key);
           mergedFocus.push(item);
@@ -202,13 +212,29 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
     } finally {
       setLoading(false);
     }
-  }, [developer, targetDevId]);
+  }, [developer, propTasks, propUsers]);
 
   useEffect(() => {
     if (isOpen && developer) {
       loadDevData();
     }
   }, [isOpen, developer, loadDevData]);
+
+  const tasksMap = useMemo(() => {
+    const map = {};
+    for (const t of allTasksList) {
+      if (t?.id) map[String(t.id)] = t;
+    }
+    return map;
+  }, [allTasksList]);
+
+  const usersMap = useMemo(() => {
+    const map = {};
+    for (const u of allUsersList) {
+      if (u?.id) map[String(u.id)] = u;
+    }
+    return map;
+  }, [allUsersList]);
 
   if (!isOpen || !developer) return null;
 
@@ -221,13 +247,21 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
   const completedTasks = developerTasks.filter((t) => t.status === 'completed').length;
   const blockedTasks = developerTasks.filter((t) => t.status === 'blocked').length;
 
-  const totalFocusSecs = focusHistory.reduce((acc, f) => acc + (f.active_duration_secs || f.activeDurationSecs || 0), 0);
-  const focusMins = Math.round(totalFocusSecs / 60);
+  const getSessionDurationMins = (f) => {
+    if (f.duration_mins != null && f.duration_mins > 0) return f.duration_mins;
+    if (f.durationMins != null && f.durationMins > 0) return f.durationMins;
+    const secs = f.active_duration_secs || f.activeDurationSecs || 0;
+    if (secs > 0) return Math.max(1, Math.round(secs / 60));
+    return 25;
+  };
+
+  const focusMins = focusHistory.reduce((acc, f) => acc + getSessionDurationMins(f), 0);
 
   // TL CRUD Handlers
   const handleTLDeleteTask = async (taskId) => {
     if (!isTL) return;
     if (!window.confirm('Are you sure you want to delete this task?')) return;
+
     try {
       await deleteTask(taskId);
       loadDevData();
@@ -662,7 +696,11 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
           {/* TAB 5: BLOCKERS */}
           {activeTab === 'blockers' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {blockersList.length === 0 ? (
+              {loading ? (
+                <div style={{ color: '#64748B', fontSize: '13px', padding: '36px', textAlign: 'center' }}>
+                  Loading developer blockers...
+                </div>
+              ) : blockersList.length === 0 ? (
                 <div style={{
                   background: '#FFFFFF',
                   borderRadius: '16px',
@@ -681,8 +719,8 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
               ) : (
                 blockersList.map((b) => {
                   const rawDesc = b.description || '';
-                  let type = b.type || 'Technical';
-                  let cleanDesc = rawDesc;
+                  let type = b.blocker_type || b.type || 'Technical';
+                  let cleanDesc = b.clean_description || rawDesc;
                   if (rawDesc.startsWith('[')) {
                     const parts = rawDesc.split(']');
                     type = parts[0].replace('[', '').trim();
@@ -690,20 +728,71 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
                   }
                   const sevText = (b.severity || 'high').toUpperCase();
                   const badgeText = `${type.toUpperCase()} BLOCKER (${sevText})`;
-                  const taskTitle = b.taskTitle || b.task?.title || 'PETSHOP';
-                  const timeStr = b.reportedTime || (b.created_at ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today');
+                  const matchedTask = tasksMap[b.task_id || b.taskId];
+                  const taskTitle = b.task_title || b.taskTitle || b.task?.title || matchedTask?.title || (b.task_id ? 'Assigned Task' : 'General Work Item');
+                  const projName = b.project_name || b.project || matchedTask?.project?.name || '';
+                  
+                  let formattedDate = 'Today';
+                  if (b.created_at) {
+                    const d = new Date(b.created_at);
+                    if (!isNaN(d.getTime())) {
+                      formattedDate = `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                    }
+                  } else if (b.blockingSince) {
+                    formattedDate = b.blockingSince;
+                  } else if (b.reportedTime) {
+                    formattedDate = b.reportedTime;
+                  }
+
                   const helperName = b.helper || (cleanDesc.includes('Waiting for:') ? cleanDesc.split('Waiting for:')[1].replace(')', '').trim() : '');
+                  const status = (b.status || 'open').toUpperCase();
+                  const isResolved = status === 'RESOLVED';
 
                   return (
-                    <div key={b.id || b.description} style={{ padding: '18px', borderRadius: '14px', borderLeft: '4px solid #EF4444', background: '#FFFFFF', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', padding: '3px 9px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444' }}>
-                          {badgeText}
-                        </span>
-                        <span style={{ fontSize: '12px', color: '#64748B' }}>{timeStr}</span>
+                    <div key={b.id || b.description} style={{
+                      padding: '18px',
+                      borderRadius: '14px',
+                      borderLeft: `4px solid ${isResolved ? '#10B981' : '#EF4444'}`,
+                      background: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            padding: '3px 9px',
+                            borderRadius: '4px',
+                            background: isResolved ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            color: isResolved ? '#059669' : '#EF4444'
+                          }}>
+                            {badgeText}
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: isResolved ? '#ECFDF5' : '#FEF2F2',
+                            color: isResolved ? '#059669' : '#DC2626',
+                            border: isResolved ? '1px solid #A7F3D0' : '1px solid #FECACA'
+                          }}>
+                            {status}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>{formattedDate}</span>
                       </div>
-                      <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>{taskTitle}</h4>
-                      <p style={{ fontSize: '13px', color: '#334155', margin: '0 0 8px 0', lineHeight: 1.4 }}>{cleanDesc}</p>
+
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
+                        <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', margin: 0 }}>{taskTitle}</h4>
+                        {projName && (
+                          <span style={{ fontSize: '12px', color: '#6366F1', fontWeight: 600 }}>• {projName}</span>
+                        )}
+                      </div>
+
+                      <p style={{ fontSize: '13px', color: '#334155', margin: '0 0 8px 0', lineHeight: 1.5 }}>{cleanDesc}</p>
                       {helperName && <div style={{ fontSize: '12px', color: '#4F46E5', fontWeight: 600 }}>Waiting for: {helperName}</div>}
                     </div>
                   );
@@ -715,7 +804,11 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
           {/* TAB 6: HELP REQUESTS */}
           {activeTab === 'help' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {helpRequests.length === 0 ? (
+              {loading ? (
+                <div style={{ color: '#64748B', fontSize: '13px', padding: '36px', textAlign: 'center' }}>
+                  Loading help requests...
+                </div>
+              ) : helpRequests.length === 0 ? (
                 <div style={{
                   background: '#FFFFFF',
                   borderRadius: '16px',
@@ -732,15 +825,88 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
                   <div style={{ fontSize: '13px', color: '#64748B' }}>No help requests filed by this developer.</div>
                 </div>
               ) : (
-                helpRequests.map((hr) => (
-                  <div key={hr.id} style={{ padding: '18px', borderRadius: '14px', borderLeft: '4px solid #8B5CF6', background: '#FFFFFF', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#8B5CF6' }}>Topic: {hr.topic}</span>
-                      <span style={{ fontSize: '11px', color: '#94A3B8' }}>{hr.status.toUpperCase()}</span>
+                helpRequests.map((hr) => {
+                  const desc = hr.details || hr.description || '';
+                  const topic = hr.topic || hr.helpType || 'Technical Guidance';
+                  const matchedTask = tasksMap[hr.task_id || hr.taskId];
+                  const taskTitle = hr.task_title || hr.taskTitle || hr.task?.title || matchedTask?.title || (hr.task_id ? 'Assigned Task' : 'General Work Item');
+                  const projName = hr.project_name || hr.projectName || matchedTask?.project?.name || '';
+                  const helperUser = usersMap[hr.helperId];
+                  const helper = hr.helperName || hr.helper || (helperUser ? `${helperUser.first_name} ${helperUser.last_name}` : null);
+                  const priority = hr.priority || 'Normal';
+                  const status = (hr.status || 'open').toUpperCase();
+                  
+                  let formattedDate = 'Recent';
+                  const rawDate = hr.created_at || hr.createdAt;
+                  if (rawDate) {
+                    const d = new Date(rawDate);
+                    if (!isNaN(d.getTime())) {
+                      formattedDate = `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                    }
+                  } else if (hr.createdTime) {
+                    formattedDate = hr.createdTime;
+                  }
+
+                  const prioLower = priority.toLowerCase();
+                  const prioColor = prioLower === 'urgent' ? '#DC2626' : (prioLower === 'high' ? '#EA580C' : '#6366F1');
+                  const prioBg = prioLower === 'urgent' ? '#FEF2F2' : (prioLower === 'high' ? '#FFF7ED' : '#EEF2FF');
+
+                  return (
+                    <div key={hr.id || desc} style={{
+                      padding: '18px',
+                      borderRadius: '14px',
+                      borderLeft: '4px solid #8B5CF6',
+                      background: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#8B5CF6' }}>
+                            Topic: {topic}
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            background: prioBg,
+                            color: prioColor
+                          }}>
+                            {priority} Priority
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            background: '#F3E8FF',
+                            color: '#7C3AED'
+                          }}>
+                            {status}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>{formattedDate}</span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
+                        <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                          {taskTitle}
+                        </h4>
+                        {projName && (
+                          <span style={{ fontSize: '12px', color: '#6366F1', fontWeight: 600 }}>• {projName}</span>
+                        )}
+                      </div>
+
+                      <p style={{ fontSize: '13px', color: '#334155', margin: '0 0 8px 0', lineHeight: 1.5 }}>{desc}</p>
+                      {helper && (
+                        <div style={{ fontSize: '12px', color: '#4F46E5', fontWeight: 600 }}>
+                          Requested Helper: {helper}
+                        </div>
+                      )}
                     </div>
-                    <p style={{ fontSize: '13px', color: '#334155', margin: 0 }}>{hr.details}</p>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
@@ -748,7 +914,11 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
           {/* TAB 7: FOCUS SESSIONS */}
           {activeTab === 'focus' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {focusHistory.length === 0 ? (
+              {loading ? (
+                <div style={{ color: '#64748B', fontSize: '13px', padding: '36px', textAlign: 'center' }}>
+                  Loading focus sessions...
+                </div>
+              ) : focusHistory.length === 0 ? (
                 <div style={{
                   background: '#FFFFFF',
                   borderRadius: '16px',
@@ -776,28 +946,94 @@ export default function DeveloperWorkDrawer({ isOpen, onClose, developer, role =
                   <div style={{ fontSize: '13px', color: '#64748B' }}>This developer has not completed any focus sessions yet.</div>
                 </div>
               ) : (
-                focusHistory.map((f, i) => (
-                  <div key={i} style={{ padding: '18px', borderRadius: '14px', border: '1px solid #E2E8F0', background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>Focus Session</span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#6366F1' }}>{f.duration_mins || f.durationMins || Math.round((f.active_duration_secs || f.activeDurationSecs || 0) / 60) || 25} mins</span>
+                focusHistory.map((f, i) => {
+                  const durationMins = getSessionDurationMins(f);
+                  const matchedTask = tasksMap[f.task_id || f.taskId];
+                  const taskTitle = f.task_title || f.taskTitle || f.task?.title || matchedTask?.title || (f.task_id ? 'Assigned Task' : 'General Focus Session');
+                  const projName = f.project_name || f.projectName || matchedTask?.project?.name || '';
+                  const summary = f.accomplishment || f.accomplishment_summary;
+                  const status = (f.status || 'completed').toUpperCase();
+                  const isCompleted = status === 'COMPLETED';
+
+                  let formattedDate = 'Recent';
+                  const rawDate = f.started_at || f.created_at || f.endedAt || f.date;
+                  if (rawDate) {
+                    const d = new Date(rawDate);
+                    if (!isNaN(d.getTime())) {
+                      formattedDate = `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                    } else {
+                      formattedDate = String(rawDate);
+                    }
+                  }
+
+                  return (
+                    <div key={f.id || i} style={{
+                      padding: '18px',
+                      borderRadius: '14px',
+                      border: '1px solid #E2E8F0',
+                      background: '#FFFFFF',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Flame size={16} color="#6366F1" /> Focus Session
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            background: isCompleted ? '#ECFDF5' : '#FEF3C7',
+                            color: isCompleted ? '#059669' : '#D97706',
+                            border: isCompleted ? '1px solid #A7F3D0' : '1px solid #FDE68A'
+                          }}>
+                            {status}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 800, color: '#6366F1' }}>
+                            {durationMins} mins
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#64748B' }}>
+                            • {formattedDate}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+                        <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#334155', margin: 0 }}>
+                          {taskTitle}
+                        </h4>
+                        {projName && (
+                          <span style={{ fontSize: '12px', color: '#6366F1', fontWeight: 600 }}>• {projName}</span>
+                        )}
+                      </div>
+
+                      {summary ? (
+                        <div style={{ fontSize: '13px', color: '#334155', background: '#F8FAFC', padding: '10px 14px', borderRadius: '8px', border: '1px solid #F1F5F9' }}>
+                          <span style={{ fontWeight: 700, color: '#0F172A' }}>Accomplished: </span>
+                          {summary}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', paddingLeft: '4px' }}>
+                          No accomplishment summary entered.
+                        </div>
+                      )}
+
+                      {f.remaining_work && (
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px', paddingLeft: '4px' }}>
+                          <span style={{ fontWeight: 600 }}>Remaining: </span>
+                          {f.remaining_work}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Status: {f.status}</div>
-                    {(f.accomplishment || f.accomplishment_summary) && (
-                      <div style={{ fontSize: '13px', color: '#334155', marginTop: '8px', background: '#F8FAFC', padding: '8px 12px', borderRadius: '8px' }}>
-                        <span style={{ fontWeight: 600, color: '#0F172A' }}>Accomplished: </span>{f.accomplishment || f.accomplishment_summary}
-                      </div>
-                    )}
-                    {f.remaining_work && (
-                      <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px', paddingLeft: '4px' }}>
-                        <span style={{ fontWeight: 600 }}>Remaining: </span>{f.remaining_work}
-                      </div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
+
 
         </div>
       </div>

@@ -22,21 +22,22 @@ const normalizeToYYYYMMDD = (val) => {
   const str = String(val).trim();
   if (!str) return '';
 
-  // Match DD-MM-YYYY or DD/MM/YYYY (e.g. 15-09-2026 or 15/09/2026)
-  const ddmmyyyy = str.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
-  if (ddmmyyyy) {
-    const [, day, month, year] = ddmmyyyy;
+  // 1. Match DD-MM-YYYY or DD/MM/YYYY date-only strings (e.g. 15-09-2026 or 15/09/2026)
+  const ddmmyyyyOnly = str.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
+  if (ddmmyyyyOnly) {
+    const [, day, month, year] = ddmmyyyyOnly;
     return `${year}-${month}-${day}`;
   }
 
-  // Match YYYY-MM-DD or YYYY/MM/DD (e.g. 2026-09-15)
-  const yyyymmdd = str.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
-  if (yyyymmdd) {
-    const [, year, month, day] = yyyymmdd;
+  // 2. Match YYYY-MM-DD or YYYY/MM/DD date-only strings (e.g. 2026-09-15)
+  const yyyymmddOnly = str.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
+  if (yyyymmddOnly) {
+    const [, year, month, day] = yyyymmddOnly;
     return `${year}-${month}-${day}`;
   }
 
-  // Fallback: JS Date parsing
+  // 3. For timestamps with time or ISO strings (e.g. 2026-10-10T13:30:00Z or 2026-10-10 19:00:00):
+  // Parse in the user's local timezone identically to formatDeadlineWithTime
   let cleanStr = str;
   if (cleanStr.includes('T') && !cleanStr.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(cleanStr)) {
     cleanStr += 'Z';
@@ -517,23 +518,12 @@ const TasksPage = () => {
     if (!t || !targetDate) return false;
     if (targetDate === 'all') return true;
 
-    if (t.scheduled_date) {
-      const sKey = normalizeToYYYYMMDD(t.scheduled_date);
-      return sKey === targetDate;
-    }
-    if (t.deadline) {
-      const dKey = normalizeToYYYYMMDD(t.deadline);
-      if (dKey) return dKey === targetDate;
-    }
-    if (t.created_at) {
-      const cKey = normalizeToYYYYMMDD(t.created_at);
-      if (cKey === targetDate) return true;
-    }
+    // Check task scheduled date or due date (deadline)
+    const sDate = t.scheduled_date ? normalizeToYYYYMMDD(t.scheduled_date) : '';
+    const dDate = t.deadline ? normalizeToYYYYMMDD(t.deadline) : (t.due_date ? normalizeToYYYYMMDD(t.due_date) : '');
 
-    const todayStr = getTodayYYYYMMDD();
-    if (targetDate === todayStr && t.status !== 'completed') {
-      return true;
-    }
+    if (sDate && sDate === targetDate) return true;
+    if (dDate && dDate === targetDate) return true;
 
     return false;
   }, []);
@@ -552,23 +542,25 @@ const TasksPage = () => {
   });
 
   const todayStr = getTodayYYYYMMDD();
-  const todayTasks = userTasks.filter(t => isTaskForDate(t, todayStr));
+  const todayTasks = useMemo(() => {
+    return userTasks.filter(t => isTaskForDate(t, todayStr));
+  }, [userTasks, todayStr, isTaskForDate]);
 
   const dateFilteredTasks = useMemo(() => {
+    if (selectedDateFilter === 'all') return userTasks;
     return userTasks.filter(t => isTaskForDate(t, selectedDateFilter));
   }, [userTasks, selectedDateFilter, isTaskForDate]);
 
   const filteredTasks = useMemo(() => {
     return userTasks.filter(t => {
-      if (filterTab === 'all') {
-        return true;
-      }
-      if (filterTab === 'today') {
-        if (!isTaskForDate(t, todayStr)) return false;
-      } else if (selectedDateFilter !== 'all') {
+      // 1. Date filter: When a specific date is selected, all tabs strictly respect that date
+      if (selectedDateFilter !== 'all') {
         if (!isTaskForDate(t, selectedDateFilter)) return false;
+      } else if (filterTab === 'today') {
+        if (!isTaskForDate(t, todayStr)) return false;
       }
 
+      // 2. Tab filter
       if (filterTab === 'projects' && !t.project_id) return false;
       if (filterTab === 'standalone' && t.project_id) return false;
       if (filterTab === 'review' && t.status !== 'in_review') return false;
@@ -577,7 +569,15 @@ const TasksPage = () => {
     });
   }, [userTasks, filterTab, selectedDateFilter, isTaskForDate, todayStr]);
 
-  const activeMetricTasks = filterTab === 'all' ? userTasks : (filterTab === 'today' ? todayTasks : dateFilteredTasks);
+  const activeMetricTasks = useMemo(() => {
+    if (selectedDateFilter !== 'all') {
+      return dateFilteredTasks;
+    }
+    if (filterTab === 'today') {
+      return todayTasks;
+    }
+    return userTasks;
+  }, [selectedDateFilter, dateFilteredTasks, filterTab, todayTasks, userTasks]);
 
   const filterTabs = [
     {
@@ -598,7 +598,7 @@ const TasksPage = () => {
     {
       id: 'all',
       label: "All Tasks",
-      count: userTasks.length
+      count: userTasks.filter(t => selectedDateFilter === 'all' || isTaskForDate(t, selectedDateFilter)).length
     },
     {
       id: 'review',
@@ -811,8 +811,6 @@ const TasksPage = () => {
                   setFilterTab(tab.id);
                   if (tab.id === 'today') {
                     setSelectedDateFilter(todayStr);
-                  } else if (tab.id === 'all') {
-                    setSelectedDateFilter('all');
                   }
                 }}
                 style={{
@@ -883,7 +881,7 @@ const TasksPage = () => {
             letterSpacing: '0.01em',
             whiteSpace: 'nowrap'
           }}>
-            {selectedDateFilter !== 'all' ? formatYYYYMMDDtoDDMMYYYY(selectedDateFilter) : formatYYYYMMDDtoDDMMYYYY(todayStr)}
+            {selectedDateFilter !== 'all' ? formatYYYYMMDDtoDDMMYYYY(selectedDateFilter) : 'All Dates'}
           </span>
 
           {/* Native Hidden Date Input */}
@@ -897,7 +895,7 @@ const TasksPage = () => {
               setSelectedDateFilter(val ? val : 'all');
               if (val === todayStr) {
                 setFilterTab('today');
-              } else if (val) {
+              } else if (val && filterTab === 'today') {
                 setFilterTab('all');
               }
             }}
@@ -1129,10 +1127,10 @@ const TasksPage = () => {
                   </p>
 
                   {/* Deadline & Exceeded Row */}
-                  {task.deadline && (
+                  {(task.deadline || task.scheduled_date) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', marginBottom: '16px', color: isOverdue ? '#B91C1C' : '#475569', fontWeight: 500 }}>
                       <Calendar size={14} color={isOverdue ? '#B91C1C' : '#64748B'} />
-                      <span>{formatDeadlineWithTime(task.deadline)}</span>
+                      <span>{formatDeadlineWithTime(task.deadline || task.scheduled_date)}</span>
                       {isOverdue && (
                         <span style={{ color: '#B91C1C', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px', marginLeft: '4px' }}>
                           · ⚠️ Exceeded

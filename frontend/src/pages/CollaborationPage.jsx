@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRealtime } from '../realtime/useRealtime';
 import api from '../api/axios';
 import { getTasks } from '../api/tasks';
+import { getNotifications } from '../api/notifications';
 import {
-  MessageSquare, Send, Users, Sparkles, Search, Paperclip, Smile, AtSign,
-  Pin, Bell, CheckCircle2, Filter, Folder, CheckSquare, Megaphone, HelpCircle,
-  FileText, ArrowUpRight, MessageCircle, AlertCircle, X, ChevronRight, User, ThumbsUp, Heart, BookOpen,
+  MessageSquare, Users, Sparkles, AtSign,
+  Bell, CheckCircle2, Folder, CheckSquare, Megaphone,
+  FileText, MessageCircle, AlertCircle, X, BookOpen,
   Maximize2, Minimize2
 } from 'lucide-react';
 import { DocumentationHub } from '../components/documentation/DocumentationHub';
+import { TaskChat } from '../components/chat/TaskChat';
 
 export default function CollaborationPage() {
   const { user } = useAuth();
@@ -27,18 +29,13 @@ export default function CollaborationPage() {
   const [teamUsers, setTeamUsers] = useState([]);
   const [projectsList, setProjectsList] = useState([]);
   const [tasksList, setTasksList] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Active Selections
   const [activeChatTarget, setActiveChatTarget] = useState({ type: 'team', id: 'general', name: 'General Announcements' });
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
-
-  // Messages & Form State
-  const [messages, setMessages] = useState([]);
-  const [inputMsg, setInputMsg] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [mentionsFilter, setMentionsFilter] = useState('all');
 
   // Announcements State
   const [announcements, setAnnouncements] = useState(() => {
@@ -69,16 +66,15 @@ export default function CollaborationPage() {
   const [annTitle, setAnnTitle] = useState('');
   const [annContent, setAnnContent] = useState('');
 
-  const chatEndRef = useRef(null);
-
-  // Fetch Core Data (Users, Projects, Tasks)
+  // Fetch Core Data (Users, Projects, Tasks, Notifications)
   const loadInitialData = async () => {
     setLoadingData(true);
     try {
-      const [resUsers, resProj, resTasks] = await Promise.all([
+      const [resUsers, resProj, resTasks, resNotifs] = await Promise.all([
         api.get('/users').catch(() => ({ data: [] })),
         api.get('/projects').catch(() => ({ data: [] })),
-        getTasks().catch(() => [])
+        getTasks().catch(() => []),
+        getNotifications().catch(() => [])
       ]);
 
       if (Array.isArray(resUsers.data)) setTeamUsers(resUsers.data);
@@ -89,6 +85,9 @@ export default function CollaborationPage() {
       if (Array.isArray(resTasks)) {
         setTasksList(resTasks);
         if (resTasks.length > 0 && !selectedTaskId) setSelectedTaskId(resTasks[0].id);
+      }
+      if (Array.isArray(resNotifs)) {
+        setNotifications(resNotifs);
       }
     } catch (err) {
       console.error(err);
@@ -101,92 +100,13 @@ export default function CollaborationPage() {
     loadInitialData();
   }, []);
 
-  // Fetch Messages for Selected Target (Chat / Task / Project)
-  const fetchMessages = useCallback(async () => {
-    if (activeTab === 'tasks' && selectedTaskId) {
-      try {
-        const res = await api.get(`/tasks/${selectedTaskId}/chat`).catch(() => ({ data: [] }));
-        if (Array.isArray(res.data)) {
-          setMessages(res.data.map(m => ({
-            id: m.id,
-            user_name: m.sender ? `${m.sender.first_name} ${m.sender.last_name}` : 'Team Member',
-            user_role: m.sender?.role || 'TM',
-            content: m.message,
-            attachment_url: m.attachment_url,
-            created_at: m.created_at
-          })));
-          return;
-        }
-      } catch (err) {}
-    }
-
-    // Default Channel Messages
+  // Realtime notification sync
+  useRealtime('notification.new', async () => {
     try {
-      const storageKey = `collab_msgs_${activeChatTarget.type}_${activeChatTarget.id}`;
-      const cached = localStorage.getItem(storageKey);
-      if (cached) {
-        setMessages(JSON.parse(cached));
-      } else {
-        const initial = [
-          {
-            id: 1,
-            user_name: 'Satya Ranjan Das',
-            user_role: 'TL',
-            content: `Welcome to #${activeChatTarget.name}. Feel free to share project updates, technical questions, and task dependencies here.`,
-            created_at: new Date(Date.now() - 3600000).toISOString()
-          }
-        ];
-        setMessages(initial);
-        localStorage.setItem(storageKey, JSON.stringify(initial));
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [activeTab, selectedTaskId, activeChatTarget]);
-
-  useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Realtime handlers
-  useRealtime('chat.message_sent', fetchMessages);
-  useRealtime('notification.new', fetchMessages);
-
-  // Send Message Handler
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputMsg.trim()) return;
-
-    const newMsgObj = {
-      id: Date.now(),
-      user_name: `${user?.first_name || 'User'} ${user?.last_name || ''}`.trim(),
-      user_role: role,
-      content: inputMsg.trim(),
-      created_at: new Date().toISOString()
-    };
-
-    if (activeTab === 'tasks' && selectedTaskId) {
-      try {
-        await api.post(`/tasks/${selectedTaskId}/chat`, { message: inputMsg.trim() });
-        fetchMessages();
-      } catch (err) {
-        setMessages(prev => [...prev, newMsgObj]);
-      }
-    } else {
-      setMessages(prev => {
-        const next = [...prev, newMsgObj];
-        const storageKey = `collab_msgs_${activeChatTarget.type}_${activeChatTarget.id}`;
-        localStorage.setItem(storageKey, JSON.stringify(next));
-        return next;
-      });
-    }
-
-    setInputMsg('');
-  };
+      const notifs = await getNotifications();
+      if (Array.isArray(notifs)) setNotifications(notifs);
+    } catch (e) {}
+  });
 
   // Publish Announcement
   const handlePublishAnnouncement = (e) => {
@@ -226,15 +146,40 @@ export default function CollaborationPage() {
   };
 
   // Summary Metrics
+  const unreadCount = notifications.filter(n => !n.is_read).length;
   const summaryCards = {
-    unread: 3,
-    mentions: messages.filter(m => m.content?.includes(`@${user?.first_name}`) || m.content?.includes('@all')).length,
+    unread: unreadCount,
+    mentions: notifications.filter(n => n.event_type?.includes('chat') || n.title?.toLowerCase().includes('chat')).length,
     discussions: projectsList.length + tasksList.length,
     pendingReplies: tasksList.filter(t => t.status === 'in_review').length
   };
 
   const activeProjectObj = projectsList.find(p => p.id === selectedProjectId);
   const activeTaskObj = tasksList.find(t => t.id === selectedTaskId);
+
+  const renderFullscreenButton = () => (
+    <button
+      type="button"
+      onClick={() => setIsFullScreen(!isFullScreen)}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '7px 14px',
+        borderRadius: '10px',
+        border: '1px solid var(--border)',
+        background: 'var(--surface-hover)',
+        color: 'var(--brand-600)',
+        fontSize: '12.5px',
+        fontWeight: 600,
+        cursor: 'pointer',
+        transition: 'all 0.15s ease'
+      }}
+    >
+      {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+      <span>{isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+    </button>
+  );
 
   if (showDocHub) {
     return (
@@ -286,7 +231,7 @@ export default function CollaborationPage() {
           </div>
         </div>
 
-        {/* Documentation Button in exact location of previous search box */}
+        {/* Documentation Button */}
         <button
           onClick={() => setShowDocHub(true)}
           style={{
@@ -339,7 +284,7 @@ export default function CollaborationPage() {
           </div>
           <div>
             <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{summaryCards.mentions}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Mentions</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Mentions & Activity</div>
           </div>
         </div>
 
@@ -402,7 +347,7 @@ export default function CollaborationPage() {
 
       {/* TAB CONTENT AREAS */}
 
-      {/* TAB 1: CHATS (DIRECT, TEAM, PROJECT CHANNELS) */}
+      {/* TAB 1: CHATS (DIRECT & TEAM CHANNELS) */}
       {activeTab === 'chats' && (
         <div style={isFullScreen ? {
           position: 'fixed',
@@ -453,7 +398,7 @@ export default function CollaborationPage() {
                   { id: 'sprint', name: 'Sprint & Daily Standups', icon: Sparkles }
                 ].map(c => {
                   const Icon = c.icon;
-                  const isSelected = activeChatTarget.id === c.id;
+                  const isSelected = activeChatTarget.type === 'team' && activeChatTarget.id === c.id;
                   return (
                     <button
                       key={c.id}
@@ -488,12 +433,12 @@ export default function CollaborationPage() {
                 Direct Messages
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {teamUsers.map(u => {
-                  const isSelected = activeChatTarget.id === u.id;
+                {teamUsers.filter(u => String(u.id) !== String(user?.id)).map(u => {
+                  const isSelected = activeChatTarget.type === 'dm' && activeChatTarget.id === u.id;
                   return (
                     <button
                       key={u.id}
-                      onClick={() => setActiveChatTarget({ type: 'dm', id: u.id, name: `${u.first_name} ${u.last_name}` })}
+                      onClick={() => setActiveChatTarget({ type: 'dm', id: u.id, name: `${u.first_name} ${u.last_name}`.trim(), user: u })}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -510,7 +455,7 @@ export default function CollaborationPage() {
                         transition: 'all 0.15s ease'
                       }}
                     >
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: u.is_active ? '#10B981' : 'var(--border)' }} />
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: u.is_active !== false ? '#10B981' : 'var(--border)' }} />
                       <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.first_name} {u.last_name}</span>
                       <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'var(--surface-hover)', color: 'var(--text-tertiary)', fontWeight: 600 }}>{u.role}</span>
                     </button>
@@ -520,122 +465,26 @@ export default function CollaborationPage() {
             </div>
           </div>
 
-          {/* Main Chat Box */}
+          {/* Reused Working Chat Component */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: 'var(--surface)' }}>
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <MessageSquare size={20} color="#5551FF" />
-                <span>{activeChatTarget.name}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsFullScreen(!isFullScreen)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 14px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface-hover)',
-                  color: 'var(--brand-600)',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                <span>{isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
-              </button>
-            </div>
-
-            {/* Messages Feed */}
-            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', background: 'var(--surface)' }}>
-              {messages.map(msg => (
-                <div key={msg.id} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                  <div style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '50%',
-                    background: '#6366F1',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '14px',
-                    flexShrink: 0
-                  }}>
-                    {msg.user_name ? msg.user_name.charAt(0) : 'U'}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{msg.user_name}</span>
-                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: '#EEF2FF', color: '#6366F1', fontWeight: 600 }}>{msg.user_role}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                    </div>
-                    <div style={{
-                      background: '#FAF9F5',
-                      padding: '12px 18px',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      color: 'var(--text-primary)',
-                      lineHeight: '1.5',
-                      border: '1px solid #E5E0D8',
-                      display: 'inline-block',
-                      maxWidth: '100%',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word'
-                    }}>
-                      {msg.content}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Input Box */}
-            <form onSubmit={handleSendMessage} style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <input
-                type="text"
-                value={inputMsg}
-                onChange={(e) => setInputMsg(e.target.value)}
-                placeholder={`Message #${activeChatTarget.name}...`}
-                style={{
-                  flex: 1,
-                  padding: '12px 20px',
-                  borderRadius: '9999px',
-                  border: '1px solid #E2E8F0',
-                  background: '#FFFFFF',
-                  color: 'var(--text-primary)',
-                  fontSize: '13.5px',
-                  outline: 'none',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                }}
+            {activeChatTarget.type === 'team' ? (
+              <TaskChat
+                key={`channel_${activeChatTarget.id}`}
+                mode="channel"
+                channelId={activeChatTarget.id}
+                channelName={activeChatTarget.name}
+                currentUser={user}
+                headerExtra={renderFullscreenButton()}
               />
-              <button
-                type="submit"
-                disabled={!inputMsg.trim()}
-                style={{
-                  padding: '10px 22px',
-                  borderRadius: '12px',
-                  background: !inputMsg.trim() ? '#94A3B8' : '#5551FF',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  fontWeight: 600,
-                  fontSize: '13.5px',
-                  cursor: !inputMsg.trim() ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Send size={15} /> Send
-              </button>
-            </form>
+            ) : (
+              <TaskChat
+                key={`dm_${activeChatTarget.id}`}
+                mode="direct"
+                partnerUser={teamUsers.find(u => u.id === activeChatTarget.id) || activeChatTarget.user || { id: activeChatTarget.id, first_name: activeChatTarget.name }}
+                currentUser={user}
+                headerExtra={renderFullscreenButton()}
+              />
+            )}
           </div>
         </div>
       )}
@@ -711,35 +560,19 @@ export default function CollaborationPage() {
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: 'var(--surface)' }}>
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-              <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>{activeProjectObj?.name || 'Project Discussions'}</h2>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>{activeProjectObj?.description || 'Project discussions, milestones, and architectural notes.'}</p>
-            </div>
-
-            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {messages.map(msg => (
-                <div key={msg.id} style={{ background: '#FAF9F5', padding: '14px 18px', borderRadius: '12px', border: '1px solid #E5E0D8' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{msg.user_name}</span>
-                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                  </div>
-                  <p style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
-                </div>
-              ))}
-            </div>
-
-            <form onSubmit={handleSendMessage} style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <input
-                type="text"
-                value={inputMsg}
-                onChange={(e) => setInputMsg(e.target.value)}
-                placeholder="Post project discussion note..."
-                style={{ flex: 1, padding: '12px 20px', borderRadius: '9999px', border: '1px solid #E2E8F0', background: '#FFFFFF', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
+            {activeProjectObj ? (
+              <TaskChat
+                key={`project_${activeProjectObj.id}`}
+                mode="project"
+                project={activeProjectObj}
+                currentUser={user}
+                headerExtra={renderFullscreenButton()}
               />
-              <button type="submit" disabled={!inputMsg.trim()} style={{ padding: '10px 22px', borderRadius: '12px', background: !inputMsg.trim() ? '#94A3B8' : '#5551FF', color: '#FFFFFF', border: 'none', fontWeight: 600, fontSize: '13.5px', cursor: !inputMsg.trim() ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Send size={15} /> Post
-              </button>
-            </form>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
+                Select a project to start discussion
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -815,42 +648,19 @@ export default function CollaborationPage() {
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: 'var(--surface)' }}>
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{activeTaskObj?.title || 'Task Discussion'}</h2>
-                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: '#EEF2FF', color: '#6366F1', fontWeight: 600 }}>{activeTaskObj?.status?.toUpperCase()}</span>
-              </div>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>{activeTaskObj?.description}</p>
-            </div>
-
-            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {messages.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '40px 0' }}>No comments on this task yet. Start the conversation!</div>
-              ) : (
-                messages.map(msg => (
-                  <div key={msg.id} style={{ background: '#FAF9F5', padding: '14px 18px', borderRadius: '12px', border: '1px solid #E5E0D8' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{msg.user_name}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                    </div>
-                    <p style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <form onSubmit={handleSendMessage} style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <input
-                type="text"
-                value={inputMsg}
-                onChange={(e) => setInputMsg(e.target.value)}
-                placeholder="Post task comment..."
-                style={{ flex: 1, padding: '12px 20px', borderRadius: '9999px', border: '1px solid #E2E8F0', background: '#FFFFFF', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
+            {activeTaskObj ? (
+              <TaskChat
+                key={`task_${activeTaskObj.id}`}
+                mode="task"
+                task={activeTaskObj}
+                currentUser={user}
+                headerExtra={renderFullscreenButton()}
               />
-              <button type="submit" disabled={!inputMsg.trim()} style={{ padding: '10px 22px', borderRadius: '12px', background: !inputMsg.trim() ? '#94A3B8' : '#5551FF', color: '#FFFFFF', border: 'none', fontWeight: 600, fontSize: '13.5px', cursor: !inputMsg.trim() ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Send size={15} /> Comment
-              </button>
-            </form>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
+                Select a task to start discussion
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -859,16 +669,44 @@ export default function CollaborationPage() {
       {activeTab === 'mentions' && (
         <div className="card" style={{ padding: '24px', flex: 1 }}>
           <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AtSign size={20} color="var(--brand-600)" /> Direct Mentions & Notifications
+            <AtSign size={20} color="var(--brand-600)" /> Direct Mentions & Chat Notifications
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {messages.filter(m => m.content?.includes(`@${user?.first_name}`) || true).map(m => (
-              <div key={m.id} style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-glass)', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand-600)', marginBottom: '4px' }}>{m.user_name} mentioned you in discussion</div>
-                <p style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0 }}>{m.content}</p>
+            {notifications.filter(n => n.event_type?.includes('chat') || n.title?.toLowerCase().includes('chat')).length === 0 ? (
+              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                No direct mentions or chat notifications yet.
               </div>
-            ))}
+            ) : (
+              notifications.filter(n => n.event_type?.includes('chat') || n.title?.toLowerCase().includes('chat')).map(n => (
+                <div
+                  key={n.id}
+                  onClick={() => {
+                    if (n.ref_id) {
+                      const matchedUser = teamUsers.find(u => u.id === n.ref_id);
+                      if (matchedUser) {
+                        setActiveChatTarget({ type: 'dm', id: matchedUser.id, name: `${matchedUser.first_name} ${matchedUser.last_name}`, user: matchedUser });
+                        setActiveTab('chats');
+                      }
+                    }
+                  }}
+                  style={{
+                    padding: '16px',
+                    borderRadius: 'var(--radius-md)',
+                    background: n.is_read ? 'var(--surface)' : 'rgba(99, 102, 241, 0.05)',
+                    border: '1px solid var(--border)',
+                    cursor: n.ref_id ? 'pointer' : 'default',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--brand-600)' }}>{n.title}</div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                  </div>
+                  <p style={{ fontSize: '13.5px', color: 'var(--text-primary)', margin: 0 }}>{n.message}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

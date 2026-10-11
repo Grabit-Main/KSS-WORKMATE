@@ -43,12 +43,15 @@ class BlockerCreate(BaseModel):
 class BlockerResponse(BaseModel):
     id: UUID
     user_id: UUID
-    task_id: Optional[UUID]
+    task_id: Optional[UUID] = None
+    task_title: Optional[str] = None
+    project_name: Optional[str] = None
+    blocker_type: Optional[str] = None
     description: str
     severity: str
     status: str
     created_at: datetime
-    resolved_at: Optional[datetime]
+    resolved_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -63,7 +66,9 @@ class HelpRequestCreate(BaseModel):
 class HelpRequestResponse(BaseModel):
     id: UUID
     user_id: UUID
-    task_id: Optional[UUID]
+    task_id: Optional[UUID] = None
+    task_title: Optional[str] = None
+    project_name: Optional[str] = None
     topic: str
     details: str
     status: str
@@ -104,6 +109,8 @@ class FocusSessionResponse(BaseModel):
     session_id: Optional[str] = None
     user_id: UUID
     task_id: Optional[UUID] = None
+    task_title: Optional[str] = None
+    project_name: Optional[str] = None
     duration_mins: int
     active_duration_secs: int
     status: str
@@ -116,3 +123,4 @@ class FocusSessionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
