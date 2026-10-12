@@ -2221,16 +2221,17 @@ const KpiPage = () => {
 
   // Filtered logs based on search term
   const filteredLogs = useMemo(() => {
-    if (!searchTerm.trim()) return logs;
+    const sourceLogs = (logs && logs.length > 0) ? logs : (isTL && !selectedDate ? allKpiLogs : (logs || []));
+    if (!searchTerm.trim()) return sourceLogs;
     const term = searchTerm.toLowerCase();
-    return logs.filter((l) => {
+    return sourceLogs.filter((l) => {
       const empName = `${l.employee?.first_name || ''} ${l.employee?.last_name || ''}`.toLowerCase();
       const empEmail = (l.employee?.email || '').toLowerCase();
       const dept = (l.employee?.department || '').toLowerCase();
       const notes = (l.notes || '').toLowerCase();
       return empName.includes(term) || empEmail.includes(term) || dept.includes(term) || notes.includes(term);
     });
-  }, [logs, searchTerm]);
+  }, [logs, allKpiLogs, isTL, selectedDate, searchTerm]);
 
   // Helper to match role names flexibly
   const isRoleMatching = (empRoleStr, roleList) => {
@@ -2286,9 +2287,10 @@ const KpiPage = () => {
 
   // Available months extracted from logs
   const availableMonths = useMemo(() => {
-    const months = new Set(logs.map((l) => l.month).filter(Boolean));
+    const logsToUse = (logs && logs.length > 0) ? logs : allKpiLogs;
+    const months = new Set(logsToUse.map((l) => l.month).filter(Boolean));
     return Array.from(months);
-  }, [logs]);
+  }, [logs, allKpiLogs]);
 
   // Total unique evaluation days logged
   const totalUniqueDays = useMemo(() => {
