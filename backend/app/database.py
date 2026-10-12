@@ -5,7 +5,8 @@ from app.config import settings
 from sqlalchemy.pool import NullPool
 import os
 
-db_url = settings.DATABASE_URL or os.getenv("DATABASE_URL", "")
+raw_url = settings.DATABASE_URL or os.getenv("DATABASE_URL", "")
+db_url = raw_url.strip().replace("\r", "").replace("\n", "") if raw_url else ""
 if not db_url:
     # DATABASE_URL must be defined via .env or server environment variables
     db_url = ""
