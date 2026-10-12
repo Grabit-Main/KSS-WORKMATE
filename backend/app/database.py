@@ -7,7 +7,9 @@ import os
 
 db_url = settings.DATABASE_URL or os.getenv("DATABASE_URL", "")
 if not db_url:
-    db_url = "postgresql://postgres.wdtvedyfmtdqnvvhgcso:[REDACTED_PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
+    # DATABASE_URL must be defined via .env or server environment variables
+    db_url = ""
+
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
 elif db_url.startswith("postgresql://"):

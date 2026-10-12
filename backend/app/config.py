@@ -16,15 +16,15 @@ class Settings(BaseSettings):
     BACKEND_URL: str = "https://kss-workmate.onrender.com"
     FRONTEND_URL: str = "https://kss-workmate.vercel.app"
 
-    DATABASE_URL: str = "postgresql://postgres.wdtvedyfmtdqnvvhgcso:[REDACTED_PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
-    SUPABASE_URL: str = "https://wdtvedyfmtdqnvvhgcso.supabase.co"
-    SUPABASE_KEY: str = "sb_publishable_9CTIC0REo14-8DCQQJqG8g_n1pc3T9h"
+    DATABASE_URL: str = ""
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
 
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
 
-    GOOGLE_CLIENT_ID: str = "271988357300-r0hbpq3r5gj5vccpb6tng0587q628dj2.apps.googleusercontent.com"
+    GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_PROJECT_ID: str = ""
     GOOGLE_REFRESH_TOKEN: str = ""

@@ -9,6 +9,11 @@ venv/
 # Env files
 .env
 *.env
+.env.*
+.env.local
+!.env.example
+backend/.env
+frontend/.env
 credentials.json
 token.json
 
