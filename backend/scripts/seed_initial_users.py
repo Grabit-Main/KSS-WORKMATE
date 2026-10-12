@@ -35,6 +35,14 @@ INITIAL_USERS = [
         "role": "PM",
         "department": "Engineering",
         "password": DEFAULT_PASSWORD
+    },
+    {
+        "email": "satya.ranjan.dash@kalpanaaa.in",
+        "first_name": "Satya Ranjan",
+        "last_name": "Dash",
+        "role": "TL",
+        "department": "Engineering",
+        "password": DEFAULT_PASSWORD
     }
 ]
 
