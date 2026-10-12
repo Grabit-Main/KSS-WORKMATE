@@ -2118,15 +2118,26 @@ const KpiPage = () => {
     }
   }, [hidePersonalView, isTM]);
 
+  // Sync selectedDate for TL so it starts empty and displays all evaluation records below cards
+  useEffect(() => {
+    if (isTL && selectedDate === getTodayDateString()) {
+      setSelectedDate('');
+    }
+  }, [isTL, selectedDate]);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      const effectiveDate = isTL
+        ? (selectedDate && selectedDate !== getTodayDateString() ? selectedDate : undefined)
+        : (selectedDate || undefined);
+
       const [kpiData, summaryData, teamData, allLogsData] = await Promise.all([
         getKPIs({
           month: selectedMonth || undefined,
           status: selectedStatus || undefined,
           employee_id: selectedEmployeeId || undefined,
-          date: selectedDate || undefined,
+          date: effectiveDate,
         }).catch(() => []),
         getKPISummary({
           month: selectedMonth || undefined,
@@ -2147,7 +2158,7 @@ const KpiPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, showCardsGrid]);
+  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, showCardsGrid, isTL]);
 
   useEffect(() => {
     if (user) {
