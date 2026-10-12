@@ -2066,7 +2066,7 @@ const KpiPage = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [selectedDate, setSelectedDate] = useState(getTodayDateString());
+  const [selectedDate, setSelectedDate] = useState('');
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -2800,14 +2800,14 @@ const KpiPage = () => {
         )}
 
         {/* Reset Filter Button */}
-        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || (!isCeoOrCto && selectedDate !== getTodayDateString())) && (
+        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || selectedDate) && (
           <button
             onClick={() => {
               setSearchTerm('');
               setSelectedMonth('');
               setSelectedStatus('');
               setSelectedEmployeeId('');
-              if (!isCeoOrCto) setSelectedDate(getTodayDateString());
+              setSelectedDate('');
             }}
             style={{
               padding: '8px 12px',
@@ -2835,8 +2835,8 @@ const KpiPage = () => {
         />
       )}
 
-      {/* Main KPI Logs Table (For PM, or for CO/CTO/TL when an employee card is selected) */}
-      {(!showCardsGrid || selectedEmployeeId) && (
+      {/* Main KPI Logs Table (For TL, PM, or for CO/CTO when an employee card is selected) */}
+      {(!isCeoOrCto || selectedEmployeeId) && (
         <div style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',
