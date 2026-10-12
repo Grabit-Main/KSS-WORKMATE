@@ -2066,7 +2066,7 @@ const KpiPage = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => (user?.role === 'TL' ? '' : getTodayDateString()));
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -2800,14 +2800,18 @@ const KpiPage = () => {
         )}
 
         {/* Reset Filter Button */}
-        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || selectedDate) && (
+        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || (isTL ? Boolean(selectedDate) : (!isCeoOrCto && selectedDate !== getTodayDateString()))) && (
           <button
             onClick={() => {
               setSearchTerm('');
               setSelectedMonth('');
               setSelectedStatus('');
               setSelectedEmployeeId('');
-              setSelectedDate('');
+              if (isTL) {
+                setSelectedDate('');
+              } else if (!isCeoOrCto) {
+                setSelectedDate(getTodayDateString());
+              }
             }}
             style={{
               padding: '8px 12px',
@@ -2826,17 +2830,23 @@ const KpiPage = () => {
 
       {/* For CO, CTO, TL: Render Employee Profile Cards Dashboard */}
       {showCardsGrid && (
-        <CoCtoEmployeeKpiCards
-          employees={filteredEmployeesForCards}
-          logs={allKpiLogs}
-          selectedEmployeeId={selectedEmployeeId}
-          onSelectEmployee={(empId) => handleSelectEmployee(empId)}
-          onClearSelection={() => handleSelectEmployee('')}
-        />
+        <div style={{ marginBottom: isTL ? '28px' : (selectedEmployeeId ? '28px' : '0') }}>
+          <CoCtoEmployeeKpiCards
+            employees={filteredEmployeesForCards}
+            logs={allKpiLogs}
+            selectedEmployeeId={selectedEmployeeId}
+            onSelectEmployee={(empId) => handleSelectEmployee(empId)}
+            onClearSelection={() => handleSelectEmployee('')}
+          />
+        </div>
       )}
 
-      {/* Main KPI Logs Table (For TL, PM, or for CO/CTO when an employee card is selected) */}
-      {(!isCeoOrCto || selectedEmployeeId) && (
+      {/* Main KPI Logs Table:
+          - TL: Always rendered below employee cards (matching reference image)
+          - PM: Always rendered (PM has no cards grid)
+          - CEO/CTO: Rendered only when an employee card is selected
+      */}
+      {(isTL || !showCardsGrid || selectedEmployeeId) && (
         <div style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',
