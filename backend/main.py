@@ -13,17 +13,22 @@ from fastapi.responses import JSONResponse
 
 app = FastAPI(title="Workmate API")
 
+from app.config import settings
+
+cors_origins = list(set([
+    *settings.origins,
+    "https://kalpanaaa-workmate.vercel.app",
+    "https://kss-workmate.onrender.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://kss-workmate.vercel.app",
-        "https://kss-workmate.onrender.com",
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-    ],
-    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com|http://localhost:\d+|http://127\.0\.0\.1:\d+",
+    allow_origins=cors_origins,
+    allow_origin_regex=r"http://localhost:\d+|http://127\.0\.0\.1:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

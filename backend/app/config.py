@@ -12,9 +12,9 @@ if os.path.exists(backend_env):
 class Settings(BaseSettings):
     SECRET_KEY: str = "secret-key-workmate-production"
     DEBUG: bool = False
-    ALLOWED_ORIGINS: str = "https://kss-workmate.vercel.app"
+    ALLOWED_ORIGINS: str = "https://kalpanaaa-workmate.vercel.app"
     BACKEND_URL: str = "https://kss-workmate.onrender.com"
-    FRONTEND_URL: str = "https://kss-workmate.vercel.app"
+    FRONTEND_URL: str = "https://kalpanaaa-workmate.vercel.app"
 
     DATABASE_URL: str = ""
     SUPABASE_URL: str = ""
