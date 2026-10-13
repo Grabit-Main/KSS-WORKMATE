@@ -13,7 +13,11 @@ import { uploadFile } from '../../api/upload';
 import { useRealtime } from '../../realtime/useRealtime';
 import { useWebSocket } from '../../context/WebSocketContext';
 import { AttachmentCard } from '../common/AttachmentCard';
-import { Send, Paperclip, X, Loader2, ShieldCheck, CheckCheck, Lock, Hash, Folder, MessageSquare } from 'lucide-react';
+import {
+  Send, Paperclip, X, Loader2, ShieldCheck, CheckCheck,
+  Lock, Hash, Folder, MessageSquare, Megaphone, Users,
+  MoreVertical, Smile, AlertCircle
+} from 'lucide-react';
 import { parseUTC } from '../../utils/dateUtils';
 
 const formatTimeOnly = (dateStr) => {
@@ -45,23 +49,58 @@ export const TaskChat = ({
   partnerUser: partnerUserProp,
   channelId,
   channelName,
+  channelSubtitle,
+  channelMemberCount,
+  channelIconType,
   project,
   showHeader = true,
   headerExtra = null,
-  style = {}
+  style = {},
+  layoutVariant = 'standard'
 }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileUploading, setFileUploading] = useState(false);
+  const [reactionsMap, setReactionsMap] = useState({});
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMenuDropdown, setShowMenuDropdown] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
   const { joinRoom, leaveRoom, dispatch } = useWebSocket() || {};
+
+  const handleToggleReaction = (msgId, emoji) => {
+    setReactionsMap(prev => {
+      const current = prev[msgId] || [];
+      const idx = current.findIndex(r => r.emoji === emoji);
+      if (idx >= 0) {
+        const item = current[idx];
+        const updated = {
+          ...item,
+          count: item.userReacted ? item.count - 1 : item.count + 1,
+          userReacted: !item.userReacted
+        };
+        const list = [...current];
+        if (updated.count <= 0) {
+          list.splice(idx, 1);
+        } else {
+          list[idx] = updated;
+        }
+        return { ...prev, [msgId]: list };
+      } else {
+        return {
+          ...prev,
+          [msgId]: [...current, { emoji, count: 1, userReacted: true }]
+        };
+      }
+    });
+  };
 
   // Verify privacy membership for task chat
   const isAssignee = String(task?.assigned_to) === String(currentUser?.id);
@@ -74,6 +113,7 @@ export const TaskChat = ({
   };
 
   const loadMessages = async () => {
+    setFetchError(null);
     if (mode === 'task') {
       if (!task?.id) return;
       if (!isParticipant) {
@@ -82,6 +122,7 @@ export const TaskChat = ({
         return;
       }
       try {
+        setLoading(true);
         setAccessDenied(false);
         const data = await getChat(task.id);
         setMessages(data || []);
@@ -90,6 +131,7 @@ export const TaskChat = ({
           setAccessDenied(true);
         } else {
           console.error('Failed to load task messages:', err);
+          setFetchError('Failed to load messages');
         }
       } finally {
         setLoading(false);
@@ -107,6 +149,7 @@ export const TaskChat = ({
         setMessages(data || []);
       } catch (err) {
         console.error('Failed to load direct messages:', err);
+        setFetchError('Failed to load direct messages');
       } finally {
         setLoading(false);
       }
@@ -119,6 +162,7 @@ export const TaskChat = ({
         setMessages(data || []);
       } catch (err) {
         console.error('Failed to load channel messages:', err);
+        setFetchError('Failed to load channel messages');
       } finally {
         setLoading(false);
       }
@@ -131,6 +175,7 @@ export const TaskChat = ({
         setMessages(data || []);
       } catch (err) {
         console.error('Failed to load project messages:', err);
+        setFetchError('Failed to load project messages');
       } finally {
         setLoading(false);
       }
@@ -425,6 +470,593 @@ export const TaskChat = ({
         <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.5, maxWidth: '280px' }}>
           This conversation is private strictly between the assigned member (<strong>{assigneeName}</strong>) and the assigner (<strong>{assignerName}</strong>).
         </p>
+      </div>
+    );
+  }
+
+  const isCollabHub = layoutVariant === 'collaboration_hub';
+
+  if (isCollabHub) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        background: '#FFFFFF',
+        overflow: 'hidden',
+        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+        ...style
+      }}>
+        {/* Top Header strictly matching Image 2 */}
+        {showHeader && (
+          <div style={{
+            padding: '16px 24px',
+            background: '#FFFFFF',
+            borderBottom: '1px solid #F1F5F9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              {mode === 'direct' ? (
+                effectivePartnerUser?.avatar_url ? (
+                  <img
+                    src={effectivePartnerUser.avatar_url}
+                    alt=""
+                    style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    background: '#6366F1',
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: 700
+                  }}>
+                    {effectivePartnerUser?.first_name?.[0] || 'U'}{effectivePartnerUser?.last_name?.[0] || ''}
+                  </div>
+                )
+              ) : (
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: '#EEF2FF',
+                  color: '#5551FF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {channelIconType === 'users' ? <Users size={22} /> : <Megaphone size={22} />}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>
+                    {mode === 'direct' ? getUserName(effectivePartnerUser) : (channelName || 'General Announcements')}
+                  </span>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    background: '#EEF2FF',
+                    color: '#5551FF',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em'
+                  }}>
+                    {mode === 'direct' ? (effectivePartnerUser?.role || 'MEMBER') : 'TEAM CHANNEL'}
+                  </span>
+                </div>
+                <span style={{ fontSize: '12.5px', color: '#64748B' }}>
+                  {mode === 'direct'
+                    ? (effectivePartnerUser?.job_title || 'Direct Conversation')
+                    : (channelSubtitle || 'Team-wide updates and important information')}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {mode === 'channel' && Boolean(channelMemberCount) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748B', fontSize: '13px', fontWeight: 500 }}>
+                  <Users size={16} color="#64748B" />
+                  <span>
+                    {typeof channelMemberCount === 'number'
+                      ? `${channelMemberCount} ${channelMemberCount === 1 ? 'member' : 'members'}`
+                      : channelMemberCount}
+                  </span>
+                </div>
+              )}
+
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowMenuDropdown(!showMenuDropdown)}
+                  style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                    background: '#FFFFFF',
+                    color: '#64748B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Conversation options"
+                >
+                  <MoreVertical size={18} />
+                </button>
+                {showMenuDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '40px',
+                    background: '#FFFFFF',
+                    borderRadius: '10px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                    border: '1px solid #E2E8F0',
+                    padding: '6px',
+                    width: '170px',
+                    zIndex: 100
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowMenuDropdown(false)}
+                      style={{ width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', textAlign: 'left', fontSize: '12.5px', color: '#1E293B', borderRadius: '6px', cursor: 'pointer' }}
+                      onMouseEnter={(e) => e.target.style.background = '#F8FAFC'}
+                      onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                    >
+                      Channel details
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMenuDropdown(false)}
+                      style={{ width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', textAlign: 'left', fontSize: '12.5px', color: '#1E293B', borderRadius: '6px', cursor: 'pointer' }}
+                      onMouseEnter={(e) => e.target.style.background = '#F8FAFC'}
+                      onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                    >
+                      Mute notifications
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMenuDropdown(false)}
+                      style={{ width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', textAlign: 'left', fontSize: '12.5px', color: '#1E293B', borderRadius: '6px', cursor: 'pointer' }}
+                      onMouseEnter={(e) => e.target.style.background = '#F8FAFC'}
+                      onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                    >
+                      Export history
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {headerExtra}
+            </div>
+          </div>
+        )}
+
+        {/* Messages Scroll Area */}
+        <div style={{
+          flex: 1,
+          padding: '20px 24px',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#FFFFFF'
+        }}>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#94A3B8', fontSize: '13px', gap: '8px' }}>
+              <Loader2 size={18} className="spinner" />
+              <span>Loading messages...</span>
+            </div>
+          ) : fetchError ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              textAlign: 'center',
+              padding: '24px'
+            }}>
+              <AlertCircle size={32} color="#EF4444" style={{ marginBottom: '8px' }} />
+              <p style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginBottom: '4px' }}>{fetchError}</p>
+              <button
+                type="button"
+                onClick={loadMessages}
+                style={{
+                  marginTop: '8px',
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  background: '#5551FF',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : messages.length === 0 ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              textAlign: 'center',
+              padding: '32px',
+              color: '#94A3B8'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '14px',
+                background: '#EEF2FF',
+                color: '#5551FF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '12px'
+              }}>
+                {mode === 'channel' ? (channelIconType === 'users' ? <Users size={24} /> : <Megaphone size={24} />) : <MessageSquare size={24} />}
+              </div>
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1E293B', marginBottom: '4px' }}>
+                {mode === 'channel' ? `Welcome to #${channelName || 'channel'}` : `Conversation with ${getUserName(effectivePartnerUser)}`}
+              </h3>
+              <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '300px', margin: 0, lineHeight: 1.5 }}>
+                {mode === 'channel'
+                  ? 'No messages in this channel yet. Start the discussion with your team!'
+                  : 'No direct messages yet. Send a message below to start chatting!'}
+              </p>
+            </div>
+          ) : (
+            groupedMessages.map((group, gIdx) => (
+              <React.Fragment key={group.dateKey || gIdx}>
+                {/* Dynamic Date Separator based on actual message timestamps */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', margin: '8px 0 20px 0' }}>
+                  <div style={{ position: 'absolute', left: 0, right: 0, height: '1px', background: '#F1F5F9' }} />
+                  <span style={{
+                    position: 'relative',
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '3px 14px',
+                    fontSize: '11.5px',
+                    fontWeight: 600,
+                    color: '#64748B',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                  }}>
+                    {group.dateKey}
+                  </span>
+                </div>
+
+                {group.items.map((m, idx) => {
+                  const isMe = String(m.sender_id) === String(currentUser?.id);
+                  const senderName = isMe
+                    ? 'You'
+                    : (m.sender ? `${m.sender.first_name || ''} ${m.sender.last_name || ''}`.trim() : (m.sender_name || (mode === 'direct' ? getUserName(effectivePartnerUser) : 'Team Member')));
+                  const senderAvatar = isMe ? currentUser?.avatar_url : (m.sender?.avatar_url || (mode === 'direct' ? effectivePartnerUser?.avatar_url : null));
+                  const timeDisplay = formatTimeOnly(m.created_at);
+                  const reactions = reactionsMap[m.id] || [];
+
+                  // Dynamic initials for avatar fallback
+                  const initials = isMe
+                    ? `${currentUser?.first_name?.[0] || 'U'}${currentUser?.last_name?.[0] || ''}`.toUpperCase()
+                    : m.sender
+                    ? `${m.sender.first_name?.[0] || 'T'}${m.sender.last_name?.[0] || ''}`.toUpperCase()
+                    : senderName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'TM';
+
+                  return (
+                    <div key={m.id || idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '20px' }}>
+                      {/* Left Avatar from real user data */}
+                      {senderAvatar ? (
+                        <img
+                          src={senderAvatar}
+                          alt=""
+                          style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          background: isMe ? '#4F46E5' : '#6366F1',
+                          color: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          flexShrink: 0
+                        }}>
+                          {initials}
+                        </div>
+                      )}
+
+                      {/* Message Body */}
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        {/* Header: Sender Name + Timestamp */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>
+                            {senderName}
+                          </span>
+                          <span style={{ fontSize: '11.5px', color: '#94A3B8', fontWeight: 400 }}>
+                            {timeDisplay}
+                          </span>
+                          {isMe && (
+                            <CheckCheck size={14} color="#5551FF" style={{ marginLeft: '2px' }} />
+                          )}
+                        </div>
+
+                        {/* Bubble */}
+                        <div style={{
+                          background: isMe ? '#EEF2FF' : '#F1F5F9',
+                          border: isMe ? '1px solid #E0E7FF' : 'none',
+                          borderRadius: '14px',
+                          padding: '12px 18px',
+                          color: '#1E293B',
+                          fontSize: '13.5px',
+                          lineHeight: '1.5',
+                          maxWidth: '85%',
+                          wordBreak: 'break-word',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {m.message}
+
+                          {m.attachment_url && (
+                            <div style={{ marginTop: m.message ? '8px' : '0' }}>
+                              <AttachmentCard url={m.attachment_url} type={m.attachment_type} storage={m.storage_provider} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Emoji Reactions (only rendered when real reactions exist) */}
+                        {reactions.length > 0 && (
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                            {reactions.map((r, rIdx) => (
+                              <button
+                                key={rIdx}
+                                type="button"
+                                onClick={() => handleToggleReaction(m.id, r.emoji)}
+                                style={{
+                                  background: r.userReacted ? '#EEF2FF' : '#FFFFFF',
+                                  border: r.userReacted ? '1px solid #5551FF' : '1px solid #E2E8F0',
+                                  borderRadius: '14px',
+                                  padding: '2px 8px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '12px',
+                                  color: r.userReacted ? '#5551FF' : '#475569',
+                                  cursor: 'pointer',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                <span>{r.emoji}</span>
+                                <span style={{ fontWeight: 600 }}>{r.count}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Attachment Selected Banner */}
+        {selectedFile && (
+          <div style={{
+            padding: '8px 24px',
+            background: '#F8FAFC',
+            borderTop: '1px solid #E2E8F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '12px',
+            color: '#475569'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+              <Paperclip size={14} color="#5551FF" />
+              <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+                {selectedFile.name}
+              </span>
+              <span style={{ fontSize: '10px', color: '#94A3B8' }}>
+                ({(selectedFile.size / 1024).toFixed(1)} KB)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedFile(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#94A3B8',
+                padding: '2px'
+              }}
+              title="Remove attachment"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Footer Composer strictly matching Image 2 */}
+        <form
+          onSubmit={handleSend}
+          style={{
+            padding: '14px 24px',
+            background: '#FFFFFF',
+            borderTop: '1px solid #F1F5F9',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            flexShrink: 0,
+            position: 'relative'
+          }}
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              background: selectedFile ? '#EEF2FF' : 'transparent',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: selectedFile ? '#5551FF' : '#64748B',
+              transition: 'all 0.15s ease',
+              flexShrink: 0
+            }}
+            title="Add attachment"
+            disabled={sending || fileUploading}
+          >
+            <Paperclip size={18} />
+          </button>
+
+          <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              placeholder="Type a message..."
+              value={newMessage}
+              onChange={handleTextareaChange}
+              onKeyDown={handleKeyDown}
+              style={{
+                width: '100%',
+                borderRadius: '24px',
+                border: '1px solid #E2E8F0',
+                padding: '10px 44px 10px 18px',
+                fontSize: '13.5px',
+                color: '#1E293B',
+                outline: 'none',
+                background: '#FFFFFF',
+                resize: 'none',
+                fontFamily: 'inherit',
+                lineHeight: '1.4',
+                maxHeight: '120px'
+              }}
+              disabled={sending || fileUploading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: showEmojiPicker ? '#5551FF' : '#94A3B8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px'
+              }}
+              title="Insert emoji"
+            >
+              <Smile size={19} />
+            </button>
+          </div>
+
+          {showEmojiPicker && (
+            <div style={{
+              position: 'absolute',
+              bottom: '68px',
+              right: '76px',
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+              border: '1px solid #E2E8F0',
+              padding: '8px 12px',
+              display: 'flex',
+              gap: '8px',
+              zIndex: 100
+            }}>
+              {['👍', '🎉', '❤️', '🙌', '🚀', '😊', '👏', '🔥'].map(emoji => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => {
+                    setNewMessage(prev => prev + emoji);
+                    setShowEmojiPicker(false);
+                    textareaRef.current?.focus();
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '6px'
+                  }}
+                  onMouseEnter={(e) => e.target.style.transform = 'scale(1.2)'}
+                  onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={(!newMessage.trim() && !selectedFile) || sending || fileUploading}
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: '#5551FF',
+              opacity: (!newMessage.trim() && !selectedFile) || sending || fileUploading ? 0.7 : 1,
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              cursor: (!newMessage.trim() && !selectedFile) || sending || fileUploading ? 'not-allowed' : 'pointer',
+              flexShrink: 0,
+              boxShadow: '0 2px 6px rgba(85, 81, 255, 0.28)',
+              transition: 'all 0.15s ease'
+            }}
+            title="Send message"
+          >
+            {sending || fileUploading ? (
+              <Loader2 size={16} className="spinner" />
+            ) : (
+              <Send size={16} style={{ transform: 'translateX(1px)' }} />
+            )}
+          </button>
+        </form>
       </div>
     );
   }
