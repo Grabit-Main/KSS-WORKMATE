@@ -16,12 +16,13 @@ from app.websocket.events import REVIEW_SUBMITTED, NOTIFICATION_NEW
 
 router = APIRouter(tags=["feedback"])
 
-# Role review/feedback chains: TL→TM, PM→TL, CEO/CTO→PM
+# Role review/feedback chains: TL→TM, PM→TL, CEO/CTO/CO→PM
 REVIEW_ALLOWED = {
     "TL": ["TM"],
     "PM": ["TL"],
     "CEO": ["PM"],
     "CTO": ["PM"],
+    "CO": ["PM"],
 }
 
 
@@ -39,8 +40,8 @@ def get_feedback_targets(db: Session = Depends(get_db), user: User = Depends(get
             (User.role == "TL") | (User.id.in_(lead_user_ids)),
             User.is_active == True
         ).all()
-    elif user.role in ("CEO", "CTO"):
-        # CEO/CTO can give feedback to PMs
+    elif user.role in ("CEO", "CTO", "CO"):
+        # CEO/CTO/CO can give feedback to PMs
         return db.query(User).filter(User.role.in_(allowed_roles), User.is_active == True).all()
     elif user.role == "TL":
         # TL can give feedback to TMs in teams they lead
@@ -107,13 +108,21 @@ def list_feedback(
     user: User = Depends(get_current_user)
 ):
     q = db.query(Review)
-    if user.role in ("CEO", "CTO") and type == "all":
+    if user.role in ("CEO", "CTO", "CO") and type == "all":
         if user_id:
             q = q.filter((Review.reviewee_id == user_id) | (Review.reviewer_id == user_id))
     elif type == "given":
-        q = q.filter(Review.reviewer_id == user.id)
+        if user.role in ("CEO", "CTO", "CO"):
+            if user_id:
+                q = q.filter(Review.reviewer_id == user_id)
+        elif user.role == "PM":
+            from app.models.project import Project
+            pm_project_ids = db.query(Project.id).filter(Project.created_by == user.id)
+            q = q.filter((Review.reviewer_id == user.id) | (Review.project_id.in_(pm_project_ids)))
+        else: # TL
+            q = q.filter(Review.reviewer_id == user.id)
     else: # received
-        target = user_id if (user_id and user.role in ("CEO", "CTO", "HR", "PM")) else user.id
+        target = user_id if (user_id and user.role in ("CEO", "CTO", "CO", "HR", "PM")) else user.id
         q = q.filter(Review.reviewee_id == target)
 
     return q.order_by(Review.created_at.desc()).all()
@@ -122,7 +131,7 @@ def list_feedback(
 @router.get("/api/feedback/user/{user_id}", response_model=List[ReviewResponse])
 @router.get("/api/reviews/user/{user_id}", response_model=List[ReviewResponse])
 def get_user_reviews(user_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    if user.role not in ("CEO", "CTO", "HR", "PM", "TL") and str(user.id) != str(user_id):
+    if user.role not in ("CEO", "CTO", "CO", "HR", "PM", "TL") and str(user.id) != str(user_id):
         raise HTTPException(403, "Access denied")
     return db.query(Review).filter(Review.reviewee_id == user_id).order_by(Review.created_at.desc()).all()
 
@@ -134,7 +143,7 @@ async def acknowledge_review(review_id: UUID, db: Session = Depends(get_db), use
     if not review:
         raise HTTPException(404, "Feedback record not found")
 
-    if str(review.reviewee_id) != str(user.id) and user.role not in ("CEO", "CTO"):
+    if str(review.reviewee_id) != str(user.id):
         raise HTTPException(403, "You can only acknowledge feedback received by you")
 
     review.status = "Acknowledged"
@@ -143,5 +152,21 @@ async def acknowledge_review(review_id: UUID, db: Session = Depends(get_db), use
 
     db.commit()
     db.refresh(review)
+
+    event = {
+        "type": "feedback.acknowledged",
+        "data": {
+            "id": str(review.id),
+            "reviewee_id": str(review.reviewee_id),
+            "status": "Acknowledged",
+            "is_acknowledged": True,
+            "acknowledged_at": review.acknowledged_at.isoformat() if review.acknowledged_at else None
+        }
+    }
+    await manager.broadcast("global:admins", event)
+    await manager.broadcast("global:all", event)
+    if review.reviewer_id:
+        await manager.send_to_user(str(review.reviewer_id), event)
+
     return review
 

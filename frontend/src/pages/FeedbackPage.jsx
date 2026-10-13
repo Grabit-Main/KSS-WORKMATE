@@ -64,12 +64,14 @@ const parseFeedbackComment = (commentText, rating) => {
 };
 
 const FeedbackPage = () => {
-  const [activeTab, setActiveTab] = useState('received'); // 'received' | 'given'
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState(
+    ['CEO', 'CTO', 'CO'].includes(user?.role) ? 'given' : 'received'
+  ); // 'received' | 'given'
   const [feedbackList, setFeedbackList] = useState([]);
   const [targets, setTargets] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
 
   // Give Feedback Modal State
   const [showModal, setShowModal] = useState(false);
@@ -89,7 +91,7 @@ const FeedbackPage = () => {
   const [ackToast, setAckToast] = useState('');
   const [ackError, setAckError] = useState('');
 
-  const canGiveFeedback = ['CEO', 'CTO', 'PM', 'TL'].includes(user?.role);
+  const canGiveFeedback = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
 
   const handleAcknowledge = async (feedbackId) => {
     if (acknowledgingIds[feedbackId]) return;
@@ -154,6 +156,8 @@ const FeedbackPage = () => {
 
   useRealtime('review.submitted', handleUpdate);
   useRealtime('feedback.submitted', handleUpdate);
+  useRealtime('review.acknowledged', handleUpdate);
+  useRealtime('feedback.acknowledged', handleUpdate);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -517,26 +521,26 @@ const FeedbackPage = () => {
                       </span>
                     </div>
 
-                    {activeTab === 'received' && (
-                      (r.is_acknowledged || r.status === 'Acknowledged') ? (
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '6px 14px',
-                            borderRadius: '8px',
-                            background: '#ECFDF5',
-                            border: '1px solid #A7F3D0',
-                            color: '#059669',
-                            fontSize: '12.5px',
-                            fontWeight: 600
-                          }}
-                        >
-                          <CheckCircle2 size={15} color="#059669" />
-                          <span>Acknowledged</span>
-                        </div>
-                      ) : (
+                    {(r.is_acknowledged || r.status === 'Acknowledged') ? (
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '7px',
+                          padding: '6px 14px',
+                          borderRadius: '10px',
+                          background: '#ECFDF5',
+                          border: '1px solid #A7F3D0',
+                          color: '#059669',
+                          fontSize: '12.5px',
+                          fontWeight: 600
+                        }}
+                      >
+                        <CheckCircle2 size={16} fill="#059669" color="#FFFFFF" />
+                        <span>Acknowledged</span>
+                      </div>
+                    ) : (
+                      activeTab === 'received' && (
                         <button
                           type="button"
                           onClick={() => handleAcknowledge(r.id)}

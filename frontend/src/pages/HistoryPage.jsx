@@ -31,8 +31,9 @@ const HistoryPage = () => {
   const [tasks, setTasks] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const isExecutive = ['CEO', 'CTO'].includes(user?.role);
+  const isExecutive = ['CEO', 'CTO', 'CO'].includes(user?.role);
 
   // Grouped Activity State & Dialog Modal
   const [selectedActivityGroup, setSelectedActivityGroup] = useState(null);
@@ -57,18 +58,55 @@ const HistoryPage = () => {
 
   const loadData = async () => {
     try {
+      setError(null);
       const [sumRes, projRes, taskRes, actRes] = await Promise.all([
-        getHistorySummary().catch(() => null),
-        getProjectsHistory().catch(() => []),
-        getTasksHistory({ status: taskStatusFilter, search: taskSearchQuery }).catch(() => []),
-        getActivityHistory().catch(() => [])
+        getHistorySummary().catch(e => {
+          console.warn('History summary fetch error:', e);
+          return null;
+        }),
+        getProjectsHistory().catch(e => {
+          console.warn('Projects history fetch error:', e);
+          return [];
+        }),
+        getTasksHistory({ status: taskStatusFilter, search: taskSearchQuery }).catch(e => {
+          console.warn('Tasks history fetch error:', e);
+          return [];
+        }),
+        getActivityHistory().catch(e => {
+          console.warn('Activity history fetch error:', e);
+          return [];
+        })
       ]);
-      if (sumRes) setSummary(sumRes);
+
+      if (sumRes) {
+        setSummary(sumRes);
+      } else if (projRes.length > 0 || taskRes.length > 0) {
+        // Resilient fallback calculation in case summary endpoint had a network hiccup
+        const completedProjects = projRes.filter(p => p.status === 'completed').length;
+        const activeProjects = projRes.filter(p => ['active', 'in_progress'].includes(p.status)).length;
+        const completedTasks = taskRes.filter(t => t.status === 'completed').length;
+        const inProgressTasks = taskRes.filter(t => ['in_progress', 'active'].includes(t.status)).length;
+        const blockedTasks = taskRes.filter(t => t.status === 'blocked').length;
+        const totalTasks = taskRes.length;
+        const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 1000) / 10 : 0;
+        setSummary({
+          total_projects: projRes.length,
+          completed_projects: completedProjects,
+          active_projects: activeProjects,
+          total_tasks: totalTasks,
+          completed_tasks: completedTasks,
+          in_progress_tasks: inProgressTasks,
+          blocked_tasks: blockedTasks,
+          completion_rate: completionRate,
+        });
+      }
+
       setProjects(projRes);
       setTasks(taskRes);
       setActivity(actRes);
     } catch (err) {
       console.error('Failed loading history data:', err);
+      setError('Failed to load history data. Please check your connection and retry.');
     } finally {
       setLoading(false);
     }
@@ -316,6 +354,41 @@ const HistoryPage = () => {
         </div>
       </div>
 
+      {error && (
+        <div style={{
+          background: '#FEF2F2',
+          border: '1px solid #FECACA',
+          borderRadius: '12px',
+          padding: '12px 16px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          color: '#991B1B',
+          fontSize: '13px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={16} color="#DC2626" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => loadData()}
+            style={{
+              padding: '4px 12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              background: '#DC2626',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Metric Summary Cards Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '16px', marginBottom: '24px' }}>
         {/* All Projects */}
@@ -335,7 +408,7 @@ const HistoryPage = () => {
                 All Projects
               </div>
               <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'serif, Georgia, Inter, sans-serif', color: '#0F172A', marginTop: '4px', marginBottom: 0 }}>
-                {summary?.total_projects || projects.length}
+                {summary?.total_projects ?? projects.length}
               </div>
             </div>
             <div style={{
@@ -353,7 +426,7 @@ const HistoryPage = () => {
             </div>
           </div>
           <div style={{ fontSize: '12px', color: '#475569', fontWeight: 500, marginTop: '8px' }}>
-            {summary?.completed_projects || 0} completed · {summary?.active_projects || 0} active
+            {summary?.completed_projects ?? 0} completed · {summary?.active_projects ?? 0} active
           </div>
         </div>
 
@@ -369,7 +442,7 @@ const HistoryPage = () => {
                 Completed Tasks
               </div>
               <div className="text-3xl font-bold mt-2 mb-1" style={{ color: 'var(--status-completed)', letterSpacing: '-0.03em' }}>
-                {summary?.completed_tasks || 0}
+                {summary?.completed_tasks ?? 0}
               </div>
             </div>
             <div style={{
@@ -400,7 +473,7 @@ const HistoryPage = () => {
                 Active Tasks
               </div>
               <div className="text-3xl font-bold mt-2 mb-1" style={{ color: 'var(--status-in-progress)', letterSpacing: '-0.03em' }}>
-                {summary?.in_progress_tasks || 0}
+                {summary?.in_progress_tasks ?? 0}
               </div>
             </div>
             <div style={{
