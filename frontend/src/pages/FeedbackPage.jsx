@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getFeedback, getFeedbackTargets, submitFeedback } from '../api/feedback';
+import { getFeedback, getFeedbackTargets, submitFeedback, acknowledgeFeedback } from '../api/feedback';
 import { getProjects } from '../api/projects';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../context/AuthContext';
-import { Star, MessageSquareQuote, Plus, X, UserCheck, Shield, Send, FolderKanban, CheckCircle2, TrendingUp, FileText, Calendar } from 'lucide-react';
+import { Star, MessageSquareQuote, Plus, X, UserCheck, Shield, Send, FolderKanban, CheckCircle2, TrendingUp, FileText, Calendar, Loader2 } from 'lucide-react';
 
 const parseFeedbackComment = (commentText, rating) => {
   if (!commentText || !commentText.trim()) {
@@ -84,7 +84,45 @@ const FeedbackPage = () => {
   const [formError, setFormError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Acknowledgment State
+  const [acknowledgingIds, setAcknowledgingIds] = useState({});
+  const [ackToast, setAckToast] = useState('');
+  const [ackError, setAckError] = useState('');
+
   const canGiveFeedback = ['CEO', 'CTO', 'PM', 'TL'].includes(user?.role);
+
+  const handleAcknowledge = async (feedbackId) => {
+    if (acknowledgingIds[feedbackId]) return;
+    setAcknowledgingIds(prev => ({ ...prev, [feedbackId]: true }));
+    setAckError('');
+    try {
+      const res = await acknowledgeFeedback(feedbackId);
+      setFeedbackList(prev => prev.map(item => {
+        if (item.id === feedbackId) {
+          return {
+            ...item,
+            status: 'Acknowledged',
+            is_acknowledged: true,
+            acknowledged_at: res?.acknowledged_at || new Date().toISOString()
+          };
+        }
+        return item;
+      }));
+      setAckToast('Feedback acknowledged successfully');
+      setTimeout(() => setAckToast(''), 3000);
+    } catch (err) {
+      console.error('Failed to acknowledge feedback:', err);
+      const errMsg = err.response?.data?.detail || 'Failed to acknowledge feedback. Please try again.';
+      setAckError(errMsg);
+      setTimeout(() => setAckError(''), 4000);
+    } finally {
+      setAcknowledgingIds(prev => {
+        const next = { ...prev };
+        delete next[feedbackId];
+        return next;
+      });
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -471,11 +509,75 @@ const FeedbackPage = () => {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94A3B8', fontSize: '12.5px', fontWeight: 500 }}>
-                    <Calendar size={15} />
-                    <span>
-                      {new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' })}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94A3B8', fontSize: '12.5px', fontWeight: 500 }}>
+                      <Calendar size={15} />
+                      <span>
+                        {new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' })}
+                      </span>
+                    </div>
+
+                    {activeTab === 'received' && (
+                      (r.is_acknowledged || r.status === 'Acknowledged') ? (
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            background: '#ECFDF5',
+                            border: '1px solid #A7F3D0',
+                            color: '#059669',
+                            fontSize: '12.5px',
+                            fontWeight: 600
+                          }}
+                        >
+                          <CheckCircle2 size={15} color="#059669" />
+                          <span>Acknowledged</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleAcknowledge(r.id)}
+                          disabled={Boolean(acknowledgingIds[r.id])}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '7px 16px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: '#5551FF',
+                            color: '#FFFFFF',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            cursor: acknowledgingIds[r.id] ? 'not-allowed' : 'pointer',
+                            opacity: acknowledgingIds[r.id] ? 0.75 : 1,
+                            boxShadow: '0 2px 6px rgba(85, 81, 255, 0.25)',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!acknowledgingIds[r.id]) e.currentTarget.style.background = '#4338CA';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!acknowledgingIds[r.id]) e.currentTarget.style.background = '#5551FF';
+                          }}
+                        >
+                          {acknowledgingIds[r.id] ? (
+                            <>
+                              <Loader2 size={15} className="spinner" />
+                              <span>Acknowledging...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 size={15} fill="white" color="#5551FF" />
+                              <span>Acknowledge</span>
+                            </>
+                          )}
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
               </div>
@@ -791,6 +893,50 @@ const FeedbackPage = () => {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Acknowledgment Toast / Error Notification */}
+      {ackToast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          background: '#0F172A',
+          color: '#FFFFFF',
+          padding: '12px 20px',
+          borderRadius: '10px',
+          fontSize: '13.5px',
+          fontWeight: 600,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          zIndex: 9999
+        }}>
+          <CheckCircle2 size={18} color="#10B981" />
+          <span>{ackToast}</span>
+        </div>
+      )}
+
+      {ackError && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          background: '#EF4444',
+          color: '#FFFFFF',
+          padding: '12px 20px',
+          borderRadius: '10px',
+          fontSize: '13.5px',
+          fontWeight: 600,
+          boxShadow: '0 8px 24px rgba(239, 68, 68, 0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          zIndex: 9999
+        }}>
+          <span>{ackError}</span>
         </div>
       )}
     </div>

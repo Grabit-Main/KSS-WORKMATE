@@ -66,6 +66,11 @@ try:
                 ADD COLUMN IF NOT EXISTS remaining_work TEXT,
                 ADD COLUMN IF NOT EXISTS started_at TIMESTAMP,
                 ADD COLUMN IF NOT EXISTS ended_at TIMESTAMP;
+
+                ALTER TABLE reviews 
+                ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Pending',
+                ADD COLUMN IF NOT EXISTS is_acknowledged BOOLEAN DEFAULT FALSE,
+                ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMP;
             """))
     except Exception as db_err:
         print("Table creation warning:", db_err)
