@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRealtime } from '../realtime/useRealtime';
 import api from '../api/axios';
@@ -151,9 +152,31 @@ export default function CollaborationPage() {
     }
   };
 
+  const location = useLocation();
+
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // Handle direct conversation selection from navigation (e.g. Employee Profile Overview "Message" action)
+  useEffect(() => {
+    const targetUserId = location.state?.selectedUserId || new URLSearchParams(location.search).get('userId');
+    if (targetUserId && teamUsers.length > 0) {
+      const u = teamUsers.find(user => String(user.id) === String(targetUserId));
+      if (u) {
+        setActiveTab('chats');
+        setActiveChatTarget({
+          id: u.id,
+          realUserId: u.id,
+          type: 'dm',
+          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
+          subtitle: `${u.role || 'Member'}${u.department ? ` · ${u.department}` : ''}`,
+          iconType: 'avatar',
+          avatarUrl: u.avatar_url
+        });
+      }
+    }
+  }, [location.state, location.search, teamUsers]);
 
   // Realtime notification sync
   useRealtime('notification.new', async () => {

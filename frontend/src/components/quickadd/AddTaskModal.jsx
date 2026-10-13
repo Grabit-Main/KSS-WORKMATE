@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, CheckSquare, CheckCircle2, AlertCircle } from 'lucide-react';
 import { createTask } from '../../api/tasks';
 
-export default function AddTaskModal({ isOpen, onClose, user, projects = [], users = [], onSuccess, onOpenTask }) {
+export default function AddTaskModal({ isOpen, onClose, user, projects = [], users = [], initialAssigneeId, onSuccess, onOpenTask }) {
   const role = user?.role || 'TM';
   const isExecutive = ['CEO', 'CTO'].includes(role);
   const isPM = role === 'PM';
@@ -14,7 +14,15 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
   const [projectId, setProjectId] = useState(projects[0]?.id || '');
   const [priority, setPriority] = useState('normal'); // 'low', 'normal' (Medium), 'high', 'urgent'
   const [deadline, setDeadline] = useState('');
-  const [assignedTo, setAssignedTo] = useState(user?.id || '');
+  const [assignedTo, setAssignedTo] = useState(initialAssigneeId || user?.id || '');
+
+  React.useEffect(() => {
+    if (initialAssigneeId) {
+      setAssignedTo(initialAssigneeId);
+    } else if (user?.id && !assignedTo) {
+      setAssignedTo(user.id);
+    }
+  }, [initialAssigneeId, user?.id, isOpen]);
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');

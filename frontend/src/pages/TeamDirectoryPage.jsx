@@ -212,15 +212,28 @@ const TeamDirectoryPage = () => {
     return Math.round(sum / empLogs.length);
   };
 
-  // Helper to get department/skill tag badge color matching screenshot 2
+  // Helper to get department/skill tag badge color matching target UI
   const getTagBadgeStyle = (emp) => {
     const role = String(emp.role || '').toUpperCase();
     const dept = String(emp.department || '').toLowerCase();
+    const rawDept = emp.department || emp.role || 'Engineering';
 
     if (['CO', 'CTO', 'CEO', 'PM', 'MANAGEMENT'].includes(role) || dept.includes('management')) {
       return { bg: '#F3E8FF', color: '#7E22CE', label: emp.department || 'Management' };
     }
-    if (dept.includes('design') || role.includes('DESIGN')) {
+    if (dept.includes('backend') || role.includes('BACKEND')) {
+      return { bg: '#EFF6FF', color: '#2563EB', label: 'Backend Developer' };
+    }
+    if (dept.includes('frontend') || role.includes('FRONTEND')) {
+      return { bg: '#E0F2FE', color: '#0284C7', label: 'Frontend Developer' };
+    }
+    if (dept.includes('full stack') || role.includes('FULL STACK')) {
+      return { bg: '#F0FDF4', color: '#16A34A', label: 'Full Stack Developer' };
+    }
+    if (dept.includes('generative') || role.includes('GENERATIVE') || dept.includes('ai') || role.includes('AI')) {
+      return { bg: '#F5F3FF', color: '#7C3AED', label: 'Generative AI' };
+    }
+    if (dept.includes('design') || role.includes('DESIGN') || role.includes('UI/UX')) {
       return { bg: '#EEF2FF', color: '#4F46E5', label: 'Design' };
     }
     if (dept.includes('qa') || dept.includes('quality')) {
@@ -232,7 +245,13 @@ const TeamDirectoryPage = () => {
     if (dept.includes('infra') || dept.includes('devops')) {
       return { bg: '#F0FDFA', color: '#0D9488', label: 'Infrastructure' };
     }
-    return { bg: '#EFF6FF', color: '#2563EB', label: emp.department || 'Engineering' };
+    if (dept.includes('ops') || dept.includes('operations')) {
+      return { bg: '#ECFDF5', color: '#059669', label: 'Operations' };
+    }
+    if (dept.includes('product')) {
+      return { bg: '#FDF4FF', color: '#C026D3', label: 'Product' };
+    }
+    return { bg: '#EFF6FF', color: '#2563EB', label: rawDept };
   };
 
   const getEmpStatus = (emp) => {
@@ -264,8 +283,8 @@ const TeamDirectoryPage = () => {
             setSelectedEmp(null);
             navigate('/team-directory', { replace: true });
           }}
-          onAssignTask={() => navigate('/tasks')}
-          onSendMessage={() => navigate('/collaboration')}
+          onAssignTask={(targetUser) => navigate('/tasks', { state: { assigneeId: targetUser?.id || selectedEmp.id } })}
+          onSendMessage={(targetUser) => navigate('/collaboration', { state: { selectedUserId: targetUser?.id || selectedEmp.id, user: targetUser || selectedEmp } })}
         />
       </DirectoryErrorBoundary>
     );
@@ -657,14 +676,38 @@ const TeamDirectoryPage = () => {
         </div>
       </div>
 
-      {/* 5. Employee Cards Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: viewMode === 'grid'
-          ? 'repeat(auto-fill, minmax(min(100%, 270px), 1fr))'
-          : '1fr',
-        gap: '20px'
-      }}>
+      {/* 5. Employee Cards Grid (Horizontal Cards with 5 per row on desktop matching Image 2) */}
+      <style>{`
+        .team-directory-grid-layout {
+          display: grid;
+          gap: 16px;
+          grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
+        @media (min-width: 540px) {
+          .team-directory-grid-layout {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+        @media (min-width: 840px) {
+          .team-directory-grid-layout {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+        }
+        @media (min-width: 1100px) {
+          .team-directory-grid-layout {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+        }
+        @media (min-width: 1360px) {
+          .team-directory-grid-layout {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+          }
+        }
+        .team-directory-grid-layout.list-view-mode {
+          grid-template-columns: 1fr !important;
+        }
+      `}</style>
+      <div className={`team-directory-grid-layout ${viewMode === 'list' ? 'list-view-mode' : ''}`}>
         {filteredEmployees.map((emp) => {
           const empName = getUserFullName(emp);
           const empRole = emp.role || emp.department || 'Developer';
@@ -672,6 +715,7 @@ const TeamDirectoryPage = () => {
           const projectsCount = getEmpProjectsCount(emp);
           const kpiScore = getEmpKpiPercentage(emp);
           const empStatus = getEmpStatus(emp);
+          const isSelected = selectedEmp?.id === emp.id;
 
           // Get initial letter for fallback avatar
           const initialLetter = empName ? empName.trim()[0].toUpperCase() : 'E';
@@ -687,9 +731,11 @@ const TeamDirectoryPage = () => {
               style={{
                 background: '#FFFFFF',
                 borderRadius: '16px',
-                border: '1px solid #E2E8F0',
-                padding: '20px',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+                border: isSelected ? '1.5px solid #6366F1' : '1px solid #E2E8F0',
+                padding: '16px 18px',
+                boxShadow: isSelected
+                  ? '0 0 0 2px rgba(99, 102, 241, 0.15), 0 4px 12px rgba(0, 0, 0, 0.04)'
+                  : '0 2px 8px rgba(0, 0, 0, 0.03)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -700,36 +746,52 @@ const TeamDirectoryPage = () => {
               onMouseEnter={(e) => {
                 if (canViewDetailedProfile) {
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 10px 22px rgba(85, 81, 255, 0.1)';
-                  e.currentTarget.style.borderColor = '#C7D2FE';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(85, 81, 255, 0.08)';
+                  if (!isSelected) e.currentTarget.style.borderColor = '#C7D2FE';
                 }
               }}
               onMouseLeave={(e) => {
                 if (canViewDetailedProfile) {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)';
-                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.boxShadow = isSelected
+                    ? '0 0 0 2px rgba(99, 102, 241, 0.15), 0 4px 12px rgba(0, 0, 0, 0.04)'
+                    : '0 2px 8px rgba(0, 0, 0, 0.03)';
+                  if (!isSelected) e.currentTarget.style.borderColor = '#E2E8F0';
                 }
               }}
             >
-              <div>
-                {/* Top Row: Circular Avatar + Options Menu */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px' }}>
-                  <div style={{ position: 'relative' }}>
+              {/* Upper Section (Horizontal Layout matching Image 2) */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: '8px',
+                marginBottom: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
+                  {/* Left: Avatar with Online/Offline Status Indicator */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
                     {emp.avatar_url ? (
                       <img
                         src={emp.avatar_url}
                         alt={empName}
-                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #FFFFFF', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}
+                        style={{
+                          width: '46px',
+                          height: '46px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '2px solid #FFFFFF',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                        }}
                       />
                     ) : (
                       <div style={{
-                        width: '52px',
-                        height: '52px',
+                        width: '46px',
+                        height: '46px',
                         borderRadius: '50%',
                         background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
                         color: '#FFFFFF',
-                        fontSize: '22px',
+                        fontSize: '18px',
                         fontWeight: 700,
                         display: 'flex',
                         alignItems: 'center',
@@ -739,80 +801,108 @@ const TeamDirectoryPage = () => {
                         {initialLetter}
                       </div>
                     )}
-                    {/* Online Status Green Dot */}
+                    {/* Online Status Green Indicator Dot */}
                     <span style={{
                       position: 'absolute',
                       bottom: '1px',
                       right: '1px',
-                      width: '12px',
-                      height: '12px',
+                      width: '10px',
+                      height: '10px',
                       borderRadius: '50%',
-                      background: '#10B981',
-                      border: '2.5px solid #FFFFFF'
+                      background: empStatus.color,
+                      border: '2px solid #FFFFFF'
                     }} />
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (canViewDetailedProfile) {
-                        setSelectedEmp(emp);
-                      }
-                    }}
-                    style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: canViewDetailedProfile ? 'pointer' : 'default', padding: '4px' }}
-                    title="Employee Options"
-                  >
-                    <MoreHorizontal size={18} />
-                  </button>
+                  {/* Middle: Name, Designation & Department Badge */}
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                    <h4 style={{
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      color: '#0F172A',
+                      margin: '0 0 2px 0',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {empName}
+                    </h4>
+                    <p style={{
+                      fontSize: '12px',
+                      color: '#64748B',
+                      margin: '0 0 6px 0',
+                      fontWeight: 500,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {empRole}
+                    </p>
+                    <div>
+                      <span style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2.5px 8px',
+                        borderRadius: '6px',
+                        background: tagStyle.bg,
+                        color: tagStyle.color,
+                        display: 'inline-block',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {tagStyle.label}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Name & Designation */}
-                <h4 style={{ fontSize: '15.5px', fontWeight: 700, color: '#0F172A', margin: '0 0 3px 0', fontFamily: 'serif, Georgia, Inter, sans-serif' }}>
-                  {empName}
-                </h4>
-                <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 12px 0', fontWeight: 500 }}>
-                  {empRole}
-                </p>
-
-                {/* Department Tag Pill */}
-                <div style={{ marginBottom: '16px' }}>
-                  <span style={{
-                    fontSize: '11.5px',
-                    fontWeight: 600,
-                    padding: '3px 10px',
-                    borderRadius: '9999px',
-                    background: tagStyle.bg,
-                    color: tagStyle.color,
-                    display: 'inline-block'
-                  }}>
-                    {tagStyle.label}
-                  </span>
-                </div>
+                {/* Right: Three-Dot Menu Options Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (canViewDetailedProfile) {
+                      setSelectedEmp(emp);
+                    }
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#94A3B8',
+                    cursor: canViewDetailedProfile ? 'pointer' : 'default',
+                    padding: '2px',
+                    flexShrink: 0,
+                    borderRadius: '6px',
+                    lineHeight: 1
+                  }}
+                  title="Employee Options"
+                >
+                  <MoreHorizontal size={17} />
+                </button>
               </div>
 
-              {/* Card Bottom Row: Developer View (Projects | Status) vs Management View (Projects | KPI Progress Bar) */}
+              {/* Bottom Section (Projects Count & KPI Metrics) */}
               {!canViewDetailedProfile ? (
                 <div style={{
                   borderTop: '1px solid #F1F5F9',
                   paddingTop: '12px',
+                  marginTop: 'auto',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '12px'
+                  gap: '8px'
                 }}>
                   {/* Left: Projects */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
                     <Calendar size={15} color="#64748B" />
                     <div>
-                      <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>Projects</div>
-                      <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>{projectsCount}</div>
+                      <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500, lineHeight: 1.2 }}>Projects</div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>{projectsCount}</div>
                     </div>
                   </div>
 
-                  {/* Right: Status Pill */}
+                  {/* Right: Status */}
                   <div>
-                    <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500, textAlign: 'right', marginBottom: '2px' }}>Status</div>
+                    <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500, textAlign: 'right', marginBottom: '2px', lineHeight: 1.2 }}>Status</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <span style={{
                         width: '7px',
@@ -820,7 +910,7 @@ const TeamDirectoryPage = () => {
                         borderRadius: '50%',
                         background: empStatus.color
                       }} />
-                      <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#1E293B' }}>{empStatus.label}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#1E293B' }}>{empStatus.label}</span>
                     </div>
                   </div>
                 </div>
@@ -828,28 +918,29 @@ const TeamDirectoryPage = () => {
                 <div style={{
                   borderTop: '1px solid #F1F5F9',
                   paddingTop: '12px',
+                  marginTop: 'auto',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '12px'
+                  gap: '8px'
                 }}>
                   {/* Left Metric: Projects */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
                     <Calendar size={15} color="#64748B" />
                     <div>
-                      <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>Projects</div>
-                      <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>{projectsCount}</div>
+                      <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500, lineHeight: 1.2 }}>Projects</div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>{projectsCount}</div>
                     </div>
                   </div>
 
-                  {/* Right Metric: KPI percentage + Progress bar */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 1, maxWidth: '120px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>KPI</span>
-                      <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A' }}>{kpiScore}%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
-                      <div style={{ width: `${kpiScore}%`, height: '100%', background: '#10B981', borderRadius: '999px' }} />
+                  {/* Right Metric: KPI percentage + Progress bar with light track and green fill */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500, lineHeight: 1.2 }}>KPI</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>{kpiScore}%</span>
+                      <div style={{ width: '56px', height: '6px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(kpiScore, 100)}%`, height: '100%', background: '#10B981', borderRadius: '999px' }} />
+                      </div>
                     </div>
                   </div>
                 </div>
