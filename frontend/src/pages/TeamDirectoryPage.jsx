@@ -65,9 +65,6 @@ class DirectoryErrorBoundary extends Component {
 
 // Default reference employees to supplement if API returns partial data
 const DEFAULT_DIRECTORY_EMPLOYEES = [
-  { id: '1', full_name: 'Gaurav Kumar Tripathi', role: 'CTO', department: 'Management', avatar_url: '', projects_count: 3, kpi: 92, online: true },
-  { id: '2', full_name: 'Akshit Ujjain', role: 'CEO', department: 'Management', avatar_url: '', projects_count: 3, kpi: 92, online: true },
-  { id: '3', full_name: 'D. Koushik', role: 'PM', department: 'Engineering', avatar_url: '', projects_count: 3, kpi: 92, online: true },
   { id: '4', full_name: 'Kuruva Mahesh', role: 'UI/UX Designer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', projects_count: 3, kpi: 92, online: true },
   { id: '5', full_name: 'Ananya Reddy', role: 'Frontend Developer', department: 'Engineering', avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', projects_count: 4, kpi: 88, online: true },
   { id: '6', full_name: 'Rahul Sharma', role: 'Backend Developer', department: 'Engineering', avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', projects_count: 2, kpi: 91, online: true },
@@ -78,6 +75,55 @@ const DEFAULT_DIRECTORY_EMPLOYEES = [
   { id: '11', full_name: 'Neha Gupta', role: 'Business Analyst', department: 'Product', avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150', projects_count: 4, kpi: 92, online: false },
   { id: '12', full_name: 'Karthik R', role: 'UI Developer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150', projects_count: 3, kpi: 89, online: true }
 ];
+
+// Exclude specific cards from Team Directory UI display only (preserving DB, API, and other pages)
+const isExcludedDirectoryEmployee = (emp) => {
+  if (!emp) return false;
+  const fullName = String(emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`).trim().toLowerCase();
+  const email = String(emp.email || '').trim().toLowerCase();
+  const fName = String(emp.first_name || '').trim().toLowerCase();
+  const lName = String(emp.last_name || '').trim().toLowerCase();
+
+  // 1. Akshit Ujjain — CTO / CEO
+  if (
+    fullName.includes('ujjain') ||
+    email.includes('akshitujjain') ||
+    (fName === 'akshit' && lName === 'ujjain') ||
+    (fullName.includes('akshit') && (fullName.includes('cto') || fullName.includes('ceo') || fullName.includes('ujjain')))
+  ) {
+    return true;
+  }
+
+  // 2. Founder CEO — CEO
+  if (
+    (fullName.includes('founder') && (fullName.includes('ceo') || fullName.includes('founder'))) ||
+    email.startsWith('founder@') ||
+    (fName === 'founder' && lName === 'ceo')
+  ) {
+    return true;
+  }
+
+  // 3. D. Koushik — PM
+  if (
+    fullName.includes('koushik') ||
+    email.includes('koushik') ||
+    lName === 'koushik'
+  ) {
+    return true;
+  }
+
+  // 4. Gaurav Kumar Tripathi — CTO
+  if (
+    fullName.includes('tripathi') ||
+    (fullName.includes('gaurav') && fullName.includes('kumar')) ||
+    (fName === 'gaurav' && lName.includes('tripathi')) ||
+    email.includes('gauravkumar')
+  ) {
+    return true;
+  }
+
+  return false;
+};
 
 const TeamDirectoryPage = () => {
   const { user } = useAuth();
@@ -121,10 +167,11 @@ const TeamDirectoryPage = () => {
         setAllTasks(Array.isArray(tasksData) ? tasksData : []);
         setAllKpiLogs(Array.isArray(kpiData) ? kpiData : []);
 
-        // Combine fetched users with fallback reference dataset so all roles are included
-        const combined = [...fetchedUsers];
+        // Filter out the 4 leadership cards from Team Directory UI only
+        const filteredFetched = fetchedUsers.filter(u => !isExcludedDirectoryEmployee(u));
+        const combined = [...filteredFetched];
         DEFAULT_DIRECTORY_EMPLOYEES.forEach(def => {
-          if (!combined.some(u => String(u.id) === String(def.id) || u.email === def.email || (u.full_name && u.full_name.toLowerCase() === def.full_name.toLowerCase()))) {
+          if (!isExcludedDirectoryEmployee(def) && !combined.some(u => String(u.id) === String(def.id) || u.email === def.email || (u.full_name && u.full_name.toLowerCase() === def.full_name.toLowerCase()))) {
             combined.push(def);
           }
         });
@@ -135,13 +182,13 @@ const TeamDirectoryPage = () => {
           const params = new URLSearchParams(location.search);
           const empId = params.get('empId') || params.get('userId');
           if (empId) {
-            const found = combined.find(u => String(u.id) === String(empId) || String(u.user_id) === String(empId) || u.email === empId);
+            const found = combined.find(u => !isExcludedDirectoryEmployee(u) && (String(u.id) === String(empId) || String(u.user_id) === String(empId) || u.email === empId));
             if (found) setSelectedEmp(found);
           }
         }
       } catch (err) {
         console.error('Failed to load team directory data:', err);
-        setUsersList(DEFAULT_DIRECTORY_EMPLOYEES);
+        setUsersList(DEFAULT_DIRECTORY_EMPLOYEES.filter(u => !isExcludedDirectoryEmployee(u)));
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -154,7 +201,7 @@ const TeamDirectoryPage = () => {
   // Derived filter options
   const departmentOptions = useMemo(() => {
     const depts = new Set(['All Departments']);
-    usersList.forEach(u => {
+    usersList.filter(u => !isExcludedDirectoryEmployee(u)).forEach(u => {
       if (u.department) depts.add(u.department);
       if (u.role) depts.add(u.role);
     });
@@ -163,16 +210,17 @@ const TeamDirectoryPage = () => {
 
   const specOptions = useMemo(() => {
     const specs = new Set(['All Specialisations']);
-    usersList.forEach(u => {
+    usersList.filter(u => !isExcludedDirectoryEmployee(u)).forEach(u => {
       if (u.department) specs.add(u.department);
       if (u.role) specs.add(u.role);
     });
     return Array.from(specs);
   }, [usersList]);
 
-  // Filter & Sort Employees
+  // Filter & Sort Employees (Excluding the 4 cards across search, filtering, and sorting)
   const filteredEmployees = useMemo(() => {
-    return usersList.filter(u => {
+    const list = usersList.filter(u => {
+      if (isExcludedDirectoryEmployee(u)) return false;
       const name = (u.full_name || `${u.first_name || ''} ${u.last_name || ''}`).toLowerCase();
       const email = (u.email || '').toLowerCase();
       const role = (u.role || u.department || '').toLowerCase();
@@ -184,7 +232,19 @@ const TeamDirectoryPage = () => {
 
       return matchesSearch && matchesDept && matchesSpec;
     });
-  }, [usersList, searchQuery, selectedDept, selectedSpec]);
+
+    if (sortBy === 'name') {
+      return [...list].sort((a, b) => {
+        const nameA = (a.full_name || `${a.first_name || ''} ${a.last_name || ''}`).toLowerCase();
+        const nameB = (b.full_name || `${b.first_name || ''} ${b.last_name || ''}`).toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    }
+    if (sortBy === 'kpi') {
+      return [...list].sort((a, b) => (b.kpi || 90) - (a.kpi || 90));
+    }
+    return list;
+  }, [usersList, searchQuery, selectedDept, selectedSpec, sortBy]);
 
   // Helper to get employee active project count
   const getEmpProjectsCount = (emp) => {
@@ -704,7 +764,7 @@ const TeamDirectoryPage = () => {
         }
       `}</style>
       <div className={`team-directory-grid-layout ${viewMode === 'list' ? 'list-view-mode' : ''}`}>
-        {filteredEmployees.map((emp) => {
+        {filteredEmployees.filter(emp => !isExcludedDirectoryEmployee(emp)).map((emp) => {
           const empName = getUserFullName(emp);
           const empRole = emp.role || emp.department || 'Developer';
           const tagStyle = getTagBadgeStyle(emp);
