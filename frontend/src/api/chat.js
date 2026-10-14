@@ -15,3 +15,11 @@ export const sendChannelMessage = async (channelName, data) => (await api.post(`
 // Project Discussion Chat
 export const getProjectChat = async (projectId) => (await api.get(`/chat/project/${projectId}`)).data;
 export const sendProjectMessage = async (projectId, data) => (await api.post(`/chat/project/${projectId}`, data)).data;
+
+// Delete Message
+export const deleteChatMessage = async (messageId) => (await api.delete(`/chat/messages/${messageId}`)).data;
+
+// Read & Unread Tracking
+export const getUnreadCounts = async () => (await api.get('/chat/unread-counts')).data;
+export const markChatRead = async (data) => (await api.post('/chat/read', data)).data;
+

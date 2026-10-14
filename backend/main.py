@@ -71,6 +71,16 @@ try:
                 ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Pending',
                 ADD COLUMN IF NOT EXISTS is_acknowledged BOOLEAN DEFAULT FALSE,
                 ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMP;
+
+                CREATE TABLE IF NOT EXISTS chat_message_reads (
+                    id UUID PRIMARY KEY,
+                    message_id UUID NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uq_chat_message_read UNIQUE (message_id, user_id)
+                );
+                CREATE INDEX IF NOT EXISTS ix_chat_message_reads_message_id ON chat_message_reads(message_id);
+                CREATE INDEX IF NOT EXISTS ix_chat_message_reads_user_id ON chat_message_reads(user_id);
             """))
     except Exception as db_err:
         print("Table creation warning:", db_err)

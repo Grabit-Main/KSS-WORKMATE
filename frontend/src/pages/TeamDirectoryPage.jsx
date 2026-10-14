@@ -86,6 +86,7 @@ const TeamDirectoryPage = () => {
 
   const normalizedUserRole = String(user?.role || '').trim().toUpperCase();
   const canViewDetailedProfile = ['TL', 'PM', 'CO', 'CTO', 'CEO'].includes(normalizedUserRole);
+  const isDeveloper = ['DEVELOPER', 'DEV', 'TM'].includes(normalizedUserRole);
 
   const [usersList, setUsersList] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
@@ -356,27 +357,29 @@ const TeamDirectoryPage = () => {
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/users')}
-            style={{
-              background: '#FFFFFF',
-              color: '#4F46E5',
-              border: 'none',
-              borderRadius: '10px',
-              padding: '9px 16px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-            }}
-          >
-            <UserPlus size={15} />
-            <span>Add Employee</span>
-          </button>
+          {!isDeveloper && (
+            <button
+              type="button"
+              onClick={() => navigate('/users')}
+              style={{
+                background: '#FFFFFF',
+                color: '#4F46E5',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '9px 16px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              }}
+            >
+              <UserPlus size={15} />
+              <span>Add Employee</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -676,31 +679,24 @@ const TeamDirectoryPage = () => {
         </div>
       </div>
 
-      {/* 5. Employee Cards Grid (Horizontal Cards with 5 per row on desktop matching Image 2) */}
+      {/* 5. Employee Cards Grid (Exactly 3 cards per row on desktop) */}
       <style>{`
         .team-directory-grid-layout {
           display: grid;
-          gap: 16px;
+          gap: 20px;
           grid-template-columns: repeat(1, minmax(0, 1fr));
+          width: 100%;
         }
-        @media (min-width: 540px) {
+        @media (min-width: 600px) {
           .team-directory-grid-layout {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
           }
         }
-        @media (min-width: 840px) {
+        @media (min-width: 900px) {
           .team-directory-grid-layout {
             grid-template-columns: repeat(3, minmax(0, 1fr));
-          }
-        }
-        @media (min-width: 1100px) {
-          .team-directory-grid-layout {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-          }
-        }
-        @media (min-width: 1360px) {
-          .team-directory-grid-layout {
-            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 20px;
           }
         }
         .team-directory-grid-layout.list-view-mode {
@@ -741,7 +737,9 @@ const TeamDirectoryPage = () => {
                 justifyContent: 'space-between',
                 cursor: canViewDetailedProfile ? 'pointer' : 'default',
                 transition: 'all 0.2s ease',
-                position: 'relative'
+                position: 'relative',
+                height: '100%',
+                boxSizing: 'border-box'
               }}
               onMouseEnter={(e) => {
                 if (canViewDetailedProfile) {
@@ -766,7 +764,8 @@ const TeamDirectoryPage = () => {
                 alignItems: 'flex-start',
                 justifyContent: 'space-between',
                 gap: '8px',
-                marginBottom: '14px'
+                marginBottom: '14px',
+                flex: 1
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
                   {/* Left: Avatar with Online/Offline Status Indicator */}

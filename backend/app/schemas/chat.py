@@ -31,6 +31,8 @@ class ChatMessageResponse(BaseModel):
     created_at: Optional[datetime] = None
     sender: Optional[UserResponse] = None
     receiver: Optional[UserResponse] = None
+    is_read: Optional[bool] = False
+    read_at: Optional[datetime] = None
 
     @field_serializer('created_at')
     def serialize_created_at(self, dt: Optional[datetime], _info):
@@ -43,3 +45,14 @@ class ChatMessageResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MarkReadRequest(BaseModel):
+    chat_type: str  # 'direct' | 'channel' | 'task' | 'project'
+    target_id: str
+    message_ids: Optional[list[UUID]] = None
+
+
+class UnreadCountsResponse(BaseModel):
+    counts: dict[str, int]
+    total: int

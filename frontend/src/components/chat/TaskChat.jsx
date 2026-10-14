@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   getChat,
   sendMessage,
@@ -7,16 +7,20 @@ import {
   getChannelChat,
   sendChannelMessage,
   getProjectChat,
-  sendProjectMessage
+  sendProjectMessage,
+  deleteChatMessage,
+  markChatRead
 } from '../../api/chat';
 import { uploadFile } from '../../api/upload';
 import { useRealtime } from '../../realtime/useRealtime';
 import { useWebSocket } from '../../context/WebSocketContext';
+import { useAuth } from '../../context/AuthContext';
 import { AttachmentCard } from '../common/AttachmentCard';
 import {
   Send, Paperclip, X, Loader2, ShieldCheck, CheckCheck,
   Lock, Hash, Folder, MessageSquare, Megaphone, Users,
-  MoreVertical, Smile, AlertCircle
+  MoreVertical, Smile, AlertCircle, Reply, Copy, Check,
+  CornerUpRight, Trash2, AtSign
 } from 'lucide-react';
 import { parseUTC } from '../../utils/dateUtils';
 
@@ -56,8 +60,15 @@ export const TaskChat = ({
   showHeader = true,
   headerExtra = null,
   style = {},
-  layoutVariant = 'standard'
+  layoutVariant = 'standard',
+  unreadCount = 0,
+  allTeamUsers = [],
+  allChannels = [],
+  onMarkAsRead = null
 }) => {
+  const authContext = useAuth?.();
+  const effectiveCurrentUser = currentUser || authContext?.user;
+
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -69,16 +80,36 @@ export const TaskChat = ({
   const [reactionsMap, setReactionsMap] = useState({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
+  const [hoveredMsgId, setHoveredMsgId] = useState(null);
+  const [copiedMsgId, setCopiedMsgId] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [forwardingMsg, setForwardingMsg] = useState(null);
+  const [forwardSearch, setForwardSearch] = useState('');
+  const [forwardSuccess, setForwardSuccess] = useState(null);
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+  const [typingUsers, setTypingUsers] = useState({});
+  const [hasUnread, setHasUnread] = useState(Boolean(unreadCount && unreadCount > 0));
+  const [initialUnreadId, setInitialUnreadId] = useState(null);
+
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const { joinRoom, leaveRoom, dispatch } = useWebSocket() || {};
+
+  // Track unread status update if prop changes
+  useEffect(() => {
+    if (unreadCount > 0) {
+      setHasUnread(true);
+    }
+  }, [unreadCount]);
 
   const handleToggleReaction = (msgId, emoji) => {
     setReactionsMap(prev => {
       const current = prev[msgId] || [];
       const idx = current.findIndex(r => r.emoji === emoji);
+      let nextList;
       if (idx >= 0) {
         const item = current[idx];
         const updated = {
@@ -92,24 +123,208 @@ export const TaskChat = ({
         } else {
           list[idx] = updated;
         }
-        return { ...prev, [msgId]: list };
+        nextList = list;
+      } else {
+        nextList = [...current, { emoji, count: 1, userReacted: true }];
+      }
+      return { ...prev, [msgId]: nextList };
+    });
+
+    if (dispatch && effectiveCurrentUser) {
+      dispatch('chat.reaction_updated', {
+        messageId: msgId,
+        emoji,
+        userId: effectiveCurrentUser.id
+      }, { broadcast: true });
+    }
+  };
+
+  // Realtime reaction listener
+  useRealtime('chat.reaction_updated', (data) => {
+    if (!data?.messageId || !data?.emoji) return;
+    if (String(data.userId) === String(effectiveCurrentUser?.id)) return;
+    setReactionsMap(prev => {
+      const current = prev[data.messageId] || [];
+      const idx = current.findIndex(r => r.emoji === data.emoji);
+      if (idx >= 0) {
+        const item = current[idx];
+        const list = [...current];
+        list[idx] = { ...item, count: item.count + 1 };
+        return { ...prev, [data.messageId]: list };
       } else {
         return {
           ...prev,
-          [msgId]: [...current, { emoji, count: 1, userReacted: true }]
+          [data.messageId]: [...current, { emoji: data.emoji, count: 1, userReacted: false }]
         };
       }
     });
+  });
+
+  // Realtime message deleted listener
+  useRealtime('chat.message_deleted', (eventData) => {
+    if (eventData?.id) {
+      setMessages(prev => prev.filter(m => String(m.id) !== String(eventData.id)));
+    }
+  });
+
+  // Emit typing status
+  const emitTyping = (isTyping) => {
+    if (!dispatch || !effectiveCurrentUser) return;
+    dispatch('chat.typing', {
+      userId: String(effectiveCurrentUser.id),
+      userName: effectiveCurrentUser.first_name ? `${effectiveCurrentUser.first_name} ${effectiveCurrentUser.last_name || ''}`.trim() : (effectiveCurrentUser.full_name || 'Someone'),
+      mode,
+      channelId: channelId || null,
+      targetUserId: effectivePartnerUser?.id ? String(effectivePartnerUser.id) : null,
+      taskId: task?.id ? String(task.id) : null,
+      projectId: project?.id ? String(project.id) : null,
+      isTyping
+    }, { broadcast: true });
+  };
+
+  // Realtime typing listener
+  useRealtime('chat.typing', (data) => {
+    if (!data || !data.userId || String(data.userId) === String(effectiveCurrentUser?.id)) return;
+
+    let isRelevant = false;
+    if (mode === 'channel') {
+      isRelevant = data.mode === 'channel' && String(data.channelId) === String(channelId);
+    } else if (mode === 'direct') {
+      isRelevant = data.mode === 'direct' && (
+        String(data.userId) === String(effectivePartnerUser?.id) ||
+        String(data.targetUserId) === String(effectiveCurrentUser?.id)
+      );
+    } else if (mode === 'task') {
+      isRelevant = data.mode === 'task' && String(data.taskId) === String(task?.id);
+    } else if (mode === 'project') {
+      isRelevant = data.mode === 'project' && String(data.projectId) === String(project?.id);
+    }
+
+    if (!isRelevant) return;
+
+    if (data.isTyping) {
+      setTypingUsers(prev => ({
+        ...prev,
+        [data.userId]: {
+          userName: data.userName || 'Someone',
+          timestamp: Date.now()
+        }
+      }));
+    } else {
+      setTypingUsers(prev => {
+        const copy = { ...prev };
+        delete copy[data.userId];
+        return copy;
+      });
+    }
+  });
+
+  // Expire typing users after 3.5 seconds of inactivity
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setTypingUsers(prev => {
+        let changed = false;
+        const next = {};
+        Object.entries(prev).forEach(([uid, u]) => {
+          if (now - u.timestamp < 3500) {
+            next[uid] = u;
+          } else {
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Compute first unread message ID for unread divider
+  const firstUnreadMessageId = useMemo(() => {
+    if (initialUnreadId) return initialUnreadId;
+    if (!hasUnread || !unreadCount || unreadCount <= 0 || !messages || messages.length === 0) return null;
+    const currentUserId = effectiveCurrentUser?.id != null ? String(effectiveCurrentUser.id) : null;
+    const incoming = messages.filter(m => {
+      const senderId = m.sender_id != null ? String(m.sender_id) : (m.sender?.id != null ? String(m.sender.id) : null);
+      return Boolean(currentUserId && senderId && currentUserId !== senderId);
+    });
+    if (incoming.length === 0) return null;
+    const unread = incoming.filter(m => !m.is_read);
+    if (unread.length > 0) return unread[0].id;
+    const startIndex = Math.max(0, incoming.length - unreadCount);
+    return incoming[startIndex]?.id || null;
+  }, [messages, unreadCount, hasUnread, effectiveCurrentUser?.id, initialUnreadId]);
+
+  // Handle message deletion
+  const handleDeleteMessage = async (messageId) => {
+    if (!window.confirm("Are you sure you want to delete this message?")) return;
+    try {
+      await deleteChatMessage(messageId);
+      setMessages(prev => prev.filter(m => String(m.id) !== String(messageId)));
+      if (dispatch) {
+        dispatch('chat.message_deleted', { id: String(messageId) }, { broadcast: true });
+      }
+    } catch (err) {
+      console.error('Failed to delete message:', err);
+      alert('Failed to delete message: ' + (err.response?.data?.detail || err.message || 'Unknown error'));
+    }
   };
 
   // Verify privacy membership for task chat
-  const isAssignee = String(task?.assigned_to) === String(currentUser?.id);
-  const isAssigner = String(task?.assigned_by) === String(currentUser?.id);
+  const isAssignee = String(task?.assigned_to) === String(effectiveCurrentUser?.id);
+  const isAssigner = String(task?.assigned_by) === String(effectiveCurrentUser?.id);
   const isParticipant = mode === 'task' ? (isAssignee || isAssigner) : true;
   const effectivePartnerUser = mode === 'direct' ? partnerUserProp : (isAssignee ? task?.assigner : task?.assignee);
 
   const scrollToBottom = (behavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  const processLoadedMessages = (data) => {
+    const list = Array.isArray(data) ? data : [];
+    setMessages(list);
+
+    // Compute first unread message for the "New messages" divider
+    const currentUserId = effectiveCurrentUser?.id != null ? String(effectiveCurrentUser.id) : null;
+    const incoming = list.filter(m => {
+      const senderId = m.sender_id != null ? String(m.sender_id) : (m.sender?.id != null ? String(m.sender.id) : null);
+      return Boolean(currentUserId && senderId && currentUserId !== senderId);
+    });
+
+    const unreadMsgs = incoming.filter(m => !m.is_read);
+    if (unreadMsgs.length > 0) {
+      setInitialUnreadId(unreadMsgs[0].id);
+      setHasUnread(true);
+
+      const targetId = mode === 'channel' ? channelId : mode === 'direct' ? effectivePartnerUser?.id : mode === 'task' ? task?.id : project?.id;
+      if (targetId) {
+        markChatRead({
+          chat_type: mode,
+          target_id: String(targetId)
+        }).catch(err => console.error('Error marking chat read:', err));
+      }
+      if (typeof onMarkAsRead === 'function') {
+        onMarkAsRead();
+      }
+    } else if (unreadCount > 0 && incoming.length > 0) {
+      const startIndex = Math.max(0, incoming.length - unreadCount);
+      setInitialUnreadId(incoming[startIndex]?.id || null);
+      setHasUnread(true);
+
+      const targetId = mode === 'channel' ? channelId : mode === 'direct' ? effectivePartnerUser?.id : mode === 'task' ? task?.id : project?.id;
+      if (targetId) {
+        markChatRead({
+          chat_type: mode,
+          target_id: String(targetId)
+        }).catch(err => console.error('Error marking chat read:', err));
+      }
+      if (typeof onMarkAsRead === 'function') {
+        onMarkAsRead();
+      }
+    } else {
+      setInitialUnreadId(null);
+      setHasUnread(false);
+    }
   };
 
   const loadMessages = async () => {
@@ -125,7 +340,7 @@ export const TaskChat = ({
         setLoading(true);
         setAccessDenied(false);
         const data = await getChat(task.id);
-        setMessages(data || []);
+        processLoadedMessages(data);
       } catch (err) {
         if (err.response?.status === 403) {
           setAccessDenied(true);
@@ -146,7 +361,7 @@ export const TaskChat = ({
         setLoading(true);
         setAccessDenied(false);
         const data = await getDirectChat(effectivePartnerUser.id);
-        setMessages(data || []);
+        processLoadedMessages(data);
       } catch (err) {
         console.error('Failed to load direct messages:', err);
         setFetchError('Failed to load direct messages');
@@ -159,7 +374,7 @@ export const TaskChat = ({
         setLoading(true);
         setAccessDenied(false);
         const data = await getChannelChat(channelId);
-        setMessages(data || []);
+        processLoadedMessages(data);
       } catch (err) {
         console.error('Failed to load channel messages:', err);
         setFetchError('Failed to load channel messages');
@@ -172,7 +387,7 @@ export const TaskChat = ({
         setLoading(true);
         setAccessDenied(false);
         const data = await getProjectChat(project.id);
-        setMessages(data || []);
+        processLoadedMessages(data);
       } catch (err) {
         console.error('Failed to load project messages:', err);
         setFetchError('Failed to load project messages');
@@ -212,7 +427,7 @@ export const TaskChat = ({
         loadMessages();
       }
     }
-  }, [mode, task?.id, project?.id, effectivePartnerUser?.id, channelId, currentUser?.id, isParticipant]);
+  }, [mode, task?.id, project?.id, effectivePartnerUser?.id, channelId, effectiveCurrentUser?.id, isParticipant]);
 
   useEffect(() => {
     scrollToBottom('auto');
@@ -227,7 +442,7 @@ export const TaskChat = ({
       const isDirect = eventData?.chat_type === 'direct';
       const sId = String(eventData?.sender_id);
       const rId = String(eventData?.receiver_id);
-      const myId = String(currentUser?.id);
+      const myId = String(effectiveCurrentUser?.id);
       const partnerId = String(effectivePartnerUser?.id);
       isRelevant = isDirect && ((sId === partnerId && rId === myId) || (sId === myId && rId === partnerId));
     } else if (mode === 'channel') {
@@ -243,6 +458,57 @@ export const TaskChat = ({
         return [...cleaned, eventData];
       });
       setTimeout(() => scrollToBottom('smooth'), 50);
+
+      // If incoming message from someone else and window is focused, mark as read
+      const isSenderMe = String(eventData?.sender_id) === String(effectiveCurrentUser?.id);
+      if (!isSenderMe && !document.hidden) {
+        const targetId = mode === 'channel' ? channelId : mode === 'direct' ? effectivePartnerUser?.id : mode === 'task' ? task?.id : project?.id;
+        if (targetId) {
+          markChatRead({
+            chat_type: mode,
+            target_id: String(targetId)
+          }).catch(() => {});
+          if (typeof onMarkAsRead === 'function') {
+            onMarkAsRead();
+          }
+        }
+      }
+    }
+  });
+
+  // Realtime messages read listener (for read receipts)
+  useRealtime('chat.messages_read', (data) => {
+    if (!data) return;
+    const readerId = String(data.reader_id);
+    const myId = String(effectiveCurrentUser?.id);
+
+    if (readerId !== myId) {
+      let isTargetThisChat = false;
+      if (mode === 'direct') {
+        isTargetThisChat = data.chat_type === 'direct' && (
+          readerId === String(effectivePartnerUser?.id) ||
+          String(data.target_id) === myId ||
+          String(data.target_id) === String(effectivePartnerUser?.id)
+        );
+      } else if (mode === 'channel') {
+        const cleanTid = String(data.target_id).replace('channel:', '');
+        const cleanCid = String(channelId).replace('channel:', '');
+        isTargetThisChat = data.chat_type === 'channel' && cleanTid === cleanCid;
+      } else if (mode === 'task') {
+        isTargetThisChat = data.chat_type === 'task' && String(data.target_id) === String(task?.id);
+      } else if (mode === 'project') {
+        isTargetThisChat = data.chat_type === 'project' && String(data.target_id) === String(project?.id);
+      }
+
+      if (isTargetThisChat) {
+        setMessages(prev => prev.map(m => {
+          const isMyMsg = String(m.sender_id) === myId || Boolean(m.isOptimistic);
+          if (isMyMsg) {
+            return { ...m, is_read: true, read_at: data.read_at };
+          }
+          return m;
+        }));
+      }
     }
   });
 
@@ -271,7 +537,9 @@ export const TaskChat = ({
             setMessages(prev => {
               const optimisticMsgs = prev.filter(m => m.isOptimistic);
               const realPrev = prev.filter(m => !m.isOptimistic);
-              if (data.length !== realPrev.length || JSON.stringify(data.map(d => d.id)) !== JSON.stringify(realPrev.map(p => p.id))) {
+              const isDifferent = data.length !== realPrev.length || 
+                JSON.stringify(data.map(d => [d.id, Boolean(d.is_read)])) !== JSON.stringify(realPrev.map(p => [p.id, Boolean(p.is_read)]));
+              if (isDifferent) {
                 return [...data, ...optimisticMsgs.filter(opt => !data.some(d => d.message === opt.message && String(d.sender_id) === String(opt.sender_id)))];
               }
               return prev;
@@ -300,6 +568,18 @@ export const TaskChat = ({
     if (mode === 'project' && !project?.id) return;
     if (mode === 'channel' && !channelId) return;
 
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    emitTyping(false);
+    setHasUnread(false);
+    setInitialUnreadId(null);
+
+    const currentReply = replyingTo;
+    setReplyingTo(null);
+
+    const fullMessageText = currentReply
+      ? `> ${currentReply.senderName}: ${currentReply.message.slice(0, 80)}\n\n${textToSend}`
+      : textToSend;
+
     setSending(true);
     setNewMessage('');
     if (textareaRef.current) {
@@ -308,7 +588,7 @@ export const TaskChat = ({
 
     // Instant 0ms Optimistic Update for WhatsApp-like feel
     let tempId = null;
-    if (textToSend && !selectedFile) {
+    if (fullMessageText && !selectedFile) {
       tempId = 'opt_' + Date.now();
       const optimisticMsg = {
         id: tempId,
@@ -316,9 +596,9 @@ export const TaskChat = ({
         project_id: mode === 'project' ? project?.id : null,
         receiver_id: mode === 'direct' ? effectivePartnerUser?.id : null,
         chat_type: mode === 'channel' ? `channel:${channelId}` : mode,
-        sender_id: currentUser?.id,
-        sender_name: currentUser?.full_name || `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`.trim(),
-        message: textToSend,
+        sender_id: effectiveCurrentUser?.id,
+        sender_name: effectiveCurrentUser?.full_name || `${effectiveCurrentUser?.first_name || ''} ${effectiveCurrentUser?.last_name || ''}`.trim(),
+        message: fullMessageText,
         attachment_url: null,
         attachment_type: null,
         created_at: new Date().toISOString(),
@@ -343,7 +623,7 @@ export const TaskChat = ({
       }
 
       const payload = {
-        message: textToSend || (selectedFile ? `Shared attachment: ${selectedFile.name}` : ''),
+        message: fullMessageText || (selectedFile ? `Shared attachment: ${selectedFile.name}` : ''),
         attachment_url: attachmentUrl,
         attachment_type: attachmentType,
         storage_provider: storageProvider
@@ -382,10 +662,21 @@ export const TaskChat = ({
   };
 
   const handleTextareaChange = (e) => {
-    setNewMessage(e.target.value);
+    const val = e.target.value;
+    setNewMessage(val);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+
+    if (val.trim()) {
+      emitTyping(true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        emitTyping(false);
+      }, 2500);
+    } else {
+      emitTyping(false);
     }
   };
 
@@ -397,6 +688,32 @@ export const TaskChat = ({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const renderMessageContent = (rawText, isMe) => {
+    if (!rawText) return null;
+    if (rawText.startsWith('> ')) {
+      const parts = rawText.split('\n\n');
+      const quote = parts[0].replace(/^>\s*/, '');
+      const actualMsg = parts.slice(1).join('\n\n');
+      return (
+        <div>
+          <div style={{
+            padding: '6px 10px',
+            borderRadius: '8px',
+            background: isMe ? 'rgba(255, 255, 255, 0.2)' : '#E2E8F0',
+            borderLeft: `3px solid ${isMe ? '#FFFFFF' : '#5551FF'}`,
+            fontSize: '12px',
+            marginBottom: '8px',
+            opacity: 0.95
+          }}>
+            {quote}
+          </div>
+          <div>{actualMsg || ''}</div>
+        </div>
+      );
+    }
+    return rawText;
   };
 
   const getUserName = (u) => {
@@ -485,9 +802,10 @@ export const TaskChat = ({
         background: '#FFFFFF',
         overflow: 'hidden',
         fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+        position: 'relative',
         ...style
       }}>
-        {/* Top Header strictly matching Image 2 */}
+        {/* Top Header */}
         {showHeader && (
           <div style={{
             padding: '16px 24px',
@@ -617,15 +935,6 @@ export const TaskChat = ({
                       onMouseEnter={(e) => e.target.style.background = '#F8FAFC'}
                       onMouseLeave={(e) => e.target.style.background = 'transparent'}
                     >
-                      Channel details
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowMenuDropdown(false)}
-                      style={{ width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', textAlign: 'left', fontSize: '12.5px', color: '#1E293B', borderRadius: '6px', cursor: 'pointer' }}
-                      onMouseEnter={(e) => e.target.style.background = '#F8FAFC'}
-                      onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                    >
                       Mute notifications
                     </button>
                     <button
@@ -745,116 +1054,355 @@ export const TaskChat = ({
                 </div>
 
                 {group.items.map((m, idx) => {
-                  const isMe = String(m.sender_id) === String(currentUser?.id);
+                  const currentUserId = effectiveCurrentUser?.id != null ? String(effectiveCurrentUser.id) : null;
+                  const messageSenderId = m.sender_id != null ? String(m.sender_id) : (m.sender?.id != null ? String(m.sender.id) : null);
+                  const isMe = Boolean(currentUserId && messageSenderId && currentUserId === messageSenderId) || Boolean(m.isOptimistic);
+
                   const senderName = isMe
                     ? 'You'
                     : (m.sender ? `${m.sender.first_name || ''} ${m.sender.last_name || ''}`.trim() : (m.sender_name || (mode === 'direct' ? getUserName(effectivePartnerUser) : 'Team Member')));
-                  const senderAvatar = isMe ? currentUser?.avatar_url : (m.sender?.avatar_url || (mode === 'direct' ? effectivePartnerUser?.avatar_url : null));
+                  const senderAvatar = isMe ? effectiveCurrentUser?.avatar_url : (m.sender?.avatar_url || (mode === 'direct' ? effectivePartnerUser?.avatar_url : null));
                   const timeDisplay = formatTimeOnly(m.created_at);
                   const reactions = reactionsMap[m.id] || [];
 
                   // Dynamic initials for avatar fallback
                   const initials = isMe
-                    ? `${currentUser?.first_name?.[0] || 'U'}${currentUser?.last_name?.[0] || ''}`.toUpperCase()
+                    ? `${effectiveCurrentUser?.first_name?.[0] || 'U'}${effectiveCurrentUser?.last_name?.[0] || ''}`.toUpperCase()
                     : m.sender
                     ? `${m.sender.first_name?.[0] || 'T'}${m.sender.last_name?.[0] || ''}`.toUpperCase()
                     : senderName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'TM';
 
+                  const canDelete = isMe || ['CEO', 'CTO', 'PM'].includes(effectiveCurrentUser?.role);
+                  const isFirstUnread = Boolean(firstUnreadMessageId && String(m.id) === String(firstUnreadMessageId));
+
                   return (
-                    <div key={m.id || idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '20px' }}>
-                      {/* Left Avatar from real user data */}
-                      {senderAvatar ? (
-                        <img
-                          src={senderAvatar}
-                          alt=""
-                          style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                        />
-                      ) : (
+                    <React.Fragment key={m.id || idx}>
+                      {/* Unread Messages Divider (Only shown before first unread message when unread messages exist) */}
+                      {isFirstUnread && (
                         <div style={{
-                          width: '38px',
-                          height: '38px',
-                          borderRadius: '50%',
-                          background: isMe ? '#4F46E5' : '#6366F1',
-                          color: '#FFFFFF',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '12.5px',
-                          fontWeight: 700,
-                          flexShrink: 0
+                          position: 'relative',
+                          margin: '18px 0 22px 0',
+                          width: '100%'
                         }}>
-                          {initials}
+                          <div style={{ position: 'absolute', left: 0, right: 0, height: '1px', background: '#EF4444', opacity: 0.8 }} />
+                          <span style={{
+                            position: 'relative',
+                            background: '#FEF2F2',
+                            border: '1px solid #FCA5A5',
+                            borderRadius: '12px',
+                            padding: '3px 14px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#DC2626',
+                            letterSpacing: '0.03em',
+                            textTransform: 'uppercase',
+                            boxShadow: '0 1px 3px rgba(239, 68, 68, 0.12)'
+                          }}>
+                            New messages
+                          </span>
                         </div>
                       )}
 
-                      {/* Message Body */}
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                        {/* Header: Sender Name + Timestamp */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>
-                            {senderName}
-                          </span>
-                          <span style={{ fontSize: '11.5px', color: '#94A3B8', fontWeight: 400 }}>
-                            {timeDisplay}
-                          </span>
-                          {isMe && (
-                            <CheckCheck size={14} color="#5551FF" style={{ marginLeft: '2px' }} />
-                          )}
-                        </div>
+                      <div
+                        onMouseEnter={() => setHoveredMsgId(m.id)}
+                        onMouseLeave={() => setHoveredMsgId(null)}
+                        style={{
+                          position: 'relative',
+                          display: 'flex',
+                          flexDirection: isMe ? 'row-reverse' : 'row',
+                          alignItems: 'flex-start',
+                          gap: '12px',
+                          marginBottom: '20px',
+                          width: '100%'
+                        }}
+                      >
+                        {/* Hover Action Toolbar */}
+                        {hoveredMsgId === m.id && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '-16px',
+                            [isMe ? 'right' : 'left']: '52px',
+                            background: '#FFFFFF',
+                            border: '1px solid #E2E8F0',
+                            borderRadius: '24px',
+                            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '3px 8px',
+                            gap: '3px',
+                            zIndex: 20
+                          }}>
+                            {/* Reactions Toolbar: 👍 ❤️ 😂 🎉 */}
+                            {['👍', '❤️', '😂', '🎉'].map(emoji => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleReaction(m.id, emoji);
+                                }}
+                                title={`React ${emoji}`}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '15px',
+                                  padding: '2px 4px',
+                                  borderRadius: '6px',
+                                  transition: 'transform 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => e.target.style.transform = 'scale(1.25)'}
+                                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
 
-                        {/* Bubble */}
+                            <div style={{ width: '1px', height: '14px', background: '#E2E8F0', margin: '0 3px' }} />
+
+                            {/* Reply */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReplyingTo({
+                                  id: m.id,
+                                  message: m.message,
+                                  senderName
+                                });
+                                textareaRef.current?.focus();
+                              }}
+                              title="Reply"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#64748B',
+                                padding: '3px 5px',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#5551FF'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#64748B'}
+                            >
+                              <Reply size={14} />
+                            </button>
+
+                            {/* Copy */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (m.message) {
+                                  navigator.clipboard.writeText(m.message);
+                                  setCopiedMsgId(m.id);
+                                  setTimeout(() => setCopiedMsgId(null), 1500);
+                                }
+                              }}
+                              title="Copy text"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: copiedMsgId === m.id ? '#10B981' : '#64748B',
+                                padding: '3px 5px',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              onMouseEnter={(e) => { if (copiedMsgId !== m.id) e.currentTarget.style.color = '#5551FF'; }}
+                              onMouseLeave={(e) => { if (copiedMsgId !== m.id) e.currentTarget.style.color = '#64748B'; }}
+                            >
+                              {copiedMsgId === m.id ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+                            </button>
+
+                            {/* Forward */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setForwardingMsg(m);
+                              }}
+                              title="Forward"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#64748B',
+                                padding: '3px 5px',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#5551FF'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#64748B'}
+                            >
+                              <CornerUpRight size={14} />
+                            </button>
+
+                            {/* Delete (only if author or executive/PM) */}
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteMessage(m.id);
+                                }}
+                                title="Delete message"
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: '#EF4444',
+                                  padding: '3px 5px',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Left/Right Avatar */}
+                        {senderAvatar ? (
+                          <img
+                            src={senderAvatar}
+                            alt=""
+                            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '50%',
+                            background: isMe ? '#4F46E5' : '#6366F1',
+                            color: '#FFFFFF',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            flexShrink: 0
+                          }}>
+                            {initials}
+                          </div>
+                        )}
+
+                        {/* Message Body */}
                         <div style={{
-                          background: isMe ? '#EEF2FF' : '#F1F5F9',
-                          border: isMe ? '1px solid #E0E7FF' : 'none',
-                          borderRadius: '14px',
-                          padding: '12px 18px',
-                          color: '#1E293B',
-                          fontSize: '13.5px',
-                          lineHeight: '1.5',
-                          maxWidth: '85%',
-                          wordBreak: 'break-word',
-                          whiteSpace: 'pre-wrap'
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: isMe ? 'flex-end' : 'flex-start',
+                          maxWidth: '78%'
                         }}>
-                          {m.message}
+                          {/* Header: Sender Name + Timestamp */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            marginBottom: '6px'
+                          }}>
+                            {isMe ? (
+                              <>
+                                {m.is_read ? (
+                                  <CheckCheck size={14} color="#5551FF" style={{ marginRight: '2px' }} title="Read" />
+                                ) : (
+                                  <Check size={14} color="#94A3B8" style={{ marginRight: '2px' }} title="Sent" />
+                                )}
+                                <span style={{ fontSize: '11.5px', color: '#94A3B8', fontWeight: 400 }}>
+                                  {timeDisplay}
+                                </span>
+                                <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>
+                                  {senderName}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>
+                                  {senderName}
+                                </span>
+                                <span style={{ fontSize: '11.5px', color: '#94A3B8', fontWeight: 400 }}>
+                                  {timeDisplay}
+                                </span>
+                              </>
+                            )}
+                          </div>
 
-                          {m.attachment_url && (
-                            <div style={{ marginTop: m.message ? '8px' : '0' }}>
-                              <AttachmentCard url={m.attachment_url} type={m.attachment_type} storage={m.storage_provider} />
+                          {/* Bubble: Purple/indigo for sent, light grey/lavender for received */}
+                          <div style={{
+                            background: isMe ? '#5551FF' : '#F1F5F9',
+                            border: isMe ? 'none' : '1px solid #E2E8F0',
+                            borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                            padding: '12px 18px',
+                            color: isMe ? '#FFFFFF' : '#1E293B',
+                            fontSize: '13.5px',
+                            lineHeight: '1.5',
+                            maxWidth: '100%',
+                            wordBreak: 'break-word',
+                            whiteSpace: 'pre-wrap',
+                            boxShadow: isMe ? '0 1px 3px rgba(85, 81, 255, 0.22)' : 'none'
+                          }}>
+                            {renderMessageContent(m.message, isMe)}
+
+                            {m.attachment_url && (
+                              <div style={{ marginTop: m.message ? '8px' : '0' }}>
+                                <AttachmentCard url={m.attachment_url} type={m.attachment_type} storage={m.storage_provider} />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Emoji Reactions below bubble with toggle support */}
+                          {reactions.length > 0 && (
+                            <div style={{
+                              display: 'flex',
+                              gap: '6px',
+                              marginTop: '6px',
+                              flexWrap: 'wrap',
+                              justifyContent: isMe ? 'flex-end' : 'flex-start'
+                            }}>
+                              {reactions.map((r, rIdx) => (
+                                <button
+                                  key={rIdx}
+                                  type="button"
+                                  onClick={() => handleToggleReaction(m.id, r.emoji)}
+                                  style={{
+                                    background: r.userReacted ? '#EEF2FF' : '#FFFFFF',
+                                    border: r.userReacted ? '1px solid #5551FF' : '1px solid #E2E8F0',
+                                    borderRadius: '14px',
+                                    padding: '2px 8px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '12px',
+                                    color: r.userReacted ? '#5551FF' : '#475569',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  title={`${r.count} reaction${r.count > 1 ? 's' : ''}`}
+                                >
+                                  <span>{r.emoji}</span>
+                                  <span style={{ fontWeight: 600 }}>{r.count}</span>
+                                </button>
+                              ))}
                             </div>
                           )}
                         </div>
-
-                        {/* Emoji Reactions (only rendered when real reactions exist) */}
-                        {reactions.length > 0 && (
-                          <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
-                            {reactions.map((r, rIdx) => (
-                              <button
-                                key={rIdx}
-                                type="button"
-                                onClick={() => handleToggleReaction(m.id, r.emoji)}
-                                style={{
-                                  background: r.userReacted ? '#EEF2FF' : '#FFFFFF',
-                                  border: r.userReacted ? '1px solid #5551FF' : '1px solid #E2E8F0',
-                                  borderRadius: '14px',
-                                  padding: '2px 8px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  fontSize: '12px',
-                                  color: r.userReacted ? '#5551FF' : '#475569',
-                                  cursor: 'pointer',
-                                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-                                  transition: 'all 0.15s ease'
-                                }}
-                              >
-                                <span>{r.emoji}</span>
-                                <span style={{ fontWeight: 600 }}>{r.count}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                    </div>
+                    </React.Fragment>
                   );
                 })}
               </React.Fragment>
@@ -863,45 +1411,75 @@ export const TaskChat = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Attachment Selected Banner */}
-        {selectedFile && (
+        {/* Replying Banner */}
+        {replyingTo && (
           <div style={{
             padding: '8px 24px',
             background: '#F8FAFC',
             borderTop: '1px solid #E2E8F0',
+            borderLeft: '4px solid #5551FF',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontSize: '12px',
+            fontSize: '12.5px',
             color: '#475569'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-              <Paperclip size={14} color="#5551FF" />
-              <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
-                {selectedFile.name}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+              <Reply size={15} color="#5551FF" />
+              <span style={{ fontWeight: 600, color: '#0F172A' }}>
+                Replying to {replyingTo.senderName}:
               </span>
-              <span style={{ fontSize: '10px', color: '#94A3B8' }}>
-                ({(selectedFile.size / 1024).toFixed(1)} KB)
+              <span style={{ color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '340px' }}>
+                {replyingTo.message}
               </span>
             </div>
             <button
               type="button"
-              onClick={() => setSelectedFile(null)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#94A3B8',
-                padding: '2px'
-              }}
-              title="Remove attachment"
+              onClick={() => setReplyingTo(null)}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: '2px' }}
+              title="Cancel reply"
             >
-              <X size={14} />
+              <X size={15} />
             </button>
           </div>
         )}
 
-        {/* Footer Composer strictly matching Image 2 */}
+        {/* Typing Indicator */}
+        {(() => {
+          const activeTypingNames = Object.values(typingUsers).map(u => u.userName);
+          const typingText = activeTypingNames.length === 1
+            ? `${activeTypingNames[0]} is typing…`
+            : activeTypingNames.length === 2
+            ? `${activeTypingNames[0]} and ${activeTypingNames[1]} are typing…`
+            : activeTypingNames.length > 2
+            ? 'Multiple people are typing…'
+            : null;
+
+          if (!typingText) return null;
+
+          return (
+            <div style={{
+              padding: '6px 24px',
+              fontSize: '12.5px',
+              color: '#5551FF',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontStyle: 'italic',
+              background: '#F8FAFC',
+              borderTop: '1px solid #F1F5F9'
+            }}>
+              <span style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#5551FF' }} />
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#5551FF', opacity: 0.7 }} />
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#5551FF', opacity: 0.4 }} />
+              </span>
+              <span>{typingText}</span>
+            </div>
+          );
+        })()}
+
+        {/* Fixed Message Composer at bottom */}
         <form
           onSubmit={handleSend}
           style={{
@@ -910,45 +1488,119 @@ export const TaskChat = ({
             borderTop: '1px solid #F1F5F9',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
+            gap: '10px',
             flexShrink: 0,
             position: 'relative'
           }}
         >
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            style={{ display: 'none' }}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '50%',
-              background: selectedFile ? '#EEF2FF' : 'transparent',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: selectedFile ? '#5551FF' : '#64748B',
-              transition: 'all 0.15s ease',
-              flexShrink: 0
-            }}
-            title="Add attachment"
-            disabled={sending || fileUploading}
-          >
-            <Paperclip size={18} />
-          </button>
+          {/* @mention Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setShowMentionDropdown(!showMentionDropdown)}
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                background: showMentionDropdown ? '#EEF2FF' : 'transparent',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: showMentionDropdown ? '#5551FF' : '#64748B',
+                transition: 'all 0.15s ease',
+                flexShrink: 0
+              }}
+              title="Mention a team member"
+            >
+              <AtSign size={18} />
+            </button>
 
+            {/* Mention Dropdown */}
+            {showMentionDropdown && (
+              <div style={{
+                position: 'absolute',
+                bottom: '48px',
+                left: 0,
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                border: '1px solid #E2E8F0',
+                padding: '6px',
+                width: '240px',
+                maxHeight: '220px',
+                overflowY: 'auto',
+                zIndex: 100
+              }}>
+                <div style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>
+                  Mention a team member
+                </div>
+                {allTeamUsers.length === 0 ? (
+                  <div style={{ padding: '8px', fontSize: '12px', color: '#94A3B8' }}>No members available</div>
+                ) : (
+                  allTeamUsers.map(member => {
+                    const memberName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.email;
+                    return (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => {
+                          setNewMessage(prev => {
+                            const mentionTag = `@${member.first_name || memberName} `;
+                            return prev ? `${prev} ${mentionTag}` : mentionTag;
+                          });
+                          setShowMentionDropdown(false);
+                          textareaRef.current?.focus();
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          background: 'transparent',
+                          border: 'none',
+                          textAlign: 'left',
+                          fontSize: '12.5px',
+                          color: '#1E293B',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: '#EEF2FF',
+                          color: '#5551FF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          fontWeight: 700
+                        }}>
+                          {member.first_name?.[0] || 'U'}
+                        </div>
+                        <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {memberName}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Textarea + Emoji Button */}
           <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
             <textarea
               ref={textareaRef}
               rows={1}
-              placeholder="Type a message..."
+              placeholder={getPlaceholder()}
               value={newMessage}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
@@ -966,7 +1618,7 @@ export const TaskChat = ({
                 lineHeight: '1.4',
                 maxHeight: '120px'
               }}
-              disabled={sending || fileUploading}
+              disabled={sending}
             />
             <button
               type="button"
@@ -989,6 +1641,7 @@ export const TaskChat = ({
             </button>
           </div>
 
+          {/* Emoji Picker Popover */}
           {showEmojiPicker && (
             <div style={{
               position: 'absolute',
@@ -1029,34 +1682,241 @@ export const TaskChat = ({
             </div>
           )}
 
+          {/* Send Button */}
           <button
             type="submit"
-            disabled={(!newMessage.trim() && !selectedFile) || sending || fileUploading}
+            disabled={!newMessage.trim() || sending}
             style={{
               width: '40px',
               height: '40px',
               borderRadius: '12px',
               background: '#5551FF',
-              opacity: (!newMessage.trim() && !selectedFile) || sending || fileUploading ? 0.7 : 1,
+              opacity: !newMessage.trim() || sending ? 0.7 : 1,
               border: 'none',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#FFFFFF',
-              cursor: (!newMessage.trim() && !selectedFile) || sending || fileUploading ? 'not-allowed' : 'pointer',
+              cursor: !newMessage.trim() || sending ? 'not-allowed' : 'pointer',
               flexShrink: 0,
               boxShadow: '0 2px 6px rgba(85, 81, 255, 0.28)',
               transition: 'all 0.15s ease'
             }}
-            title="Send message"
+            title="Send message (Enter)"
           >
-            {sending || fileUploading ? (
+            {sending ? (
               <Loader2 size={16} className="spinner" />
             ) : (
               <Send size={16} style={{ transform: 'translateX(1px)' }} />
             )}
           </button>
         </form>
+
+        {/* Forward Message Modal */}
+        {forwardingMsg && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            backdropFilter: 'blur(3px)'
+          }}>
+            <div style={{
+              width: '420px',
+              maxWidth: '92vw',
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+              border: '1px solid #E2E8F0',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* Modal Header */}
+              <div style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #F1F5F9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CornerUpRight size={18} color="#5551FF" />
+                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                    Forward Message
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setForwardingMsg(null); setForwardSuccess(null); }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Message Quote Preview */}
+              <div style={{ padding: '12px 20px', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                <div style={{
+                  fontSize: '11px',
+                  color: '#64748B',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  marginBottom: '4px'
+                }}>
+                  Message:
+                </div>
+                <div style={{
+                  fontSize: '13px',
+                  color: '#334155',
+                  fontStyle: 'italic',
+                  background: '#FFFFFF',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #E2E8F0',
+                  maxHeight: '60px',
+                  overflowY: 'auto'
+                }}>
+                  "{forwardingMsg.message}"
+                </div>
+              </div>
+
+              {/* Success Notification */}
+              {forwardSuccess && (
+                <div style={{
+                  padding: '10px 20px',
+                  background: '#ECFDF5',
+                  color: '#059669',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Check size={16} />
+                  <span>Forwarded successfully to {forwardSuccess}!</span>
+                </div>
+              )}
+
+              {/* Search Filter */}
+              <div style={{ padding: '12px 20px 8px 20px' }}>
+                <input
+                  type="text"
+                  placeholder="Search destination..."
+                  value={forwardSearch}
+                  onChange={(e) => setForwardSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '36px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '13px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              {/* Destination List */}
+              <div style={{
+                padding: '8px 12px',
+                maxHeight: '260px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px'
+              }}>
+                {[
+                  ...allChannels.map(c => ({ id: c.id, name: c.name || c.id, type: 'channel' })),
+                  ...allTeamUsers
+                    .filter(u => String(u.id) !== String(effectiveCurrentUser?.id))
+                    .map(u => ({ id: u.id, name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email, type: 'direct' }))
+                ]
+                  .filter(d => !forwardSearch || d.name.toLowerCase().includes(forwardSearch.toLowerCase()))
+                  .map((dest, dIdx) => (
+                    <div
+                      key={dIdx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: dest.type === 'channel' ? '8px' : '50%',
+                          background: dest.type === 'channel' ? '#EEF2FF' : '#E0E7FF',
+                          color: '#5551FF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 700
+                        }}>
+                          {dest.type === 'channel' ? '#' : (dest.name[0]?.toUpperCase() || 'U')}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>
+                            {dest.name}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#94A3B8' }}>
+                            {dest.type === 'channel' ? 'Channel' : 'Direct Message'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const fwdContent = `[Forwarded]: ${forwardingMsg.message}`;
+                            if (dest.type === 'channel') {
+                              await sendChannelMessage(dest.id, { message: fwdContent });
+                            } else {
+                              await sendDirectMessage(dest.id, { message: fwdContent });
+                            }
+                            setForwardSuccess(dest.name);
+                            setTimeout(() => {
+                              setForwardSuccess(null);
+                              setForwardingMsg(null);
+                            }, 900);
+                          } catch (err) {
+                            console.error('Failed to forward:', err);
+                            alert('Failed to forward message');
+                          }
+                        }}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          background: '#5551FF',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Forward
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1275,68 +2135,112 @@ export const TaskChat = ({
               </div>
 
               {group.items.map((m, idx) => {
-                const isMe = String(m.sender_id) === String(currentUser?.id);
+                const currentUserId = effectiveCurrentUser?.id != null ? String(effectiveCurrentUser.id) : null;
+                const messageSenderId = m.sender_id != null ? String(m.sender_id) : (m.sender?.id != null ? String(m.sender.id) : null);
+                const isMe = Boolean(currentUserId && messageSenderId && currentUserId === messageSenderId) || Boolean(m.isOptimistic);
+
                 const senderDisplayName = isMe
                   ? 'You'
                   : (m.sender_name || (m.sender ? `${m.sender.first_name} ${m.sender.last_name}`.trim() : (mode === 'direct' ? getUserName(effectivePartnerUser) : 'Team Member')));
                 const timeFormatted = formatTimeOnly(m.created_at);
+                const isFirstUnread = Boolean(firstUnreadMessageId && String(m.id) === String(firstUnreadMessageId));
 
                 return (
-                  <div
-                    key={m.id || idx}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: isMe ? 'flex-end' : 'flex-start',
-                      maxWidth: '82%',
-                      alignSelf: isMe ? 'flex-end' : 'flex-start'
-                    }}
-                  >
-                    {/* Message Bubble matching exact design in screenshot */}
-                    <div style={{
-                      padding: m.attachment_url ? '10px' : '14px 18px',
-                      borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                      background: isMe ? '#EEF2FF' : '#EFECE6', // #EFECE6 matches exact off-white beige bubble in screenshot
-                      border: isMe ? '1px solid #C7D2FE' : '1px solid #E5E0D8',
-                      color: isMe ? '#1E1B4B' : '#1E293B',
-                      fontSize: '13px',
-                      lineHeight: '1.5',
-                      wordBreak: 'break-word',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                    }}>
-                      {m.message && (
-                        <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
-                      )}
+                  <React.Fragment key={m.id || idx}>
+                    {isFirstUnread && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative',
+                        margin: '18px 0 22px 0',
+                        width: '100%'
+                      }}>
+                        <div style={{ position: 'absolute', left: 0, right: 0, height: '1px', background: '#EF4444', opacity: 0.8 }} />
+                        <span style={{
+                          position: 'relative',
+                          background: '#FEF2F2',
+                          border: '1px solid #FCA5A5',
+                          borderRadius: '12px',
+                          padding: '3px 14px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: '#DC2626',
+                          letterSpacing: '0.03em',
+                          textTransform: 'uppercase',
+                          boxShadow: '0 1px 3px rgba(239, 68, 68, 0.12)'
+                        }}>
+                          New messages
+                        </span>
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: isMe ? 'flex-end' : 'flex-start',
+                        maxWidth: '82%',
+                        alignSelf: isMe ? 'flex-end' : 'flex-start'
+                      }}
+                    >
+                      {/* Message Bubble */}
+                      <div style={{
+                        padding: m.attachment_url ? '10px' : '14px 18px',
+                        borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                        background: isMe ? '#5551FF' : '#F1F5F9',
+                        border: isMe ? 'none' : '1px solid #E2E8F0',
+                        color: isMe ? '#FFFFFF' : '#1E293B',
+                        fontSize: '13px',
+                        lineHeight: '1.5',
+                        wordBreak: 'break-word',
+                        boxShadow: isMe ? '0 1px 3px rgba(85, 81, 255, 0.2)' : '0 1px 2px rgba(0,0,0,0.04)'
+                      }}>
+                        {m.message && (
+                          <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
+                        )}
 
-                      {/* Attachment preview if present */}
-                      {m.attachment_url && (
-                        <div style={{ marginTop: m.message ? '8px' : '0' }}>
-                          <AttachmentCard
-                            url={m.attachment_url}
-                            type={m.attachment_type}
-                            storage={m.storage_provider}
-                          />
-                        </div>
-                      )}
-                    </div>
+                        {/* Attachment preview if present */}
+                        {m.attachment_url && (
+                          <div style={{ marginTop: m.message ? '8px' : '0' }}>
+                            <AttachmentCard
+                              url={m.attachment_url}
+                              type={m.attachment_type}
+                              storage={m.storage_provider}
+                            />
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Sub-meta line e.g. "Name · 06:39 PM" */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      marginTop: '4px',
-                      fontSize: '11px',
-                      color: '#94A3B8'
-                    }}>
-                      <span>{senderDisplayName}</span>
-                      <span>·</span>
-                      <span>{timeFormatted}</span>
-                      {isMe && (
-                        <CheckCheck size={14} color="#6366F1" style={{ marginLeft: '2px' }} />
-                      )}
+                      {/* Sub-meta line e.g. "Name · 06:39 PM" */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginTop: '4px',
+                        fontSize: '11px',
+                        color: '#94A3B8'
+                      }}>
+                        {isMe ? (
+                          <>
+                            {m.is_read ? (
+                              <CheckCheck size={14} color="#5551FF" style={{ marginRight: '2px' }} title="Read" />
+                            ) : (
+                              <Check size={14} color="#94A3B8" style={{ marginRight: '2px' }} title="Sent" />
+                            )}
+                            <span>{timeFormatted}</span>
+                            <span>·</span>
+                            <span>{senderDisplayName}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{senderDisplayName}</span>
+                            <span>·</span>
+                            <span>{timeFormatted}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               })}
             </React.Fragment>

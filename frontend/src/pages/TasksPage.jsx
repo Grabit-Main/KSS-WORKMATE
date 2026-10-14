@@ -14,7 +14,7 @@ import { formatDeadlineWithTime, isUpcomingDate, isDeadlineOverdue } from '../co
 import {
   Plus, Clock, ArrowRight, CheckSquare, X, Check, Calendar, Flag, Sparkles,
   Paperclip, Image as ImageIcon, Film, FileText, AlertTriangle, UserCheck, CheckCircle2, Trash2, Shield,
-  LayoutGrid, List, Eye
+  LayoutGrid, List, Eye, ChevronDown
 } from 'lucide-react';
 
 const normalizeToYYYYMMDD = (val) => {
@@ -73,6 +73,18 @@ const formatYYYYMMDDtoDDMMYYYY = (val) => {
     return `${ddmmyyyy[1]}-${ddmmyyyy[2]}-${ddmmyyyy[3]}`;
   }
   return str;
+};
+
+export const PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Low', color: '#64748B', bg: '#F1F5F9', border: '#CBD5E1' },
+  { value: 'normal', label: 'Normal', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+  { value: 'high', label: 'High', color: '#D97706', bg: '#FFF7ED', border: '#FED7AA' },
+  { value: 'urgent', label: 'Urgent', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' }
+];
+
+export const getPriorityMeta = (prio) => {
+  const p = (prio || 'normal').toLowerCase();
+  return PRIORITY_OPTIONS.find(opt => opt.value === p) || PRIORITY_OPTIONS[1];
 };
 
 const TasksPage = () => {
@@ -134,9 +146,26 @@ const TasksPage = () => {
   const [description, setDescription] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [priority, setPriority] = useState('normal');
+  const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
+  const priorityDropdownRef = useRef(null);
   const [deadline, setDeadline] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Close priority dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (priorityDropdownRef.current && !priorityDropdownRef.current.contains(e.target)) {
+        setPriorityDropdownOpen(false);
+      }
+    };
+    if (priorityDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [priorityDropdownOpen]);
 
   // File Attachments State
   const [attachedFiles, setAttachedFiles] = useState([]);
@@ -242,6 +271,8 @@ const TasksPage = () => {
 
   const openNewTaskModal = () => {
     setAttachedFiles([]);
+    setPriority('normal');
+    setPriorityDropdownOpen(false);
     loadModalDependencies();
     setShowModal(true);
   };
@@ -390,6 +421,7 @@ const TasksPage = () => {
       setTitle('');
       setDescription('');
       setPriority('normal');
+      setPriorityDropdownOpen(false);
       setDeadline('');
 
       // Upload attached files asynchronously in the background so modal closing and task display are never blocked
@@ -1055,9 +1087,27 @@ const TasksPage = () => {
                 >
                   {/* Top Header Meta Row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>
-                      {task.project_id ? `Project task` : 'Standalone task'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>
+                        {task.project_id ? `Project task` : 'Standalone task'}
+                      </span>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '2px 7px',
+                        borderRadius: '6px',
+                        background: getPriorityMeta(task.priority).bg,
+                        color: getPriorityMeta(task.priority).color,
+                        border: `1px solid ${getPriorityMeta(task.priority).border}`,
+                        textTransform: 'capitalize',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <Flag size={10} />
+                        {getPriorityMeta(task.priority).label}
+                      </span>
+                    </div>
 
                     {/* Delete icon button (only for task assigner) */}
                     {isAssignedByMe && (
@@ -1339,6 +1389,7 @@ const TasksPage = () => {
                     <input type="checkbox" style={{ borderRadius: '4px', cursor: 'pointer' }} readOnly />
                   </th>
                   <th style={{ padding: '14px 16px', minWidth: '240px' }}>Task</th>
+                  <th style={{ padding: '14px 16px', width: '110px' }}>Priority</th>
                   <th style={{ padding: '14px 16px', width: '120px' }}>Type</th>
                   <th style={{ padding: '14px 16px', width: '130px' }}>Project</th>
                   <th style={{ padding: '14px 16px', width: '130px' }}>Status</th>
@@ -1412,6 +1463,25 @@ const TasksPage = () => {
                             {task.description}
                           </div>
                         )}
+                      </td>
+
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          background: getPriorityMeta(task.priority).bg,
+                          color: getPriorityMeta(task.priority).color,
+                          border: `1px solid ${getPriorityMeta(task.priority).border}`,
+                          textTransform: 'capitalize',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <Flag size={10} />
+                          {getPriorityMeta(task.priority).label}
+                        </span>
                       </td>
 
                       <td style={{ padding: '14px 16px' }}>
@@ -1771,12 +1841,116 @@ const TasksPage = () => {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
+                <div ref={priorityDropdownRef} style={{ position: 'relative' }}>
                   <label className="text-xs font-semibold text-secondary mb-1.5 block">Priority</label>
+                  
+                  {/* Custom Priority Dropdown Button */}
+                  <button
+                    type="button"
+                    onClick={() => setPriorityDropdownOpen(prev => !prev)}
+                    className="input"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      background: 'var(--surface)',
+                      borderColor: priorityDropdownOpen ? 'var(--brand-500, #6366F1)' : 'var(--border)',
+                      boxShadow: priorityDropdownOpen ? '0 0 0 3.5px rgba(99, 102, 241, 0.15)' : 'none',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: getPriorityMeta(priority).color,
+                        display: 'inline-block'
+                      }} />
+                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {getPriorityMeta(priority).label}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      size={16}
+                      style={{
+                        color: 'var(--text-tertiary, #94A3B8)',
+                        transition: 'transform 0.2s ease',
+                        transform: priorityDropdownOpen ? 'rotate(180deg)' : 'none'
+                      }}
+                    />
+                  </button>
+
+                  {/* Dropdown Options Popup */}
+                  {priorityDropdownOpen && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      right: 0,
+                      background: 'var(--surface, #FFFFFF)',
+                      border: '1px solid var(--border, #E2E8F0)',
+                      borderRadius: 'var(--radius-sm, 12px)',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                      zIndex: 1050,
+                      padding: '4px',
+                      overflow: 'hidden'
+                    }}>
+                      {PRIORITY_OPTIONS.map((opt) => {
+                        const isSelected = (priority || 'normal').toLowerCase() === opt.value;
+                        return (
+                          <div
+                            key={opt.value}
+                            onClick={() => {
+                              setPriority(opt.value);
+                              setPriorityDropdownOpen(false);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '8px 12px',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              background: isSelected ? opt.bg : 'transparent',
+                              color: isSelected ? opt.color : 'var(--text-primary)',
+                              fontWeight: isSelected ? 600 : 500,
+                              fontSize: '13px',
+                              transition: 'background 0.12s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) e.currentTarget.style.background = 'var(--surface-hover, #F8FAFC)';
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) e.currentTarget.style.background = 'transparent';
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: opt.color,
+                                display: 'inline-block'
+                              }} />
+                              <span>{opt.label}</span>
+                            </div>
+                            {isSelected && <Check size={14} color={opt.color} />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Hidden select for form integrity & accessibility */}
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="input"
+                    style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+                    tabIndex={-1}
+                    aria-hidden="true"
                   >
                     <option value="low">Low</option>
                     <option value="normal">Normal</option>

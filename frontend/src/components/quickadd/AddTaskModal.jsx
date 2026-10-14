@@ -274,7 +274,7 @@ export default function AddTaskModal({ isOpen, onClose, user, projects = [], use
                   style={fieldStyle}
                 >
                   <option value="low" style={optionStyle}>Low</option>
-                  <option value="normal" style={optionStyle}>Medium</option>
+                  <option value="normal" style={optionStyle}>Normal</option>
                   <option value="high" style={optionStyle}>High</option>
                   <option value="urgent" style={optionStyle}>Urgent</option>
                 </select>

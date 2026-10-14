@@ -6,7 +6,7 @@ import api from '../api/axios';
 import { getTasks } from '../api/tasks';
 import { getNotifications } from '../api/notifications';
 import { getTeams } from '../api/teams';
-import { getChannelChat } from '../api/chat';
+import { getChannelChat, getUnreadCounts, markChatRead } from '../api/chat';
 import {
   MessageSquare, Users, Sparkles, AtSign,
   Bell, CheckCircle2, Folder, CheckSquare, Megaphone,
@@ -54,6 +54,7 @@ export default function CollaborationPage() {
   const [notifications, setNotifications] = useState([]);
   const [teamsList, setTeamsList] = useState([]);
   const [channelMeta, setChannelMeta] = useState({});
+  const [unreadCountsMap, setUnreadCountsMap] = useState({});
   const [loadingData, setLoadingData] = useState(true);
   const [dataError, setDataError] = useState(null);
 
@@ -82,17 +83,18 @@ export default function CollaborationPage() {
   const [annTitle, setAnnTitle] = useState('');
   const [annContent, setAnnContent] = useState('');
 
-  // Fetch Core Data (Users, Projects, Tasks, Notifications, Teams, Channel metadata)
+  // Fetch Core Data (Users, Projects, Tasks, Notifications, Teams, Channel metadata, Unread counts)
   const loadInitialData = async () => {
     setLoadingData(true);
     setDataError(null);
     try {
-      const [resUsers, resProj, resTasks, resNotifs, resTeams] = await Promise.all([
+      const [resUsers, resProj, resTasks, resNotifs, resTeams, resUnread] = await Promise.all([
         api.get('/users').catch(() => ({ data: [] })),
         api.get('/projects').catch(() => ({ data: [] })),
         getTasks().catch(() => []),
         getNotifications().catch(() => []),
-        getTeams().catch(() => [])
+        getTeams().catch(() => []),
+        getUnreadCounts().catch(() => ({ counts: {} }))
       ]);
 
       if (Array.isArray(resUsers.data)) setTeamUsers(resUsers.data);
@@ -109,6 +111,9 @@ export default function CollaborationPage() {
       }
       if (Array.isArray(resTeams)) {
         setTeamsList(resTeams);
+      }
+      if (resUnread && resUnread.counts) {
+        setUnreadCountsMap(resUnread.counts);
       }
 
       // Fetch real latest messages for standard channels
@@ -178,6 +183,38 @@ export default function CollaborationPage() {
     }
   }, [location.state, location.search, teamUsers]);
 
+  // Mark a conversation as read in backend and update local unread counts
+  const markConversationAsRead = async (target) => {
+    if (!target?.id) return;
+    const chatType = target.type === 'team' ? 'channel' : target.type === 'dm' ? 'direct' : target.type;
+    const targetId = String(target.realUserId || target.id);
+
+    // Optimistically clear the unread count in state immediately
+    setUnreadCountsMap(prev => {
+      const copy = { ...prev };
+      delete copy[targetId];
+      delete copy[String(target.id)];
+      if (target.name) delete copy[target.name];
+      return copy;
+    });
+
+    try {
+      await markChatRead({
+        chat_type: chatType,
+        target_id: targetId
+      });
+    } catch (err) {
+      console.error('Failed to mark conversation as read:', err);
+    }
+  };
+
+  // Mark active conversation as read when active chat target changes
+  useEffect(() => {
+    if (activeChatTarget?.id) {
+      markConversationAsRead(activeChatTarget);
+    }
+  }, [activeChatTarget.id, activeChatTarget.type, activeChatTarget.realUserId]);
+
   // Realtime notification sync
   useRealtime('notification.new', async () => {
     try {
@@ -186,10 +223,26 @@ export default function CollaborationPage() {
     } catch (e) {}
   });
 
-  // Realtime chat message sync to update conversation previews & times
+  // Realtime read sync across sessions/tabs
+  useRealtime('chat.messages_read', (eventData) => {
+    if (!eventData) return;
+    if (String(eventData.reader_id) === String(user?.id)) {
+      const tId = eventData.target_id;
+      setUnreadCountsMap(prev => {
+        const copy = { ...prev };
+        delete copy[tId];
+        if (eventData.original_target_id) delete copy[eventData.original_target_id];
+        return copy;
+      });
+    }
+  });
+
+  // Realtime chat message sync to update conversation previews, times & unread counts
   useRealtime('chat.new_message', (eventData) => {
     if (eventData) {
       const cId = eventData.channel_name || (eventData.chat_type?.startsWith('channel:') ? eventData.chat_type.replace('channel:', '') : null);
+      const isSenderMe = String(eventData.sender_id) === String(user?.id);
+
       if (cId) {
         setChannelMeta(prev => ({
           ...prev,
@@ -198,8 +251,20 @@ export default function CollaborationPage() {
             time: formatConversationTime(eventData.created_at)
           }
         }));
+
+        if (!isSenderMe) {
+          const isCurrentOpen = activeTab === 'chats' && activeChatTarget?.type === 'team' && (String(activeChatTarget.id) === String(cId) || activeChatTarget.name === cId) && !document.hidden;
+          if (isCurrentOpen) {
+            markConversationAsRead(activeChatTarget);
+          } else {
+            setUnreadCountsMap(prev => ({
+              ...prev,
+              [cId]: (prev[cId] || 0) + 1
+            }));
+          }
+        }
       } else if (eventData.chat_type === 'direct') {
-        const partnerId = String(eventData.sender_id) === String(user?.id) ? String(eventData.receiver_id) : String(eventData.sender_id);
+        const partnerId = isSenderMe ? String(eventData.receiver_id) : String(eventData.sender_id);
         setChannelMeta(prev => ({
           ...prev,
           [partnerId]: {
@@ -207,6 +272,18 @@ export default function CollaborationPage() {
             time: formatConversationTime(eventData.created_at)
           }
         }));
+
+        if (!isSenderMe) {
+          const isCurrentOpen = activeTab === 'chats' && activeChatTarget?.type === 'dm' && (String(activeChatTarget.id) === partnerId || String(activeChatTarget.realUserId) === partnerId) && !document.hidden;
+          if (isCurrentOpen) {
+            markConversationAsRead(activeChatTarget);
+          } else {
+            setUnreadCountsMap(prev => ({
+              ...prev,
+              [partnerId]: (prev[partnerId] || 0) + 1
+            }));
+          }
+        }
       }
     }
   });
@@ -412,7 +489,7 @@ export default function CollaborationPage() {
             memberCount: `${teamUsers.length || 1} ${teamUsers.length === 1 ? 'member' : 'members'}`,
             lastMessage: channelMeta['general']?.lastMessage || 'Team-wide updates and announcements',
             time: channelMeta['general']?.time || '',
-            unreadCount: notifications.filter(n => !n.is_read && (n.event_type === 'chat.message' || n.event_type === 'chat.channel') && String(n.ref_id) === 'general').length
+            unreadCount: unreadCountsMap['general'] ?? unreadCountsMap['General Announcements'] ?? 0
           },
           {
             id: 'engineering',
@@ -423,7 +500,7 @@ export default function CollaborationPage() {
             memberCount: `${teamUsers.filter(u => ['TL', 'TM', 'CTO', 'DEV'].includes(u.role) || u.department?.toLowerCase().includes('eng')).length || teamUsers.length || 1} members`,
             lastMessage: channelMeta['engineering']?.lastMessage || 'Engineering discussions and releases',
             time: channelMeta['engineering']?.time || '',
-            unreadCount: notifications.filter(n => !n.is_read && (n.event_type === 'chat.message' || n.event_type === 'chat.channel') && String(n.ref_id) === 'engineering').length
+            unreadCount: unreadCountsMap['engineering'] ?? unreadCountsMap['Engineering & Tech'] ?? 0
           },
           {
             id: 'sprint',
@@ -434,7 +511,7 @@ export default function CollaborationPage() {
             memberCount: `${teamUsers.length || 1} ${teamUsers.length === 1 ? 'member' : 'members'}`,
             lastMessage: channelMeta['sprint']?.lastMessage || 'Daily blockers, sprint goals & standup notes',
             time: channelMeta['sprint']?.time || '',
-            unreadCount: notifications.filter(n => !n.is_read && (n.event_type === 'chat.message' || n.event_type === 'chat.channel') && String(n.ref_id) === 'sprint').length
+            unreadCount: unreadCountsMap['sprint'] ?? unreadCountsMap['Sprint & Daily Standups'] ?? 0
           }
         ];
 
@@ -450,7 +527,7 @@ export default function CollaborationPage() {
             memberCount: `${memberLen} ${memberLen === 1 ? 'member' : 'members'}`,
             lastMessage: channelMeta[t.id]?.lastMessage || (t.description ? t.description : `Team channel for ${t.name}`),
             time: channelMeta[t.id]?.time || '',
-            unreadCount: notifications.filter(n => !n.is_read && (n.event_type === 'chat.message' || n.event_type === 'chat.channel') && String(n.ref_id) === String(t.id)).length
+            unreadCount: unreadCountsMap[String(t.id)] ?? unreadCountsMap[t.name] ?? 0
           };
         });
 
@@ -458,7 +535,7 @@ export default function CollaborationPage() {
         const directMessages = teamUsers
           .filter(u => String(u.id) !== String(user?.id))
           .map(u => {
-            const unreadCount = notifications.filter(n => !n.is_read && n.event_type === 'chat.direct' && String(n.ref_id) === String(u.id)).length;
+            const unreadCount = unreadCountsMap[String(u.id)] || 0;
             const latestNotif = notifications.find(n => n.event_type === 'chat.direct' && String(n.ref_id) === String(u.id));
             const lastMsg = channelMeta[String(u.id)]?.lastMessage || (latestNotif ? latestNotif.message : `Start direct message with ${u.first_name || 'member'}`);
             const timeVal = channelMeta[String(u.id)]?.time || (latestNotif ? formatConversationTime(latestNotif.created_at) : '');
@@ -647,16 +724,19 @@ export default function CollaborationPage() {
                     return (
                       <div
                         key={item.id}
-                        onClick={() => setActiveChatTarget({
-                          type: item.type,
-                          id: item.id,
-                          realUserId: item.realUserId,
-                          name: item.name,
-                          subtitle: item.subtitle,
-                          memberCount: item.memberCount,
-                          iconType: item.iconType,
-                          user: item.realUser
-                        })}
+                        onClick={() => {
+                          setActiveChatTarget({
+                            type: item.type,
+                            id: item.id,
+                            realUserId: item.realUserId,
+                            name: item.name,
+                            subtitle: item.subtitle,
+                            memberCount: item.memberCount,
+                            iconType: item.iconType,
+                            user: item.realUser
+                          });
+                          markConversationAsRead(item);
+                        }}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -797,8 +877,12 @@ export default function CollaborationPage() {
                     channelIconType={activeChatTarget.iconType}
                     partnerUser={activeChatTarget.user || (activeChatTarget.realUserId ? teamUsers.find(u => String(u.id) === String(activeChatTarget.realUserId)) : teamUsers.find(u => String(u.id) === String(activeChatTarget.id)))}
                     currentUser={user}
+                    unreadCount={currentTargetMeta?.unreadCount || unreadCountsMap[String(activeChatTarget.realUserId || activeChatTarget.id)] || 0}
+                    allTeamUsers={teamUsers}
+                    allChannels={[...standardChannels, ...dbTeamChannels]}
                     layoutVariant="collaboration_hub"
                     headerExtra={renderFullscreenButton()}
+                    onMarkAsRead={() => markConversationAsRead(activeChatTarget)}
                   />
                 );
               })()}

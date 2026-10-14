@@ -10,6 +10,8 @@ TASK_DELETED = "task.deleted"
 
 # Chat
 CHAT_NEW_MESSAGE = "chat.new_message"
+CHAT_MESSAGES_READ = "chat.messages_read"
+CHAT_MESSAGE_DELETED = "chat.message_deleted"
 
 # Projects
 PROJECT_CREATED = "project.created"

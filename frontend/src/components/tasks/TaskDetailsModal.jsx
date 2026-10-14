@@ -33,7 +33,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
   const handleStartEditing = () => {
     setEditTitle(currentTask.title || '');
     setEditDescription(currentTask.description || '');
-    setEditPriority(currentTask.priority || 'normal');
+    setEditPriority((currentTask.priority || 'normal').toLowerCase());
     setEditScheduledDate(currentTask.scheduled_date || '');
     setEditDeadline(currentTask.deadline ? new Date(currentTask.deadline).toISOString().slice(0, 16) : '');
     setIsEditing(true);
@@ -507,7 +507,7 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
                       Priority
                     </label>
                     <select
-                      value={editPriority}
+                      value={(editPriority || 'normal').toLowerCase()}
                       onChange={(e) => setEditPriority(e.target.value)}
                       style={{
                         width: '100%',
@@ -727,15 +727,34 @@ export const TaskDetailsModal = ({ task, currentUser, onClose, onTaskUpdated }) 
 
                   <div>
                     <span className="text-xs text-secondary font-semibold uppercase block mb-1">Priority</span>
-                    <span style={{
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      textTransform: 'capitalize',
-                      color: currentTask.priority === 'urgent' ? 'var(--priority-urgent)' :
-                             currentTask.priority === 'high' ? 'var(--priority-high)' : 'var(--text-primary)'
-                    }}>
-                      {currentTask.priority}
-                    </span>
+                    {(() => {
+                      const p = (currentTask.priority || 'normal').toLowerCase();
+                      const meta = {
+                        urgent: { label: 'Urgent', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+                        high: { label: 'High', color: '#D97706', bg: '#FFF7ED', border: '#FED7AA' },
+                        low: { label: 'Low', color: '#64748B', bg: '#F1F5F9', border: '#CBD5E1' },
+                        normal: { label: 'Normal', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' }
+                      }[p] || { label: 'Normal', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' };
+
+                      return (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          padding: '3px 9px',
+                          borderRadius: '6px',
+                          background: meta.bg,
+                          color: meta.color,
+                          border: `1px solid ${meta.border}`,
+                          textTransform: 'capitalize'
+                        }}>
+                          <Flag size={12} />
+                          {meta.label}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
 
