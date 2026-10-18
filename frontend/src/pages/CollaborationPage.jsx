@@ -143,6 +143,19 @@ export default function CollaborationPage() {
 
   const location = useLocation();
 
+  // Lock page-level scrolling to available viewport height on Collaboration Page
+  useEffect(() => {
+    const mainEl = document.querySelector('.app-main-content');
+    if (mainEl) {
+      mainEl.classList.add('collaboration-mode');
+    }
+    return () => {
+      if (mainEl) {
+        mainEl.classList.remove('collaboration-mode');
+      }
+    };
+  }, []);
+
   // Ensure the page content starts at the top when navigating from any page or switching tabs
   useEffect(() => {
     const mainEl = document.querySelector('.app-main-content');
@@ -357,21 +370,18 @@ export default function CollaborationPage() {
     <div style={{
       maxWidth: '1400px',
       margin: '0 auto',
-      marginTop: 0,
-      paddingTop: 0,
-      paddingBottom: '20px',
       width: '100%',
-      minHeight: 'calc(100vh - 148px)',
+      height: '100%',
+      flex: 1,
+      minHeight: 0,
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'flex-start',
-      alignItems: 'stretch',
-      alignContent: 'flex-start'
+      overflow: 'hidden'
     }}>
 
 
       {/* INTERNAL TAB NAVIGATION BAR */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '16px', gap: '12px' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '16px', gap: '12px', flexShrink: 0 }}>
         {[
           { key: 'chats', label: 'Chats', icon: MessageSquare },
           { key: 'announcements', label: 'Announcements', icon: Megaphone }
@@ -524,8 +534,8 @@ export default function CollaborationPage() {
             borderRadius: '16px',
             background: '#FFFFFF',
             overflow: 'hidden',
-            height: 'calc(100vh - 285px)',
-            minHeight: '560px',
+            height: '100%',
+            minHeight: 0,
             boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
           }}>
             {/* Conversations Left Panel */}
@@ -535,17 +545,20 @@ export default function CollaborationPage() {
               borderRight: '1px solid #F1F5F9',
               display: 'flex',
               flexDirection: 'column',
-              background: '#FFFFFF'
+              background: '#FFFFFF',
+              height: '100%',
+              minHeight: 0,
+              overflow: 'hidden'
             }}>
               {/* Header */}
-              <div style={{ padding: '18px 20px 12px 20px' }}>
+              <div style={{ padding: '18px 20px 12px 20px', flexShrink: 0 }}>
                 <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.01em' }}>
                   Conversations
                 </h2>
               </div>
 
               {/* Search Bar */}
-              <div style={{ padding: '0 18px 12px 18px' }}>
+              <div style={{ padding: '0 18px 12px 18px', flexShrink: 0 }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', pointerEvents: 'none' }} />
                   <input
@@ -581,7 +594,7 @@ export default function CollaborationPage() {
               </div>
 
               {/* Filter Tabs */}
-              <div style={{ padding: '0 18px 14px 18px', display: 'flex', gap: '8px' }}>
+              <div style={{ padding: '0 18px 14px 18px', display: 'flex', gap: '8px', flexShrink: 0 }}>
                 {[
                   { key: 'all', label: 'All' },
                   { key: 'teams', label: 'Teams' },
@@ -614,6 +627,7 @@ export default function CollaborationPage() {
               {/* Conversation Cards List */}
               <div style={{
                 flex: 1,
+                minHeight: 0,
                 overflowY: 'auto',
                 padding: '0 10px 16px 10px',
                 display: 'flex',
@@ -788,7 +802,7 @@ export default function CollaborationPage() {
             </div>
 
             {/* Right Panel — Chat Window */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: '#FFFFFF' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, minHeight: 0, background: '#FFFFFF', overflow: 'hidden' }}>
               {(() => {
                 const currentTargetMeta = conversationList.find(c => c.type === activeChatTarget.type && String(c.id) === String(activeChatTarget.id));
                 const resolvedMemberCount = activeChatTarget.type === 'team'
@@ -822,7 +836,7 @@ export default function CollaborationPage() {
 
       {/* TAB 4: MENTIONS */}
       {activeTab === 'mentions' && (
-        <div className="card" style={{ padding: '24px', flex: 1 }}>
+        <div className="card" style={{ padding: '24px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AtSign size={20} color="var(--brand-600)" /> Direct Mentions & Chat Notifications
           </h2>
@@ -877,7 +891,7 @@ export default function CollaborationPage() {
 
       {/* TAB 5: ANNOUNCEMENTS */}
       {activeTab === 'announcements' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Megaphone size={20} color="var(--brand-600)" /> Company Announcements & Notices

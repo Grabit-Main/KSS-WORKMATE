@@ -498,6 +498,13 @@ input, select, textarea {
   -webkit-overflow-scrolling: touch;
 }
 
+.app-main-content.collaboration-mode {
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
 @media (max-width: 1024px) {
   .app-main-content {
     padding: 20px 18px;
