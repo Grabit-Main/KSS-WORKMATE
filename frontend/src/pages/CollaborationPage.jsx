@@ -144,6 +144,15 @@ export default function CollaborationPage() {
 
   const location = useLocation();
 
+  // Ensure the page content starts at the top when navigating from any page or switching tabs
+  useEffect(() => {
+    const mainEl = document.querySelector('.app-main-content');
+    if (mainEl) {
+      mainEl.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+  }, [location.pathname, activeTab]);
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -339,14 +348,27 @@ export default function CollaborationPage() {
 
   if (showDocHub) {
     return (
-      <div style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '20px' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', marginTop: 0, paddingTop: 0, paddingBottom: '20px', width: '100%' }}>
         <DocumentationHub onBackToCollaboration={() => setShowDocHub(false)} />
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', minHeight: 'calc(100vh - 110px)', display: 'flex', flexDirection: 'column', paddingBottom: '20px' }}>
+    <div style={{
+      maxWidth: '1400px',
+      margin: '0 auto',
+      marginTop: 0,
+      paddingTop: 0,
+      paddingBottom: '20px',
+      width: '100%',
+      minHeight: 'calc(100vh - 148px)',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-start',
+      alignItems: 'stretch',
+      alignContent: 'flex-start'
+    }}>
 
       {/* HEADER & BANNER */}
       <div style={{
@@ -576,8 +598,8 @@ export default function CollaborationPage() {
             borderRadius: '16px',
             background: '#FFFFFF',
             overflow: 'hidden',
-            height: 'calc(100vh - 210px)',
-            minHeight: '700px',
+            height: 'calc(100vh - 285px)',
+            minHeight: '560px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
           }}>
             {/* Conversations Left Panel */}

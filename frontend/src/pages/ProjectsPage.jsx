@@ -9,10 +9,12 @@ import { useAuth } from '../context/AuthContext';
 import {
   Plus, Calendar, ArrowRight, FolderKanban, X, Users,
   Paperclip, Image as ImageIcon, Film, FileText,
-  Clock, AlertCircle, Pencil, AlertTriangle, CheckCircle2, Trash2
+  Clock, AlertCircle, Pencil, AlertTriangle, CheckCircle2, Trash2,
+  MessageSquare, BookOpen
 } from 'lucide-react';
 import { AttachmentCard } from '../components/common/AttachmentCard';
 import { DayWiseTaskPlanner, formatDeadlineWithTime } from '../components/projects/DayWiseTaskPlanner';
+import { DocumentationHub } from '../components/documentation/DocumentationHub';
 
 const PROJECT_THEMES = [
   {
@@ -114,6 +116,11 @@ const getProjectTheme = (project, index) => {
 
 const ProjectsPage = () => {
   const { user } = useAuth();
+  const role = user?.role || 'TM';
+  const isExecutive = ['CEO', 'CTO'].includes(role);
+  const isPM = role === 'PM';
+  const isTL = role === 'TL';
+  const [showDocHub, setShowDocHub] = useState(false);
   const cacheKey = user ? `cache_projects_${user.id}` : 'cache_projects';
   const [plannerProject, setPlannerProject] = useState(null);
   const [gdriveConnected, setGdriveConnected] = useState(isGoogleDriveConnected());
@@ -547,8 +554,90 @@ const ProjectsPage = () => {
     );
   }
 
+  if (showDocHub) {
+    return (
+      <div style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '20px' }}>
+        <DocumentationHub onBackToCollaboration={() => setShowDocHub(false)} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      {/* HEADER & BANNER */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
+        borderRadius: 'var(--radius-xl)',
+        padding: '16px 24px',
+        marginBottom: '16px',
+        border: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '14px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '12px',
+            background: 'var(--brand-600)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <MessageSquare size={22} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+              Collaboration & Communication Hub
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '2px 0 0 0' }}>
+              {isExecutive ? "Executive communication suite: Direct channels, high-level project discussions & announcements." :
+                isPM ? "Project communication center: Project discussions, requirement alignment & team updates." :
+                  isTL ? "Team coordination hub: Team discussions, task reviews & direct member chats." :
+                    "Connected work discussions: Chat with teammates, project threads & task discussions."}
+            </p>
+          </div>
+        </div>
+
+        {/* Documentation Button */}
+        <button
+          onClick={() => setShowDocHub(true)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            width: '280px',
+            height: '38px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--brand-600)',
+            color: '#ffffff',
+            border: 'none',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)',
+            transition: 'all 0.2s ease',
+            flexShrink: 0
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--brand-700, #4338CA)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--brand-600)';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
+        >
+          <BookOpen size={17} />
+          Documentation
+        </button>
+      </div>
+
       {/* Header Title Section */}
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
