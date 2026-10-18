@@ -1,16 +1,15 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useRealtime } from '../realtime/useRealtime';
 import api from '../api/axios';
-import { getTasks } from '../api/tasks';
 import { getNotifications } from '../api/notifications';
 import { getTeams } from '../api/teams';
 import { getChannelChat, getUnreadCounts, markChatRead } from '../api/chat';
 import {
-  MessageSquare, Users, Sparkles, AtSign,
-  Bell, CheckCircle2, Folder, CheckSquare, Megaphone,
-  FileText, MessageCircle, AlertCircle, X, BookOpen,
+  MessageSquare, Users, AtSign,
+  CheckCircle2, Megaphone,
+  AlertCircle, X, BookOpen,
   Maximize2, Minimize2, Search, Loader2
 } from 'lucide-react';
 import { DocumentationHub } from '../components/documentation/DocumentationHub';
@@ -42,15 +41,13 @@ export default function CollaborationPage() {
   const isPM = role === 'PM';
   const isTL = role === 'TL';
 
-  // Navigation & View Tabs: 'chats', 'projects', 'tasks', 'mentions', 'announcements'
+  // Navigation & View Tabs: 'chats', 'mentions', 'announcements'
   const [activeTab, setActiveTab] = useState('chats');
   const [showDocHub, setShowDocHub] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Real Data Lists
   const [teamUsers, setTeamUsers] = useState([]);
-  const [projectsList, setProjectsList] = useState([]);
-  const [tasksList, setTasksList] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [teamsList, setTeamsList] = useState([]);
   const [channelMeta, setChannelMeta] = useState({});
@@ -68,8 +65,6 @@ export default function CollaborationPage() {
   });
   const [conversationFilter, setConversationFilter] = useState('all'); // 'all' | 'teams' | 'unread'
   const [conversationSearch, setConversationSearch] = useState('');
-  const [selectedProjectId, setSelectedProjectId] = useState(null);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
 
   // Announcements State
   const [announcements, setAnnouncements] = useState(() => {
@@ -88,24 +83,14 @@ export default function CollaborationPage() {
     setLoadingData(true);
     setDataError(null);
     try {
-      const [resUsers, resProj, resTasks, resNotifs, resTeams, resUnread] = await Promise.all([
+      const [resUsers, resNotifs, resTeams, resUnread] = await Promise.all([
         api.get('/users').catch(() => ({ data: [] })),
-        api.get('/projects').catch(() => ({ data: [] })),
-        getTasks().catch(() => []),
         getNotifications().catch(() => []),
         getTeams().catch(() => []),
         getUnreadCounts().catch(() => ({ counts: {} }))
       ]);
 
       if (Array.isArray(resUsers.data)) setTeamUsers(resUsers.data);
-      if (Array.isArray(resProj.data)) {
-        setProjectsList(resProj.data);
-        if (resProj.data.length > 0 && !selectedProjectId) setSelectedProjectId(resProj.data[0].id);
-      }
-      if (Array.isArray(resTasks)) {
-        setTasksList(resTasks);
-        if (resTasks.length > 0 && !selectedTaskId) setSelectedTaskId(resTasks[0].id);
-      }
       if (Array.isArray(resNotifs)) {
         setNotifications(resNotifs);
       }
@@ -220,7 +205,7 @@ export default function CollaborationPage() {
     try {
       const notifs = await getNotifications();
       if (Array.isArray(notifs)) setNotifications(notifs);
-    } catch (e) {}
+    } catch (e) { }
   });
 
   // Realtime read sync across sessions/tabs
@@ -326,8 +311,7 @@ export default function CollaborationPage() {
   };
 
 
-  const activeProjectObj = projectsList.find(p => p.id === selectedProjectId);
-  const activeTaskObj = tasksList.find(t => t.id === selectedTaskId);
+
 
   const renderFullscreenButton = () => (
     <button
@@ -363,7 +347,7 @@ export default function CollaborationPage() {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', minHeight: 'calc(100vh - 110px)', display: 'flex', flexDirection: 'column', paddingBottom: '20px' }}>
-      
+
       {/* HEADER & BANNER */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
@@ -396,9 +380,9 @@ export default function CollaborationPage() {
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '2px 0 0 0' }}>
               {isExecutive ? "Executive communication suite: Direct channels, high-level project discussions & announcements." :
-               isPM ? "Project communication center: Project discussions, requirement alignment & team updates." :
-               isTL ? "Team coordination hub: Team discussions, task reviews & direct member chats." :
-               "Connected work discussions: Chat with teammates, project threads & task discussions."}
+                isPM ? "Project communication center: Project discussions, requirement alignment & team updates." :
+                  isTL ? "Team coordination hub: Team discussions, task reviews & direct member chats." :
+                    "Connected work discussions: Chat with teammates, project threads & task discussions."}
             </p>
           </div>
         </div>
@@ -442,9 +426,6 @@ export default function CollaborationPage() {
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '16px', gap: '12px' }}>
         {[
           { key: 'chats', label: 'Chats', icon: MessageSquare },
-          { key: 'projects', label: 'Project Discussions', icon: Folder },
-          { key: 'tasks', label: 'Task Discussions', icon: CheckSquare },
-          { key: 'mentions', label: 'Mentions', icon: AtSign },
           { key: 'announcements', label: 'Announcements', icon: Megaphone }
         ].map(t => {
           const Icon = t.icon;
@@ -891,182 +872,6 @@ export default function CollaborationPage() {
         );
       })()}
 
-      {/* TAB 2: PROJECT DISCUSSIONS */}
-      {activeTab === 'projects' && (
-        <div style={isFullScreen ? {
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100vw',
-          height: '100vh',
-          zIndex: 9999,
-          background: 'var(--surface)',
-          borderRadius: 0,
-          border: 'none',
-          display: 'flex',
-          overflow: 'hidden'
-        } : {
-          flex: 1,
-          display: 'flex',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg, 16px)',
-          background: 'var(--surface)',
-          overflow: 'hidden',
-          height: 'calc(100vh - 210px)',
-          minHeight: '700px',
-          boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
-        }}>
-          <div style={{
-            width: '260px',
-            flexShrink: 0,
-            borderRight: '1px solid var(--border)',
-            padding: '20px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            overflowY: 'auto',
-            background: 'var(--surface)'
-          }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              Select Project
-            </div>
-            {projectsList.map(p => {
-              const isSelected = selectedProjectId === p.id;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedProjectId(p.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: isSelected ? '1px solid #6366F1' : '1px solid transparent',
-                    background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
-                    color: isSelected ? '#5551FF' : 'var(--text-primary)',
-                    fontSize: '13px',
-                    fontWeight: isSelected ? 600 : 500,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <Folder size={16} color={isSelected ? '#5551FF' : 'var(--text-tertiary)'} />
-                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: 'var(--surface)' }}>
-            {activeProjectObj ? (
-              <TaskChat
-                key={`project_${activeProjectObj.id}`}
-                mode="project"
-                project={activeProjectObj}
-                currentUser={user}
-                headerExtra={renderFullscreenButton()}
-              />
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
-                Select a project to start discussion
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: TASK DISCUSSIONS */}
-      {activeTab === 'tasks' && (
-        <div style={isFullScreen ? {
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100vw',
-          height: '100vh',
-          zIndex: 9999,
-          background: 'var(--surface)',
-          borderRadius: 0,
-          border: 'none',
-          display: 'flex',
-          overflow: 'hidden'
-        } : {
-          flex: 1,
-          display: 'flex',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg, 16px)',
-          background: 'var(--surface)',
-          overflow: 'hidden',
-          height: 'calc(100vh - 210px)',
-          minHeight: '700px',
-          boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.04))'
-        }}>
-          <div style={{
-            width: '260px',
-            flexShrink: 0,
-            borderRight: '1px solid var(--border)',
-            padding: '20px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            overflowY: 'auto',
-            background: 'var(--surface)'
-          }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              Select Task
-            </div>
-            {tasksList.map(t => {
-              const isSelected = selectedTaskId === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedTaskId(t.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: isSelected ? '1px solid #6366F1' : '1px solid transparent',
-                    background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
-                    color: isSelected ? '#5551FF' : 'var(--text-primary)',
-                    fontSize: '13px',
-                    fontWeight: isSelected ? 600 : 500,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <CheckSquare size={16} color={isSelected ? '#5551FF' : 'var(--text-tertiary)'} />
-                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: 'var(--surface)' }}>
-            {activeTaskObj ? (
-              <TaskChat
-                key={`task_${activeTaskObj.id}`}
-                mode="task"
-                task={activeTaskObj}
-                currentUser={user}
-                headerExtra={renderFullscreenButton()}
-              />
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
-                Select a task to start discussion
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* TAB 4: MENTIONS */}
       {activeTab === 'mentions' && (
         <div className="card" style={{ padding: '24px', flex: 1 }}>
@@ -1085,9 +890,18 @@ export default function CollaborationPage() {
                   key={n.id}
                   onClick={() => {
                     if (n.ref_id) {
-                      const matchedUser = teamUsers.find(u => u.id === n.ref_id);
+                      const matchedUser = teamUsers.find(u => String(u.id) === String(n.ref_id));
                       if (matchedUser) {
-                        setActiveChatTarget({ type: 'dm', id: matchedUser.id, name: `${matchedUser.first_name} ${matchedUser.last_name}`, user: matchedUser });
+                        setActiveChatTarget({
+                          type: 'dm',
+                          id: matchedUser.id,
+                          realUserId: matchedUser.id,
+                          name: `${matchedUser.first_name || ''} ${matchedUser.last_name || ''}`.trim() || matchedUser.email,
+                          subtitle: `${matchedUser.role || 'Member'}${matchedUser.department ? ` · ${matchedUser.department}` : ''}`,
+                          iconType: 'avatar',
+                          avatarUrl: matchedUser.avatar_url,
+                          user: matchedUser
+                        });
                         setActiveTab('chats');
                       }
                     }
@@ -1137,34 +951,34 @@ export default function CollaborationPage() {
               </div>
             ) : (
               announcements.map(a => {
-              const isAck = a.acknowledgedBy?.includes(user?.id);
-              return (
-                <div key={a.id} className="card" style={{ padding: '24px', borderLeft: '4px solid var(--brand-600)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--brand-600)', textTransform: 'uppercase' }}>Official Notice</span>
-                    <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{a.date} • by {a.author}</span>
+                const isAck = a.acknowledgedBy?.includes(user?.id);
+                return (
+                  <div key={a.id} className="card" style={{ padding: '24px', borderLeft: '4px solid var(--brand-600)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--brand-600)', textTransform: 'uppercase' }}>Official Notice</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{a.date} • by {a.author}</span>
+                    </div>
+
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>{a.title}</h3>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 20px 0' }}>{a.content}</p>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                        {a.acknowledgedBy?.length || 0} employees acknowledged
+                      </span>
+
+                      <button
+                        onClick={() => handleAcknowledgeAnnouncement(a.id)}
+                        className={isAck ? "btn btn-secondary" : "btn btn-primary"}
+                        style={{ padding: '6px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', background: isAck ? 'rgba(16, 185, 129, 0.15)' : undefined, color: isAck ? '#10B981' : undefined }}
+                      >
+                        <CheckCircle2 size={14} /> {isAck ? 'Acknowledged' : 'Acknowledge Notice'}
+                      </button>
+                    </div>
                   </div>
-
-                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>{a.title}</h3>
-                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 20px 0' }}>{a.content}</p>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                      {a.acknowledgedBy?.length || 0} employees acknowledged
-                    </span>
-
-                    <button
-                      onClick={() => handleAcknowledgeAnnouncement(a.id)}
-                      className={isAck ? "btn btn-secondary" : "btn btn-primary"}
-                      style={{ padding: '6px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', background: isAck ? 'rgba(16, 185, 129, 0.15)' : undefined, color: isAck ? '#10B981' : undefined }}
-                    >
-                      <CheckCircle2 size={14} /> {isAck ? 'Acknowledged' : 'Acknowledge Notice'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
           </div>
         </div>
       )}
