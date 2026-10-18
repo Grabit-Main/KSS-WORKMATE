@@ -100,7 +100,7 @@ const getProjectTheme = (project, index) => {
   if (name.includes('blinkit')) {
     return { ...PROJECT_THEMES[2], code: 'BLK' };
   }
-  
+
   const theme = PROJECT_THEMES[index % PROJECT_THEMES.length];
   const words = project.name ? project.name.split(/[\s\-()]+/).filter(Boolean) : [];
   let code = theme.defaultCode;
@@ -548,7 +548,7 @@ const ProjectsPage = () => {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-          {[1,2,3,4,5,6].map(i => <div key={i} className="card skeleton" style={{ height: '180px' }}></div>)}
+          {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="card skeleton" style={{ height: '180px' }}></div>)}
         </div>
       </div>
     );
@@ -592,12 +592,12 @@ const ProjectsPage = () => {
           </div>
           <div>
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              Collaboration & Communication Hub
+              Projects
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '2px 0 0 0' }}>
               {isExecutive ? "Executive communication suite: Direct channels, high-level project discussions & announcements." :
                 isPM ? "Project communication center: Project discussions, requirement alignment & team updates." :
-                  isTL ? "Team coordination hub: Team discussions, task reviews & direct member chats." :
+                  isTL ? "Active company deliverables, squad allocations, and milestone timelines." :
                     "Connected work discussions: Chat with teammates, project threads & task discussions."}
             </p>
           </div>
@@ -639,15 +639,8 @@ const ProjectsPage = () => {
       </div>
 
       {/* Header Title Section */}
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <div>
-          <h2 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', color: '#1E293B', fontFamily: 'serif, Georgia, Inter, sans-serif', marginBottom: '4px' }}>
-            Projects
-          </h2>
-          <p style={{ fontSize: '14px', color: '#64748B', margin: 0 }}>
-            Active company deliverables, squad allocations, and milestone timelines.
-          </p>
-        </div>
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-0">
+
 
         {/* PM Has ability to create new projects */}
         {user?.role === 'PM' && (
@@ -1456,10 +1449,10 @@ const ProjectsPage = () => {
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                          <path d="M7.71 3.5L1.15 15l3.43 6h6.56l-3.43-6L14.28 3.5H7.71z" fill="#0066DA"/>
-                          <path d="M22.85 15l-3.43-6H6.57l3.43 6h12.85z" fill="#00AC47"/>
-                          <path d="M14.29 3.5L7.71 15l3.43 6 6.57-11.5L14.29 3.5z" fill="#EA4335"/>
-                          <path d="M14.29 3.5h8.56l-6.57 11.5h-6.56L14.29 3.5z" fill="#FFBA00"/>
+                          <path d="M7.71 3.5L1.15 15l3.43 6h6.56l-3.43-6L14.28 3.5H7.71z" fill="#0066DA" />
+                          <path d="M22.85 15l-3.43-6H6.57l3.43 6h12.85z" fill="#00AC47" />
+                          <path d="M14.29 3.5L7.71 15l3.43 6 6.57-11.5L14.29 3.5z" fill="#EA4335" />
+                          <path d="M14.29 3.5h8.56l-6.57 11.5h-6.56L14.29 3.5z" fill="#FFBA00" />
                         </svg>
                         <span style={{ color: gdriveConnected ? 'var(--status-active)' : 'var(--brand-600)', fontWeight: 500 }}>
                           {gdriveConnected ? 'Google Drive Connected (Files upload to your Drive)' : 'Google Drive Auth required for documents'}
@@ -1717,10 +1710,10 @@ const ProjectsPage = () => {
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                          <path d="M7.71 3.5L1.15 15l3.43 6h6.56l-3.43-6L14.28 3.5H7.71z" fill="#0066DA"/>
-                          <path d="M22.85 15l-3.43-6H6.57l3.43 6h12.85z" fill="#00AC47"/>
-                          <path d="M14.29 3.5L7.71 15l3.43 6 6.57-11.5L14.29 3.5z" fill="#EA4335"/>
-                          <path d="M14.29 3.5h8.56l-6.57 11.5h-6.56L14.29 3.5z" fill="#FFBA00"/>
+                          <path d="M7.71 3.5L1.15 15l3.43 6h6.56l-3.43-6L14.28 3.5H7.71z" fill="#0066DA" />
+                          <path d="M22.85 15l-3.43-6H6.57l3.43 6h12.85z" fill="#00AC47" />
+                          <path d="M14.29 3.5L7.71 15l3.43 6 6.57-11.5L14.29 3.5z" fill="#EA4335" />
+                          <path d="M14.29 3.5h8.56l-6.57 11.5h-6.56L14.29 3.5z" fill="#FFBA00" />
                         </svg>
                         <span style={{ color: gdriveConnected ? 'var(--status-active)' : 'var(--brand-600)', fontWeight: 500 }}>
                           {gdriveConnected ? 'Google Drive Connected (Files upload to your Drive)' : 'Google Drive Auth required for documents'}
@@ -1818,7 +1811,7 @@ const ProjectsPage = () => {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => {}} // Handled by container onClick
+                            onChange={() => { }} // Handled by container onClick
                             style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--brand-600)' }}
                           />
                           <div>
