@@ -809,7 +809,7 @@ export const TaskChat = ({
           <div style={{
             padding: '16px 24px',
             background: '#FFFFFF',
-            borderBottom: '1px solid #F8FAFC',
+            borderBottom: '1px solid #E2E8F0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',

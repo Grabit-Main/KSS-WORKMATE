@@ -10,7 +10,7 @@ import {
   MessageSquare, Users,
   CheckCircle2, Megaphone,
   AlertCircle, X,
-  Maximize2, Minimize2, Search, Loader2
+  Maximize2, Minimize2, Search, Loader2, Lock
 } from 'lucide-react';
 import { DocumentationHub } from '../components/documentation/DocumentationHub';
 import { TaskChat } from '../components/chat/TaskChat';
@@ -53,13 +53,7 @@ export default function CollaborationPage() {
   const [dataError, setDataError] = useState(null);
 
   // Active Selections
-  const [activeChatTarget, setActiveChatTarget] = useState({
-    type: 'dm',
-    id: 'initial',
-    name: 'Direct Messages',
-    subtitle: 'Direct team conversations',
-    iconType: 'avatar'
-  });
+  const [activeChatTarget, setActiveChatTarget] = useState(null);
   const [conversationFilter, setConversationFilter] = useState('all'); // 'all' | 'teams' | 'unread' | 'announcements'
   const [conversationSearch, setConversationSearch] = useState('');
   const [selectedAnnouncementId, setSelectedAnnouncementId] = useState('company_announcements');
@@ -90,27 +84,6 @@ export default function CollaborationPage() {
 
       if (Array.isArray(resUsers.data)) {
         setTeamUsers(resUsers.data);
-        const colleagues = resUsers.data.filter(u => String(u.id) !== String(user?.id));
-        const rahul = colleagues.find(u => `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase().includes('rahul'));
-        const defaultPartner = rahul || colleagues[0];
-        const searchParams = new URLSearchParams(window.location.search);
-        if (defaultPartner && !searchParams.get('userId')) {
-          setActiveChatTarget(prev => {
-            if (prev?.id === 'general') {
-              return {
-                id: defaultPartner.id,
-                realUserId: defaultPartner.id,
-                type: 'dm',
-                name: `${defaultPartner.first_name || ''} ${defaultPartner.last_name || ''}`.trim() || defaultPartner.email,
-                subtitle: `${defaultPartner.role || 'Member'}${defaultPartner.department ? ` · ${defaultPartner.department}` : ''}`,
-                iconType: 'avatar',
-                avatarUrl: defaultPartner.avatar_url,
-                user: defaultPartner
-              };
-            }
-            return prev;
-          });
-        }
       }
       if (Array.isArray(resNotifs)) {
         setNotifications(resNotifs);
@@ -638,34 +611,7 @@ export default function CollaborationPage() {
                       type="button"
                       onClick={() => {
                         setConversationFilter(tab.key);
-                        if (tab.key === 'all' && activeChatTarget.type !== 'dm') {
-                          const firstDm = directMessages[0];
-                          if (firstDm) {
-                            setActiveChatTarget({
-                              type: 'dm',
-                              id: firstDm.id,
-                              realUserId: firstDm.realUserId,
-                              name: firstDm.name,
-                              subtitle: firstDm.subtitle,
-                              memberCount: null,
-                              iconType: 'avatar',
-                              avatarUrl: firstDm.avatarUrl,
-                              user: firstDm.realUser
-                            });
-                          }
-                        } else if (tab.key === 'teams' && activeChatTarget.type !== 'team') {
-                          const firstTeam = teamChannels[0];
-                          if (firstTeam) {
-                            setActiveChatTarget({
-                              type: 'team',
-                              id: firstTeam.id,
-                              name: firstTeam.name,
-                              subtitle: firstTeam.subtitle,
-                              memberCount: firstTeam.memberCount,
-                              iconType: firstTeam.iconType
-                            });
-                          }
-                        } else if (tab.key === 'announcements') {
+                        if (tab.key === 'announcements') {
                           setSelectedAnnouncementId('company_announcements');
                         }
                       }}
@@ -735,7 +681,7 @@ export default function CollaborationPage() {
                   filteredList.map(item => {
                     const isSelected = conversationFilter === 'announcements'
                       ? (selectedAnnouncementId === item.id)
-                      : (activeChatTarget.id === item.id || (activeChatTarget.realUserId && activeChatTarget.realUserId === item.realUserId));
+                      : Boolean(activeChatTarget && (activeChatTarget.id === item.id || (activeChatTarget.realUserId && activeChatTarget.realUserId === item.realUserId)));
                     return (
                       <div
                         key={item.id}
@@ -912,7 +858,7 @@ export default function CollaborationPage() {
                   {/* Announcements Header */}
                   <div style={{
                     padding: '16px 24px',
-                    borderBottom: '1px solid #F1F5F9',
+                    borderBottom: '1px solid #E2E8F0',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -1051,7 +997,7 @@ export default function CollaborationPage() {
                     )}
                   </div>
                 </div>
-              ) : (() => {
+              ) : activeChatTarget ? (() => {
                 const currentTargetMeta = conversationList.find(c => c.type === activeChatTarget.type && String(c.id) === String(activeChatTarget.id));
                 const resolvedMemberCount = activeChatTarget.type === 'team'
                   ? (currentTargetMeta?.memberCount || (activeChatTarget.id === 'general' ? `${teamUsers.length || 1} members` : (activeChatTarget.memberCount || '1 member')))
@@ -1076,7 +1022,94 @@ export default function CollaborationPage() {
                     onMarkAsRead={() => markConversationAsRead(activeChatTarget)}
                   />
                 );
-              })()}
+              })() : (
+                /* WhatsApp Web-Style Default Welcome View */
+                <div style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  background: '#F8FAFC',
+                  padding: '40px 24px',
+                  position: 'relative',
+                  textAlign: 'center',
+                  userSelect: 'none'
+                }}>
+                  <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
+                    {renderFullscreenButton()}
+                  </div>
+
+                  {/* Icon illustration */}
+                  <div style={{
+                    width: '92px',
+                    height: '92px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 8px 24px rgba(85, 81, 255, 0.12)',
+                    marginBottom: '20px'
+                  }}>
+                    <MessageSquare size={44} color="#5551FF" />
+                  </div>
+
+                  {/* Title & subtitle */}
+                  <h2 style={{
+                    fontSize: '22px',
+                    fontWeight: 700,
+                    color: '#0F172A',
+                    margin: '0 0 10px 0',
+                    letterSpacing: '-0.02em'
+                  }}>
+                    Workmate Collaboration
+                  </h2>
+
+                  <p style={{
+                    fontSize: '13.5px',
+                    color: '#64748B',
+                    lineHeight: 1.6,
+                    maxWidth: '440px',
+                    margin: '0 0 24px 0'
+                  }}>
+                    Send and receive direct messages with colleagues, coordinate with project teams, and stay updated with official company notices in real time.
+                  </p>
+
+                  {/* Instruction Pill */}
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '9px 20px',
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '24px',
+                    fontSize: '13px',
+                    color: '#475569',
+                    fontWeight: 500,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                  }}>
+                    <span style={{ fontSize: '15px' }}>👈</span>
+                    <span>Select a conversation from the left to start chatting</span>
+                  </div>
+
+                  {/* WhatsApp-style encryption / security note */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    fontSize: '12px',
+                    color: '#94A3B8'
+                  }}>
+                    <Lock size={13} color="#94A3B8" />
+                    <span>End-to-end encrypted workspace communications</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
