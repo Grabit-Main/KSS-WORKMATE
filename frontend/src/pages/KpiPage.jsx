@@ -40,6 +40,7 @@ import {
   Target,
   Minus
 } from 'lucide-react';
+import kpiGrowthArrow from '../assets/kpi_growth_arrow.png';
 
 export const KPI_TIER_CONFIG = [
   { level: 1, name: 'Poor', short: '1 – Poor', bg: '#FEF2F2', text: '#991B1B', border: '#FECACA' },
@@ -269,36 +270,26 @@ const KPIHeaderBanner = ({
       {/* Background Graphic Chart Illustration on Right */}
       <div style={{
         position: 'absolute',
-        right: '-10px',
+        right: '24px',
         top: '50%',
         transform: 'translateY(-50%)',
         width: '320px',
         height: '100%',
         pointerEvents: 'none',
-        opacity: 0.85,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'flex-end'
       }}>
-        <svg width="280" height="160" viewBox="0 0 280 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="20" y="90" width="24" height="60" rx="8" fill="#3B82F6" fillOpacity="0.15" />
-          <rect x="56" y="65" width="24" height="85" rx="8" fill="#3B82F6" fillOpacity="0.22" />
-          <rect x="92" y="45" width="24" height="105" rx="8" fill="#3B82F6" fillOpacity="0.3" />
-          <rect x="128" y="25" width="24" height="125" rx="8" fill="#3B82F6" fillOpacity="0.38" />
-          <rect x="164" y="15" width="24" height="135" rx="8" fill="#2563EB" fillOpacity="0.45" />
-
-          {/* Upward Line Path */}
-          <path d="M 10 115 L 68 85 L 104 100 L 176 30" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M 10 115 L 68 85 L 104 100 L 176 30" stroke="#3B82F6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          
-          {/* End Glow Circle Node */}
-          <circle cx="176" cy="30" r="7" fill="#FFFFFF" filter="drop-shadow(0 2px 6px rgba(37,99,235,0.4))" />
-          <circle cx="176" cy="30" r="4" fill="#2563EB" />
-
-          {/* Sparkles */}
-          <path d="M 220 50 L 223 57 L 230 60 L 223 63 L 220 70 L 217 63 L 210 60 L 217 57 Z" fill="#93C5FD" fillOpacity="0.8" />
-          <path d="M 205 120 L 207 124 L 211 126 L 207 128 L 205 132 L 203 128 L 199 126 L 203 124 Z" fill="#BFDBFE" fillOpacity="0.7" />
-        </svg>
+        <img
+          src={kpiGrowthArrow}
+          alt="KPI Growth"
+          style={{
+            height: '150px',
+            maxWidth: '100%',
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 10px 24px rgba(85, 81, 255, 0.15))'
+          }}
+        />
       </div>
 
       <div style={{ position: 'relative', zIndex: 2 }}>
