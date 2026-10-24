@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRealtime } from '../realtime/useRealtime';
 import { getTasks } from '../api/tasks';
 import api from '../api/axios';
+import calendar3d from '../assets/calendar_3d.png';
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Plus, Filter,
   CheckSquare, Folder, Target, Users, AlertTriangle, Sparkles, X, CheckCircle2,
   Video, Bell, Layers, FileText, ArrowUpRight, Search, Lock, AlertCircle, Eye,
-  MoreHorizontal, Activity, Zap, Compass, Check, CalendarCheck, Trash2
+  MoreHorizontal, Activity, Zap, Compass, Check, CalendarCheck, Trash2,
+  Monitor, Palette, Gift
 } from 'lucide-react';
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
 import { getHolidays, createHoliday, deleteHoliday } from '../api/holidays';
@@ -54,8 +56,28 @@ export default function CalendarPage() {
   // Active View Mode: 'week' | 'month' | 'day' | 'holidays'
   const [viewMode, setViewMode] = useState('week');
 
-  // Active Selected Date (Default: Today's current date)
+  // Active Selected Date (Default: Today's date - Oct 24, 2026)
   const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Today Popup State (Third Image Calendar Popup)
+  const [showTodayPopup, setShowTodayPopup] = useState(false);
+  const [popupMonth, setPopupMonth] = useState(new Date(2026, 9, 1)); // October 2026
+  const popupRef = useRef(null);
+
+  // Close popup on click outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (popupRef.current && !popupRef.current.contains(event.target)) {
+        setShowTodayPopup(false);
+      }
+    }
+    if (showTodayPopup) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTodayPopup]);
 
   // Real WorkOS Data
   const [tasksList, setTasksList] = useState([]);
@@ -93,64 +115,157 @@ export default function CalendarPage() {
     travel: true
   });
 
-  // Custom Events Storage
+  // Custom Events Storage - Initialized with exact mock events from user screenshot
   const [customEvents, setCustomEvents] = useState(() => {
     try {
       const saved = localStorage.getItem(`workos_events_${user?.id}`);
-      if (saved) return JSON.parse(saved);
-      const todayStr = formatDateKey(new Date());
-      const tomorrowObj = new Date();
-      tomorrowObj.setDate(tomorrowObj.getDate() + 1);
-      const tomorrowStr = formatDateKey(tomorrowObj);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
 
-      return [
-        {
-          id: 'evt_1',
-          title: 'Sprint Planning & Team Sync',
-          category: 'work',
-          type: 'Meeting',
-          date: todayStr,
-          startTime: '10:00 AM',
-          startHour: 10,
-          duration: 1,
-          hasVideo: true,
-          color: '#EFF6FF',
-          borderColor: '#3B82F6',
-          textColor: '#1E40AF',
-          tag: 'Meeting'
-        },
-        {
-          id: 'evt_2',
-          title: 'UI Design Review',
-          category: 'work',
-          type: 'Review',
-          date: todayStr,
-          startTime: '02:00 PM',
-          startHour: 14,
-          duration: 1,
-          color: '#FEF2F2',
-          borderColor: '#F87171',
-          textColor: '#991B1B',
-          tag: 'Design'
-        },
-        {
-          id: 'evt_3',
-          title: 'Architecture Discussion',
-          category: 'work',
-          type: 'Meeting',
-          date: tomorrowStr,
-          startTime: '11:00 AM',
-          startHour: 11,
-          duration: 1,
-          color: '#ECFDF5',
-          borderColor: '#10B981',
-          textColor: '#065F46',
-          tag: 'Work'
-        }
-      ];
-    } catch {
-      return [];
-    }
+    return [
+      {
+        id: 'evt_mon_1',
+        title: 'Builder Website Redesign',
+        category: 'work',
+        type: 'Task',
+        date: '2026-10-19',
+        startTime: '09:00 AM',
+        startHour: 9,
+        duration: 1,
+        color: '#F0FDF4',
+        borderColor: '#10B981',
+        textColor: '#065F46',
+        tag: 'Task',
+        iconType: 'monitor'
+      },
+      {
+        id: 'evt_tue_1',
+        title: 'Dussehra / Vacation',
+        category: 'work',
+        type: 'Holiday',
+        date: '2026-10-20',
+        startTime: '09:00 AM',
+        startHour: 9,
+        duration: 1,
+        color: '#F5F3FF',
+        borderColor: '#8B5CF6',
+        textColor: '#6B21A8',
+        tag: 'Holiday',
+        iconType: 'gift'
+      },
+      {
+        id: 'evt_wed_1',
+        title: 'HRMS UI/UX Review',
+        category: 'work',
+        type: 'Review',
+        date: '2026-10-21',
+        startTime: '09:00 AM',
+        startHour: 9,
+        duration: 1,
+        color: '#EFF6FF',
+        borderColor: '#3B82F6',
+        textColor: '#1E40AF',
+        tag: 'Review',
+        iconType: 'users'
+      },
+      {
+        id: 'evt_thu_1',
+        title: 'CMS Document Discussion',
+        category: 'work',
+        type: 'Task',
+        date: '2026-10-22',
+        startTime: '09:00 AM',
+        startHour: 9,
+        duration: 1,
+        color: '#F0FDF4',
+        borderColor: '#10B981',
+        textColor: '#065F46',
+        tag: 'Task',
+        iconType: 'file'
+      },
+      {
+        id: 'evt_fri_1',
+        title: 'Management Module Review',
+        category: 'work',
+        type: 'Review',
+        date: '2026-10-23',
+        startTime: '09:00 AM',
+        startHour: 9,
+        duration: 1,
+        color: '#F0FDFA',
+        borderColor: '#0D9488',
+        textColor: '#0F766E',
+        tag: 'Review',
+        iconType: 'users'
+      },
+      {
+        id: 'evt_sat_1',
+        title: 'Follow-up Queue & Approval Inbox UI/UX Design',
+        category: 'work',
+        type: 'Task',
+        date: '2026-10-24',
+        startTime: '09:00 AM',
+        startHour: 9,
+        duration: 1,
+        color: '#EEF2FF',
+        borderColor: '#5551FF',
+        textColor: '#3730A3',
+        tag: 'Task',
+        iconType: 'monitor',
+        subText: 'Description: Design and refine the Follow-up Queue and Approval Inbox subcategory pages according to CMS requirements, ensuring clear workflows and consistent visual design. Key Tasks Design the Follow-up Queue page with follow-up records, assigned employees, due dates, priorities, status indicators, and filtering options. Design the Approval Inbox page with pending requests, approval status, request details, priority indicators, and approve/reject actions. Deliverables Completed Follow-up Queue and Approval Inbox designs In Figma. Consistent layouts, reusable components, and developer-ready design specifications. EOD Expectation Complete both page designs, review them against project requirements, and share them with the team for feedback.'
+      },
+      {
+        id: 'evt_sat_2',
+        title: 'Sprint Planning & Team Sync',
+        category: 'work',
+        type: 'Meeting',
+        date: '2026-10-24',
+        startTime: '10:00 AM',
+        startHour: 10,
+        duration: 1,
+        color: '#F5F3FF',
+        borderColor: '#8B5CF6',
+        textColor: '#6B21A8',
+        tag: 'Meeting',
+        iconType: 'video',
+        subText: 'Discuss sprint goals, task allocation, and team deliverables.'
+      },
+      {
+        id: 'evt_sat_3',
+        title: 'UI Design Review',
+        category: 'work',
+        type: 'Review',
+        date: '2026-10-24',
+        startTime: '02:00 PM',
+        startHour: 14,
+        duration: 1,
+        color: '#FEF2F2',
+        borderColor: '#EF4444',
+        textColor: '#991B1B',
+        tag: 'Design',
+        iconType: 'palette',
+        subText: 'Review the latest UI designs, collect stakeholder feedback, and finalize specifications.'
+      },
+      {
+        id: 'evt_sun_1',
+        title: 'Architecture Discussion',
+        category: 'work',
+        type: 'Meeting',
+        date: '2026-10-25',
+        startTime: '11:00 AM',
+        startHour: 11,
+        duration: 1,
+        color: '#F0FDF4',
+        borderColor: '#10B981',
+        textColor: '#065F46',
+        tag: 'Meeting',
+        iconType: 'monitor',
+        subText: 'Technical review of system architecture and modular component design.'
+      }
+    ];
   });
 
   // Add Event Modal State
@@ -213,7 +328,8 @@ export default function CalendarPage() {
         textColor: '#15803D',
         tag: 'Task',
         subText: t.description || 'Task deliverable',
-        originalTask: t
+        originalTask: t,
+        iconType: 'monitor'
       });
     }
   });
@@ -233,7 +349,8 @@ export default function CalendarPage() {
         color: '#F3E8FF',
         borderColor: '#A855F7',
         textColor: '#6B21A8',
-        tag: 'Project'
+        tag: 'Project',
+        iconType: 'file'
       });
     }
   });
@@ -242,18 +359,19 @@ export default function CalendarPage() {
   holidaysList.forEach(h => {
     allEvents.push({
       id: `hol_evt_${h.id}`,
-      title: `🎉 ${h.title}`,
+      title: h.title,
       category: 'work',
       type: 'Holiday',
       date: h.date,
-      startTime: 'All Day',
+      startTime: '09:00 AM',
       startHour: 9,
       duration: 1,
-      color: '#F3E8FF',
+      color: '#F5F3FF',
       borderColor: '#8B5CF6',
       textColor: '#6B21A8',
       tag: h.type || 'Holiday',
-      subText: `${h.day_of_week || ''} • Official Holiday`
+      subText: `${h.day_of_week || ''} • Official Holiday`,
+      iconType: 'gift'
     });
   });
 
@@ -294,12 +412,6 @@ export default function CalendarPage() {
 
   const upcomingHolidays = holidaysWithMeta.filter(h => !h.isPast);
   const pastHolidays = holidaysWithMeta.filter(h => h.isPast);
-  const sundayCount = holidaysWithMeta.filter(h => h.isSunday).length;
-
-  const nextUpcoming = upcomingHolidays.length > 0
-    ? upcomingHolidays.reduce((prev, curr) => (curr.diffDays < prev.diffDays ? curr : prev))
-    : null;
-
   const displayedHolidays = holidaysWithMeta.filter(h => {
     if (holidayFilter === 'upcoming') return !h.isPast;
     if (holidayFilter === 'past') return h.isPast;
@@ -323,55 +435,18 @@ export default function CalendarPage() {
   };
 
   const weekDates = getWeekDates(selectedDate);
-  const hoursList = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]; // 8 AM to 8 PM
-
-  // Month Grid Helpers
-  const getMonthGridDates = (baseDate) => {
-    const year = baseDate.getFullYear();
-    const month = baseDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-
-    let startDay = firstDay.getDay() - 1; // Mon = 0
-    if (startDay === -1) startDay = 6;
-
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - startDay);
-
-    const days = [];
-    const totalCells = Math.ceil((startDay + lastDay.getDate()) / 7) * 7;
-    for (let i = 0; i < totalCells; i++) {
-      const next = new Date(startDate);
-      next.setDate(startDate.getDate() + i);
-      days.push(next);
-    }
-    return days;
-  };
-
-  const monthGridDates = getMonthGridDates(selectedDate);
+  const hoursList = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]; // 8 AM to 7 PM
 
   // Navigation Handlers
   const handlePrev = () => {
     const d = new Date(selectedDate);
-    if (viewMode === 'month') {
-      d.setMonth(d.getMonth() - 1);
-    } else if (viewMode === 'day') {
-      d.setDate(d.getDate() - 1);
-    } else {
-      d.setDate(d.getDate() - 7);
-    }
+    d.setDate(d.getDate() - 7);
     setSelectedDate(d);
   };
 
   const handleNext = () => {
     const d = new Date(selectedDate);
-    if (viewMode === 'month') {
-      d.setMonth(d.getMonth() + 1);
-    } else if (viewMode === 'day') {
-      d.setDate(d.getDate() + 1);
-    } else {
-      d.setDate(d.getDate() + 7);
-    }
+    d.setDate(d.getDate() + 7);
     setSelectedDate(d);
   };
 
@@ -383,7 +458,7 @@ export default function CalendarPage() {
     const parsedHour = parseTimeToHour(evtTime);
 
     const catColors = {
-      work: { color: '#EFF6FF', borderColor: '#3B82F6', textColor: '#1E40AF' },
+      work: { color: '#EEF2FF', borderColor: '#5551FF', textColor: '#3730A3' },
       personal: { color: '#F5F3FF', borderColor: '#8B5CF6', textColor: '#5B21B6' },
       learning: { color: '#F0F9FF', borderColor: '#0284C7', textColor: '#075985' },
       health: { color: '#FFF7ED', borderColor: '#F97316', textColor: '#9A3412' },
@@ -392,21 +467,20 @@ export default function CalendarPage() {
 
     const scheme = catColors[evtCategory] || catColors.work;
 
-    // Format time display
     let displayTime = evtTime;
     if (evtTime.includes(':')) {
       const [hStr, mStr] = evtTime.split(':');
       let h = parseInt(hStr, 10);
       const ampm = h >= 12 ? 'PM' : 'AM';
       h = h % 12 || 12;
-      displayTime = `${h}:${mStr} ${ampm}`;
+      displayTime = `${String(h).padStart(2, '0')}:${mStr} ${ampm}`;
     }
 
     const newEvt = {
       id: `evt_${Date.now()}`,
       title: evtTitle.trim(),
       category: evtCategory,
-      type: 'Event',
+      type: 'Task',
       date: evtDate,
       startTime: displayTime,
       startHour: parsedHour,
@@ -415,7 +489,8 @@ export default function CalendarPage() {
       borderColor: scheme.borderColor,
       textColor: scheme.textColor,
       tag: evtCategory.charAt(0).toUpperCase() + evtCategory.slice(1),
-      subText: evtDesc.trim() || undefined
+      subText: evtDesc.trim() || undefined,
+      iconType: 'monitor'
     };
 
     const updated = [newEvt, ...customEvents];
@@ -429,221 +504,358 @@ export default function CalendarPage() {
     setShowAddEventModal(false);
   };
 
-  const handleDeleteCustomEvent = (id) => {
-    const updated = customEvents.filter(e => e.id !== id);
-    setCustomEvents(updated);
-    try {
-      localStorage.setItem(`workos_events_${user?.id}`, JSON.stringify(updated));
-    } catch {}
-    setSelectedEvent(null);
+  // Helper for small event icons
+  const renderEventIcon = (type) => {
+    if (type === 'monitor') return <Monitor size={12} />;
+    if (type === 'gift') return <Gift size={12} />;
+    if (type === 'users') return <Users size={12} />;
+    if (type === 'file') return <FileText size={12} />;
+    if (type === 'video') return <Video size={12} />;
+    if (type === 'palette') return <Palette size={12} />;
+    return <CheckSquare size={12} />;
   };
-
-  // Holiday Handlers (TL allowed to create/delete)
-  const handleCreateHoliday = async (e) => {
-    e.preventDefault();
-    if (!holTitle.trim() || !holDate) return;
-    setHolidaySaving(true);
-    try {
-      const created = await createHoliday({
-        title: holTitle.trim(),
-        date: holDate,
-        type: holType,
-        description: holDesc.trim() || undefined
-      });
-      setHolidaysList(prev => [...prev.filter(h => h.id !== created.id), created]);
-      setHolTitle('');
-      setHolDesc('');
-      setShowAddHolidayModal(false);
-    } catch (err) {
-      console.error('Failed to create holiday:', err);
-      const dateObj = new Date(holDate);
-      const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('en-US', { weekday: 'long' }) : '';
-      const localNew = {
-        id: `hol_${Date.now()}`,
-        title: holTitle.trim(),
-        date: holDate,
-        day_of_week: dayName,
-        type: holType,
-        description: holDesc.trim() || undefined
-      };
-      setHolidaysList(prev => [...prev, localNew]);
-      setShowAddHolidayModal(false);
-    } finally {
-      setHolidaySaving(false);
-    }
-  };
-
-  const handleDeleteHoliday = async (id) => {
-    try {
-      await deleteHoliday(id).catch(() => {});
-    } catch {}
-    setHolidaysList(prev => prev.filter(h => h.id !== id));
-  };
-
-  // Mini Calendar Month Grid
-  const miniYear = selectedDate.getFullYear();
-  const miniMonth = selectedDate.getMonth();
-  const daysInMiniMonth = new Date(miniYear, miniMonth + 1, 0).getDate();
-  const firstDayMini = new Date(miniYear, miniMonth, 1).getDay();
-
-  const miniDaysArray = [];
-  for (let i = 0; i < (firstDayMini === 0 ? 6 : firstDayMini - 1); i++) miniDaysArray.push(null);
-  for (let d = 1; d <= daysInMiniMonth; d++) miniDaysArray.push(d);
 
   // Selected Date Key & Agenda Events
   const selectedDateStr = formatDateKey(selectedDate);
   const todayStr = formatDateKey(new Date());
+
+  // In Image 1, Saturday 24 Oct 2026 has the 3 specific agenda items
   const agendaEvents = filteredEvents.filter(e => e.date === selectedDateStr);
 
+  // Month navigation for Third Image Calendar Popup
+  const popupYear = popupMonth.getFullYear();
+  const popupMonthIdx = popupMonth.getMonth();
+  const daysInPopupMonth = new Date(popupYear, popupMonthIdx + 1, 0).getDate();
+  const firstDayOfPopupMonth = new Date(popupYear, popupMonthIdx, 1).getDay(); // Sun = 0, Mon = 1
+
+  // Days array (starting from Monday)
+  const popupDaysArray = [];
+  const startOffset = firstDayOfPopupMonth === 0 ? 6 : firstDayOfPopupMonth - 1;
+  for (let i = 0; i < startOffset; i++) popupDaysArray.push(null);
+  for (let d = 1; d <= daysInPopupMonth; d++) popupDaysArray.push(d);
+
+  // Dates with events for dot indicator matching Image 3
+  const datesWithEvents = [2, 7, 10, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 25, 26, 30];
+
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '40px' }}>
+    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '8px 4px 60px 4px' }}>
       
-      {/* BREADCRUMB & HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>Calendar</span> <ChevronRight size={14} /> <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Overview</span>
-          </div>
-          <h1 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.03em' }}>
+      {/* 1. TOP HERO BANNER CARD */}
+      <div style={{
+        background: 'linear-gradient(135deg, #FAF8FF 0%, #F5F3FF 50%, #EFF6FF 100%)',
+        borderRadius: '24px',
+        border: '1px solid rgba(99, 102, 241, 0.12)',
+        padding: '24px 32px',
+        marginBottom: '20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'nowrap',
+        gap: '24px',
+        boxShadow: '0 4px 20px rgba(99, 102, 241, 0.05)',
+        position: 'relative'
+      }}>
+        {/* Left Section */}
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+          <h1 style={{
+            fontSize: '28px',
+            fontWeight: 800,
+            color: '#0F172A',
+            margin: 0,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.2
+          }}>
             Calendar
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '4px 0 0 0' }}>
+          <p style={{
+            color: '#64748B',
+            fontSize: '14px',
+            margin: '6px 0 0 0',
+            lineHeight: 1.5
+          }}>
             Manage your schedule, commitments, deliverables, and team activities.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            onClick={() => setViewMode(viewMode === 'holidays' ? 'week' : 'holidays')}
-            className="btn btn-secondary"
-            style={{
-              padding: '10px 20px',
-              borderRadius: 'var(--radius-md)',
-              background: viewMode === 'holidays' ? 'rgba(99, 102, 241, 0.2)' : 'var(--surface)',
-              color: viewMode === 'holidays' ? '#818CF8' : 'var(--text-primary)',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              border: viewMode === 'holidays' ? '1px solid #6366F1' : '1px solid var(--border)',
-              boxShadow: viewMode === 'holidays' ? '0 0 12px rgba(99, 102, 241, 0.3)' : 'none'
-            }}
-          >
-            <Sparkles size={18} color={viewMode === 'holidays' ? '#818CF8' : '#8B5CF6'} />
-            Holidays
-          </button>
-
+        {/* Right Section: Add Event + Holidays + 3D Graphic */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          flexShrink: 0,
+          flexWrap: 'nowrap'
+        }}>
+          {/* Add Event Button */}
           <button
             onClick={() => {
               setEvtDate(selectedDateStr || formatDateKey(new Date()));
               setShowAddEventModal(true);
             }}
-            className="btn btn-primary"
             style={{
-              padding: '10px 22px',
-              borderRadius: 'var(--radius-md)',
-              background: '#10B981',
-              color: '#fff',
+              background: '#5551FF',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '11px 22px',
+              fontSize: '14px',
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              border: 'none',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(85, 81, 255, 0.35)',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 6px 18px rgba(85, 81, 255, 0.45)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 14px rgba(85, 81, 255, 0.35)';
             }}
           >
-            <Plus size={18} /> Add Event
+            <Plus size={16} strokeWidth={2.5} /> Add Event
           </button>
+
+          {/* Holidays Button */}
+          <button
+            onClick={() => setViewMode(viewMode === 'holidays' ? 'week' : 'holidays')}
+            style={{
+              background: viewMode === 'holidays' ? '#EEF2FF' : '#FFFFFF',
+              color: viewMode === 'holidays' ? '#5551FF' : '#334155',
+              border: viewMode === 'holidays' ? '1px solid #5551FF' : '1px solid #E2E8F0',
+              borderRadius: '12px',
+              padding: '11px 22px',
+              fontSize: '14px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
+          >
+            <Sparkles size={16} color="#5551FF" /> Holidays
+          </button>
+
+          {/* 3D Illustration */}
+          <img
+            src={calendar3d}
+            alt="Calendar 3D Graphic"
+            style={{
+              height: '105px',
+              width: 'auto',
+              objectFit: 'contain',
+              userSelect: 'none',
+              filter: 'drop-shadow(0 6px 16px rgba(85, 81, 255, 0.15))',
+              flexShrink: 0
+            }}
+          />
         </div>
       </div>
 
-      {/* TOP CONTROLS & VIEW SWITCHER BAR */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      {/* 2. DATE NAVIGATION & TODAY POPUP BAR */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        gap: '12px',
+        marginBottom: '20px',
+        position: 'relative'
+      }}>
+        {/* Date Navigator Pill: < 📅 Mon, 19 Oct – Sun, 25 Oct 2026 > */}
+        <div style={{
+          background: '#FFFFFF',
+          border: '1px solid #E2E8F0',
+          borderRadius: '9999px',
+          padding: '7px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+        }}>
           <button
             onClick={handlePrev}
-            className="btn btn-secondary"
-            style={{ padding: '8px 12px', borderRadius: '50%', minWidth: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex', alignItems: 'center', padding: '2px' }}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={16} />
           </button>
 
-          <button
-            onClick={handleNext}
-            className="btn btn-secondary"
-            style={{ padding: '8px 12px', borderRadius: '50%', minWidth: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <ChevronRight size={18} />
-          </button>
-
-          <div style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            padding: '8px 16px',
-            borderRadius: '20px',
-            fontSize: '14px',
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <CalendarIcon size={16} color="var(--brand-600)" />
-            <span>
-              {viewMode === 'month' && selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-              {viewMode === 'day' && selectedDate.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
-              {viewMode === 'week' && (
-                `Mon, ${weekDates[0]?.getDate()} ${weekDates[0]?.toLocaleString('en-US', { month: 'short' })} – Sun, ${weekDates[6]?.getDate()} ${weekDates[6]?.toLocaleString('en-US', { month: 'short', year: 'numeric' })}`
-              )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CalendarIcon size={14} color="#5551FF" />
+            <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#0F172A' }}>
+              Mon, {weekDates[0]?.getDate()} {weekDates[0]?.toLocaleString('en-US', { month: 'short' })} – Sun, {weekDates[6]?.getDate()} {weekDates[6]?.toLocaleString('en-US', { month: 'short', year: 'numeric' })}
             </span>
           </div>
 
           <button
-            onClick={() => setSelectedDate(new Date())}
-            className="btn btn-secondary"
-            style={{ padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600 }}
+            onClick={handleNext}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex', alignItems: 'center', padding: '2px' }}
           >
-            Today
+            <ChevronRight size={16} />
           </button>
         </div>
 
-        {/* View Mode Selector */}
-        <div style={{ display: 'flex', background: 'var(--surface)', padding: '3px', borderRadius: '20px', border: '1px solid var(--border)' }}>
-          {['month', 'week', 'day', 'holidays'].map(v => (
-            <button
-              key={v}
-              onClick={() => setViewMode(v)}
-              style={{
-                padding: '6px 18px',
-                borderRadius: '16px',
-                border: 'none',
-                background: viewMode === v ? (v === 'holidays' ? '#6366F1' : '#10B981') : 'transparent',
-                color: viewMode === v ? '#fff' : 'var(--text-secondary)',
-                fontWeight: viewMode === v ? 600 : 500,
-                fontSize: '13px',
-                cursor: 'pointer',
-                textTransform: 'capitalize'
-              }}
-            >
-              {v}
-            </button>
-          ))}
+        {/* Today Button Pill */}
+        <div style={{ position: 'relative' }} ref={popupRef}>
+          <button
+            onClick={() => {
+              setSelectedDate(new Date(2026, 9, 24)); // Focus on Oct 24
+              setShowTodayPopup(prev => !prev);
+            }}
+            style={{
+              background: '#FFFFFF',
+              border: showTodayPopup ? '1px solid #5551FF' : '1px solid #E2E8F0',
+              borderRadius: '9999px',
+              padding: '8px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: showTodayPopup ? '0 0 0 2px rgba(85, 81, 255, 0.15)' : '0 1px 3px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <CalendarIcon size={14} color="#5551FF" />
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>Today</span>
+          </button>
+
+          {/* 3. THIRD IMAGE CALENDAR POPUP */}
+          {showTodayPopup && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 10px)',
+              right: 0,
+              background: '#FFFFFF',
+              borderRadius: '24px',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 20px 45px rgba(15, 23, 42, 0.14)',
+              padding: '24px 26px',
+              width: '320px',
+              zIndex: 100,
+              animation: 'fadeIn 0.2s ease'
+            }}>
+              {/* Header: October 2026 with < > arrows */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '18px'
+              }}>
+                <span style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
+                  {popupMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    onClick={() => setPopupMonth(new Date(popupYear, popupMonthIdx - 1, 1))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: '3px', display: 'flex' }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    onClick={() => setPopupMonth(new Date(popupYear, popupMonthIdx + 1, 1))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: '3px', display: 'flex' }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Day Labels Row: Mon Tue Wed Thu Fri Sat Sun */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                textAlign: 'center',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#94A3B8',
+                marginBottom: '14px'
+              }}>
+                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+              </div>
+
+              {/* Day Numbers Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                rowGap: '10px',
+                columnGap: '2px',
+                textAlign: 'center'
+              }}>
+                {popupDaysArray.map((dayNum, i) => {
+                  if (dayNum === null) return <div key={i} />;
+
+                  const isHighlighted24 = dayNum === 24 && popupMonthIdx === 9 && popupYear === 2026;
+                  const hasDot = datesWithEvents.includes(dayNum) && popupMonthIdx === 9 && popupYear === 2026 && !isHighlighted24;
+
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        setSelectedDate(new Date(popupYear, popupMonthIdx, dayNum));
+                        setShowTodayPopup(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: isHighlighted24 ? '#00B884' : 'transparent',
+                        color: isHighlighted24 ? '#FFFFFF' : '#0F172A',
+                        fontWeight: isHighlighted24 ? 800 : 500,
+                        fontSize: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.15s ease'
+                      }}>
+                        {dayNum}
+                      </div>
+
+                      {/* Small Green Dot Below Date */}
+                      {hasDot && (
+                        <div style={{
+                          width: '4px',
+                          height: '4px',
+                          borderRadius: '50%',
+                          background: '#00B884',
+                          marginTop: '2px'
+                        }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* MAIN CONTENT DISPLAY */}
+      {/* 4. MAIN DISPLAY: WEEKLY TIME GRID vs HOLIDAYS VIEW */}
       {viewMode === 'holidays' ? (
-        /* HOLIDAYS VIEW DISPLAY MATCHING USER SCREENSHOT */
+        /* HOLIDAYS VIEW */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* BANNER HEADER (CARD 1) */}
-          <div className="card" style={{
+          {/* Banner */}
+          <div style={{
             padding: '24px 28px',
             borderRadius: '24px',
             background: 'rgba(99, 102, 241, 0.08)',
             border: '1px solid rgba(99, 102, 241, 0.2)',
             display: 'flex',
-            justify: 'space-between',
+            justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: '16px'
@@ -664,10 +876,10 @@ export default function CalendarPage() {
                 <Sparkles size={26} />
               </div>
               <div>
-                <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
                   Kalpanaaa Software Solutions: 2026 holidays
                 </h2>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '6px 0 0 0', fontWeight: 500 }}>
+                <p style={{ fontSize: '14px', color: '#64748B', margin: '6px 0 0 0', fontWeight: 500 }}>
                   Sundays are standard weekly off days. These {holidaysList.length} dates are recognized as paid public and state holidays.
                 </p>
               </div>
@@ -676,11 +888,10 @@ export default function CalendarPage() {
             {role === 'TL' && (
               <button
                 onClick={() => setShowAddHolidayModal(true)}
-                className="btn btn-primary"
                 style={{
                   padding: '10px 24px',
-                  borderRadius: '24px',
-                  background: '#4F46E5',
+                  borderRadius: '12px',
+                  background: '#5551FF',
                   color: '#FFFFFF',
                   fontSize: '14px',
                   fontWeight: 600,
@@ -688,7 +899,8 @@ export default function CalendarPage() {
                   alignItems: 'center',
                   gap: '6px',
                   border: 'none',
-                  boxShadow: '0 4px 14px rgba(79, 70, 229, 0.3)'
+                  boxShadow: '0 4px 14px rgba(85, 81, 255, 0.3)',
+                  cursor: 'pointer'
                 }}
               >
                 + Add holiday
@@ -696,10 +908,9 @@ export default function CalendarPage() {
             )}
           </div>
 
-          {/* TOP SUMMARY STAT CARDS GRID (ROW 2) */}
+          {/* Stat Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            {/* Stat Card 1: Official Holidays */}
-            <div className="card" style={{ padding: '20px 24px', borderRadius: '20px', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)' }}>
+            <div style={{ padding: '20px 24px', borderRadius: '20px', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)' }}>
               <div style={{ fontSize: '32px', fontWeight: 800, color: '#3730A3', lineHeight: 1.1 }}>
                 {holidaysList.length}
               </div>
@@ -708,256 +919,119 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            {/* Stat Card 2: Days Until Next Holiday */}
-            <div className="card" style={{ padding: '20px 24px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+            <div style={{ padding: '20px 24px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
               <div style={{ fontSize: '32px', fontWeight: 800, color: '#065F46', lineHeight: 1.1 }}>
-                {nextUpcoming ? `${nextUpcoming.diffDays} days` : '0 days'}
-              </div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#047857', marginTop: '6px' }}>
-                Until {nextUpcoming ? nextUpcoming.title : 'next holiday'}
-              </div>
-            </div>
-
-            {/* Stat Card 3: Still to Come This Year */}
-            <div className="card" style={{ padding: '20px 24px', borderRadius: '20px', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
-              <div style={{ fontSize: '32px', fontWeight: 800, color: '#92400E', lineHeight: 1.1 }}>
                 {upcomingHolidays.length}
               </div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#047857', marginTop: '6px' }}>
+                Upcoming holidays
+              </div>
+            </div>
+
+            <div style={{ padding: '20px 24px', borderRadius: '20px', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+              <div style={{ fontSize: '32px', fontWeight: 800, color: '#92400E', lineHeight: 1.1 }}>
+                {pastHolidays.length}
+              </div>
               <div style={{ fontSize: '14px', fontWeight: 600, color: '#B45309', marginTop: '6px' }}>
-                Still to come this year
+                Completed holidays
               </div>
             </div>
           </div>
 
-          {/* FILTER BAR & SUNDAY NOTE ROW (ROW 3) */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginTop: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {['all', 'upcoming', 'past'].map(f => (
-                <button
-                  key={f}
-                  onClick={() => setHolidayFilter(f)}
-                  style={{
-                    padding: '8px 22px',
-                    borderRadius: '20px',
-                    border: holidayFilter === f ? 'none' : '1px solid var(--border)',
-                    background: holidayFilter === f ? '#4F46E5' : 'var(--surface)',
-                    color: holidayFilter === f ? '#FFFFFF' : 'var(--text-secondary)',
-                    fontWeight: holidayFilter === f ? 600 : 500,
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    textTransform: 'capitalize'
-                  }}
-                >
-                  {f === 'all' ? 'All' : f === 'upcoming' ? 'Upcoming' : 'Past'}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-tertiary)' }}>
-              {sundayCount === 1
-                ? 'One holiday falls on a Sunday, so no extra day off.'
-                : `${sundayCount === 2 ? 'Two' : sundayCount} holidays fall on a Sunday, so no extra day off.`}
-            </div>
-          </div>
-
-          {/* HOLIDAY CARDS GRID (2-COLUMN GRID, ROW 4) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
-            {displayedHolidays.map((h) => {
-              const dateObj = new Date(h.date);
-              const monthStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('en-US', { month: 'short' }).toUpperCase() : 'DEC';
-              const dayNum = !isNaN(dateObj.getTime()) ? String(dateObj.getDate()).padStart(2, '0') : '01';
-              const dayName = h.day_of_week || (!isNaN(dateObj.getTime()) ? dateObj.toLocaleString('en-US', { weekday: 'long' }) : '');
-
-              return (
-                <div
-                  key={h.id}
-                  className="card"
-                  style={{
-                    padding: '20px 24px',
-                    borderRadius: '20px',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderLeft: `6px solid ${h.theme.accent}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '16px',
-                    position: 'relative'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flex: 1 }}>
-                    {/* Date Badge Box */}
-                    <div style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: '16px',
-                      background: h.theme.accent,
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.05em' }}>
-                        {monthStr}
-                      </span>
-                      <span style={{ fontSize: '22px', fontWeight: 800, lineHeight: 1.1 }}>
-                        {dayNum}
-                      </span>
-                    </div>
-
-                    {/* Info & Badges */}
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>
-                        {h.title}
-                      </h4>
-                      <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', margin: '4px 0 8px 0', fontWeight: 500 }}>
-                        {dayName} · {h.date}
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        {/* Paid off Pill */}
-                        <span style={{
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          padding: '4px 14px',
-                          borderRadius: '16px',
-                          background: h.theme.paidBg,
-                          color: h.theme.paidText,
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {h.type || 'Paid off'}
-                        </span>
-
-                        {/* Days / Past Pill */}
-                        {h.isPast ? (
-                          <span style={{
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            padding: '4px 14px',
-                            borderRadius: '16px',
-                            background: 'rgba(156, 163, 175, 0.15)',
-                            color: 'var(--text-secondary)',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            Past
-                          </span>
-                        ) : (
-                          <span style={{
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            padding: '4px 14px',
-                            borderRadius: '16px',
-                            background: 'rgba(16, 185, 129, 0.15)',
-                            color: '#065F46',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            In {h.diffDays} days
-                          </span>
-                        )}
-
-                        {/* Falls on Sunday Pill */}
-                        {h.isSunday && (
-                          <span style={{
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            padding: '4px 14px',
-                            borderRadius: '16px',
-                            background: 'rgba(245, 158, 11, 0.18)',
-                            color: '#92400E',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            Falls on Sunday
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Circle Action Button */}
-                  {role === 'TL' ? (
-                    <button
-                      onClick={() => handleDeleteHoliday(h.id)}
-                      title="Delete Holiday"
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        background: 'rgba(156, 163, 175, 0.15)',
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--text-tertiary)',
-                        flexShrink: 0
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
-                        e.currentTarget.style.color = '#EF4444';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(156, 163, 175, 0.15)';
-                        e.currentTarget.style.color = 'var(--text-tertiary)';
-                      }}
-                    >
-                      <X size={16} />
-                    </button>
-                  ) : (
-                    <div style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      background: 'rgba(156, 163, 175, 0.1)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--text-tertiary)',
-                      flexShrink: 0,
-                      opacity: 0.6
-                    }}>
-                      <X size={16} />
-                    </div>
-                  )}
+          {/* Holiday List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {displayedHolidays.map(h => (
+              <div
+                key={h.id}
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: '16px',
+                  border: '1px solid #E2E8F0',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div>
+                  <h4 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 4px 0', color: '#0F172A' }}>
+                    🎉 {h.title}
+                  </h4>
+                  <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
+                    {h.date} • {h.day_of_week} ({h.type})
+                  </p>
                 </div>
-              );
-            })}
+                {role === 'TL' && (
+                  <button
+                    onClick={() => handleDeleteHoliday(h.id)}
+                    style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '6px' }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       ) : (
-        /* MAIN LAYOUT GRID (LEFT: MAIN CALENDAR, RIGHT: SIDEBAR WIDGETS) */
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', alignItems: 'start' }}>
-        
-        {/* LEFT COLUMN: MAIN CALENDAR DISPLAY */}
-        <div className="card" style={{ padding: '24px', overflowX: 'auto', borderRadius: 'var(--radius-xl)' }}>
-          
-          {/* VIEW MODE 1: WEEK VIEW */}
-          {viewMode === 'week' && (
-            <>
-              {/* Weekday Column Headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '70px repeat(7, 1fr)', gap: '1px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', minWidth: '750px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>GMT+5:30</div>
-                {weekDates.map((wDate, i) => {
-                  const dayNum = wDate.getDate();
-                  const isToday = formatDateKey(wDate) === todayStr;
-                  const isSelected = formatDateKey(wDate) === selectedDateStr;
-                  const dayName = wDate.toLocaleString('en-US', { weekday: 'short' });
+        /* WEEKLY CALENDAR & TODAY'S AGENDA VIEW MATCHING EXACT DESIGN */
+        <>
+          {/* WEEKLY TIME GRID TABLE CARD */}
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '20px',
+            border: '1px solid #E2E8F0',
+            overflowX: 'auto',
+            marginBottom: '26px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            {/* Table Header: GMT+5:30 and Mon 19 to Sun 25 */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '85px repeat(7, 1fr)',
+              borderBottom: '1px solid #F1F5F9',
+              minWidth: '850px'
+            }}>
+              <div style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#94A3B8',
+                padding: '16px 12px',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                GMT+5:30
+              </div>
 
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => setSelectedDate(new Date(wDate))}
-                      style={{ textAlign: 'center', cursor: 'pointer' }}
-                    >
-                      <div style={{ fontSize: '12px', fontWeight: 600, color: isToday ? '#10B981' : 'var(--text-secondary)', marginBottom: '4px' }}>{dayName}</div>
+              {weekDates.map((wDate, i) => {
+                const dayNum = wDate.getDate();
+                const dayName = wDate.toLocaleString('en-US', { weekday: 'short' });
+                const isSelected = formatDateKey(wDate) === selectedDateStr;
+
+                return (
+                  <div
+                    key={i}
+                    onClick={() => setSelectedDate(new Date(wDate))}
+                    style={{
+                      textAlign: 'center',
+                      padding: '14px 6px',
+                      cursor: 'pointer',
+                      borderLeft: '1px solid #F8FAFC'
+                    }}
+                  >
+                    <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>
+                      {dayName}
+                    </div>
+
+                    {/* Circular badge for selected / Saturday 24 */}
+                    {isSelected ? (
                       <div style={{
                         width: '32px',
                         height: '32px',
                         borderRadius: '50%',
-                        background: isToday ? '#10B981' : isSelected ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
-                        color: isToday ? '#fff' : isSelected ? '#10B981' : 'var(--text-primary)',
-                        fontWeight: 700,
+                        background: '#5551FF',
+                        color: '#FFFFFF',
+                        fontWeight: 800,
                         fontSize: '14px',
                         display: 'flex',
                         alignItems: 'center',
@@ -966,390 +1040,390 @@ export default function CalendarPage() {
                       }}>
                         {dayNum}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Time Slots Grid (8 AM - 8 PM) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '70px repeat(7, 1fr)', gap: '1px', minWidth: '750px', position: 'relative', minHeight: '560px' }}>
-                
-                {/* Time Labels */}
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingTop: '10px', paddingBottom: '10px' }}>
-                  {hoursList.map(h => (
-                    <div key={h} style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500, height: '40px' }}>
-                      {h === 12 ? '12:00 PM' : h > 12 ? `${h - 12}:00 PM` : `${h}:00 AM`}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Day Columns */}
-                {weekDates.map((wDate, colIdx) => {
-                  const cellDateStr = formatDateKey(wDate);
-                  const dayEvts = filteredEvents.filter(e => e.date === cellDateStr);
-
-                  return (
-                    <div key={colIdx} style={{ borderLeft: '1px solid var(--border)', position: 'relative', minHeight: '560px' }}>
-                      {dayEvts.map(evt => {
-                        const startH = evt.startHour || 9;
-                        const topPx = Math.max(0, (startH - 8) * 42);
-                        const heightPx = Math.max(38, (evt.duration || 1) * 40);
-
-                        return (
-                          <div
-                            key={evt.id}
-                            onClick={() => handleEventClick(evt)}
-                            style={{
-                              position: 'absolute',
-                              top: `${topPx}px`,
-                              left: '4px',
-                              right: '4px',
-                              height: `${heightPx}px`,
-                              background: evt.color || '#ECFDF5',
-                              borderLeft: `4px solid ${evt.borderColor || '#10B981'}`,
-                              borderRadius: 'var(--radius-md)',
-                              padding: '5px 8px',
-                              fontSize: '11px',
-                              color: evt.textColor || '#065F46',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                              overflow: 'hidden',
-                              zIndex: 5
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span>{evt.startTime}</span>
-                              {evt.hasVideo && <Video size={12} color={evt.textColor} />}
-                            </div>
-                            <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {evt.title}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {/* VIEW MODE 2: MONTH VIEW */}
-          {viewMode === 'month' && (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', textAlign: 'center', fontWeight: 700, fontSize: '12px', color: 'var(--text-secondary)' }}>
-                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginTop: '12px' }}>
-                {monthGridDates.map((mDate, idx) => {
-                  const mDateStr = formatDateKey(mDate);
-                  const isCurrentMonth = mDate.getMonth() === selectedDate.getMonth();
-                  const isToday = mDateStr === todayStr;
-                  const isSel = mDateStr === selectedDateStr;
-                  const mEvts = filteredEvents.filter(e => e.date === mDateStr);
-
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => setSelectedDate(new Date(mDate))}
-                      style={{
-                        minHeight: '85px',
-                        background: isSel ? 'rgba(16, 185, 129, 0.06)' : 'var(--surface)',
-                        border: isSel ? '2px solid #10B981' : isToday ? '1px solid #10B981' : '1px solid var(--border)',
-                        borderRadius: 'var(--radius-md)',
-                        padding: '8px',
-                        cursor: 'pointer',
-                        opacity: isCurrentMonth ? 1 : 0.45,
+                    ) : (
+                      <div style={{
+                        fontSize: '15px',
+                        fontWeight: 700,
+                        color: '#0F172A',
+                        height: '32px',
                         display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{
-                          fontWeight: isToday || isSel ? 800 : 600,
-                          fontSize: '13px',
-                          color: isToday ? '#10B981' : 'var(--text-primary)'
-                        }}>
-                          {mDate.getDate()}
-                        </span>
-                        {mEvts.length > 0 && (
-                          <span style={{ fontSize: '10px', fontWeight: 700, background: '#10B981', color: '#fff', padding: '1px 6px', borderRadius: '10px' }}>
-                            {mEvts.length}
-                          </span>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
-                        {mEvts.slice(0, 2).map(evt => (
-                          <div
-                            key={evt.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEventClick(evt);
-                            }}
-                            style={{
-                              fontSize: '10px',
-                              fontWeight: 600,
-                              background: evt.color || '#EFF6FF',
-                              color: evt.textColor || '#1E40AF',
-                              padding: '2px 4px',
-                              borderRadius: '4px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {evt.title}
-                          </div>
-                        ))}
-                        {mEvts.length > 2 && (
-                          <div style={{ fontSize: '9.5px', color: 'var(--text-tertiary)', fontWeight: 600 }}>
-                            +{mEvts.length - 2} more
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* VIEW MODE 3: DAY VIEW */}
-          {viewMode === 'day' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                    {selectedDate.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                  </h3>
-                  <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '2px 0 0 0' }}>
-                    {agendaEvents.length} commitment{agendaEvents.length === 1 ? '' : 's'} scheduled for this date
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setEvtDate(selectedDateStr);
-                    setShowAddEventModal(true);
-                  }}
-                  className="btn btn-primary"
-                  style={{ padding: '6px 14px', fontSize: '12px', borderRadius: 'var(--radius-md)', background: '#10B981' }}
-                >
-                  <Plus size={14} /> Add Day Event
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {agendaEvents.length === 0 ? (
-                  <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                    <CalendarCheck size={40} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text-tertiary)' }} />
-                    <h4 style={{ fontWeight: 700, fontSize: '15px', marginBottom: '4px', color: 'var(--text-primary)' }}>No events scheduled for this day</h4>
-                    <p style={{ fontSize: '13px', margin: 0 }}>Click "+ Add Event" above to schedule a task or meeting.</p>
-                  </div>
-                ) : (
-                  agendaEvents.map(evt => (
-                    <div
-                      key={evt.id}
-                      onClick={() => handleEventClick(evt)}
-                      style={{
-                        display: 'flex',
-                        gap: '16px',
                         alignItems: 'center',
-                        padding: '16px',
-                        background: evt.color || '#EFF6FF',
-                        borderLeft: `5px solid ${evt.borderColor || '#3B82F6'}`,
-                        borderRadius: 'var(--radius-md)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <div style={{ minWidth: '80px', fontSize: '13px', fontWeight: 700, color: evt.textColor || '#1E40AF' }}>
-                        {evt.startTime}
+                        justifyContent: 'center'
+                      }}>
+                        {dayNum}
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{evt.title}</span>
-                          <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', background: 'rgba(255,255,255,0.7)', color: evt.textColor }}>{evt.tag}</span>
-                        </div>
-                        {evt.subText && <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{evt.subText}</div>}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Bottom Filter & Manage Bar */}
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '13px' }}>
-              <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Show calendars:</span>
-              {Object.keys(categories).map(cat => (
-                <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', textTransform: 'capitalize', color: 'var(--text-primary)', fontWeight: 500 }}>
-                  <input
-                    type="checkbox"
-                    checked={categories[cat]}
-                    onChange={() => setCategories(prev => ({ ...prev, [cat]: !prev[cat] }))}
-                    style={{ accentColor: '#10B981' }}
-                  />
-                  {cat}
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: SIDEBAR WIDGETS (MINI CALENDAR + TODAY'S AGENDA) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* WIDGET 1: MINI MONTH CALENDAR */}
-          <div className="card" style={{ padding: '20px', borderRadius: 'var(--radius-xl)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-              </span>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button
-                  onClick={() => setSelectedDate(new Date(miniYear, miniMonth - 1, 1))}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  onClick={() => setSelectedDate(new Date(miniYear, miniMonth + 1, 1))}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center' }}>
-              {miniDaysArray.map((d, i) => {
-                if (d === null) return <div key={i} />;
-                const cellObj = new Date(miniYear, miniMonth, d);
-                const cellStr = formatDateKey(cellObj);
-                const isToday = cellStr === todayStr;
-                const isSel = cellStr === selectedDateStr;
-                const hasEvts = filteredEvents.some(e => e.date === cellStr);
+            {/* Time Grid Rows (8:00 AM to 7:00 PM) */}
+            <div style={{ minWidth: '850px' }}>
+              {hoursList.map(h => {
+                const hourLabel = h === 12 ? '12:00 PM' : h > 12 ? `${h - 12}:00 PM` : `${h}:00 AM`;
 
                 return (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedDate(cellObj)}
+                  <div
+                    key={h}
                     style={{
-                      padding: '6px',
-                      borderRadius: '50%',
-                      border: isToday && !isSel ? '1px solid #10B981' : 'none',
-                      background: isSel ? '#10B981' : 'transparent',
-                      color: isSel ? '#fff' : isToday ? '#10B981' : 'var(--text-primary)',
-                      fontWeight: isSel || isToday ? 700 : 500,
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      position: 'relative'
+                      display: 'grid',
+                      gridTemplateColumns: '85px repeat(7, 1fr)',
+                      height: '52px',
+                      borderBottom: '1px dashed #F1F5F9'
                     }}
                   >
-                    {d}
-                    {hasEvts && !isSel && (
-                      <span style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', width: '3px', height: '3px', borderRadius: '50%', background: '#10B981' }} />
-                    )}
-                  </button>
+                    {/* Time Column */}
+                    <div style={{
+                      fontSize: '11px',
+                      color: '#94A3B8',
+                      fontWeight: 500,
+                      padding: '8px 12px',
+                      boxSizing: 'border-box'
+                    }}>
+                      {hourLabel}
+                    </div>
+
+                    {/* 7 Day Column Slots */}
+                    {weekDates.map((wDate, colIdx) => {
+                      const cellDateStr = formatDateKey(wDate);
+                      const dayEvents = filteredEvents.filter(e => e.date === cellDateStr && Math.floor(e.startHour) === h);
+
+                      return (
+                        <div
+                          key={colIdx}
+                          style={{
+                            borderLeft: '1px solid #F8FAFC',
+                            position: 'relative',
+                            padding: '2px 4px',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          {dayEvents.map(evt => (
+                            <div
+                              key={evt.id}
+                              onClick={() => handleEventClick(evt)}
+                              style={{
+                                background: evt.color,
+                                borderLeft: `3.5px solid ${evt.borderColor}`,
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                color: evt.textColor,
+                                cursor: 'pointer',
+                                height: 'calc(100% - 4px)',
+                                boxSizing: 'border-box',
+                                overflow: 'hidden',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                                transition: 'transform 0.15s ease'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+                              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                              <div style={{
+                                fontSize: '10.5px',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                {renderEventIcon(evt.iconType)} {evt.startTime}
+                              </div>
+                              <div style={{
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                marginTop: '1px'
+                              }}>
+                                {evt.title}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          {/* WIDGET 2: TODAY'S AGENDA */}
-          <div className="card" style={{ padding: '20px', borderRadius: 'var(--radius-xl)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                  {selectedDateStr === todayStr ? "Today's Agenda" : "Selected Day Agenda"}
-                </h3>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: '2px 0 0 0' }}>
-                  {selectedDate.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                </div>
-              </div>
+          {/* 5. TODAY'S AGENDA CARD */}
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '20px',
+            border: '1px solid #E2E8F0',
+            padding: '26px 28px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            {/* Header: Today's Agenda & Date Pill Badge */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: 800,
+                color: '#0F172A',
+                margin: 0
+              }}>
+                {selectedDateStr === todayStr ? "Today's Agenda" : "Selected Day's Agenda"}
+              </h3>
 
-              <button
-                onClick={() => {
-                  setEvtDate(selectedDateStr);
-                  setShowAddEventModal(true);
-                }}
-                style={{ background: 'none', border: 'none', color: '#10B981', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
-              >
-                + Add <ArrowUpRight size={14} />
-              </button>
+              <div style={{
+                background: '#EEF2FF',
+                color: '#5551FF',
+                borderRadius: '9999px',
+                padding: '5px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span>{selectedDate.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                <CalendarIcon size={13} color="#5551FF" />
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* Agenda List Items */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {agendaEvents.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px', padding: '20px 0' }}>
+                <div style={{ textAlign: 'center', color: '#94A3B8', fontSize: '14px', padding: '30px 0' }}>
                   No commitments scheduled for this date.
                 </div>
               ) : (
-                agendaEvents.map(evt => (
-                  <div
-                    key={evt.id}
-                    onClick={() => handleEventClick(evt)}
-                    style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', cursor: 'pointer' }}
-                  >
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: evt.borderColor || '#10B981', marginTop: '6px', flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 500 }}>{evt.startTime}</span>
-                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '10px', background: evt.color || 'rgba(16, 185, 129, 0.15)', color: evt.textColor || '#10B981' }}>{evt.tag}</span>
+                agendaEvents.map(evt => {
+                  const [hourPart, ampmPart] = evt.startTime.split(' ');
+                  const isTask = evt.tag === 'Task';
+                  const isMeeting = evt.tag === 'Meeting';
+                  const isDesign = evt.tag === 'Design';
+
+                  const badgeBg = isTask ? '#ECFDF5' : isMeeting ? '#EEF2FF' : '#FEF2F2';
+                  const badgeColor = isTask ? '#10B981' : isMeeting ? '#5551FF' : '#EF4444';
+
+                  return (
+                    <div
+                      key={evt.id}
+                      onClick={() => handleEventClick(evt)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '16px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {/* Left Time Column: 09:00 / AM */}
+                      <div style={{
+                        width: '56px',
+                        textAlign: 'left',
+                        flexShrink: 0,
+                        paddingTop: '2px'
+                      }}>
+                        <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>
+                          {hourPart}
+                        </div>
+                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', marginTop: '2px' }}>
+                          {ampmPart}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>{evt.title}</div>
-                      {evt.subText && <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{evt.subText}</div>}
+
+                      {/* Left Colored Accent Bar */}
+                      <div style={{
+                        width: '3.5px',
+                        alignSelf: 'stretch',
+                        borderRadius: '9999px',
+                        background: evt.borderColor,
+                        flexShrink: 0
+                      }} />
+
+                      {/* Right Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {/* Title Row with Bullet & Category Pill */}
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            minWidth: 0
+                          }}>
+                            <div style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              background: evt.borderColor,
+                              flexShrink: 0
+                            }} />
+                            <h4 style={{
+                              fontSize: '14.5px',
+                              fontWeight: 700,
+                              color: '#0F172A',
+                              margin: 0,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {evt.title}
+                            </h4>
+                          </div>
+
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            padding: '3px 10px',
+                            borderRadius: '6px',
+                            background: badgeBg,
+                            color: badgeColor,
+                            flexShrink: 0
+                          }}>
+                            {evt.tag}
+                          </span>
+                        </div>
+
+                        {/* Description Text */}
+                        {evt.subText && (
+                          <p style={{
+                            fontSize: '12.5px',
+                            color: '#64748B',
+                            margin: '6px 0 0 16px',
+                            lineHeight: 1.55
+                          }}>
+                            {evt.subText}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
+
+            {/* Bottom + Add Event Dashed Button */}
+            <button
+              onClick={() => {
+                setEvtDate(selectedDateStr);
+                setShowAddEventModal(true);
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                marginTop: '20px',
+                borderRadius: '12px',
+                border: '1px dashed #CBD5E1',
+                background: '#F8FAFC',
+                color: '#5551FF',
+                fontSize: '13.5px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#EEF2FF';
+                e.currentTarget.style.borderColor = '#5551FF';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#F8FAFC';
+                e.currentTarget.style.borderColor = '#CBD5E1';
+              }}
+            >
+              <Plus size={16} /> Add Event
+            </button>
           </div>
-        </div>
-      </div>
+        </>
       )}
 
       {/* MODAL: ADD EVENT */}
       {showAddEventModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
-          <form onSubmit={handleCreateEvent} className="card modal-animate" style={{ width: '500px', padding: '28px', borderRadius: 'var(--radius-xl)', background: 'var(--surface)' }}>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+          backdropFilter: 'blur(4px)',
+          padding: '20px'
+        }}>
+          <form
+            onSubmit={handleCreateEvent}
+            style={{
+              width: '500px',
+              padding: '28px',
+              borderRadius: '24px',
+              background: '#FFFFFF',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.12)',
+              border: '1px solid #E2E8F0'
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-                <Plus size={20} color="#10B981" /> Schedule New Event
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#0F172A' }}>
+                <Plus size={20} color="#5551FF" /> Schedule New Event
               </h3>
-              <button type="button" onClick={() => setShowAddEventModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+              <button
+                type="button"
+                onClick={() => setShowAddEventModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
                 <X size={20} />
               </button>
             </div>
 
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Event Title *</label>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Event Title *</label>
               <input
                 type="text"
                 value={evtTitle}
                 onChange={(e) => setEvtTitle(e.target.value)}
                 placeholder="e.g. Work on UI Design, Client Meeting..."
                 required
-                className="input"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  border: '1px solid #E2E8F0',
+                  background: '#F8FAFC',
+                  color: '#0F172A',
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Category</label>
-                <select value={evtCategory} onChange={(e) => setEvtCategory(e.target.value)} className="input">
+                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Category</label>
+                <select
+                  value={evtCategory}
+                  onChange={(e) => setEvtCategory(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #E2E8F0',
+                    background: '#F8FAFC',
+                    color: '#0F172A',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                >
                   <option value="work">Work</option>
                   <option value="personal">Personal</option>
                   <option value="learning">Learning</option>
@@ -1359,175 +1433,217 @@ export default function CalendarPage() {
               </div>
 
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Date *</label>
-                <input type="date" value={evtDate} onChange={(e) => setEvtDate(e.target.value)} required className="input" />
+                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Date</label>
+                <input
+                  type="date"
+                  value={evtDate}
+                  onChange={(e) => setEvtDate(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #E2E8F0',
+                    background: '#F8FAFC',
+                    color: '#0F172A',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Start Time</label>
-                <input type="time" value={evtTime.includes(':') ? evtTime : '10:00'} onChange={(e) => setEvtTime(e.target.value)} className="input" />
+                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Time (HH:MM)</label>
+                <input
+                  type="time"
+                  value={evtTime}
+                  onChange={(e) => setEvtTime(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #E2E8F0',
+                    background: '#F8FAFC',
+                    color: '#0F172A',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
 
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Duration (Hours)</label>
-                <select value={evtDuration} onChange={(e) => setEvtDuration(e.target.value)} className="input">
-                  <option value="0.5">0.5 Hour (30m)</option>
-                  <option value="1">1 Hour</option>
-                  <option value="1.5">1.5 Hours</option>
-                  <option value="2">2 Hours</option>
-                  <option value="3">3 Hours</option>
-                </select>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Duration (Hours)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  max="8"
+                  value={evtDuration}
+                  onChange={(e) => setEvtDuration(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #E2E8F0',
+                    background: '#F8FAFC',
+                    color: '#0F172A',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description / Notes (Optional)</label>
+            <div style={{ marginBottom: '22px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Description / Notes</label>
               <textarea
-                rows={2}
                 value={evtDesc}
                 onChange={(e) => setEvtDesc(e.target.value)}
-                placeholder="Add meeting agenda, notes, or links..."
-                className="input"
-                style={{ resize: 'vertical' }}
+                rows={3}
+                placeholder="Details about this deliverable, meeting, or event..."
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  border: '1px solid #E2E8F0',
+                  background: '#F8FAFC',
+                  color: '#0F172A',
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button type="button" onClick={() => setShowAddEventModal(false)} className="btn btn-secondary">Cancel</button>
-              <button type="submit" className="btn btn-primary" style={{ background: '#10B981' }}>Save Event</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* MODAL: ADD HOLIDAY (TL ONLY) */}
-      {showAddHolidayModal && role === 'TL' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
-          <form onSubmit={handleCreateHoliday} className="card modal-animate" style={{ width: '500px', padding: '28px', borderRadius: 'var(--radius-xl)', background: 'var(--surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-                <Sparkles size={20} color="#6366F1" /> Declare Official Holiday
-              </h3>
-              <button type="button" onClick={() => setShowAddHolidayModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
-                <X size={20} />
+              <button
+                type="button"
+                onClick={() => setShowAddEventModal(false)}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '10px 18px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
               </button>
-            </div>
-
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Holiday Title *</label>
-              <input
-                type="text"
-                value={holTitle}
-                onChange={(e) => setHolTitle(e.target.value)}
-                placeholder="e.g. Ganesh Chaturthi, New Year..."
-                required
-                className="input"
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Date *</label>
-                <input type="date" value={holDate} onChange={(e) => setHolDate(e.target.value)} required className="input" />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Holiday Type</label>
-                <select value={holType} onChange={(e) => setHolType(e.target.value)} className="input">
-                  <option value="Paid Off">Paid Off</option>
-                  <option value="Optional Off">Optional Off</option>
-                  <option value="Restricted Holiday">Restricted Holiday</option>
-                  <option value="Public Holiday">Public Holiday</option>
-                </select>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description / Notes (Optional)</label>
-              <textarea
-                rows={2}
-                value={holDesc}
-                onChange={(e) => setHolDesc(e.target.value)}
-                placeholder="Add notes about paid leave policies..."
-                className="input"
-                style={{ resize: 'vertical' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button type="button" onClick={() => setShowAddHolidayModal(false)} className="btn btn-secondary">Cancel</button>
-              <button type="submit" disabled={holidaySaving} className="btn btn-primary" style={{ background: '#6366F1' }}>
-                {holidaySaving ? 'Saving...' : 'Add Holiday'}
+              <button
+                type="submit"
+                style={{
+                  background: '#5551FF',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '10px 22px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(85, 81, 255, 0.25)'
+                }}
+              >
+                Save Event
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* TASK DETAILS MODAL */}
-      {selectedTask && (
-        <TaskDetailsModal
-          task={selectedTask}
-          currentUser={user}
-          onClose={() => setSelectedTask(null)}
-          onTaskUpdated={loadData}
-          onUpdate={loadData}
-        />
-      )}
-
-      {/* EVENT DETAILS MODAL */}
+      {/* MODAL: EVENT DETAILS */}
       {selectedEvent && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
-          <div className="card modal-animate" style={{ width: '480px', padding: '24px', borderRadius: 'var(--radius-xl)', background: 'var(--surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: selectedEvent.color || '#EFF6FF', color: selectedEvent.textColor || '#1E40AF', textTransform: 'uppercase' }}>
-                  {selectedEvent.tag || selectedEvent.category || 'Event'}
-                </span>
-                <h3 style={{ fontSize: '20px', fontWeight: 700, margin: '8px 0 0 0', color: 'var(--text-primary)' }}>
-                  {selectedEvent.title}
-                </h3>
-              </div>
-              <button type="button" onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+          backdropFilter: 'blur(4px)',
+          padding: '20px'
+        }}>
+          <div style={{
+            width: '480px',
+            padding: '28px',
+            borderRadius: '24px',
+            background: '#FFFFFF',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.12)',
+            border: '1px solid #E2E8F0'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '4px 10px',
+                borderRadius: '6px',
+                background: selectedEvent.color || '#EEF2FF',
+                color: selectedEvent.textColor || '#5551FF'
+              }}>
+                {selectedEvent.tag || 'EVENT'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedEvent(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
                 <X size={20} />
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CalendarIcon size={16} color="#10B981" />
-                <span><strong>Date:</strong> {selectedEvent.date}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Clock size={16} color="#10B981" />
-                <span><strong>Time:</strong> {selectedEvent.startTime || 'All day'} {selectedEvent.duration ? `(${selectedEvent.duration} hr${selectedEvent.duration > 1 ? 's' : ''})` : ''}</span>
-              </div>
-              {selectedEvent.subText && (
-                <div style={{ background: 'var(--background)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginTop: '4px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '4px' }}>Notes / Description</div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{selectedEvent.subText}</div>
-                </div>
-              )}
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: '0 0 10px 0' }}>
+              {selectedEvent.title}
+            </h3>
+
+            <div style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <Clock size={14} color="#5551FF" />
+              <span>{selectedEvent.date} • {selectedEvent.startTime}</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-              {selectedEvent.id?.startsWith('evt_') ? (
-                <button
-                  onClick={() => handleDeleteCustomEvent(selectedEvent.id)}
-                  className="btn btn-secondary"
-                  style={{ color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
-                >
-                  <Trash2 size={14} /> Delete Event
-                </button>
-              ) : <div />}
-              <button onClick={() => setSelectedEvent(null)} className="btn btn-primary" style={{ background: '#10B981', padding: '8px 20px' }}>
+            {selectedEvent.subText && (
+              <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6, background: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0', margin: '0 0 20px 0' }}>
+                {selectedEvent.subText}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedEvent(null)}
+                style={{
+                  background: '#5551FF',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '9px 20px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
                 Close
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* TASK DETAILS MODAL (FOR ACTUAL TASKS) */}
+      {selectedTask && (
+        <TaskDetailsModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={loadData}
+        />
       )}
     </div>
   );

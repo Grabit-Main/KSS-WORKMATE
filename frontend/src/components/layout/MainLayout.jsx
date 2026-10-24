@@ -26,6 +26,7 @@ export const MainLayout = () => {
     if (path.startsWith('/profile')) return 'My Profile';
     if (path.startsWith('/collaboration')) return 'Collaboration';
     if (path.startsWith('/goals')) return 'Goals & Growth';
+    if (path.startsWith('/calendar')) return 'Calendar';
     return 'Workmate';
   };
 
