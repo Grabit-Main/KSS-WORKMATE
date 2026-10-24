@@ -214,7 +214,7 @@ export default function CollaborationPage() {
     if (activeChatTarget?.id) {
       markConversationAsRead(activeChatTarget);
     }
-  }, [activeChatTarget.id, activeChatTarget.type, activeChatTarget.realUserId]);
+  }, [activeChatTarget?.id, activeChatTarget?.type, activeChatTarget?.realUserId]);
 
   // Realtime notification sync
   useRealtime('notification.new', async () => {
@@ -254,7 +254,7 @@ export default function CollaborationPage() {
         }));
 
         if (!isSenderMe) {
-          const isCurrentOpen = activeTab === 'chats' && activeChatTarget?.type === 'team' && (String(activeChatTarget.id) === String(cId) || activeChatTarget.name === cId) && !document.hidden;
+          const isCurrentOpen = conversationFilter !== 'announcements' && activeChatTarget?.type === 'team' && (String(activeChatTarget?.id) === String(cId) || activeChatTarget?.name === cId) && !document.hidden;
           if (isCurrentOpen) {
             markConversationAsRead(activeChatTarget);
           } else {
@@ -275,7 +275,7 @@ export default function CollaborationPage() {
         }));
 
         if (!isSenderMe) {
-          const isCurrentOpen = activeTab === 'chats' && activeChatTarget?.type === 'dm' && (String(activeChatTarget.id) === partnerId || String(activeChatTarget.realUserId) === partnerId) && !document.hidden;
+          const isCurrentOpen = conversationFilter !== 'announcements' && activeChatTarget?.type === 'dm' && (String(activeChatTarget?.id) === partnerId || String(activeChatTarget?.realUserId) === partnerId) && !document.hidden;
           if (isCurrentOpen) {
             markConversationAsRead(activeChatTarget);
           } else {
