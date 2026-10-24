@@ -373,18 +373,18 @@ export default function GoalsPage() {
         background: 'linear-gradient(135deg, #FAF8FF 0%, #F5F3FF 50%, #EFF6FF 100%)',
         borderRadius: '24px',
         border: '1px solid rgba(99, 102, 241, 0.12)',
-        padding: '28px 36px',
-        marginBottom: '26px',
+        padding: '24px 32px',
+        marginBottom: '24px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        flexWrap: 'wrap',
+        flexWrap: 'nowrap',
         gap: '24px',
         boxShadow: '0 4px 20px rgba(99, 102, 241, 0.05)',
         position: 'relative'
       }}>
         {/* Left Section */}
-        <div style={{ flex: '1 1 480px' }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
           {/* Pill Badge */}
           <div style={{
             display: 'inline-flex',
@@ -395,7 +395,7 @@ export default function GoalsPage() {
             borderRadius: '9999px',
             fontSize: '12px',
             fontWeight: 600,
-            marginBottom: '16px',
+            marginBottom: '14px',
             letterSpacing: '0.01em'
           }}>
             Personal & Career Development
@@ -404,9 +404,9 @@ export default function GoalsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
             {/* Target Box Icon */}
             <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '18px',
+              width: '56px',
+              height: '56px',
+              borderRadius: '16px',
               background: '#EEF2FF',
               display: 'flex',
               alignItems: 'center',
@@ -414,19 +414,19 @@ export default function GoalsPage() {
               flexShrink: 0
             }}>
               <div style={{
-                width: '40px',
-                height: '40px',
+                width: '36px',
+                height: '36px',
                 borderRadius: '50%',
-                border: '3.5px solid #5551FF',
+                border: '3px solid #5551FF',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
                 <div style={{
-                  width: '20px',
-                  height: '20px',
+                  width: '18px',
+                  height: '18px',
                   borderRadius: '50%',
-                  border: '3px solid #5551FF',
+                  border: '2.5px solid #5551FF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -442,9 +442,9 @@ export default function GoalsPage() {
             </div>
 
             {/* Title & Subtitle */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <h1 style={{
-                fontSize: '28px',
+                fontSize: '26px',
                 fontWeight: 800,
                 color: '#0F172A',
                 margin: 0,
@@ -455,10 +455,10 @@ export default function GoalsPage() {
               </h1>
               <p style={{
                 color: '#64748B',
-                fontSize: '14px',
-                margin: '6px 0 0 0',
-                lineHeight: 1.5,
-                maxWidth: '520px'
+                fontSize: '13.5px',
+                margin: '5px 0 0 0',
+                lineHeight: 1.45,
+                maxWidth: '480px'
               }}>
                 Set measurable personal goals, track skill development, and unlock achievements.
               </p>
@@ -466,22 +466,24 @@ export default function GoalsPage() {
           </div>
         </div>
 
-        {/* Right Section: 3D Illustration & Create Goal Button */}
+        {/* Right Section: 3D Illustration & Create Goal Button in a Single Line */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '24px',
-          flexWrap: 'wrap'
+          gap: '20px',
+          flexShrink: 0,
+          flexWrap: 'nowrap'
         }}>
           <img
             src={goalsGrowth3d}
             alt="Goals & Growth 3D Graphic"
             style={{
-              height: '115px',
+              height: '100px',
               width: 'auto',
               objectFit: 'contain',
               userSelect: 'none',
-              filter: 'drop-shadow(0 6px 16px rgba(85, 81, 255, 0.15))'
+              filter: 'drop-shadow(0 6px 16px rgba(85, 81, 255, 0.15))',
+              flexShrink: 0
             }}
           />
 
@@ -492,7 +494,7 @@ export default function GoalsPage() {
               color: '#FFFFFF',
               border: 'none',
               borderRadius: '12px',
-              padding: '12px 24px',
+              padding: '12px 22px',
               fontSize: '14px',
               fontWeight: 600,
               display: 'flex',
@@ -501,7 +503,8 @@ export default function GoalsPage() {
               cursor: 'pointer',
               boxShadow: '0 4px 14px rgba(85, 81, 255, 0.35)',
               transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-1px)';
@@ -517,27 +520,28 @@ export default function GoalsPage() {
         </div>
       </div>
 
-      {/* 2. TOP SUMMARY METRICS ROW (4 Cards) */}
+      {/* 2. TOP SUMMARY METRICS ROW (4 Cards in a single line) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '20px',
-        marginBottom: '28px'
+        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: '16px',
+        marginBottom: '26px'
       }}>
         {/* Card 1: Active Goals */}
         <div style={{
           background: '#FFFFFF',
           borderRadius: '18px',
           border: '1px solid #E2E8F0',
-          padding: '20px 22px',
+          padding: '18px 20px',
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          gap: '14px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+          minWidth: 0
         }}>
           <div style={{
-            width: '44px',
-            height: '44px',
+            width: '42px',
+            height: '42px',
             borderRadius: '12px',
             background: '#EEF2FF',
             color: '#5551FF',
@@ -548,11 +552,11 @@ export default function GoalsPage() {
           }}>
             <Target size={22} strokeWidth={2} />
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>
               {activeGoalsCount}
             </div>
-            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, marginTop: '2px' }}>
+            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, marginTop: '2px', whiteSpace: 'nowrap' }}>
               Active Goals
             </div>
           </div>
@@ -563,15 +567,16 @@ export default function GoalsPage() {
           background: '#FFFFFF',
           borderRadius: '18px',
           border: '1px solid #E2E8F0',
-          padding: '20px 22px',
+          padding: '18px 20px',
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          gap: '14px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+          minWidth: 0
         }}>
           <div style={{
-            width: '44px',
-            height: '44px',
+            width: '42px',
+            height: '42px',
             borderRadius: '12px',
             background: '#ECFDF5',
             color: '#10B981',
@@ -582,11 +587,11 @@ export default function GoalsPage() {
           }}>
             <CheckCircle2 size={22} strokeWidth={2} />
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>
               {completedGoalsCount}
             </div>
-            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, marginTop: '2px' }}>
+            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, marginTop: '2px', whiteSpace: 'nowrap' }}>
               Completed
             </div>
           </div>
@@ -597,15 +602,16 @@ export default function GoalsPage() {
           background: '#FFFFFF',
           borderRadius: '18px',
           border: '1px solid #E2E8F0',
-          padding: '20px 22px',
+          padding: '18px 20px',
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          gap: '14px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+          minWidth: 0
         }}>
           <div style={{
-            width: '44px',
-            height: '44px',
+            width: '42px',
+            height: '42px',
             borderRadius: '12px',
             background: '#FEF2F2',
             color: '#EF4444',
@@ -616,11 +622,11 @@ export default function GoalsPage() {
           }}>
             <AlertTriangle size={22} strokeWidth={2} />
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>
               {atRiskCount}
             </div>
-            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, marginTop: '2px' }}>
+            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, marginTop: '2px', whiteSpace: 'nowrap' }}>
               At Risk
             </div>
           </div>
@@ -631,15 +637,16 @@ export default function GoalsPage() {
           background: '#FFFFFF',
           borderRadius: '18px',
           border: '1px solid #E2E8F0',
-          padding: '20px 22px',
+          padding: '18px 20px',
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          gap: '14px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+          minWidth: 0
         }}>
           <div style={{
-            width: '44px',
-            height: '44px',
+            width: '42px',
+            height: '42px',
             borderRadius: '12px',
             background: '#EEF2FF',
             color: '#5551FF',
@@ -650,11 +657,11 @@ export default function GoalsPage() {
           }}>
             <TrendingUp size={22} strokeWidth={2} />
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>
               100%
             </div>
-            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, marginTop: '2px' }}>
+            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, marginTop: '2px', whiteSpace: 'nowrap' }}>
               Growth Progress
             </div>
           </div>
