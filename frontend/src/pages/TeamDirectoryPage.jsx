@@ -354,18 +354,6 @@ const TeamDirectoryPage = () => {
   // Render Team Directory Listing with 3 Employee Cards per Row on Desktop
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '60px' }}>
-      {/* 1. Header Title & Breadcrumb */}
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: '#0F172A', margin: '0 0 4px 0', fontFamily: 'serif, Georgia, Inter, sans-serif' }}>
-          Team Directory
-        </h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748B' }}>
-          <span>Team</span>
-          <span>/</span>
-          <span style={{ fontWeight: 600, color: '#1E293B' }}>Directory</span>
-        </div>
-      </div>
-
       {/* 2. Hero Banner */}
       <div style={{
         background: 'linear-gradient(135deg, #5551FF 0%, #7C3AED 50%, #A855F7 100%)',
