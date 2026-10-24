@@ -389,8 +389,6 @@ export default function CollaborationPage() {
 
   return (
     <div style={{
-      maxWidth: '1400px',
-      margin: '0 auto',
       width: '100%',
       height: '100%',
       flex: 1,
@@ -485,8 +483,10 @@ export default function CollaborationPage() {
 
         // Filter based on active tab and search query
         const filteredList = conversationList.filter(item => {
+          if (conversationFilter === 'all' && item.type !== 'dm') return false;
           if (conversationFilter === 'teams' && item.type !== 'team') return false;
           if (conversationFilter === 'unread' && (!item.unreadCount || item.unreadCount <= 0)) return false;
+          if (conversationFilter === 'announcements' && item.type !== 'team') return false;
 
           if (conversationSearch.trim()) {
             const query = conversationSearch.toLowerCase().trim();
@@ -508,18 +508,20 @@ export default function CollaborationPage() {
             width: '100vw',
             height: '100vh',
             zIndex: 9999,
-            background: '#F8FAFC',
-            padding: '16px',
+            background: '#FFFFFF',
             display: 'flex',
-            gap: '20px',
             overflow: 'hidden'
           } : {
             flex: 1,
             display: 'flex',
-            gap: '20px',
+            gap: 0,
             overflow: 'hidden',
             height: '100%',
-            minHeight: 0
+            minHeight: 0,
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}>
             {/* Conversations Left Card */}
             <div style={{
@@ -528,12 +530,10 @@ export default function CollaborationPage() {
               display: 'flex',
               flexDirection: 'column',
               background: '#FFFFFF',
-              borderRadius: '16px',
-              border: '1px solid #E2E8F0',
+              borderRight: '1px solid #E2E8F0',
               height: '100%',
               minHeight: 0,
-              overflow: 'hidden',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+              overflow: 'hidden'
             }}>
               {/* Header */}
               <div style={{ padding: '18px 20px 12px 20px', flexShrink: 0 }}>
@@ -579,7 +579,21 @@ export default function CollaborationPage() {
               </div>
 
               {/* Filter Tabs */}
-              <div style={{ padding: '0 18px 14px 18px', display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
+              <div
+                className="filter-tabs-scroll"
+                style={{
+                  padding: '0 18px 14px 18px',
+                  display: 'flex',
+                  gap: '8px',
+                  flexShrink: 0,
+                  flexWrap: 'nowrap',
+                  overflowX: 'auto',
+                  overflowY: 'hidden',
+                  whiteSpace: 'nowrap',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+              >
                 {[
                   { key: 'all', label: 'All' },
                   { key: 'unread', label: 'Unread' },
@@ -591,7 +605,37 @@ export default function CollaborationPage() {
                     <button
                       key={tab.key}
                       type="button"
-                      onClick={() => setConversationFilter(tab.key)}
+                      onClick={() => {
+                        setConversationFilter(tab.key);
+                        if (tab.key === 'all' && activeChatTarget.type === 'team') {
+                          const firstDm = directMessages[0];
+                          if (firstDm) {
+                            setActiveChatTarget({
+                              type: 'dm',
+                              id: firstDm.id,
+                              realUserId: firstDm.realUserId,
+                              name: firstDm.name,
+                              subtitle: firstDm.subtitle,
+                              memberCount: null,
+                              iconType: 'avatar',
+                              avatarUrl: firstDm.avatarUrl,
+                              user: firstDm.realUser
+                            });
+                          }
+                        } else if (tab.key === 'teams' && activeChatTarget.type === 'dm') {
+                          const firstTeam = standardChannels[0] || dbTeamChannels[0];
+                          if (firstTeam) {
+                            setActiveChatTarget({
+                              type: 'team',
+                              id: firstTeam.id,
+                              name: firstTeam.name,
+                              subtitle: firstTeam.subtitle,
+                              memberCount: firstTeam.memberCount,
+                              iconType: firstTeam.iconType
+                            });
+                          }
+                        }
+                      }}
                       style={{
                         padding: '6px 14px',
                         borderRadius: '20px',
@@ -601,7 +645,9 @@ export default function CollaborationPage() {
                         fontSize: '12.5px',
                         fontWeight: isActive ? 600 : 500,
                         cursor: 'pointer',
-                        transition: 'all 0.15s ease'
+                        transition: 'all 0.15s ease',
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap'
                       }}
                     >
                       {tab.label}
@@ -813,10 +859,7 @@ export default function CollaborationPage() {
               minWidth: 0,
               minHeight: 0,
               background: '#FFFFFF',
-              borderRadius: '16px',
-              border: '1px solid #E2E8F0',
-              overflow: 'hidden',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+              overflow: 'hidden'
             }}>
               {conversationFilter === 'announcements' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, minHeight: 0, background: '#FFFFFF', overflow: 'hidden' }}>

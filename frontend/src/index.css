@@ -499,10 +499,25 @@ input, select, textarea {
 }
 
 .app-main-content.collaboration-mode {
+  padding: 10px 14px 14px 14px !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
   min-height: 0 !important;
+}
+
+.filter-tabs-scroll {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filter-tabs-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 @media (max-width: 1024px) {

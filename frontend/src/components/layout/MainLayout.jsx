@@ -24,6 +24,7 @@ export const MainLayout = () => {
     if (path.startsWith('/feedback') || path.startsWith('/reviews')) return 'Feedback';
     if (path.startsWith('/history')) return 'History';
     if (path.startsWith('/profile')) return 'My Profile';
+    if (path.startsWith('/collaboration')) return 'Collaboration';
     return 'Workmate';
   };
 
@@ -61,7 +62,7 @@ export const MainLayout = () => {
         overscrollBehavior: 'none'
       }}>
         <Header title={getTitle()} onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
-        <main className="app-main-content">
+        <main className={`app-main-content ${location.pathname.startsWith('/collaboration') ? 'collaboration-mode' : ''}`}>
           <Outlet />
         </main>
       </div>
