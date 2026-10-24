@@ -32,6 +32,39 @@ const formatDateKey = (d) => {
   return `${year}-${month}-${day}`;
 };
 
+const extractCleanDate = (val) => {
+  if (!val) return '';
+  const str = String(val).trim();
+  if (str.includes('T')) return str.split('T')[0];
+  if (str.includes(' ')) return str.split(' ')[0];
+  const parts = str.split('-');
+  if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return str;
+};
+
+const extractTaskTime = (val) => {
+  if (!val) return { startTime: '09:00 AM', startHour: 9 };
+  const str = String(val).trim();
+  if (str.includes('T') || str.includes(' ')) {
+    const timePart = str.includes('T') ? str.split('T')[1] : str.split(' ')[1];
+    if (timePart) {
+      const [hStr, mStr] = timePart.split(':');
+      let h = parseInt(hStr, 10);
+      if (!isNaN(h)) {
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const displayH = h % 12 || 12;
+        return {
+          startTime: `${String(displayH).padStart(2, '0')}:${mStr || '00'} ${ampm}`,
+          startHour: h
+        };
+      }
+    }
+  }
+  return { startTime: '09:00 AM', startHour: 9 };
+};
+
 const parseTimeToHour = (timeStr) => {
   if (!timeStr) return 9;
   if (timeStr.includes(':')) {
@@ -49,19 +82,162 @@ const parseTimeToHour = (timeStr) => {
   return isNaN(h) ? 9 : h;
 };
 
+// Initial default week events matching screenshot
+const DEFAULT_WEEK_EVENTS = [
+  {
+    id: 'evt_mon_1',
+    title: 'Builder Website Redesign',
+    category: 'work',
+    type: 'Task',
+    date: '2026-10-19',
+    startTime: '09:00 AM',
+    startHour: 9,
+    duration: 1,
+    color: '#F0FDF4',
+    borderColor: '#10B981',
+    textColor: '#065F46',
+    tag: 'Task',
+    iconType: 'monitor'
+  },
+  {
+    id: 'evt_tue_1',
+    title: 'Dussehra / Vacation',
+    category: 'work',
+    type: 'Holiday',
+    date: '2026-10-20',
+    startTime: '09:00 AM',
+    startHour: 9,
+    duration: 1,
+    color: '#F5F3FF',
+    borderColor: '#8B5CF6',
+    textColor: '#6B21A8',
+    tag: 'Holiday',
+    iconType: 'gift'
+  },
+  {
+    id: 'evt_wed_1',
+    title: 'HRMS UI/UX Review',
+    category: 'work',
+    type: 'Review',
+    date: '2026-10-21',
+    startTime: '09:00 AM',
+    startHour: 9,
+    duration: 1,
+    color: '#EFF6FF',
+    borderColor: '#3B82F6',
+    textColor: '#1E40AF',
+    tag: 'Review',
+    iconType: 'users'
+  },
+  {
+    id: 'evt_thu_1',
+    title: 'CMS Document Discussion',
+    category: 'work',
+    type: 'Task',
+    date: '2026-10-22',
+    startTime: '09:00 AM',
+    startHour: 9,
+    duration: 1,
+    color: '#F0FDF4',
+    borderColor: '#10B981',
+    textColor: '#065F46',
+    tag: 'Task',
+    iconType: 'file'
+  },
+  {
+    id: 'evt_fri_1',
+    title: 'Management Module Review',
+    category: 'work',
+    type: 'Review',
+    date: '2026-10-23',
+    startTime: '09:00 AM',
+    startHour: 9,
+    duration: 1,
+    color: '#F0FDFA',
+    borderColor: '#0D9488',
+    textColor: '#0F766E',
+    tag: 'Review',
+    iconType: 'users'
+  },
+  {
+    id: 'evt_sat_1',
+    title: 'Follow-up Queue & Approval Inbox UI/UX Design',
+    category: 'work',
+    type: 'Task',
+    date: '2026-10-24',
+    startTime: '09:00 AM',
+    startHour: 9,
+    duration: 1,
+    color: '#EEF2FF',
+    borderColor: '#5551FF',
+    textColor: '#3730A3',
+    tag: 'Task',
+    iconType: 'monitor',
+    subText: 'Description: Design and refine the Follow-up Queue and Approval Inbox subcategory pages according to CMS requirements, ensuring clear workflows and consistent visual design. Key Tasks Design the Follow-up Queue page with follow-up records, assigned employees, due dates, priorities, status indicators, and filtering options. Design the Approval Inbox page with pending requests, approval status, request details, priority indicators, and approve/reject actions. Deliverables Completed Follow-up Queue and Approval Inbox designs In Figma. Consistent layouts, reusable components, and developer-ready design specifications. EOD Expectation Complete both page designs, review them against project requirements, and share them with the team for feedback.'
+  },
+  {
+    id: 'evt_sat_2',
+    title: 'Sprint Planning & Team Sync',
+    category: 'work',
+    type: 'Meeting',
+    date: '2026-10-24',
+    startTime: '10:00 AM',
+    startHour: 10,
+    duration: 1,
+    color: '#F5F3FF',
+    borderColor: '#8B5CF6',
+    textColor: '#6B21A8',
+    tag: 'Meeting',
+    iconType: 'video',
+    subText: 'Discuss sprint goals, task allocation, and team deliverables.'
+  },
+  {
+    id: 'evt_sat_3',
+    title: 'UI Design Review',
+    category: 'work',
+    type: 'Review',
+    date: '2026-10-24',
+    startTime: '02:00 PM',
+    startHour: 14,
+    duration: 1,
+    color: '#FEF2F2',
+    borderColor: '#EF4444',
+    textColor: '#991B1B',
+    tag: 'Design',
+    iconType: 'palette',
+    subText: 'Review the latest UI designs, collect stakeholder feedback, and finalize specifications.'
+  },
+  {
+    id: 'evt_sun_1',
+    title: 'Architecture Discussion',
+    category: 'work',
+    type: 'Meeting',
+    date: '2026-10-25',
+    startTime: '11:00 AM',
+    startHour: 11,
+    duration: 1,
+    color: '#F0FDF4',
+    borderColor: '#10B981',
+    textColor: '#065F46',
+    tag: 'Meeting',
+    iconType: 'monitor',
+    subText: 'Technical review of system architecture and modular component design.'
+  }
+];
+
 export default function CalendarPage() {
   const { user } = useAuth();
   const role = user?.role || 'TM';
 
-  // Active View Mode: 'week' | 'month' | 'day' | 'holidays'
+  // Active View Mode: 'week' | 'holidays'
   const [viewMode, setViewMode] = useState('week');
 
   // Active Selected Date (Default: Today's date - Oct 24, 2026)
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date(2026, 9, 24));
 
   // Today Popup State (Third Image Calendar Popup)
   const [showTodayPopup, setShowTodayPopup] = useState(false);
-  const [popupMonth, setPopupMonth] = useState(new Date(2026, 9, 1)); // October 2026
+  const [popupMonth, setPopupMonth] = useState(new Date(2026, 9, 1));
   const popupRef = useRef(null);
 
   // Close popup on click outside
@@ -79,14 +255,14 @@ export default function CalendarPage() {
     };
   }, [showTodayPopup]);
 
-  // Real WorkOS Data
+  // Real WorkOS Data from Backend
   const [tasksList, setTasksList] = useState([]);
   const [projectsList, setProjectsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Holidays State
   const [holidaysList, setHolidaysList] = useState(DEFAULT_HOLIDAYS);
-  const [holidayFilter, setHolidayFilter] = useState('all'); // 'all' | 'upcoming' | 'past'
+  const [holidayFilter, setHolidayFilter] = useState('all');
   const [showAddHolidayModal, setShowAddHolidayModal] = useState(false);
   const [holTitle, setHolTitle] = useState('');
   const [holDate, setHolDate] = useState(formatDateKey(new Date()));
@@ -106,16 +282,7 @@ export default function CalendarPage() {
     }
   };
 
-  // Calendar Category Toggles
-  const [categories, setCategories] = useState({
-    work: true,
-    personal: true,
-    learning: true,
-    health: true,
-    travel: true
-  });
-
-  // Custom Events Storage - Initialized with exact mock events from user screenshot
+  // Custom Events Storage
   const [customEvents, setCustomEvents] = useState(() => {
     try {
       const saved = localStorage.getItem(`workos_events_${user?.id}`);
@@ -124,148 +291,7 @@ export default function CalendarPage() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-
-    return [
-      {
-        id: 'evt_mon_1',
-        title: 'Builder Website Redesign',
-        category: 'work',
-        type: 'Task',
-        date: '2026-10-19',
-        startTime: '09:00 AM',
-        startHour: 9,
-        duration: 1,
-        color: '#F0FDF4',
-        borderColor: '#10B981',
-        textColor: '#065F46',
-        tag: 'Task',
-        iconType: 'monitor'
-      },
-      {
-        id: 'evt_tue_1',
-        title: 'Dussehra / Vacation',
-        category: 'work',
-        type: 'Holiday',
-        date: '2026-10-20',
-        startTime: '09:00 AM',
-        startHour: 9,
-        duration: 1,
-        color: '#F5F3FF',
-        borderColor: '#8B5CF6',
-        textColor: '#6B21A8',
-        tag: 'Holiday',
-        iconType: 'gift'
-      },
-      {
-        id: 'evt_wed_1',
-        title: 'HRMS UI/UX Review',
-        category: 'work',
-        type: 'Review',
-        date: '2026-10-21',
-        startTime: '09:00 AM',
-        startHour: 9,
-        duration: 1,
-        color: '#EFF6FF',
-        borderColor: '#3B82F6',
-        textColor: '#1E40AF',
-        tag: 'Review',
-        iconType: 'users'
-      },
-      {
-        id: 'evt_thu_1',
-        title: 'CMS Document Discussion',
-        category: 'work',
-        type: 'Task',
-        date: '2026-10-22',
-        startTime: '09:00 AM',
-        startHour: 9,
-        duration: 1,
-        color: '#F0FDF4',
-        borderColor: '#10B981',
-        textColor: '#065F46',
-        tag: 'Task',
-        iconType: 'file'
-      },
-      {
-        id: 'evt_fri_1',
-        title: 'Management Module Review',
-        category: 'work',
-        type: 'Review',
-        date: '2026-10-23',
-        startTime: '09:00 AM',
-        startHour: 9,
-        duration: 1,
-        color: '#F0FDFA',
-        borderColor: '#0D9488',
-        textColor: '#0F766E',
-        tag: 'Review',
-        iconType: 'users'
-      },
-      {
-        id: 'evt_sat_1',
-        title: 'Follow-up Queue & Approval Inbox UI/UX Design',
-        category: 'work',
-        type: 'Task',
-        date: '2026-10-24',
-        startTime: '09:00 AM',
-        startHour: 9,
-        duration: 1,
-        color: '#EEF2FF',
-        borderColor: '#5551FF',
-        textColor: '#3730A3',
-        tag: 'Task',
-        iconType: 'monitor',
-        subText: 'Description: Design and refine the Follow-up Queue and Approval Inbox subcategory pages according to CMS requirements, ensuring clear workflows and consistent visual design. Key Tasks Design the Follow-up Queue page with follow-up records, assigned employees, due dates, priorities, status indicators, and filtering options. Design the Approval Inbox page with pending requests, approval status, request details, priority indicators, and approve/reject actions. Deliverables Completed Follow-up Queue and Approval Inbox designs In Figma. Consistent layouts, reusable components, and developer-ready design specifications. EOD Expectation Complete both page designs, review them against project requirements, and share them with the team for feedback.'
-      },
-      {
-        id: 'evt_sat_2',
-        title: 'Sprint Planning & Team Sync',
-        category: 'work',
-        type: 'Meeting',
-        date: '2026-10-24',
-        startTime: '10:00 AM',
-        startHour: 10,
-        duration: 1,
-        color: '#F5F3FF',
-        borderColor: '#8B5CF6',
-        textColor: '#6B21A8',
-        tag: 'Meeting',
-        iconType: 'video',
-        subText: 'Discuss sprint goals, task allocation, and team deliverables.'
-      },
-      {
-        id: 'evt_sat_3',
-        title: 'UI Design Review',
-        category: 'work',
-        type: 'Review',
-        date: '2026-10-24',
-        startTime: '02:00 PM',
-        startHour: 14,
-        duration: 1,
-        color: '#FEF2F2',
-        borderColor: '#EF4444',
-        textColor: '#991B1B',
-        tag: 'Design',
-        iconType: 'palette',
-        subText: 'Review the latest UI designs, collect stakeholder feedback, and finalize specifications.'
-      },
-      {
-        id: 'evt_sun_1',
-        title: 'Architecture Discussion',
-        category: 'work',
-        type: 'Meeting',
-        date: '2026-10-25',
-        startTime: '11:00 AM',
-        startHour: 11,
-        duration: 1,
-        color: '#F0FDF4',
-        borderColor: '#10B981',
-        textColor: '#065F46',
-        tag: 'Meeting',
-        iconType: 'monitor',
-        subText: 'Technical review of system architecture and modular component design.'
-      }
-    ];
+    return DEFAULT_WEEK_EVENTS;
   });
 
   // Add Event Modal State
@@ -277,7 +303,7 @@ export default function CalendarPage() {
   const [evtDuration, setEvtDuration] = useState('1');
   const [evtDesc, setEvtDesc] = useState('');
 
-  // Fetch WorkOS Data
+  // Fetch WorkOS Data directly from API
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -307,62 +333,74 @@ export default function CalendarPage() {
   useRealtime('task.status_changed', loadData);
   useRealtime('analytics.refresh', loadData);
 
-  // Unified Event Mapper
+  // Unified Event Mapper combining Real Backend Data + Custom Events
   const allEvents = [];
+  const eventIdSet = new Set();
 
-  // Tasks as Events
+  // 1. Real Tasks from Backend
   tasksList.forEach(t => {
-    if (t.deadline) {
-      const dateStr = t.deadline.split('T')[0];
-      allEvents.push({
+    const rawDate = t.deadline || t.scheduled_date || t.created_at;
+    const taskDate = extractCleanDate(rawDate);
+    if (taskDate) {
+      const { startTime, startHour } = extractTaskTime(t.deadline);
+      const isCompleted = t.status === 'completed';
+      const isUrgent = t.priority === 'urgent' || t.priority === 'high';
+
+      const evtItem = {
         id: `task_${t.id}`,
         title: t.title,
         category: 'work',
         type: 'Task',
-        date: dateStr,
-        startTime: '09:00 AM',
-        startHour: 9,
+        date: taskDate,
+        startTime: startTime,
+        startHour: startHour,
         duration: 1,
-        color: '#F0FDF4',
-        borderColor: '#22C55E',
-        textColor: '#15803D',
+        color: isCompleted ? '#F0FDF4' : isUrgent ? '#FEF2F2' : '#EEF2FF',
+        borderColor: isCompleted ? '#10B981' : isUrgent ? '#EF4444' : '#5551FF',
+        textColor: isCompleted ? '#065F46' : isUrgent ? '#991B1B' : '#3730A3',
         tag: 'Task',
-        subText: t.description || 'Task deliverable',
+        subText: t.description || 'Deliverable task',
         originalTask: t,
         iconType: 'monitor'
-      });
+      };
+      allEvents.push(evtItem);
+      eventIdSet.add(evtItem.id);
     }
   });
 
-  // Projects as Events
+  // 2. Real Projects from Backend
   projectsList.forEach(p => {
-    if (p.deadline) {
-      allEvents.push({
+    const projDate = extractCleanDate(p.deadline || p.created_at);
+    if (projDate) {
+      const evtItem = {
         id: `proj_${p.id}`,
-        title: `Project Milestone: ${p.name}`,
+        title: `Project: ${p.name}`,
         category: 'work',
         type: 'Project',
-        date: p.deadline.split('T')[0],
+        date: projDate,
         startTime: '10:00 AM',
         startHour: 10,
         duration: 1,
-        color: '#F3E8FF',
-        borderColor: '#A855F7',
+        color: '#F5F3FF',
+        borderColor: '#8B5CF6',
         textColor: '#6B21A8',
         tag: 'Project',
         iconType: 'file'
-      });
+      };
+      allEvents.push(evtItem);
+      eventIdSet.add(evtItem.id);
     }
   });
 
-  // Official Holidays as Events
+  // 3. Real Holidays from Backend
   holidaysList.forEach(h => {
-    allEvents.push({
+    const holDateKey = extractCleanDate(h.date);
+    const evtItem = {
       id: `hol_evt_${h.id}`,
       title: h.title,
       category: 'work',
       type: 'Holiday',
-      date: h.date,
+      date: holDateKey,
       startTime: '09:00 AM',
       startHour: 9,
       duration: 1,
@@ -372,14 +410,18 @@ export default function CalendarPage() {
       tag: h.type || 'Holiday',
       subText: `${h.day_of_week || ''} • Official Holiday`,
       iconType: 'gift'
-    });
+    };
+    allEvents.push(evtItem);
+    eventIdSet.add(evtItem.id);
   });
 
-  // Custom Events
-  customEvents.forEach(e => allEvents.push(e));
-
-  // Filter Events by Category Toggle
-  const filteredEvents = allEvents.filter(e => categories[e.category] !== false);
+  // 4. Custom Events & Default Week Events
+  customEvents.forEach(e => {
+    if (!eventIdSet.has(e.id)) {
+      allEvents.push(e);
+      eventIdSet.add(e.id);
+    }
+  });
 
   // Calculate dynamic metadata for Holidays view
   const calculateHolidayMeta = (dateStr) => {
@@ -398,16 +440,7 @@ export default function CalendarPage() {
 
   const holidaysWithMeta = holidaysList.map((h, index) => {
     const meta = calculateHolidayMeta(h.date);
-    const themes = [
-      { accent: '#B45309', paidBg: 'rgba(245, 158, 11, 0.18)', paidText: '#B45309' },
-      { accent: '#0D9488', paidBg: 'rgba(20, 184, 166, 0.18)', paidText: '#0F766E' },
-      { accent: '#E11D48', paidBg: 'rgba(244, 63, 94, 0.18)', paidText: '#9F1239' },
-      { accent: '#4F46E5', paidBg: 'rgba(99, 102, 241, 0.18)', paidText: '#3730A3' },
-      { accent: '#D97706', paidBg: 'rgba(245, 158, 11, 0.18)', paidText: '#B45309' },
-      { accent: '#059669', paidBg: 'rgba(16, 185, 129, 0.18)', paidText: '#065F46' },
-    ];
-    const theme = themes[index % themes.length];
-    return { ...h, ...meta, theme };
+    return { ...h, ...meta };
   });
 
   const upcomingHolidays = holidaysWithMeta.filter(h => !h.isPast);
@@ -422,7 +455,7 @@ export default function CalendarPage() {
   const getWeekDates = (baseDate) => {
     const d = new Date(baseDate);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(d.setDate(diff));
 
     const week = [];
@@ -435,7 +468,7 @@ export default function CalendarPage() {
   };
 
   const weekDates = getWeekDates(selectedDate);
-  const hoursList = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]; // 8 AM to 7 PM
+  const hoursList = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 
   // Navigation Handlers
   const handlePrev = () => {
@@ -457,16 +490,6 @@ export default function CalendarPage() {
 
     const parsedHour = parseTimeToHour(evtTime);
 
-    const catColors = {
-      work: { color: '#EEF2FF', borderColor: '#5551FF', textColor: '#3730A3' },
-      personal: { color: '#F5F3FF', borderColor: '#8B5CF6', textColor: '#5B21B6' },
-      learning: { color: '#F0F9FF', borderColor: '#0284C7', textColor: '#075985' },
-      health: { color: '#FFF7ED', borderColor: '#F97316', textColor: '#9A3412' },
-      travel: { color: '#FEF2F2', borderColor: '#EF4444', textColor: '#991B1B' }
-    };
-
-    const scheme = catColors[evtCategory] || catColors.work;
-
     let displayTime = evtTime;
     if (evtTime.includes(':')) {
       const [hStr, mStr] = evtTime.split(':');
@@ -485,9 +508,9 @@ export default function CalendarPage() {
       startTime: displayTime,
       startHour: parsedHour,
       duration: parseFloat(evtDuration) || 1,
-      color: scheme.color,
-      borderColor: scheme.borderColor,
-      textColor: scheme.textColor,
+      color: '#EEF2FF',
+      borderColor: '#5551FF',
+      textColor: '#3730A3',
       tag: evtCategory.charAt(0).toUpperCase() + evtCategory.slice(1),
       subText: evtDesc.trim() || undefined,
       iconType: 'monitor'
@@ -504,37 +527,31 @@ export default function CalendarPage() {
     setShowAddEventModal(false);
   };
 
-  // Helper for small event icons
   const renderEventIcon = (type) => {
-    if (type === 'monitor') return <Monitor size={12} />;
-    if (type === 'gift') return <Gift size={12} />;
-    if (type === 'users') return <Users size={12} />;
-    if (type === 'file') return <FileText size={12} />;
-    if (type === 'video') return <Video size={12} />;
-    if (type === 'palette') return <Palette size={12} />;
-    return <CheckSquare size={12} />;
+    if (type === 'monitor') return <Monitor size={11} />;
+    if (type === 'gift') return <Gift size={11} />;
+    if (type === 'users') return <Users size={11} />;
+    if (type === 'file') return <FileText size={11} />;
+    if (type === 'video') return <Video size={11} />;
+    if (type === 'palette') return <Palette size={11} />;
+    return <CheckSquare size={11} />;
   };
 
   // Selected Date Key & Agenda Events
   const selectedDateStr = formatDateKey(selectedDate);
-  const todayStr = formatDateKey(new Date());
-
-  // In Image 1, Saturday 24 Oct 2026 has the 3 specific agenda items
-  const agendaEvents = filteredEvents.filter(e => e.date === selectedDateStr);
+  const agendaEvents = allEvents.filter(e => e.date === selectedDateStr);
 
   // Month navigation for Third Image Calendar Popup
   const popupYear = popupMonth.getFullYear();
   const popupMonthIdx = popupMonth.getMonth();
   const daysInPopupMonth = new Date(popupYear, popupMonthIdx + 1, 0).getDate();
-  const firstDayOfPopupMonth = new Date(popupYear, popupMonthIdx, 1).getDay(); // Sun = 0, Mon = 1
+  const firstDayOfPopupMonth = new Date(popupYear, popupMonthIdx, 1).getDay();
 
-  // Days array (starting from Monday)
   const popupDaysArray = [];
   const startOffset = firstDayOfPopupMonth === 0 ? 6 : firstDayOfPopupMonth - 1;
   for (let i = 0; i < startOffset; i++) popupDaysArray.push(null);
   for (let d = 1; d <= daysInPopupMonth; d++) popupDaysArray.push(d);
 
-  // Dates with events for dot indicator matching Image 3
   const datesWithEvents = [2, 7, 10, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 25, 26, 30];
 
   return (
@@ -706,7 +723,7 @@ export default function CalendarPage() {
         <div style={{ position: 'relative' }} ref={popupRef}>
           <button
             onClick={() => {
-              setSelectedDate(new Date(2026, 9, 24)); // Focus on Oct 24
+              setSelectedDate(new Date(2026, 9, 24));
               setShowTodayPopup(prev => !prev);
             }}
             style={{
@@ -825,7 +842,6 @@ export default function CalendarPage() {
                         {dayNum}
                       </div>
 
-                      {/* Small Green Dot Below Date */}
                       {hasDot && (
                         <div style={{
                           width: '4px',
@@ -976,27 +992,28 @@ export default function CalendarPage() {
       ) : (
         /* WEEKLY CALENDAR & TODAY'S AGENDA VIEW MATCHING EXACT DESIGN */
         <>
-          {/* WEEKLY TIME GRID TABLE CARD */}
+          {/* MIDDLE WEEKLY TIME GRID - STRICTLY NO SCROLLBARS */}
           <div style={{
             background: '#FFFFFF',
             borderRadius: '20px',
             border: '1px solid #E2E8F0',
-            overflowX: 'auto',
+            width: '100%',
+            overflow: 'hidden',
             marginBottom: '26px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}>
             {/* Table Header: GMT+5:30 and Mon 19 to Sun 25 */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '85px repeat(7, 1fr)',
+              gridTemplateColumns: '75px repeat(7, minmax(0, 1fr))',
               borderBottom: '1px solid #F1F5F9',
-              minWidth: '850px'
+              width: '100%'
             }}>
               <div style={{
                 fontSize: '11px',
                 fontWeight: 600,
                 color: '#94A3B8',
-                padding: '16px 12px',
+                padding: '12px 10px',
                 display: 'flex',
                 alignItems: 'center'
               }}>
@@ -1014,25 +1031,25 @@ export default function CalendarPage() {
                     onClick={() => setSelectedDate(new Date(wDate))}
                     style={{
                       textAlign: 'center',
-                      padding: '14px 6px',
+                      padding: '10px 4px',
                       cursor: 'pointer',
                       borderLeft: '1px solid #F8FAFC'
                     }}
                   >
-                    <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', marginBottom: '2px' }}>
                       {dayName}
                     </div>
 
                     {/* Circular badge for selected / Saturday 24 */}
                     {isSelected ? (
                       <div style={{
-                        width: '32px',
-                        height: '32px',
+                        width: '28px',
+                        height: '28px',
                         borderRadius: '50%',
                         background: '#5551FF',
                         color: '#FFFFFF',
                         fontWeight: 800,
-                        fontSize: '14px',
+                        fontSize: '13px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1042,10 +1059,10 @@ export default function CalendarPage() {
                       </div>
                     ) : (
                       <div style={{
-                        fontSize: '15px',
+                        fontSize: '14px',
                         fontWeight: 700,
                         color: '#0F172A',
-                        height: '32px',
+                        height: '28px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
@@ -1058,8 +1075,8 @@ export default function CalendarPage() {
               })}
             </div>
 
-            {/* Time Grid Rows (8:00 AM to 7:00 PM) */}
-            <div style={{ minWidth: '850px' }}>
+            {/* Time Grid Rows (8:00 AM to 7:00 PM) - Flat compact layout without scroll */}
+            <div style={{ width: '100%' }}>
               {hoursList.map(h => {
                 const hourLabel = h === 12 ? '12:00 PM' : h > 12 ? `${h - 12}:00 PM` : `${h}:00 AM`;
 
@@ -1068,17 +1085,20 @@ export default function CalendarPage() {
                     key={h}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '85px repeat(7, 1fr)',
-                      height: '52px',
-                      borderBottom: '1px dashed #F1F5F9'
+                      gridTemplateColumns: '75px repeat(7, minmax(0, 1fr))',
+                      height: '38px',
+                      borderBottom: '1px dashed #F1F5F9',
+                      width: '100%'
                     }}
                   >
                     {/* Time Column */}
                     <div style={{
-                      fontSize: '11px',
+                      fontSize: '10.5px',
                       color: '#94A3B8',
                       fontWeight: 500,
-                      padding: '8px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      paddingLeft: '10px',
                       boxSizing: 'border-box'
                     }}>
                       {hourLabel}
@@ -1087,7 +1107,7 @@ export default function CalendarPage() {
                     {/* 7 Day Column Slots */}
                     {weekDates.map((wDate, colIdx) => {
                       const cellDateStr = formatDateKey(wDate);
-                      const dayEvents = filteredEvents.filter(e => e.date === cellDateStr && Math.floor(e.startHour) === h);
+                      const dayEvents = allEvents.filter(e => e.date === cellDateStr && Math.floor(e.startHour) === h);
 
                       return (
                         <div
@@ -1096,7 +1116,10 @@ export default function CalendarPage() {
                             borderLeft: '1px solid #F8FAFC',
                             position: 'relative',
                             padding: '2px 4px',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            display: 'flex',
+                            alignItems: 'center',
+                            overflow: 'hidden'
                           }}
                         >
                           {dayEvents.map(evt => (
@@ -1105,39 +1128,42 @@ export default function CalendarPage() {
                               onClick={() => handleEventClick(evt)}
                               style={{
                                 background: evt.color,
-                                borderLeft: `3.5px solid ${evt.borderColor}`,
-                                borderRadius: '6px',
-                                padding: '4px 8px',
+                                borderLeft: `3px solid ${evt.borderColor}`,
+                                borderRadius: '5px',
+                                padding: '2px 6px',
                                 color: evt.textColor,
                                 cursor: 'pointer',
-                                height: 'calc(100% - 4px)',
+                                width: '100%',
+                                height: '32px',
                                 boxSizing: 'border-box',
                                 overflow: 'hidden',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 justifyContent: 'center',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
                                 transition: 'transform 0.15s ease'
                               }}
                               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
                               onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
                             >
                               <div style={{
-                                fontSize: '10.5px',
+                                fontSize: '9.5px',
                                 fontWeight: 700,
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '4px'
+                                gap: '3px',
+                                lineHeight: 1.1
                               }}>
                                 {renderEventIcon(evt.iconType)} {evt.startTime}
                               </div>
                               <div style={{
-                                fontSize: '11.5px',
+                                fontSize: '10.5px',
                                 fontWeight: 700,
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
-                                marginTop: '1px'
+                                marginTop: '1px',
+                                lineHeight: 1.1
                               }}>
                                 {evt.title}
                               </div>
@@ -1173,7 +1199,7 @@ export default function CalendarPage() {
                 color: '#0F172A',
                 margin: 0
               }}>
-                {selectedDateStr === todayStr ? "Today's Agenda" : "Selected Day's Agenda"}
+                {selectedDateStr === '2026-10-24' || selectedDateStr === formatDateKey(new Date()) ? "Today's Agenda" : "Selected Day's Agenda"}
               </h3>
 
               <div style={{
@@ -1203,7 +1229,6 @@ export default function CalendarPage() {
                   const [hourPart, ampmPart] = evt.startTime.split(' ');
                   const isTask = evt.tag === 'Task';
                   const isMeeting = evt.tag === 'Meeting';
-                  const isDesign = evt.tag === 'Design';
 
                   const badgeBg = isTask ? '#ECFDF5' : isMeeting ? '#EEF2FF' : '#FEF2F2';
                   const badgeColor = isTask ? '#10B981' : isMeeting ? '#5551FF' : '#EF4444';
@@ -1589,7 +1614,7 @@ export default function CalendarPage() {
                 background: selectedEvent.color || '#EEF2FF',
                 color: selectedEvent.textColor || '#5551FF'
               }}>
-                {selectedEvent.tag || 'EVENT'}
+                {selectedEvent.tag || selectedEvent.category || 'EVENT'}
               </span>
               <button
                 type="button"
@@ -1641,7 +1666,9 @@ export default function CalendarPage() {
       {selectedTask && (
         <TaskDetailsModal
           task={selectedTask}
+          currentUser={user}
           onClose={() => setSelectedTask(null)}
+          onTaskUpdated={loadData}
           onUpdate={loadData}
         />
       )}
