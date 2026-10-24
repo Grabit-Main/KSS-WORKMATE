@@ -54,14 +54,15 @@ export default function CollaborationPage() {
 
   // Active Selections
   const [activeChatTarget, setActiveChatTarget] = useState({
-    type: 'team',
-    id: 'general',
-    name: 'General Announcements',
-    subtitle: 'Team-wide updates and important information',
-    iconType: 'megaphone'
+    type: 'dm',
+    id: 'initial',
+    name: 'Direct Messages',
+    subtitle: 'Direct team conversations',
+    iconType: 'avatar'
   });
-  const [conversationFilter, setConversationFilter] = useState('all'); // 'all' | 'teams' | 'unread'
+  const [conversationFilter, setConversationFilter] = useState('all'); // 'all' | 'teams' | 'unread' | 'announcements'
   const [conversationSearch, setConversationSearch] = useState('');
+  const [selectedAnnouncementId, setSelectedAnnouncementId] = useState('company_announcements');
 
   // Announcements State
   const [announcements, setAnnouncements] = useState(() => {
@@ -401,11 +402,22 @@ export default function CollaborationPage() {
 
       {/* MAIN COLLABORATION SPLIT VIEW */}
       {(() => {
-        // 1. Standard channels with dynamic members, notifications, and actual chat previews
-        const standardChannels = [
+        // 1. Announcements (Notice board, General Announcements channel, and published notices)
+        const announcementChannels = [
+          {
+            id: 'company_announcements',
+            type: 'announcement',
+            name: 'Company Announcements & Notices',
+            subtitle: `${announcements.length} official ${announcements.length === 1 ? 'notice' : 'notices'} · Management updates`,
+            iconType: 'megaphone',
+            memberCount: `${teamUsers.length || 1} members`,
+            lastMessage: announcements.length > 0 ? `${announcements[0].title}: ${announcements[0].content}` : 'Official company notices and updates',
+            time: announcements.length > 0 ? (announcements[0].date || formatConversationTime(announcements[0].createdAt)) : '',
+            unreadCount: announcements.filter(a => !a.acknowledgedBy?.includes(user?.id)).length
+          },
           {
             id: 'general',
-            type: 'team',
+            type: 'announcement',
             name: 'General Announcements',
             subtitle: 'Team-wide updates and important information',
             iconType: 'megaphone',
@@ -414,12 +426,33 @@ export default function CollaborationPage() {
             time: channelMeta['general']?.time || '',
             unreadCount: unreadCountsMap['general'] ?? unreadCountsMap['General Announcements'] ?? 0
           },
+          ...announcements.map(a => {
+            const isAck = a.acknowledgedBy?.includes(user?.id);
+            return {
+              id: `notice_${a.id}`,
+              noticeId: a.id,
+              type: 'announcement',
+              name: a.title || 'Official Announcement',
+              subtitle: `By ${a.author || 'Management'}${a.authorRole ? ` (${a.authorRole})` : ''}`,
+              iconType: 'megaphone',
+              memberCount: `${a.acknowledgedBy?.length || 0} acknowledged`,
+              lastMessage: a.content || 'Company notice',
+              time: a.date || formatConversationTime(a.createdAt),
+              unreadCount: isAck ? 0 : 1,
+              isNotice: true,
+              rawNotice: a
+            };
+          })
+        ];
+
+        // 2. Team Channels (Strictly teams: Engineering, Sprint, and DB teams)
+        const teamChannels = [
           {
             id: 'engineering',
             type: 'team',
             name: 'Engineering & Tech',
             subtitle: 'Engineering discussions, architecture & releases',
-            iconType: 'megaphone',
+            iconType: 'users',
             memberCount: `${teamUsers.filter(u => ['TL', 'TM', 'CTO', 'DEV'].includes(u.role) || u.department?.toLowerCase().includes('eng')).length || teamUsers.length || 1} members`,
             lastMessage: channelMeta['engineering']?.lastMessage || 'Engineering discussions and releases',
             time: channelMeta['engineering']?.time || '',
@@ -435,26 +468,24 @@ export default function CollaborationPage() {
             lastMessage: channelMeta['sprint']?.lastMessage || 'Daily blockers, sprint goals & standup notes',
             time: channelMeta['sprint']?.time || '',
             unreadCount: unreadCountsMap['sprint'] ?? unreadCountsMap['Sprint & Daily Standups'] ?? 0
-          }
+          },
+          ...teamsList.map(t => {
+            const memberLen = t.memberships?.length || 0;
+            return {
+              id: t.id,
+              type: 'team',
+              name: t.name,
+              subtitle: t.description || `${t.name} discussions and collaboration`,
+              iconType: 'users',
+              memberCount: `${memberLen} ${memberLen === 1 ? 'member' : 'members'}`,
+              lastMessage: channelMeta[t.id]?.lastMessage || (t.description ? t.description : `Team channel for ${t.name}`),
+              time: channelMeta[t.id]?.time || '',
+              unreadCount: unreadCountsMap[String(t.id)] ?? unreadCountsMap[t.name] ?? 0
+            };
+          })
         ];
 
-        // 2. Real database teams from backend /api/teams
-        const dbTeamChannels = teamsList.map(t => {
-          const memberLen = t.memberships?.length || 0;
-          return {
-            id: t.id,
-            type: 'team',
-            name: t.name,
-            subtitle: t.description || `${t.name} discussions and collaboration`,
-            iconType: 'users',
-            memberCount: `${memberLen} ${memberLen === 1 ? 'member' : 'members'}`,
-            lastMessage: channelMeta[t.id]?.lastMessage || (t.description ? t.description : `Team channel for ${t.name}`),
-            time: channelMeta[t.id]?.time || '',
-            unreadCount: unreadCountsMap[String(t.id)] ?? unreadCountsMap[t.name] ?? 0
-          };
-        });
-
-        // 3. Real direct messages for all team users from /api/users (excluding current user)
+        // 3. Direct Messages (Team Members)
         const directMessages = teamUsers
           .filter(u => String(u.id) !== String(user?.id))
           .map(u => {
@@ -479,14 +510,14 @@ export default function CollaborationPage() {
             };
           });
 
-        const conversationList = [...standardChannels, ...dbTeamChannels, ...directMessages];
+        const conversationList = [...announcementChannels, ...teamChannels, ...directMessages];
 
         // Filter based on active tab and search query
         const filteredList = conversationList.filter(item => {
           if (conversationFilter === 'all' && item.type !== 'dm') return false;
           if (conversationFilter === 'teams' && item.type !== 'team') return false;
+          if (conversationFilter === 'announcements' && item.type !== 'announcement') return false;
           if (conversationFilter === 'unread' && (!item.unreadCount || item.unreadCount <= 0)) return false;
-          if (conversationFilter === 'announcements' && item.type !== 'team') return false;
 
           if (conversationSearch.trim()) {
             const query = conversationSearch.toLowerCase().trim();
@@ -607,7 +638,7 @@ export default function CollaborationPage() {
                       type="button"
                       onClick={() => {
                         setConversationFilter(tab.key);
-                        if (tab.key === 'all' && activeChatTarget.type === 'team') {
+                        if (tab.key === 'all' && activeChatTarget.type !== 'dm') {
                           const firstDm = directMessages[0];
                           if (firstDm) {
                             setActiveChatTarget({
@@ -622,8 +653,8 @@ export default function CollaborationPage() {
                               user: firstDm.realUser
                             });
                           }
-                        } else if (tab.key === 'teams' && activeChatTarget.type === 'dm') {
-                          const firstTeam = standardChannels[0] || dbTeamChannels[0];
+                        } else if (tab.key === 'teams' && activeChatTarget.type !== 'team') {
+                          const firstTeam = teamChannels[0];
                           if (firstTeam) {
                             setActiveChatTarget({
                               type: 'team',
@@ -634,6 +665,8 @@ export default function CollaborationPage() {
                               iconType: firstTeam.iconType
                             });
                           }
+                        } else if (tab.key === 'announcements') {
+                          setSelectedAnnouncementId('company_announcements');
                         }
                       }}
                       style={{
@@ -686,21 +719,34 @@ export default function CollaborationPage() {
                   <div style={{ padding: '40px 16px', textAlign: 'center', color: '#94A3B8', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <MessageSquare size={32} style={{ marginBottom: '10px', opacity: 0.4 }} />
                     <p style={{ fontSize: '13.5px', fontWeight: 600, color: '#475569', margin: '0 0 4px 0' }}>
-                      {conversationFilter === 'unread' ? 'No unread conversations' : conversationSearch ? 'No matching conversations' : 'No conversations found'}
+                      {conversationFilter === 'unread' ? 'No unread conversations' :
+                       conversationFilter === 'announcements' ? 'No announcements found' :
+                       conversationFilter === 'teams' ? 'No teams found' :
+                       conversationSearch ? 'No matching conversations' : 'No conversations found'}
                     </p>
                     <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>
-                      {conversationFilter === 'unread' ? 'You are all caught up!' : conversationSearch ? 'Try a different search keyword' : 'Start a direct chat with your team'}
+                      {conversationFilter === 'unread' ? 'You are all caught up!' :
+                       conversationFilter === 'announcements' ? 'Official notices and company updates will appear here' :
+                       conversationFilter === 'teams' ? 'Team channels will appear here' :
+                       conversationSearch ? 'Try a different search keyword' : 'Start a direct chat with your team'}
                     </p>
                   </div>
                 ) : (
                   filteredList.map(item => {
-                    const isSelected = conversationFilter !== 'announcements' && (activeChatTarget.id === item.id || (activeChatTarget.realUserId && activeChatTarget.realUserId === item.realUserId));
+                    const isSelected = conversationFilter === 'announcements'
+                      ? (selectedAnnouncementId === item.id)
+                      : (activeChatTarget.id === item.id || (activeChatTarget.realUserId && activeChatTarget.realUserId === item.realUserId));
                     return (
                       <div
                         key={item.id}
                         onClick={() => {
                           if (conversationFilter === 'announcements') {
-                            setConversationFilter('all');
+                            setSelectedAnnouncementId(item.id);
+                            if (item.noticeId) {
+                              const el = document.getElementById(`announcement_card_${item.noticeId}`);
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                            return;
                           }
                           setActiveChatTarget({
                             type: item.type,
@@ -940,16 +986,19 @@ export default function CollaborationPage() {
                     ) : (
                       announcements.map(a => {
                         const isAck = a.acknowledgedBy?.includes(user?.id);
+                        const isCardSelected = selectedAnnouncementId === `notice_${a.id}`;
                         return (
                           <div
                             key={a.id}
+                            id={`announcement_card_${a.id}`}
                             style={{
                               padding: '20px 24px',
                               borderRadius: '14px',
-                              border: '1px solid #E2E8F0',
+                              border: isCardSelected ? '1.5px solid #5551FF' : '1px solid #E2E8F0',
                               borderLeft: '4px solid #5551FF',
                               background: '#FFFFFF',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                              boxShadow: isCardSelected ? '0 4px 14px rgba(85, 81, 255, 0.12)' : '0 1px 3px rgba(0,0,0,0.02)',
+                              transition: 'all 0.2s ease'
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -1021,7 +1070,7 @@ export default function CollaborationPage() {
                     currentUser={user}
                     unreadCount={currentTargetMeta?.unreadCount || unreadCountsMap[String(activeChatTarget.realUserId || activeChatTarget.id)] || 0}
                     allTeamUsers={teamUsers}
-                    allChannels={[...standardChannels, ...dbTeamChannels]}
+                    allChannels={[...announcementChannels, ...teamChannels]}
                     layoutVariant="collaboration_hub"
                     headerExtra={renderFullscreenButton()}
                     onMarkAsRead={() => markConversationAsRead(activeChatTarget)}
