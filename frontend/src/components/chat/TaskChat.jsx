@@ -20,7 +20,7 @@ import {
   Send, Paperclip, X, Loader2, ShieldCheck, CheckCheck,
   Lock, Hash, Folder, MessageSquare, Megaphone, Users,
   MoreVertical, Smile, AlertCircle, Reply, Copy, Check,
-  CornerUpRight, Trash2, AtSign
+  CornerUpRight, Trash2
 } from 'lucide-react';
 import { parseUTC } from '../../utils/dateUtils';
 
@@ -86,7 +86,6 @@ export const TaskChat = ({
   const [forwardingMsg, setForwardingMsg] = useState(null);
   const [forwardSearch, setForwardSearch] = useState('');
   const [forwardSuccess, setForwardSuccess] = useState(null);
-  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
   const [typingUsers, setTypingUsers] = useState({});
   const [hasUnread, setHasUnread] = useState(Boolean(unreadCount && unreadCount > 0));
   const [initialUnreadId, setInitialUnreadId] = useState(null);
@@ -810,7 +809,7 @@ export const TaskChat = ({
           <div style={{
             padding: '16px 24px',
             background: '#FFFFFF',
-            borderBottom: '1px solid #F1F5F9',
+            borderBottom: '1px solid #F8FAFC',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -818,32 +817,45 @@ export const TaskChat = ({
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               {mode === 'direct' ? (
-                effectivePartnerUser?.avatar_url ? (
-                  <img
-                    src={effectivePartnerUser.avatar_url}
-                    alt=""
-                    style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <div style={{
-                    width: '44px',
-                    height: '44px',
+                <div style={{ position: 'relative', width: '42px', height: '42px', flexShrink: 0 }}>
+                  {effectivePartnerUser?.avatar_url ? (
+                    <img
+                      src={effectivePartnerUser.avatar_url}
+                      alt=""
+                      style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      background: '#6366F1',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      fontWeight: 700
+                    }}>
+                      {effectivePartnerUser?.first_name?.[0] || 'U'}{effectivePartnerUser?.last_name?.[0] || ''}
+                    </div>
+                  )}
+                  {/* Green online badge indicator */}
+                  <span style={{
+                    position: 'absolute',
+                    bottom: '1px',
+                    right: '1px',
+                    width: '9px',
+                    height: '9px',
                     borderRadius: '50%',
-                    background: '#6366F1',
-                    color: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '14px',
-                    fontWeight: 700
-                  }}>
-                    {effectivePartnerUser?.first_name?.[0] || 'U'}{effectivePartnerUser?.last_name?.[0] || ''}
-                  </div>
-                )
+                    background: '#10B981',
+                    border: '2px solid #FFFFFF'
+                  }} />
+                </div>
               ) : (
                 <div style={{
-                  width: '44px',
-                  height: '44px',
+                  width: '42px',
+                  height: '42px',
                   borderRadius: '12px',
                   background: '#EEF2FF',
                   color: '#5551FF',
@@ -856,33 +868,37 @@ export const TaskChat = ({
                 </div>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' }}>
                     {mode === 'direct' ? getUserName(effectivePartnerUser) : (channelName || 'General Announcements')}
                   </span>
                   <span style={{
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    padding: '2px 8px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '2px 7px',
                     borderRadius: '6px',
                     background: '#EEF2FF',
                     color: '#5551FF',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em'
+                    letterSpacing: '0.02em'
                   }}>
-                    {mode === 'direct' ? (effectivePartnerUser?.role || 'MEMBER') : 'TEAM CHANNEL'}
+                    {mode === 'direct' ? (effectivePartnerUser?.role || 'TL') : 'CHANNEL'}
                   </span>
                 </div>
-                <span style={{ fontSize: '12.5px', color: '#64748B' }}>
-                  {mode === 'direct'
-                    ? (effectivePartnerUser?.job_title || 'Direct Conversation')
-                    : (channelSubtitle || 'Team-wide updates and important information')}
-                </span>
+                {mode === 'direct' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                    <span style={{ fontSize: '12px', color: '#10B981', fontWeight: 500 }}>Online</span>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: '12px', color: '#64748B' }}>
+                    {channelSubtitle || 'Team-wide updates and important information'}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {mode === 'channel' && Boolean(channelMemberCount) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748B', fontSize: '13px', fontWeight: 500 }}>
                   <Users size={16} color="#64748B" />
@@ -899,18 +915,20 @@ export const TaskChat = ({
                   type="button"
                   onClick={() => setShowMenuDropdown(!showMenuDropdown)}
                   style={{
-                    width: '34px',
-                    height: '34px',
-                    borderRadius: '8px',
-                    border: '1px solid #E2E8F0',
-                    background: '#FFFFFF',
-                    color: '#64748B',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#94A3B8',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease'
+                    transition: 'color 0.15s ease'
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#1E293B'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
                   title="Conversation options"
                 >
                   <MoreVertical size={18} />
@@ -919,7 +937,7 @@ export const TaskChat = ({
                   <div style={{
                     position: 'absolute',
                     right: 0,
-                    top: '40px',
+                    top: '38px',
                     background: '#FFFFFF',
                     borderRadius: '10px',
                     boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
@@ -1036,18 +1054,14 @@ export const TaskChat = ({
             groupedMessages.map((group, gIdx) => (
               <React.Fragment key={group.dateKey || gIdx}>
                 {/* Dynamic Date Separator based on actual message timestamps */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', margin: '8px 0 20px 0' }}>
-                  <div style={{ position: 'absolute', left: 0, right: 0, height: '1px', background: '#F1F5F9' }} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px 0 24px 0' }}>
                   <span style={{
-                    position: 'relative',
-                    background: '#FFFFFF',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: '12px',
-                    padding: '3px 14px',
-                    fontSize: '11.5px',
-                    fontWeight: 600,
-                    color: '#64748B',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                    background: '#F1F5F9',
+                    borderRadius: '9999px',
+                    padding: '4px 16px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: '#64748B'
                   }}>
                     {group.dateKey}
                   </span>
@@ -1276,29 +1290,31 @@ export const TaskChat = ({
                           </div>
                         )}
 
-                        {/* Left/Right Avatar */}
-                        {senderAvatar ? (
-                          <img
-                            src={senderAvatar}
-                            alt=""
-                            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                          />
-                        ) : (
-                          <div style={{
-                            width: '38px',
-                            height: '38px',
-                            borderRadius: '50%',
-                            background: isMe ? '#4F46E5' : '#6366F1',
-                            color: '#FFFFFF',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '12.5px',
-                            fontWeight: 700,
-                            flexShrink: 0
-                          }}>
-                            {initials}
-                          </div>
+                        {/* Left Avatar (Only for incoming messages) */}
+                        {!isMe && (
+                          senderAvatar ? (
+                            <img
+                              src={senderAvatar}
+                              alt=""
+                              style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '50%',
+                              background: '#6366F1',
+                              color: '#FFFFFF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '12.5px',
+                              fontWeight: 700,
+                              flexShrink: 0
+                            }}>
+                              {initials}
+                            </div>
+                          )
                         )}
 
                         {/* Message Body */}
@@ -1306,56 +1322,51 @@ export const TaskChat = ({
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: isMe ? 'flex-end' : 'flex-start',
-                          maxWidth: '78%'
+                          maxWidth: '75%'
                         }}>
-                          {/* Header: Sender Name + Timestamp */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            marginBottom: '6px'
-                          }}>
-                            {isMe ? (
-                              <>
-                                {m.is_read ? (
-                                  <CheckCheck size={14} color="#5551FF" style={{ marginRight: '2px' }} title="Read" />
-                                ) : (
-                                  <Check size={14} color="#94A3B8" style={{ marginRight: '2px' }} title="Sent" />
-                                )}
-                                <span style={{ fontSize: '11.5px', color: '#94A3B8', fontWeight: 400 }}>
-                                  {timeDisplay}
-                                </span>
-                                <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>
-                                  {senderName}
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>
-                                  {senderName}
-                                </span>
-                                <span style={{ fontSize: '11.5px', color: '#94A3B8', fontWeight: 400 }}>
-                                  {timeDisplay}
-                                </span>
-                              </>
-                            )}
-                          </div>
+                          {/* Sender Name (Only in team channels for other members) */}
+                          {mode === 'channel' && !isMe && (
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', marginBottom: '4px', marginLeft: '2px' }}>
+                              {senderName}
+                            </span>
+                          )}
 
-                          {/* Bubble: Purple/indigo for sent, light grey/lavender for received */}
+                          {/* Bubble */}
                           <div style={{
-                            background: isMe ? '#5551FF' : '#F1F5F9',
-                            border: isMe ? 'none' : '1px solid #E2E8F0',
-                            borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                            padding: '12px 18px',
-                            color: isMe ? '#FFFFFF' : '#1E293B',
+                            background: isMe ? '#EDE9FE' : '#F1F5F9',
+                            borderRadius: isMe ? '16px 16px 6px 16px' : '16px 16px 16px 6px',
+                            padding: '10px 16px',
+                            color: '#1E293B',
                             fontSize: '13.5px',
-                            lineHeight: '1.5',
+                            lineHeight: '1.45',
                             maxWidth: '100%',
                             wordBreak: 'break-word',
                             whiteSpace: 'pre-wrap',
-                            boxShadow: isMe ? '0 1px 3px rgba(85, 81, 255, 0.22)' : 'none'
+                            boxShadow: 'none'
                           }}>
-                            {renderMessageContent(m.message, isMe)}
+                            <span>{renderMessageContent(m.message, isMe)}</span>
+
+                            {/* Outgoing timestamp + read checkmarks inside the bubble */}
+                            {isMe && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                marginLeft: '12px',
+                                verticalAlign: 'bottom',
+                                fontSize: '11px',
+                                color: '#5551FF',
+                                fontWeight: 500,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                <span>{timeDisplay}</span>
+                                {m.is_read ? (
+                                  <CheckCheck size={14} color="#5551FF" title="Read" />
+                                ) : (
+                                  <CheckCheck size={14} color="#5551FF" title="Sent" />
+                                )}
+                              </span>
+                            )}
 
                             {m.attachment_url && (
                               <div style={{ marginTop: m.message ? '8px' : '0' }}>
@@ -1363,6 +1374,13 @@ export const TaskChat = ({
                               </div>
                             )}
                           </div>
+
+                          {/* Incoming message timestamp below bubble */}
+                          {!isMe && (
+                            <span style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px', marginLeft: '2px' }}>
+                              {timeDisplay}
+                            </span>
+                          )}
 
                           {/* Emoji Reactions below bubble with toggle support */}
                           {reactions.length > 0 && (
@@ -1483,136 +1501,75 @@ export const TaskChat = ({
         <form
           onSubmit={handleSend}
           style={{
-            padding: '14px 24px',
+            padding: '14px 20px',
             background: '#FFFFFF',
             borderTop: '1px solid #F1F5F9',
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
+            gap: '12px',
             flexShrink: 0,
             position: 'relative'
           }}
         >
-          {/* @mention Button */}
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setShowMentionDropdown(!showMentionDropdown)}
-              style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '50%',
-                background: showMentionDropdown ? '#EEF2FF' : 'transparent',
-                border: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: showMentionDropdown ? '#5551FF' : '#64748B',
-                transition: 'all 0.15s ease',
-                flexShrink: 0
-              }}
-              title="Mention a team member"
-            >
-              <AtSign size={18} />
-            </button>
+          {/* File Upload hidden input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            style={{ display: 'none' }}
+            onChange={handleFileSelect}
+          />
 
-            {/* Mention Dropdown */}
-            {showMentionDropdown && (
-              <div style={{
-                position: 'absolute',
-                bottom: '48px',
-                left: 0,
-                background: '#FFFFFF',
-                borderRadius: '12px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-                border: '1px solid #E2E8F0',
-                padding: '6px',
-                width: '240px',
-                maxHeight: '220px',
-                overflowY: 'auto',
-                zIndex: 100
-              }}>
-                <div style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>
-                  Mention a team member
-                </div>
-                {allTeamUsers.length === 0 ? (
-                  <div style={{ padding: '8px', fontSize: '12px', color: '#94A3B8' }}>No members available</div>
-                ) : (
-                  allTeamUsers.map(member => {
-                    const memberName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.email;
-                    return (
-                      <button
-                        key={member.id}
-                        type="button"
-                        onClick={() => {
-                          setNewMessage(prev => {
-                            const mentionTag = `@${member.first_name || memberName} `;
-                            return prev ? `${prev} ${mentionTag}` : mentionTag;
-                          });
-                          setShowMentionDropdown(false);
-                          textareaRef.current?.focus();
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          background: 'transparent',
-                          border: 'none',
-                          textAlign: 'left',
-                          fontSize: '12.5px',
-                          color: '#1E293B',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <div style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          background: '#EEF2FF',
-                          color: '#5551FF',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '11px',
-                          fontWeight: 700
-                        }}>
-                          {member.first_name?.[0] || 'U'}
-                        </div>
-                        <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {memberName}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            )}
-          </div>
+          {/* Standalone Paperclip Button on the left */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94A3B8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px',
+              borderRadius: '6px',
+              transition: 'color 0.15s ease',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#5551FF'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+            title="Attach a file"
+          >
+            <Paperclip size={20} />
+          </button>
 
-          {/* Textarea + Emoji Button */}
-          <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+          {/* Rounded Input Box containing Text Input + Smile Emoji Button */}
+          <div style={{
+            flex: 1,
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: '12px',
+            padding: '4px 12px 4px 16px',
+            transition: 'border-color 0.15s ease'
+          }}>
             <textarea
               ref={textareaRef}
               rows={1}
-              placeholder={getPlaceholder()}
+              placeholder="Type a message..."
               value={newMessage}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
               style={{
                 width: '100%',
-                borderRadius: '24px',
-                border: '1px solid #E2E8F0',
-                padding: '10px 44px 10px 18px',
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                padding: '8px 8px 8px 0',
                 fontSize: '13.5px',
                 color: '#1E293B',
-                outline: 'none',
-                background: '#FFFFFF',
                 resize: 'none',
                 fontFamily: 'inherit',
                 lineHeight: '1.4',
@@ -1620,12 +1577,11 @@ export const TaskChat = ({
               }}
               disabled={sending}
             />
+
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               style={{
-                position: 'absolute',
-                right: '12px',
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
@@ -1633,11 +1589,12 @@ export const TaskChat = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '4px'
+                padding: '4px',
+                flexShrink: 0
               }}
               title="Insert emoji"
             >
-              <Smile size={19} />
+              <Smile size={20} />
             </button>
           </div>
 
@@ -1646,7 +1603,7 @@ export const TaskChat = ({
             <div style={{
               position: 'absolute',
               bottom: '68px',
-              right: '76px',
+              right: '68px',
               background: '#FFFFFF',
               borderRadius: '16px',
               boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
@@ -1682,14 +1639,14 @@ export const TaskChat = ({
             </div>
           )}
 
-          {/* Send Button */}
+          {/* Solid Purple Send Button */}
           <button
             type="submit"
             disabled={!newMessage.trim() || sending}
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '12px',
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
               background: '#5551FF',
               opacity: !newMessage.trim() || sending ? 0.7 : 1,
               border: 'none',
@@ -1699,7 +1656,7 @@ export const TaskChat = ({
               color: '#FFFFFF',
               cursor: !newMessage.trim() || sending ? 'not-allowed' : 'pointer',
               flexShrink: 0,
-              boxShadow: '0 2px 6px rgba(85, 81, 255, 0.28)',
+              boxShadow: '0 2px 8px rgba(85, 81, 255, 0.28)',
               transition: 'all 0.15s ease'
             }}
             title="Send message (Enter)"
@@ -1707,7 +1664,7 @@ export const TaskChat = ({
             {sending ? (
               <Loader2 size={16} className="spinner" />
             ) : (
-              <Send size={16} style={{ transform: 'translateX(1px)' }} />
+              <Send size={18} style={{ transform: 'translateX(1px)' }} />
             )}
           </button>
         </form>

@@ -7,7 +7,7 @@ import { getNotifications } from '../api/notifications';
 import { getTeams } from '../api/teams';
 import { getChannelChat, getUnreadCounts, markChatRead } from '../api/chat';
 import {
-  MessageSquare, Users, AtSign,
+  MessageSquare, Users,
   CheckCircle2, Megaphone,
   AlertCircle, X,
   Maximize2, Minimize2, Search, Loader2
@@ -40,9 +40,7 @@ export default function CollaborationPage() {
   const isExecutive = ['CEO', 'CTO'].includes(role);
   const isTL = role === 'TL';
 
-  // Navigation & View Tabs: 'chats', 'mentions', 'announcements'
-  const [activeTab, setActiveTab] = useState('chats');
-  const [showDocHub, setShowDocHub] = useState(false);
+  const [showDocHub] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Real Data Lists
@@ -89,7 +87,30 @@ export default function CollaborationPage() {
         getUnreadCounts().catch(() => ({ counts: {} }))
       ]);
 
-      if (Array.isArray(resUsers.data)) setTeamUsers(resUsers.data);
+      if (Array.isArray(resUsers.data)) {
+        setTeamUsers(resUsers.data);
+        const colleagues = resUsers.data.filter(u => String(u.id) !== String(user?.id));
+        const rahul = colleagues.find(u => `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase().includes('rahul'));
+        const defaultPartner = rahul || colleagues[0];
+        const searchParams = new URLSearchParams(window.location.search);
+        if (defaultPartner && !searchParams.get('userId')) {
+          setActiveChatTarget(prev => {
+            if (prev?.id === 'general') {
+              return {
+                id: defaultPartner.id,
+                realUserId: defaultPartner.id,
+                type: 'dm',
+                name: `${defaultPartner.first_name || ''} ${defaultPartner.last_name || ''}`.trim() || defaultPartner.email,
+                subtitle: `${defaultPartner.role || 'Member'}${defaultPartner.department ? ` · ${defaultPartner.department}` : ''}`,
+                iconType: 'avatar',
+                avatarUrl: defaultPartner.avatar_url,
+                user: defaultPartner
+              };
+            }
+            return prev;
+          });
+        }
+      }
       if (Array.isArray(resNotifs)) {
         setNotifications(resNotifs);
       }
@@ -163,7 +184,7 @@ export default function CollaborationPage() {
       mainEl.scrollTop = 0;
     }
     window.scrollTo(0, 0);
-  }, [location.pathname, activeTab]);
+  }, [location.pathname, conversationFilter]);
 
   useEffect(() => {
     loadInitialData();
@@ -175,7 +196,7 @@ export default function CollaborationPage() {
     if (targetUserId && teamUsers.length > 0) {
       const u = teamUsers.find(user => String(user.id) === String(targetUserId));
       if (u) {
-        setActiveTab('chats');
+        setConversationFilter('all');
         setActiveChatTarget({
           id: u.id,
           realUserId: u.id,
@@ -339,22 +360,22 @@ export default function CollaborationPage() {
       type="button"
       onClick={() => setIsFullScreen(!isFullScreen)}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '7px 14px',
-        borderRadius: '10px',
-        border: '1px solid var(--border)',
-        background: 'var(--surface-hover)',
-        color: 'var(--brand-600)',
-        fontSize: '12.5px',
-        fontWeight: 600,
+        background: 'transparent',
+        border: 'none',
+        color: '#94A3B8',
         cursor: 'pointer',
-        transition: 'all 0.15s ease'
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '4px',
+        borderRadius: '6px',
+        transition: 'color 0.15s ease'
       }}
+      onMouseEnter={(e) => e.currentTarget.style.color = '#1E293B'}
+      onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+      title={isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}
     >
-      {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-      <span>{isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+      {isFullScreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
     </button>
   );
 
@@ -380,43 +401,8 @@ export default function CollaborationPage() {
     }}>
 
 
-      {/* INTERNAL TAB NAVIGATION BAR */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '16px', gap: '12px', flexShrink: 0 }}>
-        {[
-          { key: 'chats', label: 'Chats', icon: MessageSquare },
-          { key: 'announcements', label: 'Announcements', icon: Megaphone }
-        ].map(t => {
-          const Icon = t.icon;
-          const isActive = activeTab === t.key;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              style={{
-                padding: '10px 16px',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: isActive ? '3px solid var(--brand-600)' : '3px solid transparent',
-                color: isActive ? 'var(--brand-600)' : 'var(--text-secondary)',
-                fontWeight: isActive ? 700 : 500,
-                fontSize: '14px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <Icon size={16} /> {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* TAB CONTENT AREAS */}
-
-      {/* TAB 1: CHATS (DIRECT & TEAM CHANNELS) */}
-      {activeTab === 'chats' && (() => {
+      {/* MAIN COLLABORATION SPLIT VIEW */}
+      {(() => {
         // 1. Standard channels with dynamic members, notifications, and actual chat previews
         const standardChannels = [
           {
@@ -522,33 +508,32 @@ export default function CollaborationPage() {
             width: '100vw',
             height: '100vh',
             zIndex: 9999,
-            background: '#FFFFFF',
-            borderRadius: 0,
-            border: 'none',
+            background: '#F8FAFC',
+            padding: '16px',
             display: 'flex',
+            gap: '20px',
             overflow: 'hidden'
           } : {
             flex: 1,
             display: 'flex',
-            border: '1px solid #E2E8F0',
-            borderRadius: '16px',
-            background: '#FFFFFF',
+            gap: '20px',
             overflow: 'hidden',
             height: '100%',
-            minHeight: 0,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+            minHeight: 0
           }}>
-            {/* Conversations Left Panel */}
+            {/* Conversations Left Card */}
             <div style={{
               width: '350px',
               flexShrink: 0,
-              borderRight: '1px solid #F1F5F9',
               display: 'flex',
               flexDirection: 'column',
               background: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1px solid #E2E8F0',
               height: '100%',
               minHeight: 0,
-              overflow: 'hidden'
+              overflow: 'hidden',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
             }}>
               {/* Header */}
               <div style={{ padding: '18px 20px 12px 20px', flexShrink: 0 }}>
@@ -594,11 +579,12 @@ export default function CollaborationPage() {
               </div>
 
               {/* Filter Tabs */}
-              <div style={{ padding: '0 18px 14px 18px', display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <div style={{ padding: '0 18px 14px 18px', display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
                 {[
                   { key: 'all', label: 'All' },
-                  { key: 'teams', label: 'Teams' },
-                  { key: 'unread', label: 'Unread' }
+                  { key: 'unread', label: 'Unread' },
+                  { key: 'announcements', label: 'Announcements' },
+                  { key: 'teams', label: 'Teams' }
                 ].map(tab => {
                   const isActive = conversationFilter === tab.key;
                   return (
@@ -607,11 +593,11 @@ export default function CollaborationPage() {
                       type="button"
                       onClick={() => setConversationFilter(tab.key)}
                       style={{
-                        padding: '6px 16px',
+                        padding: '6px 14px',
                         borderRadius: '20px',
                         border: 'none',
                         background: isActive ? '#5551FF' : '#F1F5F9',
-                        color: isActive ? '#FFFFFF' : '#475569',
+                        color: isActive ? '#FFFFFF' : '#64748B',
                         fontSize: '12.5px',
                         fontWeight: isActive ? 600 : 500,
                         cursor: 'pointer',
@@ -629,10 +615,9 @@ export default function CollaborationPage() {
                 flex: 1,
                 minHeight: 0,
                 overflowY: 'auto',
-                padding: '0 10px 16px 10px',
+                padding: '0 0 16px 0',
                 display: 'flex',
-                flexDirection: 'column',
-                gap: '3px'
+                flexDirection: 'column'
               }}>
                 {loadingData ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#94A3B8', gap: '8px', fontSize: '13px', padding: '40px 0' }}>
@@ -663,11 +648,14 @@ export default function CollaborationPage() {
                   </div>
                 ) : (
                   filteredList.map(item => {
-                    const isSelected = activeChatTarget.id === item.id || (activeChatTarget.realUserId && activeChatTarget.realUserId === item.realUserId);
+                    const isSelected = conversationFilter !== 'announcements' && (activeChatTarget.id === item.id || (activeChatTarget.realUserId && activeChatTarget.realUserId === item.realUserId));
                     return (
                       <div
                         key={item.id}
                         onClick={() => {
+                          if (conversationFilter === 'announcements') {
+                            setConversationFilter('all');
+                          }
                           setActiveChatTarget({
                             type: item.type,
                             id: item.id,
@@ -681,17 +669,14 @@ export default function CollaborationPage() {
                           markConversationAsRead(item);
                         }}
                         style={{
+                          position: 'relative',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '12px',
-                          padding: '11px 12px',
-                          borderRadius: '12px',
+                          padding: '12px 18px',
                           cursor: 'pointer',
-                          background: isSelected ? '#F8F7FF' : 'transparent',
-                          border: isSelected ? '1px solid #E0E7FF' : '1px solid transparent',
-                          borderLeft: isSelected ? '3.5px solid #5551FF' : '3.5px solid transparent',
-                          boxShadow: isSelected ? '0 1px 3px rgba(85, 81, 255, 0.08)' : 'none',
-                          transition: 'all 0.15s ease'
+                          background: isSelected ? '#FFFFFF' : 'transparent',
+                          transition: 'background 0.15s ease'
                         }}
                         onMouseEnter={(e) => {
                           if (!isSelected) e.currentTarget.style.background = '#F8FAFC';
@@ -700,6 +685,19 @@ export default function CollaborationPage() {
                           if (!isSelected) e.currentTarget.style.background = 'transparent';
                         }}
                       >
+                        {/* Blue indicator bar on left edge when selected */}
+                        {isSelected && (
+                          <div style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: '6px',
+                            bottom: '6px',
+                            width: '3.5px',
+                            background: '#5551FF',
+                            borderRadius: '0 4px 4px 0'
+                          }} />
+                        )}
+
                         {/* Left Icon / Avatar */}
                         {item.type === 'team' ? (
                           <div style={{
@@ -758,7 +756,13 @@ export default function CollaborationPage() {
                             }}>
                               {item.name}
                             </span>
-                            <span style={{ fontSize: '11.5px', color: '#94A3B8', fontWeight: 500, flexShrink: 0, marginLeft: '6px' }}>
+                            <span style={{
+                              fontSize: '11.5px',
+                              color: item.unreadCount > 0 ? '#5551FF' : '#94A3B8',
+                              fontWeight: item.unreadCount > 0 ? 600 : 400,
+                              flexShrink: 0,
+                              marginLeft: '6px'
+                            }}>
                               {item.time}
                             </span>
                           </div>
@@ -775,9 +779,9 @@ export default function CollaborationPage() {
                             </span>
                             {item.unreadCount > 0 && (
                               <span style={{
-                                minWidth: '18px',
+                                width: '18px',
                                 height: '18px',
-                                borderRadius: '9px',
+                                borderRadius: '50%',
                                 background: '#5551FF',
                                 color: '#FFFFFF',
                                 fontSize: '11px',
@@ -785,7 +789,6 @@ export default function CollaborationPage() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                padding: '0 5px',
                                 marginLeft: '6px',
                                 flexShrink: 0
                               }}>
@@ -801,9 +804,162 @@ export default function CollaborationPage() {
               </div>
             </div>
 
-            {/* Right Panel — Chat Window */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, minHeight: 0, background: '#FFFFFF', overflow: 'hidden' }}>
-              {(() => {
+            {/* Right Card — Chat Window or Announcements */}
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%',
+              minWidth: 0,
+              minHeight: 0,
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1px solid #E2E8F0',
+              overflow: 'hidden',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            }}>
+              {conversationFilter === 'announcements' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, minHeight: 0, background: '#FFFFFF', overflow: 'hidden' }}>
+                  {/* Announcements Header */}
+                  <div style={{
+                    padding: '16px 24px',
+                    borderBottom: '1px solid #F1F5F9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexShrink: 0
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: '#EEF2FF',
+                        color: '#5551FF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <Megaphone size={20} />
+                      </div>
+                      <div>
+                        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                          Company Announcements & Notices
+                        </h2>
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>
+                          Official management notices and company updates
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {(isExecutive || isTL) && (
+                        <button
+                          type="button"
+                          onClick={() => setShowNewAnnouncementModal(true)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 16px',
+                            borderRadius: '10px',
+                            background: '#5551FF',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Megaphone size={15} /> Publish Announcement
+                        </button>
+                      )}
+                      {renderFullscreenButton()}
+                    </div>
+                  </div>
+
+                  {/* Announcements Feed */}
+                  <div style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: '24px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '16px'
+                  }}>
+                    {announcements.length === 0 ? (
+                      <div style={{ padding: '48px 24px', textAlign: 'center', color: '#94A3B8', background: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+                        <Megaphone size={36} style={{ margin: '0 auto 12px auto', opacity: 0.4, color: '#5551FF' }} />
+                        <p style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', margin: '0 0 4px 0' }}>No announcements published yet</p>
+                        <p style={{ fontSize: '12.5px', color: '#64748B', margin: 0 }}>Official company notices and management announcements will appear here.</p>
+                      </div>
+                    ) : (
+                      announcements.map(a => {
+                        const isAck = a.acknowledgedBy?.includes(user?.id);
+                        return (
+                          <div
+                            key={a.id}
+                            style={{
+                              padding: '20px 24px',
+                              borderRadius: '14px',
+                              border: '1px solid #E2E8F0',
+                              borderLeft: '4px solid #5551FF',
+                              background: '#FFFFFF',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: '#5551FF',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
+                                background: '#EEF2FF',
+                                padding: '3px 8px',
+                                borderRadius: '6px'
+                              }}>
+                                Official Notice
+                              </span>
+                              <span style={{ fontSize: '12px', color: '#94A3B8' }}>{a.date} • by {a.author}</span>
+                            </div>
+
+                            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: '0 0 8px 0' }}>{a.title}</h3>
+                            <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.55, margin: '0 0 16px 0', whiteSpace: 'pre-wrap' }}>{a.content}</p>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F1F5F9', paddingTop: '12px' }}>
+                              <span style={{ fontSize: '12px', color: '#64748B' }}>
+                                {a.acknowledgedBy?.length || 0} employees acknowledged
+                              </span>
+
+                              <button
+                                onClick={() => handleAcknowledgeAnnouncement(a.id)}
+                                style={{
+                                  padding: '6px 14px',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  borderRadius: '8px',
+                                  border: isAck ? '1px solid #10B981' : 'none',
+                                  background: isAck ? 'rgba(16, 185, 129, 0.12)' : '#5551FF',
+                                  color: isAck ? '#10B981' : '#FFFFFF',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                <CheckCircle2 size={14} /> {isAck ? 'Acknowledged' : 'Acknowledge Notice'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              ) : (() => {
                 const currentTargetMeta = conversationList.find(c => c.type === activeChatTarget.type && String(c.id) === String(activeChatTarget.id));
                 const resolvedMemberCount = activeChatTarget.type === 'team'
                   ? (currentTargetMeta?.memberCount || (activeChatTarget.id === 'general' ? `${teamUsers.length || 1} members` : (activeChatTarget.memberCount || '1 member')))
@@ -833,117 +989,6 @@ export default function CollaborationPage() {
           </div>
         );
       })()}
-
-      {/* TAB 4: MENTIONS */}
-      {activeTab === 'mentions' && (
-        <div className="card" style={{ padding: '24px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AtSign size={20} color="var(--brand-600)" /> Direct Mentions & Chat Notifications
-          </h2>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {notifications.filter(n => n.event_type?.includes('chat') || n.title?.toLowerCase().includes('chat')).length === 0 ? (
-              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                No direct mentions or chat notifications yet.
-              </div>
-            ) : (
-              notifications.filter(n => n.event_type?.includes('chat') || n.title?.toLowerCase().includes('chat')).map(n => (
-                <div
-                  key={n.id}
-                  onClick={() => {
-                    if (n.ref_id) {
-                      const matchedUser = teamUsers.find(u => String(u.id) === String(n.ref_id));
-                      if (matchedUser) {
-                        setActiveChatTarget({
-                          type: 'dm',
-                          id: matchedUser.id,
-                          realUserId: matchedUser.id,
-                          name: `${matchedUser.first_name || ''} ${matchedUser.last_name || ''}`.trim() || matchedUser.email,
-                          subtitle: `${matchedUser.role || 'Member'}${matchedUser.department ? ` · ${matchedUser.department}` : ''}`,
-                          iconType: 'avatar',
-                          avatarUrl: matchedUser.avatar_url,
-                          user: matchedUser
-                        });
-                        setActiveTab('chats');
-                      }
-                    }
-                  }}
-                  style={{
-                    padding: '16px',
-                    borderRadius: 'var(--radius-md)',
-                    background: n.is_read ? 'var(--surface)' : 'rgba(99, 102, 241, 0.05)',
-                    border: '1px solid var(--border)',
-                    cursor: n.ref_id ? 'pointer' : 'default',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--brand-600)' }}>{n.title}</div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                  </div>
-                  <p style={{ fontSize: '13.5px', color: 'var(--text-primary)', margin: 0 }}>{n.message}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: ANNOUNCEMENTS */}
-      {activeTab === 'announcements' && (
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Megaphone size={20} color="var(--brand-600)" /> Company Announcements & Notices
-            </h2>
-
-            {(isExecutive || isTL) && (
-              <button onClick={() => setShowNewAnnouncementModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Megaphone size={16} /> Publish Announcement
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {announcements.length === 0 ? (
-              <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)', background: 'var(--surface)', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid var(--border)' }}>
-                <Megaphone size={32} style={{ margin: '0 auto 10px auto', opacity: 0.4 }} />
-                <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>No announcements published yet</p>
-                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>Official company notices and management announcements will appear here.</p>
-              </div>
-            ) : (
-              announcements.map(a => {
-                const isAck = a.acknowledgedBy?.includes(user?.id);
-                return (
-                  <div key={a.id} className="card" style={{ padding: '24px', borderLeft: '4px solid var(--brand-600)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--brand-600)', textTransform: 'uppercase' }}>Official Notice</span>
-                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{a.date} • by {a.author}</span>
-                    </div>
-
-                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>{a.title}</h3>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 20px 0' }}>{a.content}</p>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                        {a.acknowledgedBy?.length || 0} employees acknowledged
-                      </span>
-
-                      <button
-                        onClick={() => handleAcknowledgeAnnouncement(a.id)}
-                        className={isAck ? "btn btn-secondary" : "btn btn-primary"}
-                        style={{ padding: '6px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', background: isAck ? 'rgba(16, 185, 129, 0.15)' : undefined, color: isAck ? '#10B981' : undefined }}
-                      >
-                        <CheckCircle2 size={14} /> {isAck ? 'Acknowledged' : 'Acknowledge Notice'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
 
       {/* MODAL: PUBLISH ANNOUNCEMENT */}
       {showNewAnnouncementModal && (
