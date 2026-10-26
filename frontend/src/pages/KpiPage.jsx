@@ -2243,6 +2243,12 @@ const KpiPage = () => {
     }
   }, [isTLOrCEO, selectedDate]);
 
+  const isTLEmployee = useCallback((emp) => {
+    if (!emp) return false;
+    const r = String(emp.role || emp.department || '').toUpperCase();
+    return r === 'TL' || r.includes('TEAM LEAD') || (r.includes('LEAD') && r !== 'PM' && !r.includes('PROJECT'));
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -2265,18 +2271,22 @@ const KpiPage = () => {
         isExecutive || showCardsGrid ? getKPIs({}).catch(() => []) : Promise.resolve([]),
       ]);
 
-      setLogs(kpiData);
+      const finalKpiData = isPM ? kpiData.filter((l) => !isTLEmployee(l.employee)) : kpiData;
+      const finalAllLogs = isPM ? allLogsData.filter((l) => !isTLEmployee(l.employee)) : allLogsData;
+      const finalTeammates = isPM ? teamData.filter((t) => !isTLEmployee(t)) : teamData;
+
+      setLogs(finalKpiData);
       setSummary(summaryData);
-      setTeammates(teamData);
+      setTeammates(finalTeammates);
       if (isExecutive || showCardsGrid) {
-        setAllKpiLogs(allLogsData);
+        setAllKpiLogs(finalAllLogs);
       }
     } catch (err) {
       console.error('Failed to load KPI data:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, showCardsGrid, isTLOrCEO]);
+  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, showCardsGrid, isTLOrCEO, isPM, isTLEmployee]);
 
   useEffect(() => {
     if (user) {
@@ -2291,7 +2301,10 @@ const KpiPage = () => {
   // Calculate Top Performers metrics based on all-time average KPI per unique eligible employee
   const topPerformersMetrics = useMemo(() => {
     const todayStr = getTodayDateString();
-    const logsToUse = allKpiLogs && allKpiLogs.length > 0 ? allKpiLogs : logs;
+    let logsToUse = allKpiLogs && allKpiLogs.length > 0 ? allKpiLogs : logs;
+    if (isPM) {
+      logsToUse = logsToUse.filter((l) => !isTLEmployee(l?.employee));
+    }
 
     // Group valid logs by employee ID, deduplicating by (employee_id, date)
     const empLogsMap = new Map(); // empId -> Map(date -> percentage)
@@ -2335,11 +2348,14 @@ const KpiPage = () => {
       excellentCount,
       veryGoodCount,
     };
-  }, [allKpiLogs, logs]);
+  }, [allKpiLogs, logs, isPM, isTLEmployee]);
 
   // Filtered logs based on search term
   const filteredLogs = useMemo(() => {
-    const sourceLogs = (logs && logs.length > 0) ? logs : (isTLOrCEO && !selectedDate ? allKpiLogs : (logs || []));
+    let sourceLogs = (logs && logs.length > 0) ? logs : (isTLOrCEO && !selectedDate ? allKpiLogs : (logs || []));
+    if (isPM) {
+      sourceLogs = sourceLogs.filter((l) => !isTLEmployee(l?.employee));
+    }
     if (!searchTerm.trim()) return sourceLogs;
     const term = searchTerm.toLowerCase();
     return sourceLogs.filter((l) => {
@@ -2349,7 +2365,7 @@ const KpiPage = () => {
       const notes = (l.notes || '').toLowerCase();
       return empName.includes(term) || empEmail.includes(term) || dept.includes(term) || notes.includes(term);
     });
-  }, [logs, allKpiLogs, isTLOrCEO, selectedDate, searchTerm]);
+  }, [logs, allKpiLogs, isTLOrCEO, selectedDate, searchTerm, isPM, isTLEmployee]);
 
   // Helper to match role names flexibly
   const isRoleMatching = (empRoleStr, roleList) => {

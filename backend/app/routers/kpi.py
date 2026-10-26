@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
-from sqlalchemy import or_
+from sqlalchemy import or_, and_, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -48,10 +48,34 @@ def get_teammate_ids_for_lead(db: Session, lead_user: User) -> List[UUID]:
     return [m[0] for m in members]
 
 
+def get_tl_user_ids(db: Session) -> List[UUID]:
+    """Returns all user IDs who are Team Leads (TL), excluding PMs."""
+    tl_by_role = db.query(User.id).filter(
+        and_(
+            User.role != "PM",
+            or_(
+                func.upper(func.trim(User.role)) == "TL",
+                func.upper(User.role).ilike("%TEAM LEAD%"),
+                func.upper(User.role).ilike("%LEAD%")
+            )
+        )
+    ).all()
+    tl_by_membership = db.query(TeamMembership.user_id).join(
+        User, TeamMembership.user_id == User.id
+    ).filter(
+        TeamMembership.is_lead == True,
+        User.role != "PM"
+    ).distinct().all()
+
+    tl_ids = set([m[0] for m in tl_by_role] + [m[0] for m in tl_by_membership])
+    return list(tl_ids)
+
+
 def get_base_kpi_query(db: Session, user: User):
     """
     Applies role-based filtering:
-    - CEO, CTO, PM: see everyone's KPI
+    - CEO, CTO, CO: see everyone's KPI
+    - PM: see all KPIs EXCEPT TL employees' KPI records
     - TL: see KPIs of their teammates, evaluated by them, or their own
     - TM: see ONLY their own KPI
     """
@@ -60,7 +84,12 @@ def get_base_kpi_query(db: Session, user: User):
         joinedload(DailyKPILog.evaluator)
     )
 
-    if user.role in ("CEO", "CTO", "PM"):
+    if user.role in ("CEO", "CTO", "CO"):
+        return q
+    elif user.role == "PM":
+        tl_ids = get_tl_user_ids(db)
+        if tl_ids:
+            return q.filter(~DailyKPILog.employee_id.in_(tl_ids))
         return q
     elif is_team_lead(db, user):
         teammate_ids = get_teammate_ids_for_lead(db, user)
@@ -110,6 +139,10 @@ def list_kpis(
         # For TM, restrict to self only
         if user.role == "TM" and employee_id != user.id:
             raise HTTPException(403, "You can only view your own KPI logs")
+        if user.role == "PM":
+            tl_ids = get_tl_user_ids(db)
+            if employee_id in tl_ids:
+                return []
         q = q.filter(DailyKPILog.employee_id == employee_id)
     if start_date:
         q = q.filter(DailyKPILog.date >= start_date)
@@ -133,6 +166,21 @@ def get_kpi_summary(
     if employee_id:
         if user.role == "TM" and employee_id != user.id:
             raise HTTPException(403, "You can only view your own KPI summary")
+        if user.role == "PM":
+            tl_ids = get_tl_user_ids(db)
+            if employee_id in tl_ids:
+                return KPISummary(
+                    total_logs=0,
+                    total_days=0,
+                    average_kpi=0.0,
+                    status_counts={
+                        "Excellent": 0,
+                        "Very Good": 0,
+                        "Meets Expectation": 0,
+                        "Needs Improvement": 0,
+                        "Needs Attention": 0,
+                    }
+                )
         q = q.filter(DailyKPILog.employee_id == employee_id)
 
     logs = q.all()
@@ -324,7 +372,12 @@ def get_my_kpi(
 
     is_specific = True
     if employee_id:
-        if user.role in ("CEO", "CTO", "PM", "CO"):
+        if user.role in ("CEO", "CTO", "CO"):
+            emp_ids = [employee_id]
+        elif user.role == "PM":
+            tl_ids = get_tl_user_ids(db)
+            if employee_id in tl_ids:
+                raise HTTPException(403, "TL KPI records cannot be viewed on the PM dashboard")
             emp_ids = [employee_id]
         elif is_team_lead(db, user):
             teammate_ids = get_teammate_ids_for_lead(db, user)
@@ -482,12 +535,19 @@ def get_teammates(
     """
     Returns users available for KPI evaluation or filtering:
     - TL: returns teammates under their lead
-    - CEO, CTO, PM: returns all active team members / users
+    - CEO, CTO, CO: returns all active team members / users
+    - PM: returns active team members / users excluding TL employees
     - TM: returns empty list
     """
-    if user.role in ("CEO", "CTO", "PM", "CO"):
+    if user.role in ("CEO", "CTO", "CO"):
         users = db.query(User).filter(User.is_active == True).order_by(User.first_name, User.last_name).all()
         return users
+    elif user.role == "PM":
+        tl_ids = get_tl_user_ids(db)
+        query = db.query(User).filter(User.is_active == True)
+        if tl_ids:
+            query = query.filter(~User.id.in_(tl_ids))
+        return query.order_by(User.first_name, User.last_name).all()
     elif is_team_lead(db, user):
         teammate_ids = get_teammate_ids_for_lead(db, user)
         users = db.query(User).filter(
