@@ -2046,8 +2046,7 @@ const KpiPage = () => {
   const { user } = useAuth();
   const isTL = user?.role === 'TL';
   const isCEO = user?.role === 'CEO';
-  const isCTO = user?.role === 'CTO';
-  const isTLOrLeadership = isTL || isCEO || isCTO;
+  const isTLOrCEO = isTL || isCEO;
 
   const [logs, setLogs] = useState([]);
   const [allKpiLogs, setAllKpiLogs] = useState([]);
@@ -2061,7 +2060,7 @@ const KpiPage = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [selectedDate, setSelectedDate] = useState(() => (isTLOrLeadership ? '' : getTodayDateString()));
+  const [selectedDate, setSelectedDate] = useState(() => (isTLOrCEO ? '' : getTodayDateString()));
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -2093,12 +2092,13 @@ const KpiPage = () => {
 
   const isExecutive = ['CEO', 'CTO', 'PM', 'CO'].includes(user?.role);
   const isCO = user?.role === 'CO';
-  const isCeoOrCto = isCO;
+  const isCTO = user?.role === 'CTO';
+  const isCeoOrCto = isCO || isCTO;
   const hidePersonalView = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
   const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL'].includes(user?.role);
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
-  const canGiveOrEdit = isTLOrLeadership;
+  const canGiveOrEdit = isTLOrCEO;
 
   const [viewMode, setViewMode] = useState(hidePersonalView ? 'management' : (isTM ? 'personal' : 'management'));
 
@@ -2111,17 +2111,17 @@ const KpiPage = () => {
     }
   }, [hidePersonalView, isTM]);
 
-  // Sync selectedDate for TL, CEO, CTO so it starts empty and displays all evaluation records below cards
+  // Sync selectedDate for TL and CEO so it starts empty and displays all evaluation records below cards
   useEffect(() => {
-    if (isTLOrLeadership && selectedDate === getTodayDateString()) {
+    if (isTLOrCEO && selectedDate === getTodayDateString()) {
       setSelectedDate('');
     }
-  }, [isTLOrLeadership, selectedDate]);
+  }, [isTLOrCEO, selectedDate]);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const effectiveDate = isTLOrLeadership
+      const effectiveDate = isTLOrCEO
         ? (selectedDate && selectedDate !== getTodayDateString() ? selectedDate : undefined)
         : (selectedDate || undefined);
 
@@ -2151,7 +2151,7 @@ const KpiPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, showCardsGrid, isTLOrLeadership]);
+  }, [selectedMonth, selectedStatus, selectedEmployeeId, selectedDate, canGiveOrEdit, isExecutive, showCardsGrid, isTLOrCEO]);
 
   useEffect(() => {
     if (user) {
@@ -2214,7 +2214,7 @@ const KpiPage = () => {
 
   // Filtered logs based on search term
   const filteredLogs = useMemo(() => {
-    const sourceLogs = (logs && logs.length > 0) ? logs : (isTLOrLeadership && !selectedDate ? allKpiLogs : (logs || []));
+    const sourceLogs = (logs && logs.length > 0) ? logs : (isTLOrCEO && !selectedDate ? allKpiLogs : (logs || []));
     if (!searchTerm.trim()) return sourceLogs;
     const term = searchTerm.toLowerCase();
     return sourceLogs.filter((l) => {
@@ -2224,7 +2224,7 @@ const KpiPage = () => {
       const notes = (l.notes || '').toLowerCase();
       return empName.includes(term) || empEmail.includes(term) || dept.includes(term) || notes.includes(term);
     });
-  }, [logs, allKpiLogs, isTLOrLeadership, selectedDate, searchTerm]);
+  }, [logs, allKpiLogs, isTLOrCEO, selectedDate, searchTerm]);
 
   // Helper to match role names flexibly
   const isRoleMatching = (empRoleStr, roleList) => {
@@ -2256,9 +2256,12 @@ const KpiPage = () => {
     let list = Array.from(map.values());
 
     // Role-specific KPI Card exclusions for CO, CEO, and CTO
-    if (isCO || isCEO || isCTO) {
-      // CO, CEO & CTO: Do not display cards for CO, CTO, TL, or PM employees
+    if (isCO || isCEO) {
+      // CO & CEO: Do not display cards for CO, CTO, TL, or PM employees
       list = list.filter((emp) => !isRoleMatching(emp.role || emp.department, ['CO', 'CEO', 'CTO', 'TL', 'PM']));
+    } else if (isCTO) {
+      // CTO: Do not display cards for CO, TL, or PM employees (keep CTO)
+      list = list.filter((emp) => !isRoleMatching(emp.role || emp.department, ['CO', 'CEO', 'TL', 'PM']));
     }
 
     return list;
@@ -2803,14 +2806,14 @@ const KpiPage = () => {
         )}
 
         {/* Reset Filter Button */}
-        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || (isTLOrLeadership ? Boolean(selectedDate) : (!isCeoOrCto && selectedDate !== getTodayDateString()))) && (
+        {(searchTerm || selectedMonth || selectedStatus || selectedEmployeeId || (isTLOrCEO ? Boolean(selectedDate) : (!isCeoOrCto && selectedDate !== getTodayDateString()))) && (
           <button
             onClick={() => {
               setSearchTerm('');
               setSelectedMonth('');
               setSelectedStatus('');
               setSelectedEmployeeId('');
-              if (isTLOrLeadership) {
+              if (isTLOrCEO) {
                 setSelectedDate('');
               } else if (!isCeoOrCto) {
                 setSelectedDate(getTodayDateString());
@@ -2833,7 +2836,7 @@ const KpiPage = () => {
 
       {/* For CO, CTO, TL, CEO: Render Employee Profile Cards Dashboard */}
       {showCardsGrid && (
-        <div style={{ marginBottom: isTLOrLeadership ? '28px' : (selectedEmployeeId ? '28px' : '0') }}>
+        <div style={{ marginBottom: isTLOrCEO ? '28px' : (selectedEmployeeId ? '28px' : '0') }}>
           <CoCtoEmployeeKpiCards
             employees={filteredEmployeesForCards}
             logs={allKpiLogs}
@@ -2845,10 +2848,11 @@ const KpiPage = () => {
       )}
 
       {/* Main KPI Logs Table:
-          - TL, CEO & CTO: Always rendered below employee cards (matching reference image)
+          - TL & CEO: Always rendered below employee cards (matching reference image)
           - PM: Always rendered (PM has no cards grid)
+          - CTO: Rendered only when an employee card is selected
       */}
-      {(isTLOrLeadership || !showCardsGrid || selectedEmployeeId) && (
+      {(isTLOrCEO || !showCardsGrid || selectedEmployeeId) && (
         <div style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',
@@ -2867,7 +2871,7 @@ const KpiPage = () => {
                 No KPI records found
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '400px', margin: '0 auto' }}>
-                {isTLOrLeadership
+                {isTLOrCEO
                   ? 'Click "Give Daily KPI" above to log performance scores for your team mates.'
                   : 'No performance entries match the selected filters.'}
               </p>
@@ -3053,7 +3057,7 @@ const KpiPage = () => {
                   <tbody>
                     {filteredLogs.map((log) => {
                       const statusStyle = getStatusColor(log.status);
-                      const isOwnTeammate = (isTL && teammates.some((t) => t.id === log.employee_id)) || isCEO || isCTO;
+                      const isOwnTeammate = (isTL && teammates.some((t) => t.id === log.employee_id)) || isCEO;
 
                       return (
                         <tr
