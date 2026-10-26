@@ -2172,7 +2172,7 @@ const KpiPage = () => {
   const isCEO = user?.role === 'CEO';
   const isCTO = user?.role === 'CTO';
   const isLeadership = isTL || isCEO || isCTO;
-  const isTLOrCEO = isLeadership;
+  const isTLOrCEO = isLeadership || isPM;
 
   const [logs, setLogs] = useState([]);
   const [allKpiLogs, setAllKpiLogs] = useState([]);
@@ -2220,7 +2220,7 @@ const KpiPage = () => {
   const isExecutive = ['CEO', 'CTO', 'PM', 'CO'].includes(user?.role);
   const isCO = user?.role === 'CO';
   const isCeoOrCto = isCO || isCEO || isCTO;
-  const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL'].includes(user?.role);
+  const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL', 'PM'].includes(user?.role);
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
   const canGiveOrEdit = isLeadership;
@@ -2404,8 +2404,23 @@ const KpiPage = () => {
       });
     }
 
+    // Hide CEO and CTO cards from both TL and PM dashboards
+    if (isTLOrPM) {
+      list = list.filter((emp) => {
+        const role = emp?.role || emp?.department || '';
+        const roleStr = `${emp?.role || ''} ${emp?.department || ''} ${emp?.designation || ''}`.toUpperCase();
+        const isCeoOrCto = isRoleMatching(role, ['CEO', 'CTO', 'CO']) ||
+                           roleStr.includes('CEO') ||
+                           roleStr.includes('CTO') ||
+                           roleStr.includes('CHIEF EXEC') ||
+                           roleStr.includes('CHIEF TECH') ||
+                           roleStr.includes('CHIEF OPERAT');
+        return !isCeoOrCto;
+      });
+    }
+
     return list;
-  }, [teammates, logs, allKpiLogs, showCardsGrid, isCO, isCEO, isCTO, user]);
+  }, [teammates, logs, allKpiLogs, showCardsGrid, isCO, isCEO, isCTO, isTLOrPM, user]);
 
   const filteredEmployeesForCards = useMemo(() => {
     if (!searchTerm.trim()) return allEmployeesForCards;
