@@ -2172,7 +2172,7 @@ const KpiPage = () => {
   const isCEO = user?.role === 'CEO';
   const isCTO = user?.role === 'CTO';
   const isLeadership = isTL || isCEO || isCTO;
-  const isTLOrCEO = isLeadership || isPM;
+  const isTLOrCEO = isLeadership;
 
   const [logs, setLogs] = useState([]);
   const [allKpiLogs, setAllKpiLogs] = useState([]);
@@ -2220,7 +2220,7 @@ const KpiPage = () => {
   const isExecutive = ['CEO', 'CTO', 'PM', 'CO'].includes(user?.role);
   const isCO = user?.role === 'CO';
   const isCeoOrCto = isCO || isCEO || isCTO;
-  const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL', 'PM'].includes(user?.role);
+  const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL'].includes(user?.role);
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
   const canGiveOrEdit = isLeadership;
@@ -2366,34 +2366,46 @@ const KpiPage = () => {
 
   // Unified list of all employees for card dashboard
   const allEmployeesForCards = useMemo(() => {
+    const isCeoOrCtoEmp = (emp) => {
+      const r = String(emp?.role || '').toUpperCase();
+      const d = String(emp?.department || '').toUpperCase();
+      const des = String(emp?.designation || '').toUpperCase();
+      return (
+        r === 'CEO' || r === 'CTO' || r === 'CO' ||
+        r.includes('CHIEF EXEC') || r.includes('CHIEF TECH') || r.includes('CHIEF OPER') ||
+        d === 'CEO' || d === 'CTO' || d === 'CO' ||
+        d.includes('CHIEF EXEC') || d.includes('CHIEF TECH') || d.includes('CHIEF OPER') ||
+        des === 'CEO' || des === 'CTO' || des === 'CO' ||
+        des.includes('CHIEF EXEC') || des.includes('CHIEF TECH') || des.includes('CHIEF OPER')
+      );
+    };
+
     const map = new Map();
     teammates.forEach((tm) => {
-      if (tm && tm.id) map.set(String(tm.id), tm);
+      if (tm && tm.id && !isCeoOrCtoEmp(tm)) map.set(String(tm.id), tm);
     });
     const logsToUse = showCardsGrid && allKpiLogs.length > 0 ? allKpiLogs : logs;
     logsToUse.forEach((l) => {
-      if (l.employee && l.employee.id && !map.has(String(l.employee.id))) {
+      if (l.employee && l.employee.id && !isCeoOrCtoEmp(l.employee) && !map.has(String(l.employee.id))) {
         map.set(String(l.employee.id), l.employee);
       }
     });
 
-    if (user && user.id && !map.has(String(user.id))) {
+    if (user && user.id && !isCeoOrCtoEmp(user) && !map.has(String(user.id))) {
       map.set(String(user.id), user);
     }
 
-    let list = Array.from(map.values());
+    let list = Array.from(map.values()).filter((emp) => !isCeoOrCtoEmp(emp));
 
     // Role-based KPI card inclusions for CEO and CTO dashboards:
-    // Both dashboards must display cards for: Developers, Team Leads (TL), Project Managers (PM), CEO, and CTO.
+    // Both dashboards display cards for: Developers, Team Leads (TL), Project Managers (PM). CEO & CTO cards are hidden.
     if (isCO || isCEO || isCTO) {
       const getRoleOrder = (emp) => {
         const r = String(emp.role || emp.department || '').toUpperCase();
         if (r === 'TM' || r.includes('DEV') || r.includes('MEMBER')) return 1;
         if (r === 'TL' || r.includes('LEAD')) return 2;
         if (r === 'PM' || r.includes('PROJECT')) return 3;
-        if (r === 'CEO' || r.includes('CHIEF OPER') || r === 'CO') return 4;
-        if (r === 'CTO' || r.includes('CHIEF TECH')) return 5;
-        return 6;
+        return 4;
       };
       list.sort((a, b) => {
         const diff = getRoleOrder(a) - getRoleOrder(b);
@@ -2404,23 +2416,8 @@ const KpiPage = () => {
       });
     }
 
-    // Hide CEO and CTO cards from both TL and PM dashboards
-    if (isTLOrPM) {
-      list = list.filter((emp) => {
-        const role = emp?.role || emp?.department || '';
-        const roleStr = `${emp?.role || ''} ${emp?.department || ''} ${emp?.designation || ''}`.toUpperCase();
-        const isCeoOrCto = isRoleMatching(role, ['CEO', 'CTO', 'CO']) ||
-                           roleStr.includes('CEO') ||
-                           roleStr.includes('CTO') ||
-                           roleStr.includes('CHIEF EXEC') ||
-                           roleStr.includes('CHIEF TECH') ||
-                           roleStr.includes('CHIEF OPERAT');
-        return !isCeoOrCto;
-      });
-    }
-
     return list;
-  }, [teammates, logs, allKpiLogs, showCardsGrid, isCO, isCEO, isCTO, isTLOrPM, user]);
+  }, [teammates, logs, allKpiLogs, showCardsGrid, isCO, isCEO, isCTO, user]);
 
   const filteredEmployeesForCards = useMemo(() => {
     if (!searchTerm.trim()) return allEmployeesForCards;
