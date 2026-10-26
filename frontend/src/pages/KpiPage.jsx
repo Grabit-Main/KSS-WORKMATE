@@ -246,6 +246,93 @@ const calculateLiveMetrics = (scores) => {
   return { pct, status };
 };
 
+const KpiSegmentedToggle = ({ viewMode, onSelectManagement, onSelectPersonal }) => {
+  return (
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      background: '#FFFFFF',
+      padding: '4px',
+      borderRadius: '9999px',
+      border: '1px solid #E2E8F0',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)'
+    }}>
+      <button
+        type="button"
+        id="kpi-toggle-management-btn"
+        onClick={onSelectManagement}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 20px',
+          borderRadius: '9999px',
+          border: 'none',
+          background: viewMode === 'management' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
+          color: viewMode === 'management' ? '#FFFFFF' : '#64748B',
+          fontWeight: 700,
+          fontSize: '13px',
+          cursor: viewMode === 'management' ? 'default' : 'pointer',
+          transition: 'all 0.15s ease',
+          boxShadow: viewMode === 'management' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
+        }}
+        onMouseEnter={(e) => {
+          if (viewMode !== 'management') {
+            e.currentTarget.style.color = '#1E293B';
+            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (viewMode !== 'management') {
+            e.currentTarget.style.color = '#64748B';
+            e.currentTarget.style.background = 'transparent';
+          }
+        }}
+      >
+        <BarChart3 size={15} color={viewMode === 'management' ? '#FFFFFF' : '#64748B'} />
+        <span>Management</span>
+      </button>
+
+      <button
+        type="button"
+        id="kpi-toggle-personal-btn"
+        onClick={onSelectPersonal}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 20px',
+          borderRadius: '9999px',
+          border: 'none',
+          background: viewMode === 'personal' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
+          color: viewMode === 'personal' ? '#FFFFFF' : '#64748B',
+          fontWeight: 700,
+          fontSize: '13px',
+          cursor: viewMode === 'personal' ? 'default' : 'pointer',
+          transition: 'all 0.15s ease',
+          boxShadow: viewMode === 'personal' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
+        }}
+        onMouseEnter={(e) => {
+          if (viewMode !== 'personal') {
+            e.currentTarget.style.color = '#1E293B';
+            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (viewMode !== 'personal') {
+            e.currentTarget.style.color = '#64748B';
+            e.currentTarget.style.background = 'transparent';
+          }
+        }}
+      >
+        <User size={15} color={viewMode === 'personal' ? '#FFFFFF' : '#64748B'} />
+        <span>Personal</span>
+      </button>
+    </div>
+  );
+};
+
 const KPIHeaderBanner = ({
   viewMode,
   setViewMode,
@@ -303,49 +390,13 @@ const KPIHeaderBanner = ({
       <div style={{ position: 'relative', zIndex: 2 }}>
         {/* Top View Switcher */}
         {isTLOrPM ? (
-          /* TL and PM: Show ONLY the Personal button (no segmented toggle) */
+          /* TL and PM: Segmented Management / Personal KPI toggle button matching reference image */
           <div style={{ marginBottom: '24px' }}>
-            <button
-              type="button"
-              id="kpi-personal-btn"
-              onClick={() => onOpenPersonal && onOpenPersonal()}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 22px',
-                borderRadius: '9999px',
-                border: '1.5px solid rgba(37, 99, 235, 0.25)',
-                background: '#FFFFFF',
-                color: '#2563EB',
-                fontWeight: 700,
-                fontSize: '13px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.08)',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)';
-                e.currentTarget.style.color = '#FFFFFF';
-                e.currentTarget.style.borderColor = 'transparent';
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.35)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                const icon = e.currentTarget.querySelector('svg');
-                if (icon) icon.style.color = '#FFFFFF';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#FFFFFF';
-                e.currentTarget.style.color = '#2563EB';
-                e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.25)';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.08)';
-                e.currentTarget.style.transform = 'translateY(0)';
-                const icon = e.currentTarget.querySelector('svg');
-                if (icon) icon.style.color = '#2563EB';
-              }}
-            >
-              <User size={15} color="#2563EB" style={{ transition: 'color 0.2s ease' }} />
-              <span>Personal</span>
-            </button>
+            <KpiSegmentedToggle
+              viewMode={viewMode}
+              onSelectManagement={() => setViewMode && setViewMode('management')}
+              onSelectPersonal={() => onOpenPersonal ? onOpenPersonal() : (setViewMode && setViewMode('personal'))}
+            />
           </div>
         ) : (
           /* CEO and CTO: Show ONLY Management KPI View button badge matching screenshot */
@@ -552,7 +603,10 @@ const DeveloperDashboardView = ({
   isManagementUser,
   employeeId,
   employeeInfo,
-  onBack
+  onBack,
+  isTLOrPM,
+  viewMode = 'personal',
+  setViewMode
 }) => {
   const [periodType, setPeriodType] = useState('week');
   const [offset, setOffset] = useState(0);
@@ -620,12 +674,28 @@ const DeveloperDashboardView = ({
         marginBottom: '24px',
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px'
+        flexDirection: 'column',
+        gap: '20px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {/* TL and PM: Segmented Management / Personal KPI toggle button matching reference image */}
+        {isTLOrPM && onSwitchToManagement && (
+          <div>
+            <KpiSegmentedToggle
+              viewMode="personal"
+              onSelectManagement={onSwitchToManagement}
+              onSelectPersonal={() => {}}
+            />
+          </div>
+        )}
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {onBack && (
             <button
               type="button"
@@ -721,6 +791,7 @@ const DeveloperDashboardView = ({
           <BookOpen size={16} style={{ color: '#2563EB' }} />
           <span>Scoring Rules</span>
         </button>
+        </div>
       </div>
 
       {/* Period Filter & Navigation Bar */}
@@ -2095,7 +2166,9 @@ const CoCtoEmployeeKpiCards = ({
 
 const KpiPage = () => {
   const { user } = useAuth();
-  const isTL = user?.role === 'TL';
+  const isTL = user?.role === 'TL' || (user?.role && String(user.role).toUpperCase().includes('LEAD'));
+  const isPM = user?.role === 'PM' || (user?.role && String(user.role).toUpperCase().includes('PROJECT MANAGER'));
+  const isTLOrPM = isTL || isPM;
   const isCEO = user?.role === 'CEO';
   const isCTO = user?.role === 'CTO';
   const isLeadership = isTL || isCEO || isCTO;
@@ -2147,7 +2220,6 @@ const KpiPage = () => {
   const isExecutive = ['CEO', 'CTO', 'PM', 'CO'].includes(user?.role);
   const isCO = user?.role === 'CO';
   const isCeoOrCto = isCO || isCEO || isCTO;
-  const isTLOrPM = isTL || user?.role === 'PM';
   const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL'].includes(user?.role);
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
@@ -2533,6 +2605,9 @@ const KpiPage = () => {
         employeeId={user?.id}
         employeeInfo={user}
         onBack={isTM ? undefined : () => setViewMode('management')}
+        isTLOrPM={isTLOrPM}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
       />
     );
   }
@@ -2548,6 +2623,9 @@ const KpiPage = () => {
         employeeId={selectedEmployeeId}
         employeeInfo={selectedEmployeeObj}
         onBack={() => handleSelectEmployee('')}
+        isTLOrPM={isTLOrPM && String(selectedEmployeeId) === String(user?.id)}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
       />
     );
   }
