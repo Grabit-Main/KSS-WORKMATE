@@ -348,7 +348,7 @@ const KPIHeaderBanner = ({
             </button>
           </div>
         ) : (
-          /* Segmented Switcher Pill Bar for CEO, CTO, and other roles */
+          /* CEO and CTO: Show ONLY Management KPI View button badge matching screenshot */
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -360,55 +360,24 @@ const KPIHeaderBanner = ({
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
             marginBottom: '24px'
           }}>
-            {isManagementUser && (
-              <button
-                type="button"
-                onClick={() => setViewMode && setViewMode('management')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 20px',
-                  borderRadius: '9999px',
-                  border: 'none',
-                  background: viewMode === 'management' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
-                  color: viewMode === 'management' ? '#FFFFFF' : '#64748B',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  boxShadow: viewMode === 'management' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
-                }}
-              >
-                <BarChart3 size={15} color={viewMode === 'management' ? '#FFFFFF' : '#64748B'} />
-                <span>Management</span>
-              </button>
-            )}
-
-            {!hidePersonalView && (
-              <button
-                type="button"
-                onClick={() => onOpenPersonal ? onOpenPersonal() : (setViewMode && setViewMode('personal'))}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 20px',
-                  borderRadius: '9999px',
-                  border: 'none',
-                  background: viewMode === 'personal' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
-                  color: viewMode === 'personal' ? '#FFFFFF' : '#64748B',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  boxShadow: viewMode === 'personal' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
-                }}
-              >
-                <User size={15} color={viewMode === 'personal' ? '#FFFFFF' : '#64748B'} />
-                <span>Personal</span>
-              </button>
-            )}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 20px',
+                borderRadius: '9999px',
+                background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)',
+                color: '#FFFFFF',
+                fontWeight: 700,
+                fontSize: '13px',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                cursor: 'default'
+              }}
+            >
+              <BarChart3 size={15} color="#FFFFFF" />
+              <span>Management KPI View</span>
+            </div>
           </div>
         )}
 
@@ -2553,8 +2522,8 @@ const KpiPage = () => {
 
   const liveMetrics = useMemo(() => calculateLiveMetrics(formData), [formData]);
 
-  // If TM or viewing personal overview (TL, PM, CEO, CTO personal dashboard)
-  if (isTM || viewMode === 'personal') {
+  // If TM or viewing personal overview (only for TL and PM, not for CEO or CTO)
+  if (isTM || (isTLOrPM && viewMode === 'personal')) {
     return (
       <DeveloperDashboardView
         showRulesModal={showRulesModal}
