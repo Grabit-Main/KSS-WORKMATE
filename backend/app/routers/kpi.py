@@ -536,8 +536,8 @@ async def create_or_update_kpi(
     Only the team lead can give or edit the KPI to teammates daily.
     If a record exists for that employee on that date, it is updated.
     """
-    if not (is_team_lead(db, user) or user.role == "CEO"):
-        raise HTTPException(403, "Only Team Leads and CEO can give or edit KPIs")
+    if not (is_team_lead(db, user) or user.role in ("CEO", "CTO")):
+        raise HTTPException(403, "Only Team Leads, CEO, and CTO can give or edit KPIs")
 
     today = date.today()
     if req.date > today:
@@ -611,7 +611,7 @@ async def create_or_update_kpi(
         db.add(kpi_log)
 
     # Notification to the teammate
-    evaluator_role_name = "CEO" if user.role == "CEO" else "Team Lead"
+    evaluator_role_name = user.role if user.role in ("CEO", "CTO") else "Team Lead"
     notif = Notification(
         user_id=req.employee_id,
         title="Daily KPI Logged",
@@ -643,17 +643,16 @@ async def update_kpi(
     user: User = Depends(get_current_user)
 ):
     """
-    Only the team lead can edit the KPI to teammates daily.
-    CEO, CTO, PM, TM cannot edit.
+    Only the team lead (or CEO, CTO) can edit the KPI to teammates daily.
     """
-    if not (is_team_lead(db, user) or user.role == "CEO"):
-        raise HTTPException(403, "Only Team Leads and CEO can edit KPIs")
+    if not (is_team_lead(db, user) or user.role in ("CEO", "CTO")):
+        raise HTTPException(403, "Only Team Leads, CEO, and CTO can edit KPIs")
 
     kpi_log = db.query(DailyKPILog).filter(DailyKPILog.id == kpi_id).first()
     if not kpi_log:
         raise HTTPException(404, "KPI log not found")
 
-    if user.role != "CEO":
+    if user.role not in ("CEO", "CTO"):
         teammate_ids = get_teammate_ids_for_lead(db, user)
         if kpi_log.employee_id not in teammate_ids:
             raise HTTPException(403, "You can only edit KPIs of your assigned team mates")

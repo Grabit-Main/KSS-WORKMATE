@@ -38,9 +38,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Target,
-  Minus
+  Minus,
+  Activity
 } from 'lucide-react';
 import kpiGrowthArrow from '../assets/kpi_growth_arrow.png';
+import AverageKpiReport from '../components/kpi/AverageKpiReport';
 
 export const KPI_TIER_CONFIG = [
   { level: 1, name: 'Poor', short: '1 – Poor', bg: '#FEF2F2', text: '#991B1B', border: '#FECACA' },
@@ -251,8 +253,11 @@ const KPIHeaderBanner = ({
   onShowRulesModal,
   onDownloadCSV,
   onOpenCreateModal,
+  onOpenAverageKPI,
+  showAverageReport,
   canDownload,
   canGiveOrEdit,
+  canViewAverageKPI,
   downloading,
   loading
 }) => {
@@ -485,6 +490,33 @@ const KPIHeaderBanner = ({
               </div>
               <span>Give Daily KPI</span>
               <ChevronRight size={16} style={{ color: '#FFFFFF', marginLeft: '2px' }} />
+            </button>
+          )}
+
+          {/* Average KPI Button */}
+          {canViewAverageKPI && (
+            <button
+              type="button"
+              onClick={onOpenAverageKPI}
+              title="View Average KPI Summary and Rankings"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '11px 22px',
+                borderRadius: '16px',
+                background: showAverageReport ? 'linear-gradient(135deg, #4338CA 0%, #6366F1 100%)' : '#EEF2FF',
+                color: showAverageReport ? '#FFFFFF' : '#4338CA',
+                border: showAverageReport ? 'none' : '1.5px solid #C7D2FE',
+                fontWeight: 700,
+                fontSize: '13.5px',
+                cursor: 'pointer',
+                boxShadow: showAverageReport ? '0 8px 20px rgba(79, 70, 229, 0.35)' : '0 2px 8px rgba(79, 70, 229, 0.1)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <BarChart3 size={17} style={{ color: showAverageReport ? '#FFFFFF' : '#4F46E5' }} />
+              <span>Average KPI</span>
             </button>
           )}
         </div>
@@ -2046,7 +2078,9 @@ const KpiPage = () => {
   const { user } = useAuth();
   const isTL = user?.role === 'TL';
   const isCEO = user?.role === 'CEO';
-  const isTLOrCEO = isTL || isCEO;
+  const isCTO = user?.role === 'CTO';
+  const isLeadership = isTL || isCEO || isCTO;
+  const isTLOrCEO = isLeadership;
 
   const [logs, setLogs] = useState([]);
   const [allKpiLogs, setAllKpiLogs] = useState([]);
@@ -2054,6 +2088,7 @@ const KpiPage = () => {
   const [teammates, setTeammates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [showAverageReport, setShowAverageReport] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -2092,13 +2127,13 @@ const KpiPage = () => {
 
   const isExecutive = ['CEO', 'CTO', 'PM', 'CO'].includes(user?.role);
   const isCO = user?.role === 'CO';
-  const isCTO = user?.role === 'CTO';
-  const isCeoOrCto = isCO || isCTO;
+  const isCeoOrCto = isCO;
   const hidePersonalView = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
   const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL'].includes(user?.role);
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
-  const canGiveOrEdit = isTLOrCEO;
+  const canGiveOrEdit = isLeadership;
+  const canViewAverageKPI = isLeadership;
 
   const [viewMode, setViewMode] = useState(hidePersonalView ? 'management' : (isTM ? 'personal' : 'management'));
 
@@ -2483,6 +2518,41 @@ const KpiPage = () => {
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto' }}>
+      {/* Breadcrumb Navigation when viewing Average KPI Report */}
+      {showAverageReport && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '16px',
+          fontSize: '13px',
+          color: '#64748B'
+        }}>
+          <Activity size={15} style={{ color: '#2563EB' }} />
+          <span
+            onClick={() => setShowAverageReport(false)}
+            style={{ cursor: 'pointer', transition: 'color 0.15s' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#2563EB')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#64748B')}
+          >
+            All Performance
+          </span>
+          <ChevronRight size={13} style={{ color: '#94A3B8' }} />
+          <span
+            onClick={() => setShowAverageReport(false)}
+            style={{ cursor: 'pointer', transition: 'color 0.15s' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#2563EB')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#64748B')}
+          >
+            KPI Tracker
+          </span>
+          <ChevronRight size={13} style={{ color: '#94A3B8' }} />
+          <span style={{ fontWeight: 600, color: '#1E293B' }}>
+            Average KPI Report
+          </span>
+        </div>
+      )}
+
       {/* Top Header Banner matching exact design */}
       <KPIHeaderBanner
         viewMode={viewMode}
@@ -2492,13 +2562,24 @@ const KpiPage = () => {
         onShowRulesModal={() => setShowRulesModal(true)}
         onDownloadCSV={handleDownloadCSV}
         onOpenCreateModal={handleOpenCreateModal}
+        onOpenAverageKPI={() => setShowAverageReport((prev) => !prev)}
+        showAverageReport={showAverageReport}
         canDownload={canDownload}
         canGiveOrEdit={canGiveOrEdit}
+        canViewAverageKPI={canViewAverageKPI}
         downloading={downloading}
         loading={loading}
       />
 
-      {/* Summary Scoreboard Cards */}
+      {showAverageReport ? (
+        <AverageKpiReport
+          logs={allKpiLogs && allKpiLogs.length > 0 ? allKpiLogs : logs}
+          teammates={teammates}
+          onClose={() => setShowAverageReport(false)}
+        />
+      ) : (
+        <>
+          {/* Summary Scoreboard Cards */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
@@ -3362,6 +3443,8 @@ const KpiPage = () => {
         )}
       </div>
       )}
+    </>
+  )}
 
       {/* Give / Edit Modal (Team Lead only) */}
       {modalOpen && (
