@@ -53,7 +53,7 @@ const formatRangeLabel = (startStr, endStr) => {
   return `${formatDisplayDate(startStr)} - ${formatDisplayDate(endStr)}`;
 };
 
-export const AverageKpiReport = ({ logs = [], teammates = [], onClose }) => {
+export const AverageKpiReport = ({ logs = [], teammates = [], onClose, hideSourceInfo = false }) => {
   // Extract all available evaluation dates from logs
   const availableDates = useMemo(() => {
     const dates = new Set();
@@ -696,9 +696,11 @@ export const AverageKpiReport = ({ logs = [], teammates = [], onClose }) => {
             <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>
               Employee KPI Summary & Ranking
             </h2>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              Source: Daily_KPI_Log_{appliedRange.end || 'all'}.csv | Period: {formatRangeLabel(appliedRange.start, appliedRange.end)} | {employeeRankings.length} employees, {totalEntries} entries, {uniqueDatesInRange.length} working days
-            </p>
+            {!hideSourceInfo && (
+              <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
+                Source: Daily_KPI_Log_{appliedRange.end || 'all'}.csv | Period: {formatRangeLabel(appliedRange.start, appliedRange.end)} | {employeeRankings.length} employees, {totalEntries} entries, {uniqueDatesInRange.length} working days
+              </p>
+            )}
           </div>
         </div>
 

@@ -2173,6 +2173,7 @@ const KpiPage = () => {
   const isCTO = user?.role === 'CTO';
   const isLeadership = isTL || isCEO || isCTO;
   const isTLOrCEO = isLeadership;
+  const isTlPmCeoCto = isTL || isPM || isCEO || isCTO || user?.role === 'CO';
 
   const [logs, setLogs] = useState([]);
   const [allKpiLogs, setAllKpiLogs] = useState([]);
@@ -2224,7 +2225,7 @@ const KpiPage = () => {
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
   const canGiveOrEdit = isLeadership;
-  const canViewAverageKPI = isLeadership;
+  const canViewAverageKPI = isLeadership || isPM;
 
   const [viewMode, setViewMode] = useState(isTM ? 'personal' : 'management');
 
@@ -2645,7 +2646,7 @@ const KpiPage = () => {
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto' }}>
       {/* Breadcrumb Navigation when viewing Average KPI Report */}
-      {showAverageReport && (
+      {showAverageReport && !isTlPmCeoCto && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -2704,6 +2705,7 @@ const KpiPage = () => {
           logs={allKpiLogs && allKpiLogs.length > 0 ? allKpiLogs : logs}
           teammates={teammates}
           onClose={() => setShowAverageReport(false)}
+          hideSourceInfo={isTlPmCeoCto}
         />
       ) : (
         <>
