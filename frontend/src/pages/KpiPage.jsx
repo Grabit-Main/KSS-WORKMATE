@@ -39,7 +39,8 @@ import {
   ArrowDownRight,
   Target,
   Minus,
-  Activity
+  Activity,
+  User
 } from 'lucide-react';
 import kpiGrowthArrow from '../assets/kpi_growth_arrow.png';
 import AverageKpiReport from '../components/kpi/AverageKpiReport';
@@ -250,6 +251,8 @@ const KPIHeaderBanner = ({
   setViewMode,
   isManagementUser,
   hidePersonalView,
+  isTLOrPM,
+  onOpenPersonal,
   onShowRulesModal,
   onDownloadCSV,
   onOpenCreateModal,
@@ -298,68 +301,116 @@ const KPIHeaderBanner = ({
       </div>
 
       <div style={{ position: 'relative', zIndex: 2 }}>
-        {/* Top View Switcher Pill Bar */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '4px',
-          background: '#FFFFFF',
-          padding: '4px',
-          borderRadius: '9999px',
-          border: '1px solid #E2E8F0',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-          marginBottom: '24px'
-        }}>
-          {isManagementUser && (
+        {/* Top View Switcher */}
+        {isTLOrPM ? (
+          /* TL and PM: Show ONLY the Personal button (no segmented toggle) */
+          <div style={{ marginBottom: '24px' }}>
             <button
               type="button"
-              onClick={() => setViewMode && setViewMode('management')}
+              id="kpi-personal-btn"
+              onClick={() => onOpenPersonal && onOpenPersonal()}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '8px 20px',
+                padding: '8px 22px',
                 borderRadius: '9999px',
-                border: 'none',
-                background: viewMode === 'management' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
-                color: viewMode === 'management' ? '#FFFFFF' : '#64748B',
+                border: '1.5px solid rgba(37, 99, 235, 0.25)',
+                background: '#FFFFFF',
+                color: '#2563EB',
                 fontWeight: 700,
                 fontSize: '13px',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: viewMode === 'management' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.08)',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)';
+                e.currentTarget.style.color = '#FFFFFF';
+                e.currentTarget.style.borderColor = 'transparent';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.35)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                const icon = e.currentTarget.querySelector('svg');
+                if (icon) icon.style.color = '#FFFFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#FFFFFF';
+                e.currentTarget.style.color = '#2563EB';
+                e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.25)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.08)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                const icon = e.currentTarget.querySelector('svg');
+                if (icon) icon.style.color = '#2563EB';
               }}
             >
-              <BarChart3 size={15} color={viewMode === 'management' ? '#FFFFFF' : '#64748B'} />
-              <span>Management KPI View</span>
+              <User size={15} color="#2563EB" style={{ transition: 'color 0.2s ease' }} />
+              <span>Personal</span>
             </button>
-          )}
+          </div>
+        ) : (
+          /* Segmented Switcher Pill Bar for CEO, CTO, and other roles */
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            background: '#FFFFFF',
+            padding: '4px',
+            borderRadius: '9999px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+            marginBottom: '24px'
+          }}>
+            {isManagementUser && (
+              <button
+                type="button"
+                onClick={() => setViewMode && setViewMode('management')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 20px',
+                  borderRadius: '9999px',
+                  border: 'none',
+                  background: viewMode === 'management' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
+                  color: viewMode === 'management' ? '#FFFFFF' : '#64748B',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: viewMode === 'management' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
+                }}
+              >
+                <BarChart3 size={15} color={viewMode === 'management' ? '#FFFFFF' : '#64748B'} />
+                <span>Management</span>
+              </button>
+            )}
 
-          {!hidePersonalView && (
-            <button
-              type="button"
-              onClick={() => setViewMode && setViewMode('personal')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 20px',
-                borderRadius: '9999px',
-                border: 'none',
-                background: viewMode === 'personal' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
-                color: viewMode === 'personal' ? '#FFFFFF' : '#64748B',
-                fontWeight: 700,
-                fontSize: '13px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: viewMode === 'personal' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
-              }}
-            >
-              <TrendingUp size={15} color={viewMode === 'personal' ? '#FFFFFF' : '#64748B'} />
-              <span>My Performance Overview</span>
-            </button>
-          )}
-        </div>
+            {!hidePersonalView && (
+              <button
+                type="button"
+                onClick={() => onOpenPersonal ? onOpenPersonal() : (setViewMode && setViewMode('personal'))}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 20px',
+                  borderRadius: '9999px',
+                  border: 'none',
+                  background: viewMode === 'personal' ? 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' : 'transparent',
+                  color: viewMode === 'personal' ? '#FFFFFF' : '#64748B',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: viewMode === 'personal' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
+                }}
+              >
+                <User size={15} color={viewMode === 'personal' ? '#FFFFFF' : '#64748B'} />
+                <span>Personal</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Main Title Row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' }}>
@@ -581,128 +632,127 @@ const DeveloperDashboardView = ({
   }, [data, kpis]);
   const hasData = data?.has_data;
 
+  const { user: authUser } = useAuth();
+  const displayUser = employeeInfo || authUser;
+  const roleStr = displayUser?.role || displayUser?.department || 'Team Member';
+  const desigStr = displayUser?.designation;
+  const fullRoleText = desigStr && desigStr.toLowerCase() !== roleStr.toLowerCase()
+    ? `${roleStr} • ${desigStr}`
+    : roleStr;
+
   return (
     <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
       {/* Top Header Banner matching exact design */}
-      {employeeId ? (
-        <div style={{
-          background: 'linear-gradient(135deg, #F0F4FF 0%, #F5F3FF 100%)',
-          borderRadius: '24px',
-          border: '1px solid rgba(85, 81, 255, 0.12)',
-          padding: '24px 32px',
-          marginBottom: '24px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {onBack && (
-              <button
-                type="button"
-                onClick={onBack}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '9px 16px',
-                  borderRadius: '12px',
-                  background: '#FFFFFF',
-                  color: '#4F46E5',
-                  border: '1.5px solid #C7D2FE',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <ChevronLeft size={16} />
-                <span>All Performance</span>
-              </button>
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                flexShrink: 0,
-                background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
-                display: 'flex',
+      <div style={{
+        background: 'linear-gradient(135deg, #F0F4FF 0%, #F5F3FF 100%)',
+        borderRadius: '24px',
+        border: '1px solid rgba(85, 81, 255, 0.12)',
+        padding: '24px 32px',
+        marginBottom: '24px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              style={{
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: '#FFFFFF',
+                gap: '6px',
+                padding: '9px 16px',
+                borderRadius: '12px',
+                background: '#FFFFFF',
+                color: '#4F46E5',
+                border: '1.5px solid #C7D2FE',
                 fontWeight: 700,
-                fontSize: '18px',
-                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
-              }}>
-                {employeeInfo?.avatar_url ? (
-                  <img
-                    src={employeeInfo.avatar_url}
-                    alt={`${employeeInfo.first_name || ''} ${employeeInfo.last_name || ''}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'inline';
-                    }}
-                  />
-                ) : null}
-                <span style={{ display: employeeInfo?.avatar_url ? 'none' : 'inline' }}>
-                  {employeeInfo?.first_name?.[0]?.toUpperCase() || 'E'}
-                  {employeeInfo?.last_name?.[0]?.toUpperCase() || ''}
-                </span>
-              </div>
+                fontSize: '13px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <ChevronLeft size={16} />
+              <span>All Performance</span>
+            </button>
+          )}
 
-              <div>
-                <h1 style={{
-                  fontSize: '24px',
-                  fontWeight: 800,
-                  color: '#0F172A',
-                  margin: 0,
-                  lineHeight: 1.2
-                }}>
-                  {employeeInfo?.first_name ? `${employeeInfo.first_name} ${employeeInfo.last_name || ''}` : 'Employee Performance'}
-                </h1>
-                <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0 0', fontWeight: 500 }}>
-                  {employeeInfo?.role || employeeInfo?.department || 'Team Member'} • Performance Tracker Overview
-                </p>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              flexShrink: 0,
+              background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: '18px',
+              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
+            }}>
+              {displayUser?.avatar_url ? (
+                <img
+                  src={displayUser.avatar_url}
+                  alt={`${displayUser.first_name || ''} ${displayUser.last_name || ''}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'inline';
+                  }}
+                />
+              ) : null}
+              <span style={{ display: displayUser?.avatar_url ? 'none' : 'inline' }}>
+                {displayUser?.first_name?.[0]?.toUpperCase() || 'E'}
+                {displayUser?.last_name?.[0]?.toUpperCase() || ''}
+              </span>
+            </div>
+
+            <div>
+              <h1 style={{
+                fontSize: '24px',
+                fontWeight: 800,
+                color: '#0F172A',
+                margin: 0,
+                lineHeight: 1.2
+              }}>
+                {displayUser?.first_name ? `${displayUser.first_name} ${displayUser.last_name || ''}`.trim() : 'Employee Performance'}
+              </h1>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0 0', fontWeight: 500 }}>
+                {fullRoleText} • Performance Tracker Overview
+              </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowRulesModal(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '9px 18px',
-              borderRadius: '12px',
-              background: '#FFFFFF',
-              color: '#1E293B',
-              border: '1.5px solid rgba(37, 99, 235, 0.2)',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer'
-            }}
-          >
-            <BookOpen size={16} style={{ color: '#2563EB' }} />
-            <span>Scoring Rules</span>
-          </button>
         </div>
-      ) : (
-        <KPIHeaderBanner
-          viewMode="personal"
-          setViewMode={onSwitchToManagement ? () => onSwitchToManagement() : undefined}
-          isManagementUser={isManagementUser}
-          onShowRulesModal={() => setShowRulesModal(true)}
-        />
-      )}
+
+        <button
+          type="button"
+          onClick={() => setShowRulesModal(true)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '9px 18px',
+            borderRadius: '12px',
+            background: '#FFFFFF',
+            color: '#1E293B',
+            border: '1.5px solid rgba(37, 99, 235, 0.2)',
+            fontWeight: 700,
+            fontSize: '13px',
+            cursor: 'pointer'
+          }}
+        >
+          <BookOpen size={16} style={{ color: '#2563EB' }} />
+          <span>Scoring Rules</span>
+        </button>
+      </div>
 
       {/* Period Filter & Navigation Bar */}
       <div style={{
@@ -2127,24 +2177,22 @@ const KpiPage = () => {
 
   const isExecutive = ['CEO', 'CTO', 'PM', 'CO'].includes(user?.role);
   const isCO = user?.role === 'CO';
-  const isCeoOrCto = isCO;
-  const hidePersonalView = ['CEO', 'CTO', 'PM', 'TL', 'CO'].includes(user?.role);
+  const isCeoOrCto = isCO || isCEO || isCTO;
+  const isTLOrPM = isTL || user?.role === 'PM';
   const showCardsGrid = ['CEO', 'CTO', 'CO', 'TL'].includes(user?.role);
   const isTM = user?.role === 'TM';
   const canDownload = isExecutive || isTL;
   const canGiveOrEdit = isLeadership;
   const canViewAverageKPI = isLeadership;
 
-  const [viewMode, setViewMode] = useState(hidePersonalView ? 'management' : (isTM ? 'personal' : 'management'));
+  const [viewMode, setViewMode] = useState(isTM ? 'personal' : 'management');
 
   // Sync viewMode if user role updates
   useEffect(() => {
-    if (hidePersonalView) {
-      setViewMode('management');
-    } else if (isTM) {
+    if (isTM) {
       setViewMode('personal');
     }
-  }, [hidePersonalView, isTM]);
+  }, [isTM]);
 
   // Sync selectedDate for TL and CEO so it starts empty and displays all evaluation records below cards
   useEffect(() => {
@@ -2288,19 +2336,35 @@ const KpiPage = () => {
       }
     });
 
+    if (user && user.id && !map.has(String(user.id))) {
+      map.set(String(user.id), user);
+    }
+
     let list = Array.from(map.values());
 
-    // Role-specific KPI Card exclusions for CO, CEO, and CTO
-    if (isCO || isCEO) {
-      // CO & CEO: Do not display cards for CO, CTO, TL, or PM employees
-      list = list.filter((emp) => !isRoleMatching(emp.role || emp.department, ['CO', 'CEO', 'CTO', 'TL', 'PM']));
-    } else if (isCTO) {
-      // CTO: Do not display cards for CO, TL, or PM employees (keep CTO)
-      list = list.filter((emp) => !isRoleMatching(emp.role || emp.department, ['CO', 'CEO', 'TL', 'PM']));
+    // Role-based KPI card inclusions for CEO and CTO dashboards:
+    // Both dashboards must display cards for: Developers, Team Leads (TL), Project Managers (PM), CEO, and CTO.
+    if (isCO || isCEO || isCTO) {
+      const getRoleOrder = (emp) => {
+        const r = String(emp.role || emp.department || '').toUpperCase();
+        if (r === 'TM' || r.includes('DEV') || r.includes('MEMBER')) return 1;
+        if (r === 'TL' || r.includes('LEAD')) return 2;
+        if (r === 'PM' || r.includes('PROJECT')) return 3;
+        if (r === 'CEO' || r.includes('CHIEF OPER') || r === 'CO') return 4;
+        if (r === 'CTO' || r.includes('CHIEF TECH')) return 5;
+        return 6;
+      };
+      list.sort((a, b) => {
+        const diff = getRoleOrder(a) - getRoleOrder(b);
+        if (diff !== 0) return diff;
+        const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim();
+        const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim();
+        return nameA.localeCompare(nameB);
+      });
     }
 
     return list;
-  }, [teammates, logs, allKpiLogs, showCardsGrid, isCO, isCEO, isCTO]);
+  }, [teammates, logs, allKpiLogs, showCardsGrid, isCO, isCEO, isCTO, user]);
 
   const filteredEmployeesForCards = useMemo(() => {
     if (!searchTerm.trim()) return allEmployeesForCards;
@@ -2489,14 +2553,17 @@ const KpiPage = () => {
 
   const liveMetrics = useMemo(() => calculateLiveMetrics(formData), [formData]);
 
-  // If TM or viewing personal overview
-  if (!hidePersonalView && (isTM || viewMode === 'personal')) {
+  // If TM or viewing personal overview (TL, PM, CEO, CTO personal dashboard)
+  if (isTM || viewMode === 'personal') {
     return (
       <DeveloperDashboardView
         showRulesModal={showRulesModal}
         setShowRulesModal={setShowRulesModal}
         onSwitchToManagement={() => setViewMode('management')}
         isManagementUser={!isTM}
+        employeeId={user?.id}
+        employeeInfo={user}
+        onBack={isTM ? undefined : () => setViewMode('management')}
       />
     );
   }
@@ -2558,7 +2625,9 @@ const KpiPage = () => {
         viewMode={viewMode}
         setViewMode={setViewMode}
         isManagementUser={!isTM}
-        hidePersonalView={hidePersonalView}
+        hidePersonalView={false}
+        isTLOrPM={isTLOrPM}
+        onOpenPersonal={() => setViewMode('personal')}
         onShowRulesModal={() => setShowRulesModal(true)}
         onDownloadCSV={handleDownloadCSV}
         onOpenCreateModal={handleOpenCreateModal}

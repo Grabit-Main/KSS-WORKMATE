@@ -195,9 +195,7 @@ def get_user_employee_ids(db: Session, user: User) -> list[UUID]:
     return user_ids
 
 
-def get_prev_period_logs(db: Session, employee_ids: list[UUID], period_type: str, offset: int, today: date):
-    prev_offset = offset - 1
-def get_prev_period_logs(db: Session, employee_ids: list[UUID], period_type: str, current_offset: int, today: date, is_specific: bool = False):
+def get_prev_period_logs(db: Session, employee_ids: list[UUID], period_type: str, current_offset: int, today: date, is_specific: bool = True):
     prev_offset = current_offset - 1
     if period_type == "week":
         current_start = today - timedelta(days=today.weekday())
@@ -216,12 +214,6 @@ def get_prev_period_logs(db: Session, employee_ids: list[UUID], period_type: str
         DailyKPILog.date >= start_date,
         DailyKPILog.date <= min(end_date, today)
     ).all()
-
-    if not logs and not is_specific:
-        logs = db.query(DailyKPILog).filter(
-            DailyKPILog.date >= start_date,
-            DailyKPILog.date <= min(end_date, today)
-        ).all()
 
     return logs
 
@@ -257,12 +249,6 @@ def get_trend_history(db: Session, employee_ids: list[UUID], period_type: str, c
             DailyKPILog.date <= min(end_date, today)
         ).all()
 
-        if not period_logs and not is_specific:
-            period_logs = db.query(DailyKPILog).filter(
-                DailyKPILog.date >= start_date,
-                DailyKPILog.date <= min(end_date, today)
-            ).all()
-
         if period_logs:
             avg_pct = round(sum(l.daily_kpi_percentage for l in period_logs) / len(period_logs), 1)
         else:
@@ -279,7 +265,7 @@ def get_trend_history(db: Session, employee_ids: list[UUID], period_type: str, c
 
 @router.get("/my-kpi")
 def get_my_kpi(
-    period_type: str = Query("week", regex="^(week|month)$"),
+    period_type: str = Query("week", pattern="^(week|month)$"),
     offset: int = Query(0),
     employee_id: Optional[UUID] = Query(None),
     db: Session = Depends(get_db),
@@ -336,21 +322,18 @@ def get_my_kpi(
         else:
             expected_days = sum(1 for d in range(1, last_day + 1) if date(target_year, target_month, d).weekday() < 5)
 
-    is_specific = False
+    is_specific = True
     if employee_id:
         if user.role in ("CEO", "CTO", "PM", "CO"):
             emp_ids = [employee_id]
-            is_specific = True
         elif is_team_lead(db, user):
             teammate_ids = get_teammate_ids_for_lead(db, user)
             if employee_id in teammate_ids or employee_id == user.id:
                 emp_ids = [employee_id]
-                is_specific = True
             else:
                 raise HTTPException(403, "You can only view KPI details for your teammates")
         elif employee_id == user.id:
             emp_ids = [employee_id]
-            is_specific = True
         else:
             raise HTTPException(403, "You can only view your own KPI details")
     else:
@@ -361,13 +344,6 @@ def get_my_kpi(
         DailyKPILog.date >= start_date,
         DailyKPILog.date <= min(end_date, today)
     ).order_by(DailyKPILog.date.asc()).all()
-
-    # Fallback to overall team KPI logs only if employee_id was not explicitly requested
-    if not logs and not is_specific:
-        logs = db.query(DailyKPILog).filter(
-            DailyKPILog.date >= start_date,
-            DailyKPILog.date <= min(end_date, today)
-        ).order_by(DailyKPILog.date.asc()).all()
 
     days_evaluated = len(logs)
 
@@ -509,8 +485,8 @@ def get_teammates(
     - CEO, CTO, PM: returns all active team members / users
     - TM: returns empty list
     """
-    if user.role in ("CEO", "CTO", "PM"):
-        users = db.query(User).filter(User.is_active == True, User.id != user.id).order_by(User.first_name, User.last_name).all()
+    if user.role in ("CEO", "CTO", "PM", "CO"):
+        users = db.query(User).filter(User.is_active == True).order_by(User.first_name, User.last_name).all()
         return users
     elif is_team_lead(db, user):
         teammate_ids = get_teammate_ids_for_lead(db, user)
