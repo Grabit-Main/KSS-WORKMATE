@@ -13,7 +13,7 @@ import {
 // Figma Logo SVG component
 function FigmaLogo({ size = 18 }) {
   return (
-    <svg width={size} height={(size * 57) / 38} viewBox="0 0 38 57" fill="none">
+    <svg width={size} height={(size * 57) / 38} viewBox="0 0 38 57" fill="none" style={{ flexShrink: 0 }}>
       <path d="M19 28.5C19 23.2533 23.2533 19 28.5 19C33.7467 19 38 23.2533 38 28.5C38 33.7467 33.7467 38 28.5 38C23.2533 38 19 33.7467 19 28.5Z" fill="#1ABCFE"/>
       <path d="M0 47.5C0 42.2533 4.25329 38 9.5 38H19V47.5C19 52.7467 14.7467 57 9.5 57C4.25329 57 0 52.7467 0 47.5Z" fill="#0ACF83"/>
       <path d="M19 0V19H28.5C33.7467 19 38 14.7467 38 9.5C38 4.25329 33.7467 0 28.5 0H19Z" fill="#FF7262"/>
@@ -26,7 +26,7 @@ function FigmaLogo({ size = 18 }) {
 // React Logo SVG component
 function ReactLogo({ size = 20, color = "#00D8FF" }) {
   return (
-    <svg width={size} height={size} viewBox="-11.5 -10.23174 23 20.46348" fill="none">
+    <svg width={size} height={size} viewBox="-11.5 -10.23174 23 20.46348" fill="none" style={{ flexShrink: 0 }}>
       <circle cx="0" cy="0" r="2.05" fill={color} />
       <g stroke={color} strokeWidth="1" fill="none">
         <ellipse rx="11" ry="4.2" />
@@ -141,7 +141,8 @@ function CategoryTag({ category }) {
       color: color,
       fontSize: '11px',
       fontWeight: 600,
-      marginTop: '3px'
+      marginTop: '3px',
+      whiteSpace: 'nowrap'
     }}>
       {category || 'Technical Skills'}
     </span>
@@ -164,7 +165,8 @@ function PriorityTag({ priority }) {
         color: '#EF4444',
         border: '1px solid #FEE2E2',
         fontSize: '12px',
-        fontWeight: 600
+        fontWeight: 600,
+        whiteSpace: 'nowrap'
       }}>
         <Flame size={13} fill="#EF4444" color="#EF4444" /> High
       </span>
@@ -183,9 +185,10 @@ function PriorityTag({ priority }) {
         color: '#D97706',
         border: '1px solid #FEF3C7',
         fontSize: '12px',
-        fontWeight: 600
+        fontWeight: 600,
+        whiteSpace: 'nowrap'
       }}>
-        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#D97706' }} /> Medium
+        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#D97706', flexShrink: 0 }} /> Medium
       </span>
     );
   }
@@ -201,9 +204,10 @@ function PriorityTag({ priority }) {
       color: '#64748B',
       border: '1px solid #E2E8F0',
       fontSize: '12px',
-      fontWeight: 600
+      fontWeight: 600,
+      whiteSpace: 'nowrap'
     }}>
-      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#94A3B8' }} /> Low
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} /> Low
     </span>
   );
 }
@@ -221,9 +225,10 @@ function StatusTag({ status }) {
         gap: '6px',
         color: '#10B981',
         fontSize: '13px',
-        fontWeight: 600
+        fontWeight: 600,
+        whiteSpace: 'nowrap'
       }}>
-        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981' }} /> Completed
+        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} /> Completed
       </span>
     );
   }
@@ -236,9 +241,10 @@ function StatusTag({ status }) {
         gap: '6px',
         color: '#5551FF',
         fontSize: '13px',
-        fontWeight: 600
+        fontWeight: 600,
+        whiteSpace: 'nowrap'
       }}>
-        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#5551FF' }} /> In Progress
+        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#5551FF', flexShrink: 0 }} /> In Progress
       </span>
     );
   }
@@ -250,9 +256,10 @@ function StatusTag({ status }) {
       gap: '6px',
       color: '#64748B',
       fontSize: '13px',
-      fontWeight: 500
+      fontWeight: 500,
+      whiteSpace: 'nowrap'
     }}>
-      <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#94A3B8' }} /> Not Started
+      <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} /> Not Started
     </span>
   );
 }
@@ -667,7 +674,7 @@ export default function GoalsPage() {
   });
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '8px 4px 60px 4px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '8px 4px 60px 4px' }}>
       
       {/* 1. TOP HERO BANNER CARD */}
       <div style={{
@@ -805,7 +812,8 @@ export default function GoalsPage() {
               boxShadow: '0 4px 14px rgba(85, 81, 255, 0.35)',
               transition: 'transform 0.15s ease, box-shadow 0.15s ease',
               whiteSpace: 'nowrap',
-              flexShrink: 0
+              flexShrink: 0,
+              fontFamily: 'inherit'
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-1px)';
@@ -1004,7 +1012,8 @@ export default function GoalsPage() {
                 border: 'none',
                 cursor: 'pointer',
                 boxShadow: isActive ? '0 2px 8px rgba(85, 81, 255, 0.28)' : 'none',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                fontFamily: 'inherit'
               }}
               onMouseEnter={e => {
                 if (!isActive) {
@@ -1065,7 +1074,8 @@ export default function GoalsPage() {
                   fontSize: '13.5px',
                   color: '#0F172A',
                   outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit'
                 }}
               />
             </div>
@@ -1085,7 +1095,8 @@ export default function GoalsPage() {
                   color: '#475569',
                   fontWeight: 500,
                   outline: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 <option value="All">Status: All Status</option>
@@ -1107,13 +1118,14 @@ export default function GoalsPage() {
                   color: '#475569',
                   fontWeight: 500,
                   outline: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 <option value="All">Category: All Categories</option>
-                <option value="Technical">Technical Skills</option>
-                <option value="Professional">Professional Development</option>
-                <option value="Career">Career Development</option>
+                <option value="Technical">Category: Technical Skills</option>
+                <option value="Professional">Category: Professional Development</option>
+                <option value="Career">Category: Career Development</option>
               </select>
 
               {/* Sort Dropdown */}
@@ -1129,7 +1141,8 @@ export default function GoalsPage() {
                   color: '#475569',
                   fontWeight: 500,
                   outline: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 <option value="last_updated">Sort By: Last Updated</option>
@@ -1139,55 +1152,61 @@ export default function GoalsPage() {
             </div>
           </div>
 
-          {/* Table Container */}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1080px' }}>
+          {/* Table Container with horizontal overflow protection */}
+          <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{
+              width: '100%',
+              minWidth: '1180px',
+              borderCollapse: 'collapse',
+              textAlign: 'left',
+              whiteSpace: 'nowrap'
+            }}>
               <thead>
                 <tr style={{
                   borderBottom: '1px solid #F1F5F9',
-                  background: '#FCFDFE'
+                  background: '#FFFFFF'
                 }}>
-                  <th style={{ padding: '14px 20px', fontSize: '11.5px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '15px 20px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       GOAL <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '14px 16px', fontSize: '11.5px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       PRIORITY <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '14px 16px', fontSize: '11.5px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       START DATE <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '14px 16px', fontSize: '11.5px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       TARGET DATE <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '14px 16px', fontSize: '11.5px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       PROGRESS <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '14px 16px', fontSize: '11.5px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       MILESTONES <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '14px 16px', fontSize: '11.5px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       UPDATE FREQUENCY <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '14px 16px', fontSize: '11.5px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       STATUS <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '14px 20px', fontSize: '11.5px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'right' }}>
+                  <th style={{ padding: '15px 20px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     ACTIONS
                   </th>
                 </tr>
@@ -1199,44 +1218,52 @@ export default function GoalsPage() {
                     <tr
                       key={g.id}
                       style={{
-                        borderBottom: index === filteredGoals.length - 1 ? 'none' : '1px solid #F1F5F9',
+                        borderBottom: index === filteredGoals.length - 1 ? 'none' : '1px solid #F8FAFC',
                         transition: 'background 0.15s ease'
                       }}
                       onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      {/* Goal Col */}
-                      <td style={{ padding: '18px 20px', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                          <GoalIconRenderer goal={g} size={38} />
-                          <div>
-                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>
+                      {/* Goal Col - Single Line Data Display */}
+                      <td style={{ padding: '15px 20px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', whiteSpace: 'nowrap' }}>
+                          <GoalIconRenderer goal={g} size={36} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', whiteSpace: 'nowrap' }}>
+                            <div style={{
+                              fontSize: '14px',
+                              fontWeight: 700,
+                              color: '#0F172A',
+                              lineHeight: 1.25,
+                              whiteSpace: 'nowrap'
+                            }}>
                               {g.title}
                             </div>
-                            <CategoryTag category={g.category} />
+                            <div>
+                              <CategoryTag category={g.category} />
+                            </div>
                           </div>
                         </div>
                       </td>
 
                       {/* Priority Col */}
-                      <td style={{ padding: '18px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                         <PriorityTag priority={g.priority} />
                       </td>
 
                       {/* Start Date Col */}
-                      <td style={{ padding: '18px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
                         {formatDateDisplay(g.start_date)}
                       </td>
 
                       {/* Target Date Col */}
-                      <td style={{ padding: '18px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
                         {formatDateDisplay(g.target_date)}
                       </td>
 
                       {/* Progress Col */}
-                      <td style={{ padding: '18px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', minWidth: '32px' }}>
+                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', minWidth: '32px', whiteSpace: 'nowrap' }}>
                             {g.progress}%
                           </span>
                           <div style={{
@@ -1244,7 +1271,8 @@ export default function GoalsPage() {
                             height: '6px',
                             borderRadius: '9999px',
                             background: '#E2E8F0',
-                            overflow: 'hidden'
+                            overflow: 'hidden',
+                            flexShrink: 0
                           }}>
                             <div style={{
                               width: `${g.progress}%`,
@@ -1258,31 +1286,33 @@ export default function GoalsPage() {
                       </td>
 
                       {/* Milestones Col */}
-                      <td style={{ padding: '18px 16px', verticalAlign: 'middle', fontSize: '13px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
                         {g.milestones_completed ?? (g.milestones ? g.milestones.filter(m => m.status === 'Completed').length : 0)} / {g.milestones_total ?? (g.milestones ? g.milestones.length : 0)}
                       </td>
 
                       {/* Update Frequency Col */}
-                      <td style={{ padding: '18px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                         <span style={{
-                          padding: '4px 12px',
+                          display: 'inline-block',
+                          padding: '4px 14px',
                           borderRadius: '9999px',
                           background: '#EEF2FF',
                           color: '#5551FF',
                           fontSize: '12px',
-                          fontWeight: 600
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap'
                         }}>
                           {g.update_frequency || 'Daily'}
                         </span>
                       </td>
 
                       {/* Status Col */}
-                      <td style={{ padding: '18px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                         <StatusTag status={g.status} />
                       </td>
 
                       {/* Actions Col (3-dot Menu) */}
-                      <td style={{ padding: '18px 20px', verticalAlign: 'middle', textAlign: 'right', position: 'relative' }}>
+                      <td style={{ padding: '15px 20px', verticalAlign: 'middle', textAlign: 'right', position: 'relative', whiteSpace: 'nowrap' }}>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1299,7 +1329,8 @@ export default function GoalsPage() {
                             justifyContent: 'center',
                             cursor: 'pointer',
                             color: '#64748B',
-                            transition: 'all 0.15s ease'
+                            transition: 'all 0.15s ease',
+                            fontFamily: 'inherit'
                           }}
                           onMouseEnter={e => {
                             if (!isMenuOpen) e.currentTarget.style.background = '#F1F5F9';
@@ -1318,7 +1349,7 @@ export default function GoalsPage() {
                             style={{
                               position: 'absolute',
                               right: '20px',
-                              top: '52px',
+                              top: '48px',
                               width: '168px',
                               background: '#FFFFFF',
                               borderRadius: '12px',
@@ -1344,7 +1375,9 @@ export default function GoalsPage() {
                                 fontSize: '13px',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                transition: 'background 0.15s ease'
+                                transition: 'background 0.15s ease',
+                                fontFamily: 'inherit',
+                                whiteSpace: 'nowrap'
                               }}
                               onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -1367,7 +1400,9 @@ export default function GoalsPage() {
                                 fontSize: '13px',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                transition: 'background 0.15s ease'
+                                transition: 'background 0.15s ease',
+                                fontFamily: 'inherit',
+                                whiteSpace: 'nowrap'
                               }}
                               onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -1395,11 +1430,11 @@ export default function GoalsPage() {
             gap: '16px',
             flexWrap: 'wrap'
           }}>
-            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500 }}>
+            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Showing 1–{filteredGoals.length} of {filteredGoals.length} goals
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
               {/* Prev */}
               <button
                 style={{
@@ -1412,7 +1447,8 @@ export default function GoalsPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 <ChevronLeft size={16} />
@@ -1432,7 +1468,8 @@ export default function GoalsPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 1
@@ -1451,7 +1488,8 @@ export default function GoalsPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 2
@@ -1470,7 +1508,8 @@ export default function GoalsPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 3
@@ -1491,7 +1530,8 @@ export default function GoalsPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 13
@@ -1509,7 +1549,8 @@ export default function GoalsPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 <ChevronRight size={16} />
@@ -1527,7 +1568,8 @@ export default function GoalsPage() {
                   fontWeight: 500,
                   marginLeft: '8px',
                   outline: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 <option value="10">10 per page</option>
@@ -1646,7 +1688,8 @@ export default function GoalsPage() {
                 background: '#F8FAFC',
                 color: '#0F172A',
                 fontSize: '13px',
-                outline: 'none'
+                outline: 'none',
+                fontFamily: 'inherit'
               }}
             />
             <select
@@ -1659,7 +1702,8 @@ export default function GoalsPage() {
                 background: '#F8FAFC',
                 color: '#0F172A',
                 fontSize: '13px',
-                outline: 'none'
+                outline: 'none',
+                fontFamily: 'inherit'
               }}
             >
               <option value="toImprove">Skills to Improve</option>
@@ -1679,7 +1723,8 @@ export default function GoalsPage() {
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                fontFamily: 'inherit'
               }}
             >
               <Plus size={16} /> Add Skill
@@ -1787,7 +1832,8 @@ export default function GoalsPage() {
                   padding: '4px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  fontFamily: 'inherit'
                 }}
               >
                 <X size={20} />
@@ -1821,7 +1867,8 @@ export default function GoalsPage() {
                     background: '#FEF2F2',
                     color: '#EF4444',
                     fontSize: '11px',
-                    fontWeight: 600
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap'
                   }}>
                     <Flame size={11} fill="#EF4444" color="#EF4444" /> High Priority
                   </span>
@@ -1864,7 +1911,8 @@ export default function GoalsPage() {
                       fontSize: '13.5px',
                       fontWeight: 600,
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      transition: 'all 0.15s ease',
+                      fontFamily: 'inherit'
                     }}
                   >
                     <Icon size={15} /> {tab.label}
@@ -1895,7 +1943,8 @@ export default function GoalsPage() {
                         fontSize: '13px',
                         color: '#0F172A',
                         outline: 'none',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
                       }}
                     />
                   </div>
@@ -1920,7 +1969,8 @@ export default function GoalsPage() {
                         outline: 'none',
                         background: '#FFFFFF',
                         cursor: 'pointer',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
                       }}
                     >
                       <option value="1 hr">1 hr</option>
@@ -1954,7 +2004,8 @@ export default function GoalsPage() {
                     outline: 'none',
                     lineHeight: 1.5,
                     resize: 'vertical',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit'
                   }}
                 />
               </div>
@@ -1987,7 +2038,8 @@ export default function GoalsPage() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#475569'
+                        color: '#475569',
+                        fontFamily: 'inherit'
                       }}
                     >
                       <Minus size={15} />
@@ -2008,7 +2060,8 @@ export default function GoalsPage() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#475569'
+                        color: '#475569',
+                        fontFamily: 'inherit'
                       }}
                     >
                       <Plus size={15} />
@@ -2033,7 +2086,8 @@ export default function GoalsPage() {
                       fontSize: '13px',
                       color: '#0F172A',
                       outline: 'none',
-                      boxSizing: 'border-box'
+                      boxSizing: 'border-box',
+                      fontFamily: 'inherit'
                     }}
                   />
                 </div>
@@ -2057,7 +2111,8 @@ export default function GoalsPage() {
                     fontSize: '13px',
                     color: '#0F172A',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit'
                   }}
                 />
               </div>
@@ -2104,7 +2159,8 @@ export default function GoalsPage() {
                     color: '#334155',
                     fontSize: '12.5px',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontFamily: 'inherit'
                   }}
                 >
                   <Upload size={14} /> Upload File
@@ -2124,7 +2180,8 @@ export default function GoalsPage() {
                     color: '#475569',
                     fontSize: '13.5px',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontFamily: 'inherit'
                   }}
                 >
                   Cancel
@@ -2141,7 +2198,8 @@ export default function GoalsPage() {
                     fontSize: '13.5px',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(85, 81, 255, 0.3)'
+                    boxShadow: '0 4px 12px rgba(85, 81, 255, 0.3)',
+                    fontFamily: 'inherit'
                   }}
                 >
                   Save Update
@@ -2201,7 +2259,8 @@ export default function GoalsPage() {
                     fontSize: '12px',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease'
+                    transition: 'all 0.15s ease',
+                    fontFamily: 'inherit'
                   }}
                 >
                   <Pencil size={13} /> {isEditMode ? 'Exit Edit Mode' : 'Enable Edit Mode'}
@@ -2219,7 +2278,8 @@ export default function GoalsPage() {
                   border: 'none',
                   cursor: 'pointer',
                   color: '#64748B',
-                  padding: '4px'
+                  padding: '4px',
+                  fontFamily: 'inherit'
                 }}
               >
                 <X size={20} />
@@ -2260,7 +2320,8 @@ export default function GoalsPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                flexShrink: 0
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#5551FF' }} />
                 {viewingGoal.status}
@@ -2289,7 +2350,7 @@ export default function GoalsPage() {
                         type="text"
                         value={editGoalData?.title || ''}
                         onChange={e => setEditGoalData({ ...editGoalData, title: e.target.value })}
-                        style={{ flex: 1, padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px' }}
+                        style={{ flex: 1, padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontFamily: 'inherit' }}
                       />
                     ) : (
                       <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>{viewingGoal.title}</span>
@@ -2304,7 +2365,7 @@ export default function GoalsPage() {
                         type="text"
                         value={editGoalData?.category || ''}
                         onChange={e => setEditGoalData({ ...editGoalData, category: e.target.value })}
-                        style={{ flex: 1, padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px' }}
+                        style={{ flex: 1, padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontFamily: 'inherit' }}
                       />
                     ) : (
                       <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>{viewingGoal.category}</span>
@@ -2497,7 +2558,8 @@ export default function GoalsPage() {
                       padding: '9px 20px',
                       fontSize: '13px',
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      fontFamily: 'inherit'
                     }}
                   >
                     Save Changes
@@ -2518,7 +2580,8 @@ export default function GoalsPage() {
                     padding: '9px 22px',
                     fontSize: '13px',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontFamily: 'inherit'
                   }}
                 >
                   Close
@@ -2572,7 +2635,8 @@ export default function GoalsPage() {
                   border: 'none',
                   cursor: 'pointer',
                   color: '#64748B',
-                  padding: '4px'
+                  padding: '4px',
+                  fontFamily: 'inherit'
                 }}
               >
                 <X size={20} />
@@ -2604,7 +2668,8 @@ export default function GoalsPage() {
                     fontSize: '13px',
                     color: '#0F172A',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit'
                   }}
                 />
               </div>
@@ -2630,7 +2695,8 @@ export default function GoalsPage() {
                         outline: 'none',
                         background: '#FFFFFF',
                         cursor: 'pointer',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
                       }}
                     >
                       <option value="Technical Skills">Technical Skills</option>
@@ -2661,7 +2727,8 @@ export default function GoalsPage() {
                         outline: 'none',
                         background: '#FFFFFF',
                         cursor: 'pointer',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
                       }}
                     >
                       <option value="High">High</option>
@@ -2694,7 +2761,8 @@ export default function GoalsPage() {
                     outline: 'none',
                     lineHeight: 1.5,
                     resize: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit'
                   }}
                 />
                 <div style={{ textAlign: 'right', fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
@@ -2723,7 +2791,8 @@ export default function GoalsPage() {
                     outline: 'none',
                     lineHeight: 1.6,
                     resize: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit'
                   }}
                 />
               </div>
@@ -2756,7 +2825,8 @@ export default function GoalsPage() {
                         fontSize: '13px',
                         color: '#0F172A',
                         outline: 'none',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
                       }}
                     />
                   </div>
@@ -2781,7 +2851,8 @@ export default function GoalsPage() {
                         fontSize: '13px',
                         color: '#0F172A',
                         outline: 'none',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
                       }}
                     />
                   </div>
@@ -2807,7 +2878,8 @@ export default function GoalsPage() {
                         color: '#475569',
                         fontWeight: 600,
                         outline: 'none',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
                       }}
                     />
                   </div>
@@ -2891,7 +2963,8 @@ export default function GoalsPage() {
                         fontSize: '13px',
                         color: '#0F172A',
                         outline: 'none',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
                       }}
                     />
                   </div>
@@ -2909,7 +2982,8 @@ export default function GoalsPage() {
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
+                      fontFamily: 'inherit'
                     }}
                   >
                     <Plus size={15} /> Add
@@ -2960,7 +3034,8 @@ export default function GoalsPage() {
                   color: '#475569',
                   fontSize: '13.5px',
                   fontWeight: 600,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
                 }}
               >
                 Cancel
@@ -2977,7 +3052,8 @@ export default function GoalsPage() {
                   fontSize: '13.5px',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(85, 81, 255, 0.3)'
+                  boxShadow: '0 4px 12px rgba(85, 81, 255, 0.3)',
+                  fontFamily: 'inherit'
                 }}
               >
                 Create Goal
