@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRealtime } from '../realtime/useRealtime';
 import goalsGrowth3d from '../assets/goals_growth_3d.png';
+import { getGoals, createGoal, updateGoal, deleteGoal } from '../api/goals';
 import {
   Target, Award, TrendingUp, CheckCircle2, Plus, Calendar,
   ChevronRight, ChevronLeft, X, Clock,
@@ -316,18 +317,35 @@ export default function GoalsPage() {
     } catch {}
   };
 
+  const [loadingGoals, setLoadingGoals] = useState(false);
+
+  // Fetch Goals from Backend Database
+  const fetchGoals = useCallback(async () => {
+    try {
+      setLoadingGoals(true);
+      const data = await getGoals();
+      if (Array.isArray(data)) {
+        const cleanGoals = data.filter(g => ![1, 2, 3].includes(g.id) && !['Learn React.js', 'Improve Figma Prototyping Skills', 'Prepare for UI/UX Certification'].includes(g.title));
+        setGoalsList(cleanGoals);
+        try {
+          localStorage.setItem(`workos_goals_v2_${user?.id}`, JSON.stringify(cleanGoals));
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('Could not fetch goals from DB, using cached goals:', err);
+    } finally {
+      setLoadingGoals(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchGoals();
+  }, [fetchGoals]);
+
   // Realtime Sync Handler
   const handleRealtimeUpdate = useCallback(() => {
-    try {
-      const saved = localStorage.getItem(`workos_goals_v2_${user?.id}`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setGoalsList(parsed.filter(g => ![1, 2, 3].includes(g.id) && !['Learn React.js', 'Improve Figma Prototyping Skills', 'Prepare for UI/UX Certification'].includes(g.title)));
-        }
-      }
-    } catch {}
-  }, [user?.id]);
+    fetchGoals();
+  }, [fetchGoals]);
 
   useRealtime('analytics.refresh', handleRealtimeUpdate);
 
@@ -382,13 +400,12 @@ export default function GoalsPage() {
     setCreateResourcesList(createResourcesList.filter((_, i) => i !== index));
   };
 
-  const handleCreateGoalSubmit = (e) => {
+  const handleCreateGoalSubmit = async (e) => {
     e.preventDefault();
     if (!createTitle.trim()) return;
 
     const durationDays = calculateDurationDays(createStartDate, createTargetDate);
-    const newGoal = {
-      id: Date.now(),
+    const newGoalPayload = {
       title: createTitle.trim(),
       category: createCategory,
       type: createCategory.includes('Technical') ? 'Technical' : 'Professional',
@@ -416,7 +433,18 @@ export default function GoalsPage() {
       ]
     };
 
-    saveGoals([newGoal, ...goalsList]);
+    try {
+      const created = await createGoal(newGoalPayload);
+      if (created && created.id) {
+        saveGoals([created, ...goalsList]);
+      } else {
+        saveGoals([{ id: Date.now(), ...newGoalPayload }, ...goalsList]);
+      }
+    } catch (err) {
+      console.warn('Could not save goal to DB, falling back to local storage:', err);
+      saveGoals([{ id: Date.now(), ...newGoalPayload }, ...goalsList]);
+    }
+
     setShowCreateGoalModal(false);
     // Reset fields
     setCreateTitle('');
@@ -451,25 +479,29 @@ export default function GoalsPage() {
     setActionMenuGoalId(null);
   };
 
-  const handleSaveProgress = (e) => {
+  const handleSaveProgress = async (e) => {
     e.preventDefault();
     if (!updatingGoal) return;
 
     const newProg = Math.max(0, Math.min(100, Number(progressPercent)));
     const updatedStatus = newProg === 100 ? 'Completed' : (newProg > 0 ? 'In Progress' : updatingGoal.status);
 
+    const updatePayload = {
+      progress: newProg,
+      update_frequency: progressFrequency,
+      time_spent: timeSpent,
+      activities: activities,
+      next_steps: nextSteps,
+      challenges: challenges,
+      status: updatedStatus,
+      resources: attachments
+    };
+
     const updated = goalsList.map(g => {
       if (g.id === updatingGoal.id) {
         return {
           ...g,
-          progress: newProg,
-          update_frequency: progressFrequency,
-          time_spent: timeSpent,
-          activities: activities,
-          next_steps: nextSteps,
-          challenges: challenges,
-          status: updatedStatus,
-          resources: attachments
+          ...updatePayload
         };
       }
       return g;
@@ -477,6 +509,15 @@ export default function GoalsPage() {
 
     saveGoals(updated);
     setUpdatingGoal(null);
+
+    // Persist update to DB
+    try {
+      if (updatingGoal.id && String(updatingGoal.id).includes('-')) {
+        await updateGoal(updatingGoal.id, updatePayload);
+      }
+    } catch (err) {
+      console.warn('Could not update goal in DB:', err);
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -499,12 +540,21 @@ export default function GoalsPage() {
     setActionMenuGoalId(null);
   };
 
-  const handleSaveDetailsEdit = () => {
+  const handleSaveDetailsEdit = async () => {
     if (!editGoalData) return;
     const updated = goalsList.map(g => g.id === editGoalData.id ? editGoalData : g);
     saveGoals(updated);
     setViewingGoal(editGoalData);
     setIsEditMode(false);
+
+    // Persist edit to DB
+    try {
+      if (editGoalData.id && String(editGoalData.id).includes('-')) {
+        await updateGoal(editGoalData.id, editGoalData);
+      }
+    } catch (err) {
+      console.warn('Could not save goal edit in DB:', err);
+    }
   };
 
   // ==========================================

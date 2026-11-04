@@ -50,7 +50,7 @@ try:
     from app.database import engine, Base
     from app.routers import (
         auth, users, projects, teams, tasks,
-        chat, upload, analytics, reviews, notifications, history, kpi, mywork, documentation, holidays
+        chat, upload, analytics, reviews, notifications, history, kpi, mywork, documentation, holidays, goals
     )
     from app.websocket.router import router as websocket_router
 
@@ -81,6 +81,35 @@ try:
                 );
                 CREATE INDEX IF NOT EXISTS ix_chat_message_reads_message_id ON chat_message_reads(message_id);
                 CREATE INDEX IF NOT EXISTS ix_chat_message_reads_user_id ON chat_message_reads(user_id);
+
+                CREATE TABLE IF NOT EXISTS goals (
+                    id UUID PRIMARY KEY,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    title VARCHAR NOT NULL,
+                    category VARCHAR DEFAULT 'Technical Skills',
+                    type VARCHAR DEFAULT 'Technical',
+                    priority VARCHAR DEFAULT 'Medium',
+                    start_date VARCHAR,
+                    target_date VARCHAR,
+                    duration VARCHAR,
+                    progress INTEGER DEFAULT 0,
+                    milestones_completed INTEGER DEFAULT 0,
+                    milestones_total INTEGER DEFAULT 0,
+                    update_frequency VARCHAR DEFAULT 'Daily',
+                    status VARCHAR DEFAULT 'In Progress',
+                    time_spent VARCHAR DEFAULT '0 hrs',
+                    icon_type VARCHAR DEFAULT 'react',
+                    description TEXT,
+                    target_outcome TEXT,
+                    next_steps TEXT,
+                    challenges TEXT,
+                    activities TEXT,
+                    resources JSON DEFAULT '[]'::json,
+                    milestones JSON DEFAULT '[]'::json,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS ix_goals_user_id ON goals(user_id);
             """))
     except Exception as db_err:
         print("Table creation warning:", db_err)
@@ -100,6 +129,7 @@ try:
     app.include_router(mywork.router)
     app.include_router(documentation.router)
     app.include_router(holidays.router)
+    app.include_router(goals.router)
     app.include_router(websocket_router)
 except Exception as e:
     init_error = traceback.format_exc()
