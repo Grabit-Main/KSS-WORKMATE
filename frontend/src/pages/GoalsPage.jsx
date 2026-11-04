@@ -284,120 +284,27 @@ function calculateDurationDays(startStr, targetStr) {
   return `${diffDays > 0 ? diffDays : 0} Days`;
 }
 
-// Initial Default Goals matching design screenshot
-const INITIAL_GOALS = [
-  {
-    id: 1,
-    title: 'Learn React.js',
-    category: 'Technical Skills',
-    type: 'Technical',
-    priority: 'High',
-    start_date: '2026-11-04',
-    target_date: '2026-12-19',
-    duration: '45 Days',
-    progress: 35,
-    milestones_completed: 2,
-    milestones_total: 6,
-    update_frequency: 'Daily',
-    status: 'In Progress',
-    time_spent: '18 hrs',
-    icon_type: 'react',
-    description: 'Build a strong foundation in React and develop a complete project.',
-    target_outcome: 'Complete React.js fundamentals.\nBuild one complete project.\nBe confident in using React in real projects.',
-    next_steps: 'Learn React Hooks (useState, useEffect) and practice with examples.',
-    challenges: 'Still a bit unclear about lifecycle and useEffect dependencies.',
-    activities: 'Learned React components and props.\nPracticed creating reusable components.\nImplemented basic component structure in a demo project.',
-    resources: ['React_Notes.pdf', 'Component_Guide.pdf', 'Project_Reference.pdf'],
-    milestones: [
-      { id: 101, text: 'Complete React.js fundamentals', status: 'Completed' },
-      { id: 102, text: 'Practiced creating reusable components', status: 'Completed' },
-      { id: 103, text: 'Learn React Hooks (useState, useEffect)', status: 'In Progress' },
-      { id: 104, text: 'Build one complete demo project', status: 'Upcoming' },
-      { id: 105, text: 'State management architecture', status: 'Upcoming' },
-      { id: 106, text: 'Final code review and performance tuning', status: 'Upcoming' }
-    ]
-  },
-  {
-    id: 2,
-    title: 'Improve Figma Prototyping Skills',
-    category: 'Professional Development',
-    type: 'Professional',
-    priority: 'Medium',
-    start_date: '2026-10-28',
-    target_date: '2026-11-28',
-    duration: '31 Days',
-    progress: 60,
-    milestones_completed: 3,
-    milestones_total: 5,
-    update_frequency: 'Weekly',
-    status: 'In Progress',
-    time_spent: '12 hrs',
-    icon_type: 'figma',
-    description: 'Enhance prototyping velocity and master Figma interactive components.',
-    target_outcome: 'Build high-fidelity prototypes with interactive states and micro-interactions.',
-    next_steps: 'Master variables and advanced prototyping modes.',
-    challenges: 'Complex component variants nesting.',
-    activities: 'Designed interactive components and micro-interactions in Figma.',
-    resources: ['Figma_Tokens_Guide.pdf', 'Prototype_Design_Kit.fig'],
-    milestones: [
-      { id: 201, text: 'Auto-layout and component variants', status: 'Completed' },
-      { id: 202, text: 'Interactive component prototyping', status: 'Completed' },
-      { id: 203, text: 'Design system token alignment', status: 'Completed' },
-      { id: 204, text: 'Variables and conditional prototyping', status: 'In Progress' },
-      { id: 205, text: 'User testing playback walkthrough', status: 'Upcoming' }
-    ]
-  },
-  {
-    id: 3,
-    title: 'Prepare for UI/UX Certification',
-    category: 'Career Development',
-    type: 'Career',
-    priority: 'Medium',
-    start_date: '2026-11-10',
-    target_date: '2026-12-31',
-    duration: '51 Days',
-    progress: 20,
-    milestones_completed: 1,
-    milestones_total: 4,
-    update_frequency: 'Weekly',
-    status: 'Not Started',
-    time_spent: '4 hrs',
-    icon_type: 'book',
-    description: 'Prepare comprehensively for industry recognized UI/UX certification.',
-    target_outcome: 'Pass the certified UX professional exam with distinction.',
-    next_steps: 'Complete Module 1 quizzes and practical assignments.',
-    challenges: 'Balancing study hours with daily sprint deliverables.',
-    activities: 'Reviewed certification syllabus and initial study material.',
-    resources: ['UX_Curriculum.pdf', 'Exam_Sample_Questions.pdf'],
-    milestones: [
-      { id: 301, text: 'Review certification curriculum', status: 'Completed' },
-      { id: 302, text: 'UX research methodologies', status: 'Upcoming' },
-      { id: 303, text: 'Usability heuristics and evaluation', status: 'Upcoming' },
-      { id: 304, text: 'Mock exam and final assessment', status: 'Upcoming' }
-    ]
-  }
-];
-
 export default function GoalsPage() {
   const { user } = useAuth();
   const role = user?.role || 'TM';
 
-  // Active Tab: 'goals', 'growth', 'achievements' (Notice: 'milestones' button removed!)
+  // Active Tab: 'goals', 'growth', 'achievements'
   const [activeTab, setActiveTab] = useState('goals');
 
-  // Goals State with localStorage persistence
+  // Goals State with localStorage persistence (starts empty or loads user-created goals)
   const [goalsList, setGoalsList] = useState(() => {
     try {
       const saved = localStorage.getItem(`workos_goals_v2_${user?.id}`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].category) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          // Remove the 3 initial demo goals
+          return parsed.filter(g => ![1, 2, 3].includes(g.id) && !['Learn React.js', 'Improve Figma Prototyping Skills', 'Prepare for UI/UX Certification'].includes(g.title));
         }
       }
-      return INITIAL_GOALS;
+      return [];
     } catch {
-      return INITIAL_GOALS;
+      return [];
     }
   });
 
@@ -413,7 +320,12 @@ export default function GoalsPage() {
   const handleRealtimeUpdate = useCallback(() => {
     try {
       const saved = localStorage.getItem(`workos_goals_v2_${user?.id}`);
-      if (saved) setGoalsList(JSON.parse(saved));
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setGoalsList(parsed.filter(g => ![1, 2, 3].includes(g.id) && !['Learn React.js', 'Improve Figma Prototyping Skills', 'Prepare for UI/UX Certification'].includes(g.title)));
+        }
+      }
     } catch {}
   }, [user?.id]);
 
@@ -596,7 +508,7 @@ export default function GoalsPage() {
   };
 
   // ==========================================
-  // GROWTH PLAN & ACHIEVEMENTS DATA
+  // GROWTH PLAN STATE
   // ==========================================
   const [skillsPlan, setSkillsPlan] = useState(() => {
     try {
@@ -633,32 +545,25 @@ export default function GoalsPage() {
     setNewSkillText('');
   };
 
-  const achievements = [
-    {
-      id: 1,
-      title: 'Database Recovery & PITR Master',
-      category: 'Technical Excellence',
-      date: 'Sep 24, 2026',
-      icon: '🛡️',
-      desc: 'Successfully verified production database PITR backup recovery up to 24-09-2026 with 100% data integrity.'
-    },
-    {
-      id: 2,
-      title: '100% On-Time Task Execution',
-      category: 'Productivity',
-      date: 'Sep 2026',
-      icon: '⚡',
-      desc: 'Completed all high-priority sprint deliverables without missing project deadlines.'
-    }
-  ];
+  // Demo achievements removed per user request
+  const achievements = [];
 
   // ==========================================
-  // METRICS COMPUTATION (Matching top stat cards)
+  // METRICS COMPUTATION (Dynamic from real goals)
   // ==========================================
-  const activeGoalsCount = goalsList.filter(g => g.status === 'In Progress').length || 1;
-  const completedGoalsCount = goalsList.filter(g => g.status === 'Completed').length || 1;
-  const upcomingMilestonesCount = 4; // matching design metric: 4 Upcoming Milestones
-  const learningHoursText = '18 hrs'; // matching design metric: 18 hrs
+  const activeGoalsCount = goalsList.filter(g => g.status === 'In Progress').length;
+  const completedGoalsCount = goalsList.filter(g => g.status === 'Completed').length;
+  const upcomingMilestonesCount = goalsList.reduce((acc, g) => {
+    if (g.milestones) {
+      return acc + g.milestones.filter(m => m.status !== 'Completed').length;
+    }
+    return acc;
+  }, 0);
+  const totalLearningHours = goalsList.reduce((acc, g) => {
+    const hrs = parseInt(g.time_spent) || 0;
+    return acc + hrs;
+  }, 0);
+  const learningHoursText = `${totalLearningHours} hrs`;
 
   // Filtered goals for table
   const filteredGoals = goalsList.filter(g => {
@@ -774,7 +679,7 @@ export default function GoalsPage() {
           </div>
         </div>
 
-        {/* Right Section: 3D Illustration & Create Goal Button (NO Milestone button) */}
+        {/* Right Section: 3D Illustration & Create Goal Button */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -829,7 +734,7 @@ export default function GoalsPage() {
         </div>
       </div>
 
-      {/* 2. TOP SUMMARY METRICS ROW (4 Cards matching design) */}
+      {/* 2. TOP SUMMARY METRICS ROW (4 Cards) */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
@@ -980,7 +885,7 @@ export default function GoalsPage() {
         </div>
       </div>
 
-      {/* 3. TABS NAVIGATION (Milestones tab button removed from top) */}
+      {/* 3. TABS NAVIGATION */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -1212,210 +1117,239 @@ export default function GoalsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredGoals.map((g, index) => {
-                  const isMenuOpen = actionMenuGoalId === g.id;
-                  return (
-                    <tr
-                      key={g.id}
-                      style={{
-                        borderBottom: index === filteredGoals.length - 1 ? 'none' : '1px solid #F8FAFC',
-                        transition: 'background 0.15s ease'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      {/* Goal Col - Single Line Data Display */}
-                      <td style={{ padding: '15px 20px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', whiteSpace: 'nowrap' }}>
-                          <GoalIconRenderer goal={g} size={36} />
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', whiteSpace: 'nowrap' }}>
-                            <div style={{
-                              fontSize: '14px',
-                              fontWeight: 700,
-                              color: '#0F172A',
-                              lineHeight: 1.25,
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {g.title}
-                            </div>
-                            <div>
-                              <CategoryTag category={g.category} />
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Priority Col */}
-                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                        <PriorityTag priority={g.priority} />
-                      </td>
-
-                      {/* Start Date Col */}
-                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                        {formatDateDisplay(g.start_date)}
-                      </td>
-
-                      {/* Target Date Col */}
-                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                        {formatDateDisplay(g.target_date)}
-                      </td>
-
-                      {/* Progress Col */}
-                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', minWidth: '32px', whiteSpace: 'nowrap' }}>
-                            {g.progress}%
-                          </span>
-                          <div style={{
-                            width: '74px',
-                            height: '6px',
-                            borderRadius: '9999px',
-                            background: '#E2E8F0',
-                            overflow: 'hidden',
-                            flexShrink: 0
-                          }}>
-                            <div style={{
-                              width: `${g.progress}%`,
-                              height: '100%',
-                              background: '#10B981',
-                              borderRadius: '9999px',
-                              transition: 'width 0.3s ease'
-                            }} />
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Milestones Col */}
-                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
-                        {g.milestones_completed ?? (g.milestones ? g.milestones.filter(m => m.status === 'Completed').length : 0)} / {g.milestones_total ?? (g.milestones ? g.milestones.length : 0)}
-                      </td>
-
-                      {/* Update Frequency Col */}
-                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 14px',
-                          borderRadius: '9999px',
-                          background: '#EEF2FF',
-                          color: '#5551FF',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          whiteSpace: 'nowrap'
+                {filteredGoals.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} style={{ padding: '60px 24px', textAlign: 'center', background: '#FFFFFF' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '52px',
+                          height: '52px',
+                          borderRadius: '16px',
+                          background: '#F8FAFC',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#94A3B8'
                         }}>
-                          {g.update_frequency || 'Daily'}
-                        </span>
-                      </td>
+                          <Target size={26} />
+                        </div>
+                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
+                          No Goals Found
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#64748B', maxWidth: '360px' }}>
+                          {searchQuery || statusFilter !== 'All' || categoryFilter !== 'All'
+                            ? 'No goals match your current filter criteria.'
+                            : 'Click "+ Create Goal" above to create your first goal.'}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredGoals.map((g, index) => {
+                    const isMenuOpen = actionMenuGoalId === g.id;
+                    return (
+                      <tr
+                        key={g.id}
+                        style={{
+                          borderBottom: index === filteredGoals.length - 1 ? 'none' : '1px solid #F8FAFC',
+                          transition: 'background 0.15s ease'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {/* Goal Col - Single Line Data Display */}
+                        <td style={{ padding: '15px 20px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', whiteSpace: 'nowrap' }}>
+                            <GoalIconRenderer goal={g} size={36} />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', whiteSpace: 'nowrap' }}>
+                              <div style={{
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                color: '#0F172A',
+                                lineHeight: 1.25,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {g.title}
+                              </div>
+                              <div>
+                                <CategoryTag category={g.category} />
+                              </div>
+                            </div>
+                          </div>
+                        </td>
 
-                      {/* Status Col */}
-                      <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                        <StatusTag status={g.status} />
-                      </td>
+                        {/* Priority Col */}
+                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                          <PriorityTag priority={g.priority} />
+                        </td>
 
-                      {/* Actions Col (3-dot Menu) */}
-                      <td style={{ padding: '15px 20px', verticalAlign: 'middle', textAlign: 'right', position: 'relative', whiteSpace: 'nowrap' }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionMenuGoalId(isMenuOpen ? null : g.id);
-                          }}
-                          style={{
-                            background: isMenuOpen ? '#EEF2FF' : 'transparent',
-                            border: 'none',
-                            borderRadius: '8px',
-                            width: '32px',
-                            height: '32px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            color: '#64748B',
-                            transition: 'all 0.15s ease',
-                            fontFamily: 'inherit'
-                          }}
-                          onMouseEnter={e => {
-                            if (!isMenuOpen) e.currentTarget.style.background = '#F1F5F9';
-                          }}
-                          onMouseLeave={e => {
-                            if (!isMenuOpen) e.currentTarget.style.background = 'transparent';
-                          }}
-                        >
-                          <MoreVertical size={18} />
-                        </button>
+                        {/* Start Date Col */}
+                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                          {formatDateDisplay(g.start_date)}
+                        </td>
 
-                        {/* Dropdown Menu Popup */}
-                        {isMenuOpen && (
-                          <div
-                            ref={actionMenuRef}
+                        {/* Target Date Col */}
+                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                          {formatDateDisplay(g.target_date)}
+                        </td>
+
+                        {/* Progress Col */}
+                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', minWidth: '32px', whiteSpace: 'nowrap' }}>
+                              {g.progress}%
+                            </span>
+                            <div style={{
+                              width: '74px',
+                              height: '6px',
+                              borderRadius: '9999px',
+                              background: '#E2E8F0',
+                              overflow: 'hidden',
+                              flexShrink: 0
+                            }}>
+                              <div style={{
+                                width: `${g.progress}%`,
+                                height: '100%',
+                                background: '#10B981',
+                                borderRadius: '9999px',
+                                transition: 'width 0.3s ease'
+                              }} />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Milestones Col */}
+                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                          {g.milestones_completed ?? (g.milestones ? g.milestones.filter(m => m.status === 'Completed').length : 0)} / {g.milestones_total ?? (g.milestones ? g.milestones.length : 0)}
+                        </td>
+
+                        {/* Update Frequency Col */}
+                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 14px',
+                            borderRadius: '9999px',
+                            background: '#EEF2FF',
+                            color: '#5551FF',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {g.update_frequency || 'Daily'}
+                          </span>
+                        </td>
+
+                        {/* Status Col */}
+                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                          <StatusTag status={g.status} />
+                        </td>
+
+                        {/* Actions Col (3-dot Menu) */}
+                        <td style={{ padding: '15px 20px', verticalAlign: 'middle', textAlign: 'right', position: 'relative', whiteSpace: 'nowrap' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionMenuGoalId(isMenuOpen ? null : g.id);
+                            }}
                             style={{
-                              position: 'absolute',
-                              right: '20px',
-                              top: '48px',
-                              width: '168px',
-                              background: '#FFFFFF',
-                              borderRadius: '12px',
-                              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                              border: '1px solid #E2E8F0',
-                              padding: '6px',
-                              zIndex: 50,
-                              textAlign: 'left'
+                              background: isMenuOpen ? '#EEF2FF' : 'transparent',
+                              border: 'none',
+                              borderRadius: '8px',
+                              width: '32px',
+                              height: '32px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: '#64748B',
+                              transition: 'all 0.15s ease',
+                              fontFamily: 'inherit'
+                            }}
+                            onMouseEnter={e => {
+                              if (!isMenuOpen) e.currentTarget.style.background = '#F1F5F9';
+                            }}
+                            onMouseLeave={e => {
+                              if (!isMenuOpen) e.currentTarget.style.background = 'transparent';
                             }}
                           >
-                            <button
-                              onClick={() => openUpdateProgressModal(g)}
+                            <MoreVertical size={18} />
+                          </button>
+
+                          {/* Dropdown Menu Popup */}
+                          {isMenuOpen && (
+                            <div
+                              ref={actionMenuRef}
                               style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                padding: '9px 12px',
-                                borderRadius: '8px',
-                                border: 'none',
-                                background: 'transparent',
-                                color: '#0F172A',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'background 0.15s ease',
-                                fontFamily: 'inherit',
-                                whiteSpace: 'nowrap'
+                                position: 'absolute',
+                                right: '20px',
+                                top: '48px',
+                                width: '168px',
+                                background: '#FFFFFF',
+                                borderRadius: '12px',
+                                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                                border: '1px solid #E2E8F0',
+                                padding: '6px',
+                                zIndex: 50,
+                                textAlign: 'left'
                               }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                             >
-                              <TrendingUp size={15} color="#5551FF" />
-                              Update Progress
-                            </button>
-                            <button
-                              onClick={() => openViewDetailsModal(g)}
-                              style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                padding: '9px 12px',
-                                borderRadius: '8px',
-                                border: 'none',
-                                background: 'transparent',
-                                color: '#0F172A',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'background 0.15s ease',
-                                fontFamily: 'inherit',
-                                whiteSpace: 'nowrap'
-                              }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <FileText size={15} color="#64748B" />
-                              View Details
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                              <button
+                                onClick={() => openUpdateProgressModal(g)}
+                                style={{
+                                  width: '100%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '9px 12px',
+                                  borderRadius: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#0F172A',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'background 0.15s ease',
+                                  fontFamily: 'inherit',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <TrendingUp size={15} color="#5551FF" />
+                                Update Progress
+                              </button>
+                              <button
+                                onClick={() => openViewDetailsModal(g)}
+                                style={{
+                                  width: '100%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '9px 12px',
+                                  borderRadius: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#0F172A',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'background 0.15s ease',
+                                  fontFamily: 'inherit',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <FileText size={15} color="#64748B" />
+                                View Details
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -1431,23 +1365,24 @@ export default function GoalsPage() {
             flexWrap: 'wrap'
           }}>
             <div style={{ fontSize: '13px', color: '#64748B', fontWeight: 500, whiteSpace: 'nowrap' }}>
-              Showing 1–{filteredGoals.length} of {filteredGoals.length} goals
+              Showing {filteredGoals.length > 0 ? 1 : 0}–{filteredGoals.length} of {filteredGoals.length} goals
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
               {/* Prev */}
               <button
+                disabled={filteredGoals.length === 0}
                 style={{
                   width: '32px',
                   height: '32px',
                   borderRadius: '8px',
                   border: '1px solid #E2E8F0',
                   background: '#FFFFFF',
-                  color: '#64748B',
+                  color: filteredGoals.length === 0 ? '#CBD5E1' : '#64748B',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
+                  cursor: filteredGoals.length === 0 ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit'
                 }}
               >
@@ -1474,82 +1409,21 @@ export default function GoalsPage() {
               >
                 1
               </button>
-              
-              <button
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  border: '1px solid #E2E8F0',
-                  background: '#FFFFFF',
-                  color: '#64748B',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit'
-                }}
-              >
-                2
-              </button>
-
-              <button
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  border: '1px solid #E2E8F0',
-                  background: '#FFFFFF',
-                  color: '#64748B',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit'
-                }}
-              >
-                3
-              </button>
-
-              <span style={{ color: '#94A3B8', fontSize: '13px', padding: '0 2px' }}>...</span>
-
-              <button
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  border: '1px solid #E2E8F0',
-                  background: '#FFFFFF',
-                  color: '#64748B',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit'
-                }}
-              >
-                13
-              </button>
 
               {/* Next */}
               <button
+                disabled={filteredGoals.length === 0}
                 style={{
                   width: '32px',
                   height: '32px',
                   borderRadius: '8px',
                   border: '1px solid #E2E8F0',
                   background: '#FFFFFF',
-                  color: '#64748B',
+                  color: filteredGoals.length === 0 ? '#CBD5E1' : '#64748B',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
+                  cursor: filteredGoals.length === 0 ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit'
                 }}
               >
@@ -1735,58 +1609,89 @@ export default function GoalsPage() {
 
       {/* TAB 3: ACHIEVEMENTS */}
       {activeTab === 'achievements' && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-          gap: '24px'
-        }}>
-          {achievements.map(a => (
-            <div
-              key={a.id}
-              style={{
-                background: '#FFFFFF',
-                borderRadius: '20px',
-                border: '1px solid #E2E8F0',
-                padding: '24px 26px',
-                display: 'flex',
-                gap: '18px',
-                alignItems: 'flex-start',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-              }}
-            >
-              <div style={{
-                fontSize: '28px',
-                background: '#F8FAFC',
-                padding: '14px',
-                borderRadius: '16px',
-                border: '1px solid #E2E8F0',
-                flexShrink: 0
-              }}>
-                {a.icon}
-              </div>
-              <div>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  color: '#5551FF',
-                  letterSpacing: '0.04em'
+        achievements.length === 0 ? (
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '20px',
+            border: '1px solid #E2E8F0',
+            padding: '48px 24px',
+            textAlign: 'center',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '16px',
+              background: '#F8FAFC',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#94A3B8',
+              marginBottom: '14px'
+            }}>
+              <Award size={28} />
+            </div>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>
+              No Achievements Yet
+            </h3>
+            <p style={{ fontSize: '13.5px', color: '#64748B', margin: 0 }}>
+              Complete personal goals and reach milestones to unlock achievements.
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gap: '24px'
+          }}>
+            {achievements.map(a => (
+              <div
+                key={a.id}
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: '20px',
+                  border: '1px solid #E2E8F0',
+                  padding: '24px 26px',
+                  display: 'flex',
+                  gap: '18px',
+                  alignItems: 'flex-start',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                }}
+              >
+                <div style={{
+                  fontSize: '28px',
+                  background: '#F8FAFC',
+                  padding: '14px',
+                  borderRadius: '16px',
+                  border: '1px solid #E2E8F0',
+                  flexShrink: 0
                 }}>
-                  {a.category}
-                </span>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: '4px 0 6px 0' }}>
-                  {a.title}
-                </h3>
-                <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 10px 0', lineHeight: 1.45 }}>
-                  {a.desc}
-                </p>
-                <div style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>
-                  Unlocked: {a.date}
+                  {a.icon}
+                </div>
+                <div>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: '#5551FF',
+                    letterSpacing: '0.04em'
+                  }}>
+                    {a.category}
+                  </span>
+                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: '4px 0 6px 0' }}>
+                    {a.title}
+                  </h3>
+                  <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 10px 0', lineHeight: 1.45 }}>
+                    {a.desc}
+                  </p>
+                  <div style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>
+                    Unlocked: {a.date}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       )}
 
       {/* =================================================================== */}
@@ -1992,7 +1897,7 @@ export default function GoalsPage() {
                   rows={3}
                   value={activities}
                   onChange={e => setActivities(e.target.value)}
-                  placeholder="Learned React components and props.&#10;Practiced creating reusable components.&#10;Implemented basic component structure in a demo project."
+                  placeholder="Log activities completed..."
                   required
                   style={{
                     width: '100%',
@@ -2077,7 +1982,7 @@ export default function GoalsPage() {
                     type="text"
                     value={nextSteps}
                     onChange={e => setNextSteps(e.target.value)}
-                    placeholder="Learn React Hooks (useState, useEffect) and practice with examples."
+                    placeholder="Plan your next steps..."
                     style={{
                       width: '100%',
                       padding: '10px 14px',
@@ -2102,7 +2007,7 @@ export default function GoalsPage() {
                   type="text"
                   value={challenges}
                   onChange={e => setChallenges(e.target.value)}
-                  placeholder="Still a bit unclear about lifecycle and useEffect dependencies."
+                  placeholder="Any blockers or challenges encountered..."
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -2410,13 +2315,13 @@ export default function GoalsPage() {
                   <div style={{ padding: '12px 18px', borderRight: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Clock size={16} color="#64748B" />
                     <span style={{ fontSize: '13px', color: '#64748B', width: '90px' }}>Duration</span>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>{viewingGoal.duration || '45 Days'}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>{viewingGoal.duration || '0 Days'}</span>
                   </div>
 
                   <div style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Clock size={16} color="#64748B" />
                     <span style={{ fontSize: '13px', color: '#64748B', width: '90px' }}>Time Spent</span>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>{viewingGoal.time_spent || '18 hrs'}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>{viewingGoal.time_spent || '0 hrs'}</span>
                   </div>
                 </div>
 
@@ -2425,7 +2330,7 @@ export default function GoalsPage() {
                   <FileText size={16} color="#64748B" style={{ marginTop: '2px', flexShrink: 0 }} />
                   <span style={{ fontSize: '13px', color: '#64748B', width: '130px', flexShrink: 0 }}>Description</span>
                   <div style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5 }}>
-                    {viewingGoal.description}
+                    {viewingGoal.description || 'No description provided.'}
                   </div>
                 </div>
 
@@ -2442,20 +2347,7 @@ export default function GoalsPage() {
                         </div>
                       ))
                     ) : (
-                      <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#64748B' }} />
-                          Complete React.js fundamentals.
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#64748B' }} />
-                          Build one complete project.
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#64748B' }} />
-                          Be confident in using React in real projects.
-                        </div>
-                      </>
+                      <span style={{ color: '#94A3B8' }}>None specified</span>
                     )}
                   </div>
                 </div>
@@ -2465,7 +2357,7 @@ export default function GoalsPage() {
                   <ChevronRight size={16} color="#64748B" style={{ marginTop: '2px', flexShrink: 0 }} />
                   <span style={{ fontSize: '13px', color: '#64748B', width: '130px', flexShrink: 0 }}>Next Steps</span>
                   <div style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5 }}>
-                    {viewingGoal.next_steps || 'Learn React Hooks (useState, useEffect) and practice with examples.'}
+                    {viewingGoal.next_steps || 'None specified'}
                   </div>
                 </div>
 
@@ -2474,7 +2366,7 @@ export default function GoalsPage() {
                   <AlertCircle size={16} color="#64748B" style={{ marginTop: '2px', flexShrink: 0 }} />
                   <span style={{ fontSize: '13px', color: '#64748B', width: '130px', flexShrink: 0 }}>Challenges Faced</span>
                   <div style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5 }}>
-                    {viewingGoal.challenges || 'Still a bit unclear about lifecycle and useEffect dependencies.'}
+                    {viewingGoal.challenges || 'No challenges recorded.'}
                   </div>
                 </div>
 
@@ -2483,23 +2375,27 @@ export default function GoalsPage() {
                   <Paperclip size={16} color="#64748B" style={{ flexShrink: 0 }} />
                   <span style={{ fontSize: '13px', color: '#64748B', width: '130px', flexShrink: 0 }}>Resources</span>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    {(viewingGoal.resources || ['React_Notes.pdf', 'Component_Guide.pdf', 'Project_Reference.pdf']).map((res, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          color: '#2563EB',
-                          fontSize: '12.5px',
-                          fontWeight: 500,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <FileText size={13} color="#2563EB" />
-                        {res}
-                      </span>
-                    ))}
+                    {(viewingGoal.resources && viewingGoal.resources.length > 0) ? (
+                      viewingGoal.resources.map((res, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            color: '#2563EB',
+                            fontSize: '12.5px',
+                            fontWeight: 500,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <FileText size={13} color="#2563EB" />
+                          {res}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#94A3B8', fontSize: '13px' }}>No resources attached</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2526,14 +2422,14 @@ export default function GoalsPage() {
                   overflow: 'hidden'
                 }}>
                   <div style={{
-                    width: `${viewingGoal.progress}%`,
+                    width: `${viewingGoal.progress || 0}%`,
                     height: '100%',
                     background: '#10B981',
                     borderRadius: '9999px'
                   }} />
                 </div>
                 <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>
-                  {viewingGoal.progress}%
+                  {viewingGoal.progress || 0}%
                 </span>
               </div>
             </div>
