@@ -106,10 +106,12 @@ try:
                     activities TEXT,
                     resources JSON DEFAULT '[]'::json,
                     milestones JSON DEFAULT '[]'::json,
+                    progress_history JSON DEFAULT '[]'::json,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
                 CREATE INDEX IF NOT EXISTS ix_goals_user_id ON goals(user_id);
+                ALTER TABLE goals ADD COLUMN IF NOT EXISTS progress_history JSON DEFAULT '[]'::json;
             """))
     except Exception as db_err:
         print("Table creation warning:", db_err)

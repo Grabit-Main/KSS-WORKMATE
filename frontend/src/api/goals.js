@@ -24,3 +24,4 @@ export const deleteGoal = async (id) => {
   const res = await api.delete(`/goals/${id}`);
   return res.data;
 };
+

@@ -26,6 +26,7 @@ class GoalCreate(BaseModel):
     activities: Optional[str] = None
     resources: Optional[List[Any]] = []
     milestones: Optional[List[Any]] = []
+    progress_history: Optional[List[Any]] = []
 
 
 class GoalUpdate(BaseModel):
@@ -50,6 +51,7 @@ class GoalUpdate(BaseModel):
     activities: Optional[str] = None
     resources: Optional[List[Any]] = None
     milestones: Optional[List[Any]] = None
+    progress_history: Optional[List[Any]] = None
 
 
 class GoalResponse(BaseModel):
@@ -76,8 +78,10 @@ class GoalResponse(BaseModel):
     activities: Optional[str] = None
     resources: Optional[List[Any]] = []
     milestones: Optional[List[Any]] = []
+    progress_history: Optional[List[Any]] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+

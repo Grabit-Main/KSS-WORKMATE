@@ -32,7 +32,9 @@ class Goal(Base):
     activities = Column(Text, nullable=True)
     resources = Column(JSON, default=list) # e.g. ["React_Notes.pdf"]
     milestones = Column(JSON, default=list) # e.g. [{"id": 1, "text": "...", "status": "Completed"}]
+    progress_history = Column(JSON, default=list) # e.g. [{"date": "...", "progress": 35, ...}]
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User")
+
