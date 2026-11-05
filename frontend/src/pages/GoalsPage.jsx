@@ -1444,14 +1444,16 @@ export default function GoalsPage() {
             width: '100%',
             WebkitOverflowScrolling: 'touch',
             minHeight: actionMenuGoalId ? '220px' : 'auto',
-            paddingBottom: actionMenuGoalId ? '70px' : '0'
+            paddingBottom: actionMenuGoalId ? '70px' : '0',
+            padding: '0 10px'
           }}>
             <table style={{
               width: '100%',
               minWidth: '960px',
               borderCollapse: 'collapse',
               textAlign: 'left',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              tableLayout: 'auto'
             }}>
               <thead>
                 <tr style={{
