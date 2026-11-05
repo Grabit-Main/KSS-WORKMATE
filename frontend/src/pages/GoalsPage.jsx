@@ -357,17 +357,25 @@ export default function GoalsPage() {
 
   // Actions 3-dot dropdown popup
   const [actionMenuGoalId, setActionMenuGoalId] = useState(null);
+  const [actionMenuPos, setActionMenuPos] = useState({ bottom: 0, right: 0 });
   const actionMenuRef = useRef(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside or scrolling
   useEffect(() => {
     function handleClickOutside(event) {
       if (actionMenuRef.current && !actionMenuRef.current.contains(event.target)) {
         setActionMenuGoalId(null);
       }
     }
+    function handleScroll() {
+      setActionMenuGoalId(null);
+    }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
   }, []);
 
   // Modals state
@@ -391,10 +399,7 @@ export default function GoalsPage() {
   const [createResourcesList, setCreateResourcesList] = useState([]);
 
   // Create Goal — Milestones panel state
-  const [createMilestones, setCreateMilestones] = useState([
-    { id: 1, text: 'Learn React Fundamentals', targetDate: '2026-11-10', status: 'Completed', lastUpdated: '10 Nov 2026' },
-    { id: 2, text: 'Understand Components & Props', targetDate: '2026-11-17', status: 'Completed', lastUpdated: '17 Nov 2026' }
-  ]);
+  const [createMilestones, setCreateMilestones] = useState([]);
   const [showAddMilestoneInput, setShowAddMilestoneInput] = useState(false);
   const [createMilestoneTitleInput, setCreateMilestoneTitleInput] = useState('');
   const [createMilestoneDateInput, setCreateMilestoneDateInput] = useState('');
@@ -433,11 +438,7 @@ export default function GoalsPage() {
     if (!createTitle.trim()) return;
 
     const durationDays = calculateDurationDays(createStartDate, createTargetDate);
-    const finalMilestones = createMilestones.length > 0 ? createMilestones : [
-      { id: Date.now() + 1, text: 'Initial research & planning', targetDate: '', status: 'Not Started', lastUpdated: null },
-      { id: Date.now() + 2, text: 'Complete milestone deliverables', targetDate: '', status: 'Not Started', lastUpdated: null },
-      { id: Date.now() + 3, text: 'Final assessment & review', targetDate: '', status: 'Not Started', lastUpdated: null }
-    ];
+    const finalMilestones = createMilestones;
     const initialHistory = [
       {
         date: createStartDate || new Date().toISOString().split('T')[0],
@@ -497,6 +498,18 @@ export default function GoalsPage() {
     setCreateMilestones([]);
     setCreateMilestoneTitleInput('');
     setCreateMilestoneDateInput('');
+  };
+
+  const handleOpenCreateGoalModal = () => {
+    setCreateTitle('');
+    setCreateDescription('');
+    setCreateOutcome('');
+    setCreateResourcesList([]);
+    setCreateMilestones([]);
+    setCreateMilestoneTitleInput('');
+    setCreateMilestoneDateInput('');
+    setShowAddMilestoneInput(false);
+    setShowCreateGoalModal(true);
   };
 
   // ==========================================
@@ -1008,7 +1021,7 @@ export default function GoalsPage() {
           />
 
           <button
-            onClick={() => setShowCreateGoalModal(true)}
+            onClick={handleOpenCreateGoalModal}
             style={{
               background: '#5551FF',
               color: '#FFFFFF',
@@ -1294,7 +1307,7 @@ export default function GoalsPage() {
             </p>
             <button
               type="button"
-              onClick={() => setShowCreateGoalModal(true)}
+              onClick={handleOpenCreateGoalModal}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1445,8 +1458,6 @@ export default function GoalsPage() {
             overflowX: 'auto',
             width: '100%',
             WebkitOverflowScrolling: 'touch',
-            minHeight: actionMenuGoalId ? '220px' : 'auto',
-            paddingBottom: actionMenuGoalId ? '70px' : '0',
             padding: '0 10px'
           }}>
             <table style={{
@@ -1640,7 +1651,16 @@ export default function GoalsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActionMenuGoalId(isMenuOpen ? null : g.id);
+                              if (isMenuOpen) {
+                                setActionMenuGoalId(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setActionMenuPos({
+                                  bottom: window.innerHeight - rect.top + 6,
+                                  right: window.innerWidth - rect.right
+                                });
+                                setActionMenuGoalId(g.id);
+                              }
                             }}
                             style={{
                               background: isMenuOpen ? '#EEF2FF' : 'transparent',
@@ -1666,21 +1686,21 @@ export default function GoalsPage() {
                             <MoreVertical size={18} />
                           </button>
 
-                          {/* Dropdown Menu Popup - Only View Details and Delete */}
+                          {/* Dropdown Menu Popup - Opens at the top */}
                           {isMenuOpen && (
                             <div
                               ref={actionMenuRef}
                               style={{
-                                position: 'absolute',
-                                right: '16px',
-                                top: '44px',
+                                position: 'fixed',
+                                bottom: `${actionMenuPos.bottom}px`,
+                                right: `${actionMenuPos.right}px`,
                                 width: '150px',
                                 background: '#FFFFFF',
                                 borderRadius: '12px',
                                 boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                                 border: '1px solid #E2E8F0',
                                 padding: '6px',
-                                zIndex: 100,
+                                zIndex: 9999,
                                 textAlign: 'left'
                               }}
                             >
