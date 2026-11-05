@@ -709,19 +709,42 @@ export default function GoalsPage() {
     }
   };
 
+  const handleDeleteGoal = async (goalId) => {
+    if (!window.confirm('Are you sure you want to delete this goal?')) return;
+    const updated = goalsList.filter(g => g.id !== goalId);
+    saveGoals(updated);
+    setActionMenuGoalId(null);
+    try {
+      if (goalId && String(goalId).includes('-')) {
+        await deleteGoal(goalId);
+      }
+    } catch (err) {
+      console.warn('Could not delete goal in DB:', err);
+    }
+  };
+
   const handleUpdateMilestoneStatus = async () => {
     if (!selectedMilestone || !viewingGoal) return;
+    const nowIso = new Date().toISOString().split('T')[0];
     const updatedMilestones = (viewingGoal.milestones || []).map(m =>
       m.id === selectedMilestone.id
-        ? { ...m, status: milestoneStatusEdit, note: milestoneNoteEdit, lastUpdated: new Date().toISOString().split('T')[0] }
+        ? { ...m, status: milestoneStatusEdit, note: milestoneNoteEdit, lastUpdated: nowIso }
         : m
     );
     const completedCount = updatedMilestones.filter(m => m.status === 'Completed').length;
+    const allCompleted = updatedMilestones.length > 0 && completedCount === updatedMilestones.length;
+    const newProgress = updatedMilestones.length > 0
+      ? Math.round((completedCount / updatedMilestones.length) * 100)
+      : viewingGoal.progress;
+    const newStatus = allCompleted ? 'Completed' : (newProgress > 0 ? 'In Progress' : viewingGoal.status);
+
     const updatedGoal = {
       ...viewingGoal,
       milestones: updatedMilestones,
       milestones_completed: completedCount,
-      milestones_total: updatedMilestones.length
+      milestones_total: updatedMilestones.length,
+      progress: newProgress,
+      status: newStatus
     };
     await handleSaveDetailsEdit(updatedGoal);
     setSelectedMilestone(null);
@@ -796,8 +819,39 @@ export default function GoalsPage() {
     setNewSkillText('');
   };
 
-  // Demo achievements removed per user request
-  const achievements = [];
+  // Dynamic achievements derived from user-created goals with completed milestone(s) or completed goals
+  const achievements = goalsList.filter(g => {
+    const hasCompletedMilestone = (g.milestones_completed > 0) || (Array.isArray(g.milestones) && g.milestones.some(m => m.status === 'Completed'));
+    const isCompletedGoal = g.status === 'Completed' || g.progress === 100;
+    return hasCompletedMilestone || isCompletedGoal;
+  }).map(g => {
+    const completedM = Array.isArray(g.milestones) ? g.milestones.filter(m => m.status === 'Completed') : [];
+    const latestMilestone = completedM[completedM.length - 1];
+    const allDone = Array.isArray(g.milestones) && g.milestones.length > 0 && completedM.length === g.milestones.length;
+    const completedCount = g.milestones_completed || completedM.length;
+    const totalCount = g.milestones_total || (Array.isArray(g.milestones) ? g.milestones.length : 0);
+
+    let desc = 'Milestone completed.';
+    if (allDone && totalCount > 0) {
+      desc = `All ${totalCount} milestones completed successfully!`;
+    } else if (latestMilestone?.text) {
+      desc = `Completed milestone: "${latestMilestone.text}" (${completedCount}/${totalCount} completed)`;
+    } else if (completedCount > 0) {
+      desc = `${completedCount} milestone${completedCount > 1 ? 's' : ''} completed!`;
+    } else if (g.description) {
+      desc = g.description;
+    }
+
+    return {
+      id: g.id,
+      title: g.title,
+      category: g.category || 'Milestone Achievement',
+      desc,
+      date: latestMilestone?.lastUpdated ? formatDateDisplay(latestMilestone.lastUpdated) : formatDateDisplay(g.updated_at || g.target_date || new Date().toISOString().split('T')[0]),
+      icon: g.icon_type === 'figma' ? '🎨' : g.icon_type === 'react' ? '⚛️' : '🏆',
+      goal: g
+    };
+  });
 
   // ==========================================
   // METRICS COMPUTATION (Dynamic from real goals)
@@ -1309,10 +1363,16 @@ export default function GoalsPage() {
           </div>
 
           {/* Table Container with horizontal overflow protection */}
-          <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{
+            overflowX: 'auto',
+            width: '100%',
+            WebkitOverflowScrolling: 'touch',
+            minHeight: actionMenuGoalId ? '220px' : 'auto',
+            paddingBottom: actionMenuGoalId ? '70px' : '0'
+          }}>
             <table style={{
               width: '100%',
-              minWidth: '1180px',
+              minWidth: '960px',
               borderCollapse: 'collapse',
               textAlign: 'left',
               whiteSpace: 'nowrap'
@@ -1322,47 +1382,47 @@ export default function GoalsPage() {
                   borderBottom: '1px solid #F1F5F9',
                   background: '#FFFFFF'
                 }}>
-                  <th style={{ padding: '15px 20px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '13px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       GOAL <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '13px 12px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       PRIORITY <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '13px 12px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       START DATE <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '13px 12px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       TARGET DATE <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '13px 12px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       PROGRESS <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '13px 12px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       MILESTONES <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '13px 12px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       UPDATE FREQUENCY <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '15px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '13px 12px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       STATUS <ChevronsUpDown size={13} color="#94A3B8" />
                     </span>
                   </th>
-                  <th style={{ padding: '15px 20px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '13px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     ACTIONS
                   </th>
                 </tr>
@@ -1409,7 +1469,7 @@ export default function GoalsPage() {
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
                         {/* Goal Col - Single Line Data Display */}
-                        <td style={{ padding: '15px 20px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '13px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', whiteSpace: 'nowrap' }}>
                             <GoalIconRenderer goal={g} size={36} />
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', whiteSpace: 'nowrap' }}>
@@ -1430,22 +1490,22 @@ export default function GoalsPage() {
                         </td>
 
                         {/* Priority Col */}
-                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '13px 12px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           <PriorityTag priority={g.priority} />
                         </td>
 
                         {/* Start Date Col */}
-                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '13px 12px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
                           {formatDateDisplay(g.start_date)}
                         </td>
 
                         {/* Target Date Col */}
-                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '13px 12px', verticalAlign: 'middle', fontSize: '13px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
                           {formatDateDisplay(g.target_date)}
                         </td>
 
                         {/* Progress Col */}
-                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '13px 12px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
                             <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', minWidth: '32px', whiteSpace: 'nowrap' }}>
                               {g.progress}%
@@ -1470,12 +1530,12 @@ export default function GoalsPage() {
                         </td>
 
                         {/* Milestones Col */}
-                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', fontSize: '13px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '13px 12px', verticalAlign: 'middle', fontSize: '13px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
                           {g.milestones_completed ?? (g.milestones ? g.milestones.filter(m => m.status === 'Completed').length : 0)} / {g.milestones_total ?? (g.milestones ? g.milestones.length : 0)}
                         </td>
 
                         {/* Update Frequency Col */}
-                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '13px 12px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           <span style={{
                             display: 'inline-block',
                             padding: '4px 14px',
@@ -1491,12 +1551,12 @@ export default function GoalsPage() {
                         </td>
 
                         {/* Status Col */}
-                        <td style={{ padding: '15px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '13px 12px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           <StatusTag status={g.status} />
                         </td>
 
                         {/* Actions Col (3-dot Menu) */}
-                        <td style={{ padding: '15px 20px', verticalAlign: 'middle', textAlign: 'right', position: 'relative', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '13px 16px', verticalAlign: 'middle', textAlign: 'right', position: 'relative', whiteSpace: 'nowrap' }}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1526,57 +1586,36 @@ export default function GoalsPage() {
                             <MoreVertical size={18} />
                           </button>
 
-                          {/* Dropdown Menu Popup */}
+                          {/* Dropdown Menu Popup - Only View Details and Delete */}
                           {isMenuOpen && (
                             <div
                               ref={actionMenuRef}
                               style={{
                                 position: 'absolute',
-                                right: '20px',
-                                top: '48px',
-                                width: '168px',
+                                right: '16px',
+                                top: '44px',
+                                width: '150px',
                                 background: '#FFFFFF',
                                 borderRadius: '12px',
-                                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                                 border: '1px solid #E2E8F0',
                                 padding: '6px',
-                                zIndex: 50,
+                                zIndex: 100,
                                 textAlign: 'left'
                               }}
                             >
                               <button
-                                onClick={() => openUpdateProgressModal(g)}
-                                style={{
-                                  width: '100%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '10px',
-                                  padding: '9px 12px',
-                                  borderRadius: '8px',
-                                  border: 'none',
-                                  background: 'transparent',
-                                  color: '#0F172A',
-                                  fontSize: '13px',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                  transition: 'background 0.15s ease',
-                                  fontFamily: 'inherit',
-                                  whiteSpace: 'nowrap'
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActionMenuGoalId(null);
+                                  openViewDetailsModal(g);
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                              >
-                                <TrendingUp size={15} color="#5551FF" />
-                                Update Progress
-                              </button>
-                              <button
-                                onClick={() => openViewDetailsModal(g)}
                                 style={{
                                   width: '100%',
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '10px',
-                                  padding: '9px 12px',
+                                  padding: '8px 12px',
                                   borderRadius: '8px',
                                   border: 'none',
                                   background: 'transparent',
@@ -1593,6 +1632,34 @@ export default function GoalsPage() {
                               >
                                 <FileText size={15} color="#64748B" />
                                 View Details
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteGoal(g.id);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#EF4444',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'background 0.15s ease',
+                                  fontFamily: 'inherit',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Trash2 size={15} color="#EF4444" />
+                                Delete
                               </button>
                             </div>
                           )}
@@ -1898,6 +1965,7 @@ export default function GoalsPage() {
             {achievements.map(a => (
               <div
                 key={a.id}
+                onClick={() => a.goal && openViewDetailsModal(a.goal)}
                 style={{
                   background: '#FFFFFF',
                   borderRadius: '20px',
@@ -1906,7 +1974,17 @@ export default function GoalsPage() {
                   display: 'flex',
                   gap: '18px',
                   alignItems: 'flex-start',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.06)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
                 }}
               >
                 <div style={{
@@ -2586,17 +2664,17 @@ export default function GoalsPage() {
             {detailsTab === 'progress' && (
               <>
                 {/* Stats row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '14px', marginBottom: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '14px', marginBottom: '24px' }}>
                   <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 20px', background: '#FFFFFF' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 600 }}>Overall Progress</span>
+                      <span style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap' }}>Overall Progress</span>
                       <span style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A' }}>{viewingGoal.progress || 0}%</span>
                     </div>
                     <div style={{ height: '7px', borderRadius: '9999px', background: '#E2E8F0', overflow: 'hidden' }}>
                       <div style={{ width: `${viewingGoal.progress || 0}%`, height: '100%', background: '#10B981', borderRadius: '9999px', transition: 'width 0.3s ease' }} />
                     </div>
                   </div>
-                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', background: '#FFFFFF' }}>
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', background: '#FFFFFF' }}>
                     {[
                       { icon: Calendar, label: 'Start Date', val: formatDateDisplay(viewingGoal.start_date) },
                       { icon: Calendar, label: 'Target Date', val: formatDateDisplay(viewingGoal.target_date) },
@@ -2605,12 +2683,12 @@ export default function GoalsPage() {
                     ].map((item, i) => {
                       const IIcon = item.icon;
                       return (
-                        <div key={i}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
-                            <IIcon size={13} color="#94A3B8" />
-                            <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>{item.label}</span>
+                        <div key={i} style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px', whiteSpace: 'nowrap' }}>
+                            <IIcon size={13} color="#94A3B8" style={{ flexShrink: 0 }} />
+                            <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>
                           </div>
-                          <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>{item.val}</div>
+                          <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap' }}>{item.val}</div>
                         </div>
                       );
                     })}
@@ -2744,17 +2822,17 @@ export default function GoalsPage() {
             {detailsTab === 'milestones' && (
               <>
                 {/* Stats row (same as progress tab) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '14px', marginBottom: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '14px', marginBottom: '24px' }}>
                   <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 20px', background: '#FFFFFF' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 600 }}>Overall Progress</span>
+                      <span style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap' }}>Overall Progress</span>
                       <span style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A' }}>{viewingGoal.progress || 0}%</span>
                     </div>
                     <div style={{ height: '7px', borderRadius: '9999px', background: '#E2E8F0', overflow: 'hidden' }}>
                       <div style={{ width: `${viewingGoal.progress || 0}%`, height: '100%', background: '#10B981', borderRadius: '9999px', transition: 'width 0.3s ease' }} />
                     </div>
                   </div>
-                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', background: '#FFFFFF' }}>
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', background: '#FFFFFF' }}>
                     {[
                       { icon: Calendar, label: 'Start Date', val: formatDateDisplay(viewingGoal.start_date) },
                       { icon: Calendar, label: 'Target Date', val: formatDateDisplay(viewingGoal.target_date) },
@@ -2763,12 +2841,12 @@ export default function GoalsPage() {
                     ].map((item, i) => {
                       const IIcon = item.icon;
                       return (
-                        <div key={i}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
-                            <IIcon size={13} color="#94A3B8" />
-                            <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>{item.label}</span>
+                        <div key={i} style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px', whiteSpace: 'nowrap' }}>
+                            <IIcon size={13} color="#94A3B8" style={{ flexShrink: 0 }} />
+                            <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>
                           </div>
-                          <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>{item.val}</div>
+                          <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap' }}>{item.val}</div>
                         </div>
                       );
                     })}
@@ -2909,24 +2987,38 @@ export default function GoalsPage() {
                 </div>
 
                 {/* Update Milestone Panel */}
-                <div style={{ background: '#F8FAFC', borderRadius: '14px', padding: '16px 20px', border: '1px solid #E2E8F0', marginBottom: '20px' }}>
-                  <div style={{ marginBottom: '12px' }}>
+                <div style={{ background: '#F8FAFC', borderRadius: '14px', padding: '18px 20px', border: '1px solid #E2E8F0', marginBottom: '20px' }}>
+                  <div style={{ marginBottom: '14px' }}>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>Update Milestone</div>
                     <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
                       {selectedMilestone ? `Editing: "${selectedMilestone.text}"` : 'Update the selected milestone\'s status and notes.'}
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr auto', gap: '12px', alignItems: 'flex-end' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr auto', gap: '12px', alignItems: 'flex-start' }}>
+                    {/* Status Column */}
                     <div>
-                      <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155', display: 'block', height: '18px', lineHeight: '18px', marginBottom: '6px' }}>
                         Status <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <div style={{ position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '8px', height: '8px', borderRadius: '50%', background: milestoneStatusEdit === 'Completed' ? '#10B981' : milestoneStatusEdit === 'In Progress' ? '#5551FF' : '#94A3B8', flexShrink: 0 }} />
+                        <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '8px', height: '8px', borderRadius: '50%', background: milestoneStatusEdit === 'Completed' ? '#10B981' : milestoneStatusEdit === 'In Progress' ? '#5551FF' : '#94A3B8', flexShrink: 0, zIndex: 1 }} />
                         <select
                           value={milestoneStatusEdit}
                           onChange={e => setMilestoneStatusEdit(e.target.value)}
-                          style={{ width: '100%', padding: '9px 12px 9px 28px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '13px', color: '#0F172A', outline: 'none', background: '#FFFFFF', cursor: 'pointer', fontFamily: 'inherit' }}
+                          style={{
+                            width: '100%',
+                            height: '42px',
+                            boxSizing: 'border-box',
+                            padding: '0 12px 0 28px',
+                            borderRadius: '10px',
+                            border: '1px solid #CBD5E1',
+                            fontSize: '13px',
+                            color: '#0F172A',
+                            outline: 'none',
+                            background: '#FFFFFF',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit'
+                          }}
                         >
                           <option value="Not Started">Not Started</option>
                           <option value="In Progress">In Progress</option>
@@ -2934,31 +3026,76 @@ export default function GoalsPage() {
                         </select>
                       </div>
                     </div>
+
+                    {/* Update Note Column */}
                     <div>
-                      <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '5px' }}>Update Note</label>
-                      <input
-                        type="text"
-                        placeholder="Add a note about the milestone update..."
-                        value={milestoneNoteEdit}
-                        onChange={e => setMilestoneNoteEdit(e.target.value)}
-                        style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '13px', color: '#0F172A', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                      />
-                      <div style={{ textAlign: 'right', fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>{milestoneNoteEdit.length} / 200</div>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155', display: 'block', height: '18px', lineHeight: '18px', marginBottom: '6px' }}>
+                        Update Note
+                      </label>
+                      <div style={{ position: 'relative', width: '100%' }}>
+                        <input
+                          type="text"
+                          maxLength={200}
+                          placeholder="Add a note about the milestone update..."
+                          value={milestoneNoteEdit}
+                          onChange={e => setMilestoneNoteEdit(e.target.value)}
+                          style={{
+                            width: '100%',
+                            height: '42px',
+                            boxSizing: 'border-box',
+                            padding: '0 70px 0 14px',
+                            borderRadius: '10px',
+                            border: '1px solid #CBD5E1',
+                            fontSize: '13px',
+                            color: '#0F172A',
+                            outline: 'none',
+                            background: '#FFFFFF',
+                            fontFamily: 'inherit'
+                          }}
+                        />
+                        <span style={{
+                          position: 'absolute',
+                          right: '14px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          fontSize: '12px',
+                          color: '#94A3B8',
+                          pointerEvents: 'none'
+                        }}>
+                          {milestoneNoteEdit.length} / 200
+                        </span>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleUpdateMilestoneStatus}
-                      disabled={!selectedMilestone}
-                      style={{
-                        padding: '9px 20px', borderRadius: '10px', border: 'none',
-                        background: selectedMilestone ? '#5551FF' : '#E2E8F0',
-                        color: selectedMilestone ? '#FFFFFF' : '#94A3B8',
-                        fontSize: '13px', fontWeight: 700, cursor: selectedMilestone ? 'pointer' : 'not-allowed',
-                        fontFamily: 'inherit', whiteSpace: 'nowrap'
-                      }}
-                    >
-                      Save Update
-                    </button>
+
+                    {/* Save Button Column */}
+                    <div>
+                      <div style={{ height: '18px', marginBottom: '6px' }} />
+                      <button
+                        type="button"
+                        onClick={handleUpdateMilestoneStatus}
+                        disabled={!selectedMilestone}
+                        style={{
+                          height: '42px',
+                          boxSizing: 'border-box',
+                          padding: '0 24px',
+                          borderRadius: '10px',
+                          border: 'none',
+                          background: selectedMilestone ? '#5551FF' : '#E2E8F0',
+                          color: selectedMilestone ? '#FFFFFF' : '#94A3B8',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          cursor: selectedMilestone ? 'pointer' : 'not-allowed',
+                          fontFamily: 'inherit',
+                          whiteSpace: 'nowrap',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        Save Update
+                      </button>
+                    </div>
                   </div>
                 </div>
 
