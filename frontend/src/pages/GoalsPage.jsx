@@ -1246,6 +1246,82 @@ export default function GoalsPage() {
 
       {/* 4. TAB CONTENT: DATA TABLE FOR MY GOALS */}
       {activeTab === 'goals' && (
+        goalsList.length === 0 ? (
+          /* Empty State - No Goals Yet */
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '20px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.02)',
+            padding: '60px 24px 50px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            minHeight: '400px'
+          }}>
+            <img
+              src="/no_goals_empty.png"
+              alt="No Goals"
+              style={{
+                width: '220px',
+                height: 'auto',
+                marginBottom: '28px',
+                objectFit: 'contain'
+              }}
+            />
+            <h3 style={{
+              fontSize: '22px',
+              fontWeight: 800,
+              color: '#0F172A',
+              margin: '0 0 10px 0',
+              fontFamily: 'inherit'
+            }}>
+              No Goals Yet
+            </h3>
+            <p style={{
+              fontSize: '14px',
+              color: '#64748B',
+              margin: '0 0 28px 0',
+              maxWidth: '400px',
+              lineHeight: 1.6,
+              fontFamily: 'inherit'
+            }}>
+              You haven't created any goals yet. Set a goal to track your learning, growth and career progress.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowCreateGoal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 28px',
+                borderRadius: '12px',
+                border: 'none',
+                background: '#5551FF',
+                color: '#FFFFFF',
+                fontSize: '14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all 0.15s ease',
+                boxShadow: '0 4px 14px rgba(85, 81, 255, 0.3)'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#4340E6';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(85, 81, 255, 0.4)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#5551FF';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(85, 81, 255, 0.3)';
+              }}
+            >
+              <Plus size={18} /> Create Goal
+            </button>
+          </div>
+        ) : (
         <div style={{
           background: '#FFFFFF',
           borderRadius: '20px',
@@ -1771,6 +1847,7 @@ export default function GoalsPage() {
             </div>
           </div>
         </div>
+        )
       )}
 
       {/* TAB 2: GROWTH PLAN & SKILLS */}
