@@ -374,6 +374,7 @@ export default function GoalsPage() {
   const [showCreateGoalModal, setShowCreateGoalModal] = useState(false);
   const [updatingGoal, setUpdatingGoal] = useState(null);
   const [viewingGoal, setViewingGoal] = useState(null);
+  const [goalToDelete, setGoalToDelete] = useState(null);
 
   // ==========================================
   // CREATE GOAL FORM STATE
@@ -709,11 +710,12 @@ export default function GoalsPage() {
     }
   };
 
-  const handleDeleteGoal = async (goalId) => {
-    if (!window.confirm('Are you sure you want to delete this goal?')) return;
+  const confirmDeleteGoal = async () => {
+    if (!goalToDelete) return;
+    const goalId = goalToDelete.id;
     const updated = goalsList.filter(g => g.id !== goalId);
     saveGoals(updated);
-    setActionMenuGoalId(null);
+    setGoalToDelete(null);
     try {
       if (goalId && String(goalId).includes('-')) {
         await deleteGoal(goalId);
@@ -1292,7 +1294,7 @@ export default function GoalsPage() {
             </p>
             <button
               type="button"
-              onClick={() => setShowCreateGoal(true)}
+              onClick={() => setShowCreateGoalModal(true)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1714,7 +1716,8 @@ export default function GoalsPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteGoal(g.id);
+                                  setActionMenuGoalId(null);
+                                  setGoalToDelete(g);
                                 }}
                                 style={{
                                   width: '100%',
@@ -2743,11 +2746,11 @@ export default function GoalsPage() {
             {detailsTab === 'progress' && (
               <>
                 {/* Stats row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '14px', marginBottom: '24px' }}>
-                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 20px', background: '#FFFFFF' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap' }}>Overall Progress</span>
-                      <span style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A' }}>{viewingGoal.progress || 0}%</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '235px 1fr', gap: '14px', marginBottom: '24px' }}>
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 18px', background: '#FFFFFF', minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>Overall Progress</span>
+                      <span style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', flexShrink: 0 }}>{viewingGoal.progress || 0}%</span>
                     </div>
                     <div style={{ height: '7px', borderRadius: '9999px', background: '#E2E8F0', overflow: 'hidden' }}>
                       <div style={{ width: `${viewingGoal.progress || 0}%`, height: '100%', background: '#10B981', borderRadius: '9999px', transition: 'width 0.3s ease' }} />
@@ -2901,11 +2904,11 @@ export default function GoalsPage() {
             {detailsTab === 'milestones' && (
               <>
                 {/* Stats row (same as progress tab) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '14px', marginBottom: '24px' }}>
-                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 20px', background: '#FFFFFF' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap' }}>Overall Progress</span>
-                      <span style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A' }}>{viewingGoal.progress || 0}%</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '235px 1fr', gap: '14px', marginBottom: '24px' }}>
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px 18px', background: '#FFFFFF', minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>Overall Progress</span>
+                      <span style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', flexShrink: 0 }}>{viewingGoal.progress || 0}%</span>
                     </div>
                     <div style={{ height: '7px', borderRadius: '9999px', background: '#E2E8F0', overflow: 'hidden' }}>
                       <div style={{ width: `${viewingGoal.progress || 0}%`, height: '100%', background: '#10B981', borderRadius: '9999px', transition: 'width 0.3s ease' }} />
@@ -3776,6 +3779,172 @@ export default function GoalsPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* DELETE GOAL CONFIRMATION MODAL */}
+      {goalToDelete && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '24px',
+            padding: '36px 36px 30px',
+            maxWidth: '440px',
+            width: '100%',
+            textAlign: 'center',
+            position: 'relative',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            boxSizing: 'border-box'
+          }}>
+            {/* Close X Button */}
+            <button
+              type="button"
+              onClick={() => setGoalToDelete(null)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#94A3B8',
+                padding: '4px',
+                display: 'flex'
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            {/* Trash Bin Icon Illustration */}
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '20px',
+              background: '#FEE2E2',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '18px',
+              position: 'relative'
+            }}>
+              <Trash2 size={32} color="#DC2626" strokeWidth={2.2} />
+              <span style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                fontSize: '13px',
+                color: '#EF4444'
+              }}>✨</span>
+            </div>
+
+            {/* Title */}
+            <h3 style={{
+              fontSize: '20px',
+              fontWeight: 800,
+              color: '#0F172A',
+              margin: '0 0 10px 0',
+              fontFamily: 'inherit'
+            }}>
+              Delete Goal?
+            </h3>
+
+            {/* Subtitle */}
+            <p style={{
+              fontSize: '13.5px',
+              color: '#64748B',
+              lineHeight: 1.5,
+              margin: '0 0 22px 0',
+              fontFamily: 'inherit'
+            }}>
+              Are you sure you want to delete this goal?<br />
+              This will permanently remove the goal and all its milestones and progress records.
+            </p>
+
+            {/* Goal Target Pill */}
+            <div style={{
+              background: '#EEF2FF',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              marginBottom: '26px',
+              maxWidth: '100%',
+              boxSizing: 'border-box'
+            }}>
+              <Target size={16} color="#5551FF" style={{ flexShrink: 0 }} />
+              <span style={{
+                fontSize: '13.5px',
+                fontWeight: 600,
+                color: '#0F172A',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                Goal: {goalToDelete?.title}
+              </span>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setGoalToDelete(null)}
+                style={{
+                  padding: '11px 20px',
+                  borderRadius: '12px',
+                  border: '1px solid #CBD5E1',
+                  background: '#FFFFFF',
+                  color: '#334155',
+                  fontSize: '13.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'background 0.15s ease'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteGoal}
+                style={{
+                  padding: '11px 20px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: '#DC2626',
+                  color: '#FFFFFF',
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'background 0.15s ease',
+                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#B91C1C'}
+                onMouseLeave={e => e.currentTarget.style.background = '#DC2626'}
+              >
+                <Trash2 size={16} /> Delete Goal
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
