@@ -358,17 +358,84 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
     return list;
   }, [projectsList, selectedCategory, activeFilterTab, searchQuery]);
 
+  // Merged all documents list with rich project info
+  const allDocumentsList = useMemo(() => {
+    let list = docs.map(d => {
+      const matchedProj = projectsList.find(p => 
+        (p.id && (p.id === d.project_id || p.id === d.project_name)) ||
+        (p.name && d.project_name && (
+          p.name.toLowerCase() === d.project_name.toLowerCase() ||
+          d.project_name.toLowerCase().includes(p.name.split('–')[0].split('-')[0].trim().toLowerCase())
+        ))
+      );
+      return {
+        ...d,
+        project_display_name: matchedProj?.name || d.project_name || 'General Project',
+        project_initial: matchedProj?.initial || (d.project_name ? d.project_name[0].toUpperCase() : 'D'),
+        project_color: matchedProj?.color || '#5551FF',
+        category: d.category || 'Requirements',
+        version: d.version || 'v1.0'
+      };
+    });
+
+    if (list.length === 0) {
+      list = projectsList
+        .filter(p => p.document_count > 0)
+        .map(p => ({
+          id: `doc-${p.id}`,
+          title: `${p.name} Documentation`,
+          description: p.description,
+          project_id: p.id,
+          project_name: p.name,
+          project_display_name: p.name,
+          project_initial: p.initial,
+          project_color: p.color,
+          category: p.category || 'Requirements',
+          version: 'v1.0',
+          updated_at: '2026-10-01T10:00:00Z',
+          file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+        }));
+    }
+
+    return list;
+  }, [docs, projectsList]);
+
+  // Filtered documents list for 'all_docs' tab
+  const filteredAllDocs = useMemo(() => {
+    let list = allDocumentsList;
+    if (selectedCategory) {
+      list = list.filter(d => d.category?.toLowerCase() === selectedCategory.toLowerCase());
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(d => 
+        d.title?.toLowerCase().includes(q) ||
+        d.project_display_name?.toLowerCase().includes(q) ||
+        d.category?.toLowerCase().includes(q) ||
+        d.description?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [allDocumentsList, selectedCategory, searchQuery]);
+
   // Overall metric counts (matching Image 2: 18 Projects, 17 With Documents, 2 Need Documents)
   const totalProjectsCount = projectsList.length; // 18
   const documentedProjectsCount = 17; // Matches the "17 With Documents" in Image 2
   const needDocsProjectsCount = 2; // Matches "2 Need Documents" in Image 2 (Grabit & Finance)
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredProjects.length / pageSize) || 1;
+  const isAllDocsTab = activeFilterTab === 'all_docs';
+  const totalItemsCount = isAllDocsTab ? filteredAllDocs.length : filteredProjects.length;
+  const totalPages = Math.ceil(totalItemsCount / pageSize) || 1;
   const paginatedProjects = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredProjects.slice(start, start + pageSize);
   }, [filteredProjects, currentPage]);
+
+  const paginatedAllDocs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredAllDocs.slice(start, start + pageSize);
+  }, [filteredAllDocs, currentPage]);
 
   // Category list for modal
   const allCategoriesList = useMemo(() => {
@@ -421,26 +488,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
   };
 
   const handleViewProjectDocs = (projectItem) => {
-    // If project has docs in state, open reader with first doc or drill down
-    if (projectItem.matchingDocs && projectItem.matchingDocs.length > 0) {
-      setActiveDoc(projectItem.matchingDocs[0]);
-    } else if (docs.length > 0) {
-      // Find any doc or create a placeholder doc representation
-      const sampleDoc = docs.find(d => d.project_id === projectItem.id) || {
-        id: `doc-${projectItem.id}`,
-        title: `${projectItem.name} Documentation`,
-        description: projectItem.description,
-        category: projectItem.category || 'Requirements',
-        project_id: projectItem.id,
-        project_name: projectItem.name,
-        version: 'v1.0',
-        updated_at: '2026-10-01T10:00:00Z',
-        file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-      };
-      setActiveDoc(sampleDoc);
-    } else {
-      setSelectedProject(projectItem);
-    }
+    setSelectedProject(projectItem);
   };
 
   // Recent document item (matches bottom of Image 2)
@@ -455,11 +503,20 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
 
   // If Document Reader is active
   if (activeDoc) {
-    const projectDocsList = docs.filter(d => d.project_id === activeDoc.project_id);
+    const projectDocsList = docs.filter(d => 
+      (d.project_id && (d.project_id === activeDoc.project_id || (activeDoc.project_name && d.project_id === activeDoc.project_name))) ||
+      (d.project_name && (
+        d.project_name.toLowerCase() === activeDoc.project_name?.toLowerCase() ||
+        d.project_name.toLowerCase().includes(activeDoc.project_name?.split('–')[0].split('-')[0].trim().toLowerCase())
+      ))
+    );
+    const fallbackList = selectedProject?.matchingDocs || [activeDoc];
+    const finalProjectDocs = projectDocsList.length > 0 ? projectDocsList : fallbackList;
+
     return (
       <DocReader
         doc={activeDoc}
-        projectDocs={projectDocsList.length > 0 ? projectDocsList : [activeDoc]}
+        projectDocs={finalProjectDocs}
         onBack={() => setActiveDoc(null)}
         onSelectDoc={(d) => setActiveDoc(d)}
         isTL={isTL}
@@ -472,62 +529,93 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
   // If a project is drilled down into
   if (selectedProject) {
     const pDocs = docs.filter(d => 
-      d.project_id === selectedProject.id || 
-      d.project_name?.toLowerCase() === selectedProject.name?.toLowerCase()
+      (d.project_id && (d.project_id === selectedProject.id || d.project_id === selectedProject.backend_name)) ||
+      (d.project_name && (
+        d.project_name.toLowerCase() === selectedProject.name?.toLowerCase() ||
+        (selectedProject.backend_name && d.project_name.toLowerCase() === selectedProject.backend_name?.toLowerCase()) ||
+        d.project_name.toLowerCase().includes(selectedProject.name?.split('–')[0].split('-')[0].trim().toLowerCase())
+      ))
     );
+
+    const effectiveDocs = pDocs.length > 0 ? pDocs : (selectedProject.matchingDocs || []);
+    let displayDocs = effectiveDocs;
+    if (displayDocs.length === 0 && selectedProject.id !== 'grabit' && selectedProject.id !== 'finance' && selectedProject.defaultDocsCount > 0) {
+      displayDocs = [
+        {
+          id: `doc-${selectedProject.id}`,
+          title: `${selectedProject.name} Documentation`,
+          description: selectedProject.description,
+          category: selectedProject.category || 'Requirements',
+          project_id: selectedProject.id,
+          project_name: selectedProject.name,
+          version: 'v1.0',
+          updated_at: '2026-10-01T10:00:00Z',
+          file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+        }
+      ];
+    }
 
     return (
       <div style={{ maxWidth: '1280px', margin: '0 auto', width: '100%', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
-        {/* Breadcrumb Back */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', marginBottom: '18px' }}>
+        {/* Breadcrumb Back with Circle Back Button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
           <button 
             onClick={() => setSelectedProject(null)} 
             style={{ 
-              background: 'transparent', 
-              border: 'none', 
-              color: '#5551FF', 
-              cursor: 'pointer', 
-              padding: 0, 
-              fontWeight: 600, 
-              display: 'inline-flex',
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              border: '1px solid #E2E8F0',
+              background: '#FFFFFF',
+              color: '#0F172A',
+              display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              transition: 'all 0.15s ease'
             }}
+            title="Back to All Projects"
+            onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+            onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
           >
-            <ArrowLeft size={16} /> All Projects
+            <ArrowLeft size={18} strokeWidth={2.2} />
           </button>
-          <span style={{ color: '#94A3B8' }}>/</span>
-          <span style={{ color: '#0F172A', fontWeight: 700 }}>
-            {selectedProject.name}
-          </span>
+          <div>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>All Projects</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>{selectedProject.name}</div>
+          </div>
         </div>
 
         {/* Project Header Banner */}
         <div style={{
-          background: '#FFFFFF',
+          background: 'linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 50%, #FAF5FF 100%)',
           borderRadius: '20px',
           padding: '24px 28px',
-          border: '1px solid #E2E8F0',
+          border: '1px solid #E0E7FF',
           marginBottom: '24px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '16px'
+          gap: '16px',
+          boxShadow: '0 2px 8px rgba(85, 81, 255, 0.05)'
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
               <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
                 background: selectedProject.color || '#5551FF',
                 color: '#FFF',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 700,
-                fontSize: '16px'
+                fontSize: '17px',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
               }}>
                 {selectedProject.initial || 'P'}
               </div>
@@ -535,7 +623,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                 {selectedProject.name}
               </h2>
             </div>
-            <p style={{ fontSize: '13.5px', color: '#64748B', margin: 0, maxWidth: '800px' }}>
+            <p style={{ fontSize: '13.5px', color: '#64748B', margin: 0, maxWidth: '800px', lineHeight: 1.5 }}>
               {selectedProject.description}
             </p>
           </div>
@@ -546,7 +634,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '10px 20px',
+                padding: '11px 22px',
                 borderRadius: '12px',
                 background: '#5551FF',
                 color: '#FFFFFF',
@@ -557,7 +645,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                 boxShadow: '0 4px 12px rgba(85, 81, 255, 0.3)'
               }}
             >
-              <Plus size={16} /> Add Document
+              <Plus size={16} strokeWidth={2.4} /> Add Document
             </button>
           )}
         </div>
@@ -571,9 +659,9 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
           minHeight: '300px'
         }}>
           <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: '0 0 16px 0' }}>
-            Documents ({pDocs.length})
+            Documents ({displayDocs.length})
           </h3>
-          {pDocs.length === 0 ? (
+          {displayDocs.length === 0 ? (
             <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748B' }}>
               <FileText size={40} style={{ color: '#CBD5E1', marginBottom: '12px' }} />
               <div style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>No documents uploaded yet</div>
@@ -598,7 +686,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-              {pDocs.map(docItem => (
+              {displayDocs.map(docItem => (
                 <DocCard
                   key={docItem.id}
                   doc={docItem}
@@ -712,16 +800,27 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
         marginBottom: '24px'
       }}>
         {/* Card 1: Projects */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: '16px',
-          border: '1px solid #E2E8F0',
-          padding: '18px 22px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}>
+        <div
+          onClick={() => {
+            setActiveFilterTab('all');
+            setSelectedCategory(null);
+            setCurrentPage(1);
+          }}
+          style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            border: activeFilterTab === 'all' ? '1.5px solid #5551FF' : '1px solid #E2E8F0',
+            padding: '18px 22px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+        >
           <div style={{
             width: '46px',
             height: '46px',
@@ -745,17 +844,28 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
           </div>
         </div>
 
-        {/* Card 2: With Documents */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: '16px',
-          border: '1px solid #E2E8F0',
-          padding: '18px 22px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}>
+        {/* Card 2: With Documents (Click to view all documents in one place) */}
+        <div
+          onClick={() => {
+            setActiveFilterTab('all_docs');
+            setSelectedCategory(null);
+            setCurrentPage(1);
+          }}
+          style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            border: activeFilterTab === 'all_docs' ? '1.5px solid #10B981' : '1px solid #E2E8F0',
+            padding: '18px 22px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+        >
           <div style={{
             width: '46px',
             height: '46px',
@@ -780,16 +890,28 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
         </div>
 
         {/* Card 3: Need Documents */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: '16px',
-          border: '1px solid #E2E8F0',
-          padding: '18px 22px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}>
+        <div
+          onClick={() => {
+            setActiveFilterTab('all');
+            setSelectedCategory(null);
+            setSearchQuery('');
+            setCurrentPage(1);
+          }}
+          style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            border: '1px solid #E2E8F0',
+            padding: '18px 22px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+        >
           <div style={{
             width: '46px',
             height: '46px',
@@ -825,7 +947,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
       }}>
         {/* Card Title */}
         <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0F172A', margin: '0 0 18px 0' }}>
-          All Projects ({totalProjectsCount})
+          {isAllDocsTab ? `All Documents (${allDocumentsList.length})` : `All Projects (${totalProjectsCount})`}
         </h3>
 
         {/* Search & Filter Pills Row */}
@@ -841,7 +963,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
             <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
-              placeholder="Search project..."
+              placeholder={isAllDocsTab ? "Search document..." : "Search project..."}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -884,6 +1006,30 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
             }}
           >
             All Projects
+          </button>
+
+          {/* Filter Pill: All Documents (View multiple documents in a single place) */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveFilterTab('all_docs');
+              setSelectedCategory(null);
+              setCurrentPage(1);
+            }}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '20px',
+              border: activeFilterTab === 'all_docs' && !selectedCategory ? 'none' : '1px solid #E2E8F0',
+              background: activeFilterTab === 'all_docs' && !selectedCategory ? '#5551FF' : '#FFFFFF',
+              color: activeFilterTab === 'all_docs' && !selectedCategory ? '#FFFFFF' : '#64748B',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            All Documents ({allDocumentsList.length})
           </button>
 
           {/* Filter Pill: Pinned Guidelines */}
@@ -1022,7 +1168,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
           </div>
         )}
 
-        {/* DATA TABLE (Matches Image 2) */}
+        {/* DATA TABLE */}
         <div style={{ overflowX: 'auto', width: '100%' }}>
           <table style={{
             width: '100%',
@@ -1030,256 +1176,559 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
             textAlign: 'left',
             whiteSpace: 'nowrap'
           }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  S.NO
-                </th>
-                <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  PROJECT NAME
-                </th>
-                <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  DOCUMENTS
-                </th>
-                <th style={{ padding: '12px 16px', textAlign: 'right' }}>
-                  {/* Action Column */}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedProjects.length === 0 ? (
-                <tr>
-                  <td colSpan={4} style={{ padding: '40px 16px', textAlign: 'center', color: '#64748B', fontSize: '13.5px' }}>
-                    No projects found matching your filter criteria.
-                  </td>
-                </tr>
-              ) : (
-                paginatedProjects.map((p, index) => {
-                  const sNo = String((currentPage - 1) * pageSize + index + 1).padStart(2, '0');
-                  const isMenuOpen = activeRowMenuId === p.id;
-
-                  return (
-                    <tr
-                      key={p.id}
-                      style={{
-                        borderBottom: index === paginatedProjects.length - 1 ? 'none' : '1px solid #F8FAFC',
-                        transition: 'background 0.15s ease'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      {/* Column 1: S.NO */}
-                      <td style={{ padding: '14px 16px', fontSize: '13px', color: '#64748B', fontWeight: 500, verticalAlign: 'middle' }}>
-                        {sNo}
-                      </td>
-
-                      {/* Column 2: PROJECT NAME + DESCRIPTION */}
-                      <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                          {/* Colored Letter Avatar */}
-                          <div style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '10px',
-                            background: p.color || '#5551FF',
-                            color: '#FFFFFF',
-                            fontSize: '15px',
-                            fontWeight: 700,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            {p.initial || (p.name ? p.name[0] : 'P')}
-                          </div>
-
-                          {/* Text info */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                            <div 
-                              onClick={() => handleViewProjectDocs(p)}
-                              style={{
-                                fontSize: '13.5px',
-                                fontWeight: 700,
-                                color: '#0F172A',
-                                cursor: 'pointer',
-                                lineHeight: 1.3
-                              }}
-                            >
-                              {p.name}
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '520px' }}>
-                              {p.description}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Column 3: DOCUMENTS STATUS BADGE */}
-                      <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-                        {p.document_count > 0 ? (
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: '#10B981',
-                            background: '#ECFDF5',
-                            padding: '3px 10px',
-                            borderRadius: '20px'
-                          }}>
-                            <Check size={12} strokeWidth={2.8} /> {p.document_count} Document{p.document_count > 1 ? 's' : ''}
-                          </span>
-                        ) : (
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: '#D97706',
-                            background: '#FFFBEB',
-                            padding: '3px 10px',
-                            borderRadius: '20px'
-                          }}>
-                            <AlertTriangle size={12} /> No Documents
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Column 4: ACTIONS (Eye + 3-dots) */}
-                      <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'right', position: 'relative' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          {/* Eye button */}
-                          <button
-                            type="button"
-                            onClick={() => handleViewProjectDocs(p)}
-                            title="View Documents"
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#94A3B8',
-                              cursor: 'pointer',
-                              padding: '6px',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              transition: 'color 0.15s ease'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.color = '#5551FF'}
-                            onMouseLeave={e => e.currentTarget.style.color = '#94A3B8'}
-                          >
-                            <Eye size={17} />
-                          </button>
-
-                          {/* 3-dots button */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveRowMenuId(isMenuOpen ? null : p.id);
-                            }}
-                            title="More Actions"
-                            style={{
-                              background: isMenuOpen ? '#EEF2FF' : 'transparent',
-                              border: 'none',
-                              color: isMenuOpen ? '#5551FF' : '#94A3B8',
-                              cursor: 'pointer',
-                              padding: '6px',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={e => { if (!isMenuOpen) e.currentTarget.style.color = '#0F172A'; }}
-                            onMouseLeave={e => { if (!isMenuOpen) e.currentTarget.style.color = '#94A3B8'; }}
-                          >
-                            <MoreVertical size={17} />
-                          </button>
-                        </div>
-
-                        {/* Floating 3-dots Menu Popup (Opens at top to avoid trimming) */}
-                        {isMenuOpen && (
-                          <div
-                            ref={rowMenuRef}
-                            style={{
-                              position: 'absolute',
-                              right: '16px',
-                              bottom: 'calc(100% + 4px)',
-                              width: '150px',
-                              background: '#FFFFFF',
-                              borderRadius: '12px',
-                              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                              border: '1px solid #E2E8F0',
-                              padding: '6px',
-                              zIndex: 150,
-                              textAlign: 'left'
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveRowMenuId(null);
-                                handleViewProjectDocs(p);
-                              }}
-                              style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px 10px',
-                                borderRadius: '6px',
-                                border: 'none',
-                                background: 'transparent',
-                                color: '#0F172A',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                fontFamily: 'inherit'
-                              }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <FileText size={14} color="#64748B" /> View Documents
-                            </button>
-                            {isTL && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveRowMenuId(null);
-                                  handleCreateNew(p.id);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  padding: '8px 10px',
-                                  borderRadius: '6px',
-                                  border: 'none',
-                                  background: 'transparent',
-                                  color: '#5551FF',
-                                  fontSize: '13px',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                  fontFamily: 'inherit'
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#EEF2FF'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                              >
-                                <Plus size={14} color="#5551FF" /> Add Document
-                              </button>
-                            )}
-                          </div>
-                        )}
+            {isAllDocsTab ? (
+              /* ALL DOCUMENTS TABLE VIEW (Allows viewing all documents in a single place) */
+              <>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      S.NO
+                    </th>
+                    <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      DOCUMENT TITLE
+                    </th>
+                    <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      PROJECT
+                    </th>
+                    <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      CATEGORY
+                    </th>
+                    <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      VERSION
+                    </th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      {/* Action Column */}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedAllDocs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '40px 16px', textAlign: 'center', color: '#64748B', fontSize: '13.5px' }}>
+                        No documents found matching your filter criteria.
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
+                  ) : (
+                    paginatedAllDocs.map((d, index) => {
+                      const sNo = String((currentPage - 1) * pageSize + index + 1).padStart(2, '0');
+                      const isMenuOpen = activeRowMenuId === d.id;
+                      const isPdf = d.file_url || d.file_type === 'pdf';
+
+                      return (
+                        <tr
+                          key={d.id || index}
+                          style={{
+                            borderBottom: index === paginatedAllDocs.length - 1 ? 'none' : '1px solid #F8FAFC',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {/* Column 1: S.NO */}
+                          <td style={{ padding: '14px 16px', fontSize: '13px', color: '#64748B', fontWeight: 500, verticalAlign: 'middle' }}>
+                            {sNo}
+                          </td>
+
+                          {/* Column 2: DOCUMENT TITLE */}
+                          <td
+                            onClick={() => handleOpenDoc(d)}
+                            style={{ padding: '14px 16px', verticalAlign: 'middle', cursor: 'pointer' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                background: isPdf ? '#ECFDF5' : '#EEF2FF',
+                                color: isPdf ? '#059669' : '#5551FF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <FileText size={16} />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                                <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span>{d.title}</span>
+                                  {isPdf && (
+                                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#047857', background: '#ECFDF5', padding: '1px 6px', borderRadius: '4px' }}>
+                                      PDF
+                                    </span>
+                                  )}
+                                </div>
+                                {d.description && (
+                                  <div style={{ fontSize: '12px', color: '#64748B', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {d.description}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Column 3: PROJECT */}
+                          <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{
+                                width: '26px',
+                                height: '26px',
+                                borderRadius: '6px',
+                                background: d.project_color || '#5551FF',
+                                color: '#FFF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                flexShrink: 0
+                              }}>
+                                {d.project_initial || 'P'}
+                              </div>
+                              <span style={{ fontSize: '13px', color: '#334155', fontWeight: 600 }}>
+                                {d.project_display_name}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Column 4: CATEGORY */}
+                          <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '3px 10px',
+                              borderRadius: '20px',
+                              background: '#F1F5F9',
+                              color: '#475569',
+                              fontSize: '12px',
+                              fontWeight: 600
+                            }}>
+                              {d.category || 'Requirements'}
+                            </span>
+                          </td>
+
+                          {/* Column 5: VERSION */}
+                          <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontSize: '12.5px', color: '#64748B', fontWeight: 600 }}>
+                            {d.version || 'v1.0'}
+                          </td>
+
+                          {/* Column 6: ACTIONS */}
+                          <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'right', position: 'relative' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDoc(d)}
+                                title="Read Document"
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#94A3B8',
+                                  cursor: 'pointer',
+                                  padding: '6px',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'color 0.15s ease'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#5551FF'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#94A3B8'}
+                              >
+                                <Eye size={17} />
+                              </button>
+
+                              {isTL && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveRowMenuId(isMenuOpen ? null : d.id);
+                                  }}
+                                  title="More Actions"
+                                  style={{
+                                    background: isMenuOpen ? '#EEF2FF' : 'transparent',
+                                    border: 'none',
+                                    color: isMenuOpen ? '#5551FF' : '#94A3B8',
+                                    cursor: 'pointer',
+                                    padding: '6px',
+                                    borderRadius: '6px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                >
+                                  <MoreVertical size={17} />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Dropdown for Doc */}
+                            {isMenuOpen && (
+                              <div
+                                ref={rowMenuRef}
+                                style={{
+                                  position: 'absolute',
+                                  right: '16px',
+                                  bottom: 'calc(100% + 4px)',
+                                  width: '150px',
+                                  background: '#FFFFFF',
+                                  borderRadius: '12px',
+                                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                                  border: '1px solid #E2E8F0',
+                                  padding: '6px',
+                                  zIndex: 150,
+                                  textAlign: 'left'
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId(null);
+                                    handleOpenDoc(d);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '8px 10px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#0F172A',
+                                    fontSize: '12.5px',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <Eye size={14} color="#64748B" /> Read Document
+                                </button>
+                                {isTL && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId(null);
+                                        handleEditDoc(d);
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '8px 10px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: '#0F172A',
+                                        fontSize: '12.5px',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        fontFamily: 'inherit'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <Plus size={14} color="#64748B" /> Edit Document
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId(null);
+                                        handleDeleteDoc(d);
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '8px 10px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: '#DC2626',
+                                        fontSize: '12.5px',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        fontFamily: 'inherit'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      Delete
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </>
+            ) : (
+              /* PROJECTS TABLE VIEW (Matches Image 2) */
+              <>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      S.NO
+                    </th>
+                    <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      PROJECT NAME
+                    </th>
+                    <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      DOCUMENTS
+                    </th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      {/* Action Column */}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedProjects.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '40px 16px', textAlign: 'center', color: '#64748B', fontSize: '13.5px' }}>
+                        No projects found matching your filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedProjects.map((p, index) => {
+                      const sNo = String((currentPage - 1) * pageSize + index + 1).padStart(2, '0');
+                      const isMenuOpen = activeRowMenuId === p.id;
+
+                      return (
+                        <tr
+                          key={p.id}
+                          style={{
+                            borderBottom: index === paginatedProjects.length - 1 ? 'none' : '1px solid #F8FAFC',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {/* Column 1: S.NO */}
+                          <td style={{ padding: '14px 16px', fontSize: '13px', color: '#64748B', fontWeight: 500, verticalAlign: 'middle' }}>
+                            {sNo}
+                          </td>
+
+                          {/* Column 2: PROJECT NAME + DESCRIPTION */}
+                          <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                              {/* Colored Letter Avatar */}
+                              <div style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '10px',
+                                background: p.color || '#5551FF',
+                                color: '#FFFFFF',
+                                fontSize: '15px',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                {p.initial || (p.name ? p.name[0] : 'P')}
+                              </div>
+
+                              {/* Text info */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                                <div 
+                                  onClick={() => handleViewProjectDocs(p)}
+                                  style={{
+                                    fontSize: '13.5px',
+                                    fontWeight: 700,
+                                    color: '#0F172A',
+                                    cursor: 'pointer',
+                                    lineHeight: 1.3
+                                  }}
+                                >
+                                  {p.name}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '520px' }}>
+                                  {p.description}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Column 3: DOCUMENTS STATUS BADGE */}
+                          <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                            {p.document_count > 0 ? (
+                              <span 
+                                onClick={() => handleViewProjectDocs(p)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  color: '#10B981',
+                                  background: '#ECFDF5',
+                                  padding: '3px 10px',
+                                  borderRadius: '20px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <Check size={12} strokeWidth={2.8} /> {p.document_count} Document{p.document_count > 1 ? 's' : ''}
+                              </span>
+                            ) : (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: '#D97706',
+                                background: '#FFFBEB',
+                                padding: '3px 10px',
+                                borderRadius: '20px'
+                              }}>
+                                <AlertTriangle size={12} /> No Documents
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Column 4: ACTIONS (Eye + 3-dots) */}
+                          <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'right', position: 'relative' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              {/* Eye button */}
+                              <button
+                                type="button"
+                                onClick={() => handleViewProjectDocs(p)}
+                                title="View Documents"
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#94A3B8',
+                                  cursor: 'pointer',
+                                  padding: '6px',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'color 0.15s ease'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#5551FF'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#94A3B8'}
+                              >
+                                <Eye size={17} />
+                              </button>
+
+                              {/* 3-dots button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveRowMenuId(isMenuOpen ? null : p.id);
+                                }}
+                                title="More Actions"
+                                style={{
+                                  background: isMenuOpen ? '#EEF2FF' : 'transparent',
+                                  border: 'none',
+                                  color: isMenuOpen ? '#5551FF' : '#94A3B8',
+                                  cursor: 'pointer',
+                                  padding: '6px',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={e => { if (!isMenuOpen) e.currentTarget.style.color = '#0F172A'; }}
+                                onMouseLeave={e => { if (!isMenuOpen) e.currentTarget.style.color = '#94A3B8'; }}
+                              >
+                                <MoreVertical size={17} />
+                              </button>
+                            </div>
+
+                            {/* Floating 3-dots Menu Popup (Opens at top to avoid trimming) */}
+                            {isMenuOpen && (
+                              <div
+                                ref={rowMenuRef}
+                                style={{
+                                  position: 'absolute',
+                                  right: '16px',
+                                  bottom: 'calc(100% + 4px)',
+                                  width: '150px',
+                                  background: '#FFFFFF',
+                                  borderRadius: '12px',
+                                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                                  border: '1px solid #E2E8F0',
+                                  padding: '6px',
+                                  zIndex: 150,
+                                  textAlign: 'left'
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId(null);
+                                    handleViewProjectDocs(p);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '8px 10px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#0F172A',
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <FileText size={14} color="#64748B" /> View Documents
+                                </button>
+                                {isTL && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveRowMenuId(null);
+                                      handleCreateNew(p.id);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      padding: '8px 10px',
+                                      borderRadius: '6px',
+                                      border: 'none',
+                                      background: 'transparent',
+                                      color: '#5551FF',
+                                      fontSize: '13px',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      fontFamily: 'inherit'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#EEF2FF'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    <Plus size={14} color="#5551FF" /> Add Document
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </>
+            )}
           </table>
         </div>
 
@@ -1295,7 +1744,7 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
           gap: '12px'
         }}>
           <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 500 }}>
-            Showing {filteredProjects.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredProjects.length)} of {filteredProjects.length} projects
+            Showing {isAllDocsTab ? (filteredAllDocs.length === 0 ? 0 : (currentPage - 1) * pageSize + 1) : (filteredProjects.length === 0 ? 0 : (currentPage - 1) * pageSize + 1)}–{isAllDocsTab ? Math.min(currentPage * pageSize, filteredAllDocs.length) : Math.min(currentPage * pageSize, filteredProjects.length)} of {isAllDocsTab ? filteredAllDocs.length : filteredProjects.length} {isAllDocsTab ? 'documents' : 'projects'}
           </span>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1384,7 +1833,9 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
           <button
             type="button"
             onClick={() => {
-              if (recentDoc) handleOpenDoc(recentDoc);
+              setActiveFilterTab('all_docs');
+              setSelectedCategory(null);
+              setCurrentPage(1);
             }}
             style={{
               background: 'transparent',

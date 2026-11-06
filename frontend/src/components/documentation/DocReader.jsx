@@ -162,6 +162,71 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
         )}
       </div>
 
+      {/* Multiple Documents Tab Bar for Project */}
+      {projectDocs && projectDocs.length > 1 && (
+        <div style={{
+          background: '#F8FAFC',
+          borderBottom: '1px solid #E2E8F0',
+          padding: '10px clamp(16px, 4vw, 40px)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch'
+        }}>
+          <span style={{
+            fontSize: '12.5px',
+            fontWeight: 700,
+            color: '#64748B',
+            whiteSpace: 'nowrap'
+          }}>
+            Project Documents ({projectDocs.length}):
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+            {projectDocs.map((pDoc, idx) => {
+              const isCurrent = pDoc.id === doc.id || pDoc.title === doc.title;
+              return (
+                <button
+                  key={pDoc.id || idx}
+                  type="button"
+                  onClick={() => onSelectDoc && onSelectDoc(pDoc)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    border: isCurrent ? '1.5px solid #5551FF' : '1px solid #E2E8F0',
+                    background: isCurrent ? '#EEF2FF' : '#FFFFFF',
+                    color: isCurrent ? '#5551FF' : '#475569',
+                    fontSize: '12.5px',
+                    fontWeight: isCurrent ? 700 : 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{pDoc.title}</span>
+                  {pDoc.version && (
+                    <span style={{
+                      fontSize: '11px',
+                      padding: '1px 6px',
+                      borderRadius: '10px',
+                      background: isCurrent ? '#5551FF' : '#F1F5F9',
+                      color: isCurrent ? '#FFFFFF' : '#64748B',
+                      fontWeight: 600
+                    }}>
+                      {pDoc.version}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Content Wrapper */}
       <div style={{
         maxWidth: '900px',
