@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { DocMarkdownRenderer } from './DocMarkdownRenderer';
 import { getGoogleDriveViewUrl } from '../common/AttachmentCard';
 import { formatDistanceToNow, parseISO } from 'date-fns';
@@ -44,47 +45,48 @@ export const DocReader = ({ doc, projectDocs = [], onBack, onSelectDoc, isTL = f
         <button
           onClick={onBack}
           style={{
-            border: '1px solid #e6e8f1',
-            background: '#fff',
-            color: '#171a2b',
-            borderRadius: '10px',
-            padding: '8px 14px',
-            fontWeight: 600,
-            fontSize: '13px',
-            fontFamily: 'inherit',
-            cursor: 'pointer'
+            width: '38px',
+            height: '38px',
+            borderRadius: '50%',
+            border: '1px solid #E2E8F0',
+            background: '#FFFFFF',
+            color: '#0F172A',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            flexShrink: 0,
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+            transition: 'all 0.15s ease'
           }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = '#F8FAFC';
+            e.currentTarget.style.borderColor = '#CBD5E1';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = '#FFFFFF';
+            e.currentTarget.style.borderColor = '#E2E8F0';
+          }}
+          title="Back"
         >
-          ← Back
+          <ArrowLeft size={18} strokeWidth={2.2} />
         </button>
 
         <div style={{
           display: 'flex',
-          gap: '8px',
           alignItems: 'center',
           flex: 1,
-          minWidth: '220px',
-          color: '#6b7089',
-          fontSize: '13px',
-          flexWrap: 'wrap'
+          minWidth: '200px'
         }}>
-          <a
-            href="#"
-            onClick={(e) => { e.preventDefault(); onBack(); }}
-            style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}
-          >
-            Documentation
-          </a>
-          <span>/</span>
-          <a
-            href="#"
-            onClick={(e) => { e.preventDefault(); onBack(); }}
-            style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}
-          >
-            {doc.project_name || 'Company Management System'}
-          </a>
-          <span>/</span>
-          <b style={{ color: '#171a2b', fontWeight: 700 }}>{doc.title}</b>
+          <h2 style={{
+            color: '#0F172A',
+            fontWeight: 700,
+            fontSize: '16px',
+            margin: 0,
+            letterSpacing: '-0.01em'
+          }}>
+            {doc.title}
+          </h2>
         </div>
 
         {fileUrl && (

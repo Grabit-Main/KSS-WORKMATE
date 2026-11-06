@@ -623,46 +623,20 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
       width: '100%',
       fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif'
     }}>
-      {/* 1. TOP HEADER TITLE (Matches Image 2) */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
-          Projects
-        </h1>
-        {onBackToCollaboration && (
-          <button
-            onClick={onBackToCollaboration}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '8px',
-              border: '1px solid #E2E8F0',
-              background: '#FFFFFF',
-              color: '#475569',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            <ArrowLeft size={14} /> Back
-          </button>
-        )}
-      </div>
-
-      {/* 2. HERO CARD BANNER: DOCUMENTATION HUB (Matches Image 2) */}
+      {/* 1. HERO CARD BANNER: DOCUMENTATION HUB */}
       <div style={{
-        background: '#FFFFFF',
+        background: 'linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 50%, #FAF5FF 100%)',
         borderRadius: '20px',
-        border: '1px solid #E2E8F0',
+        border: '1px solid #E0E7FF',
         padding: '24px 28px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        boxShadow: '0 4px 20px -2px rgba(85, 81, 255, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.02)',
         marginBottom: '20px',
         flexWrap: 'wrap',
-        gap: '18px'
+        gap: '18px',
+        position: 'relative'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
           {/* Purple Squircle Icon Box */}
@@ -958,15 +932,17 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
               <SlidersHorizontal size={15} />
             </button>
 
-            {/* Category Dropdown Popover (Matches Image 2) */}
+            {/* Category Dropdown Popover (Opens at top to prevent trimming) */}
             {showCategoryPopover && (
               <div
                 ref={categoryPopoverRef}
                 style={{
                   position: 'absolute',
                   right: 0,
-                  top: '44px',
+                  bottom: 'calc(100% + 8px)',
                   width: '210px',
+                  maxHeight: '340px',
+                  overflowY: 'auto',
                   background: '#FFFFFF',
                   borderRadius: '14px',
                   boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
@@ -1224,14 +1200,14 @@ export const DocumentationHub = ({ onBackToCollaboration }) => {
                           </button>
                         </div>
 
-                        {/* Floating 3-dots Menu Popup */}
+                        {/* Floating 3-dots Menu Popup (Opens at top to avoid trimming) */}
                         {isMenuOpen && (
                           <div
                             ref={rowMenuRef}
                             style={{
                               position: 'absolute',
                               right: '16px',
-                              top: '42px',
+                              bottom: 'calc(100% + 4px)',
                               width: '150px',
                               background: '#FFFFFF',
                               borderRadius: '12px',
