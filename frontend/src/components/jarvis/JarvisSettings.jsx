@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Bot, Volume2, VolumeX, Sparkles, Sliders,
-  Clock, Play, RotateCcw, Check, CheckCircle2
+  Sparkles, Sliders, Play, RotateCcw
 } from 'lucide-react';
 import { useJarvis } from '../../hooks/useJarvis';
 import {
@@ -88,34 +87,37 @@ export const JarvisSettings = () => {
 
   return (
     <div style={{
-      background: '#FFFFFF',
-      borderRadius: '20px',
-      border: '1px solid #E2E8F0',
-      padding: '24px 28px',
+      background: 'var(--surface-glass, #FFFFFF)',
+      backdropFilter: 'blur(20px)',
+      borderRadius: 'var(--radius-lg, 20px)',
+      border: '1px solid var(--border, #E2E8F0)',
+      padding: '24px 24px',
       marginBottom: '24px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+      boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0,0,0,0.02))',
       fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif'
     }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)',
-            color: '#FFFFFF',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            border: '2px solid rgba(99, 102, 241, 0.4)',
             boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)',
-            flexShrink: 0
+            flexShrink: 0,
+            background: '#0F172A'
           }}>
-            <Bot size={22} strokeWidth={2.4} />
+            <img
+              src="/jarvis-avatar.jpg"
+              alt="JARVIS"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+              <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary, #0F172A)', margin: 0 }}>
                 JARVIS Voice Assistant
               </h3>
               <span style={{

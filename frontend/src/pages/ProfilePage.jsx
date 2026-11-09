@@ -332,17 +332,18 @@ const ProfilePage = () => {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '28px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '28px', alignItems: 'start' }}>
         
-        {/* Left Column: Avatar & Quick Info Card */}
-        <div className="card" style={{
-          padding: '28px 24px',
-          background: 'var(--surface-glass)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-card)',
-          display: 'flex',
+        {/* Left Column: Avatar & Quick Info Card, Desktop Notifications, and JARVIS */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+          <div className="card" style={{
+            padding: '28px 24px',
+            background: 'var(--surface-glass)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-card)',
+            display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           textAlign: 'center'
@@ -566,8 +567,15 @@ const ProfilePage = () => {
           )}
         </div>
 
-        {/* Right Column: Name Edit & OTP Password Change Cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+        {/* Desktop Push Notifications (Left Side) */}
+        <NotificationSettings />
+
+        {/* JARVIS Voice Assistant Settings (Left Side) */}
+        <JarvisSettings />
+      </div>
+
+      {/* Right Column: Name Edit & OTP Password Change Cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
           
           {/* Card 1: Personal Details (Edit Name) */}
           <div className="card" style={{
@@ -1111,12 +1119,6 @@ const ProfilePage = () => {
               </form>
             )}
           </div>
-
-          {/* Card 3: Desktop Push Notifications */}
-          <NotificationSettings />
-
-          {/* Card 3b: JARVIS Voice Assistant Settings */}
-          <JarvisSettings />
 
           {/* Card 4: Google Drive Integration */}
           <div className="card" style={{

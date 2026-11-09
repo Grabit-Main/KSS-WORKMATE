@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Bot, Volume2, VolumeX, Pause, Play, Square,
-  Sparkles, X, ChevronRight, Settings, CheckCircle2,
+  Volume2, VolumeX, Pause, Play, Square,
+  Sparkles, X, ChevronRight, Settings,
   Clock, AlertTriangle, Target, BarChart2, MessageSquare
 } from 'lucide-react';
 import { useJarvis } from '../../hooks/useJarvis';
@@ -52,6 +52,12 @@ export const JarvisAssistant = () => {
   const isPaused = voiceState === 'paused';
   const isMuted = prefs.isMuted || voiceState === 'muted';
 
+  const handleTriggerClick = () => {
+    // Automatically play the introduction speech on clicking JARVIS
+    speakGreeting(true);
+    setIsOpen(prev => !prev);
+  };
+
   return (
     <>
       {/* Floating JARVIS AI Trigger Button */}
@@ -65,48 +71,57 @@ export const JarvisAssistant = () => {
         <button
           id="jarvis-floating-trigger"
           type="button"
-          onClick={() => setIsOpen(prev => !prev)}
+          onClick={handleTriggerClick}
           style={{
-            width: '58px',
-            height: '58px',
+            width: '62px',
+            height: '62px',
             borderRadius: '50%',
-            background: isSpeaking 
-              ? 'linear-gradient(135deg, #2563EB 0%, #4F46E5 50%, #7C3AED 100%)' 
-              : 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
-            border: isSpeaking ? '2px solid rgba(255, 255, 255, 0.8)' : '2px solid rgba(99, 102, 241, 0.4)',
+            padding: 0,
+            overflow: 'hidden',
+            background: '#0F172A',
+            border: isSpeaking ? '2.5px solid #38BDF8' : '2px solid rgba(56, 189, 248, 0.45)',
             boxShadow: isSpeaking
-              ? '0 0 25px rgba(99, 102, 241, 0.8), 0 8px 20px rgba(0, 0, 0, 0.3)'
-              : '0 8px 24px rgba(15, 23, 42, 0.35)',
+              ? '0 0 25px rgba(56, 189, 248, 0.9), 0 0 45px rgba(99, 102, 241, 0.6), 0 8px 24px rgba(0, 0, 0, 0.4)'
+              : '0 8px 24px rgba(15, 23, 42, 0.4), 0 0 16px rgba(56, 189, 248, 0.25)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
             transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-            transform: isOpen ? 'scale(1.06)' : 'scale(1)'
+            transform: isOpen ? 'scale(1.08)' : 'scale(1)'
           }}
           title="JARVIS - Personal AI Assistant"
         >
+          {/* Exact JARVIS Avatar Logo */}
+          <img
+            src="/jarvis-avatar.jpg"
+            alt="JARVIS"
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              display: 'block'
+            }}
+          />
+
           {/* Animated sound wave bars when speaking */}
-          {isSpeaking ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '22px' }}>
-              <span className="jarvis-bar-1" style={{ width: '3px', height: '14px', background: '#FFFFFF', borderRadius: '2px', animation: 'jarvisWave 0.8s ease-in-out infinite' }} />
-              <span className="jarvis-bar-2" style={{ width: '3px', height: '22px', background: '#FFFFFF', borderRadius: '2px', animation: 'jarvisWave 0.8s ease-in-out infinite 0.2s' }} />
-              <span className="jarvis-bar-3" style={{ width: '3px', height: '16px', background: '#FFFFFF', borderRadius: '2px', animation: 'jarvisWave 0.8s ease-in-out infinite 0.4s' }} />
-              <span className="jarvis-bar-4" style={{ width: '3px', height: '10px', background: '#FFFFFF', borderRadius: '2px', animation: 'jarvisWave 0.8s ease-in-out infinite 0.1s' }} />
-            </div>
-          ) : (
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Bot size={26} color="#60A5FA" strokeWidth={2.2} />
-              {/* Glowing center eye */}
-              <div style={{
-                position: 'absolute',
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: '#38BDF8',
-                boxShadow: '0 0 8px #38BDF8'
-              }} />
+          {isSpeaking && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '3px',
+              borderRadius: '50%'
+            }}>
+              <span className="jarvis-bar-1" style={{ width: '3px', height: '14px', background: '#38BDF8', borderRadius: '2px', animation: 'jarvisWave 0.8s ease-in-out infinite' }} />
+              <span className="jarvis-bar-2" style={{ width: '3px', height: '22px', background: '#60A5FA', borderRadius: '2px', animation: 'jarvisWave 0.8s ease-in-out infinite 0.2s' }} />
+              <span className="jarvis-bar-3" style={{ width: '3px', height: '16px', background: '#38BDF8', borderRadius: '2px', animation: 'jarvisWave 0.8s ease-in-out infinite 0.4s' }} />
+              <span className="jarvis-bar-4" style={{ width: '3px', height: '10px', background: '#93C5FD', borderRadius: '2px', animation: 'jarvisWave 0.8s ease-in-out infinite 0.1s' }} />
             </div>
           )}
 
@@ -124,7 +139,8 @@ export const JarvisAssistant = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid #FFFFFF'
+              border: '2px solid #FFFFFF',
+              zIndex: 10
             }}>
               <VolumeX size={10} />
             </div>
@@ -144,7 +160,8 @@ export const JarvisAssistant = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid #FFFFFF'
+              border: '2px solid #FFFFFF',
+              zIndex: 10
             }}>
               <Pause size={10} />
             </div>
@@ -184,16 +201,20 @@ export const JarvisAssistant = () => {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 0 12px rgba(79, 70, 229, 0.4)'
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                border: '2px solid rgba(56, 189, 248, 0.6)',
+                boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
+                flexShrink: 0,
+                background: '#0F172A'
               }}>
-                <Bot size={18} color="#FFFFFF" strokeWidth={2.4} />
+                <img
+                  src="/jarvis-avatar.jpg"
+                  alt="JARVIS"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
               </div>
               <div>
                 <div style={{ fontSize: '14px', fontWeight: 800, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '6px' }}>
