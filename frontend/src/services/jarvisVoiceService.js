@@ -15,9 +15,9 @@ export const DEFAULT_JARVIS_PREFS = {
   deadlineReminders: true,
   projectAnnouncements: true,
   voiceURI: '',
-  volume: 0.9,
-  rate: 1.0,
-  pitch: 1.0,
+  volume: 1.0,
+  rate: 0.96,  // Paul Bettany (J.A.R.V.I.S.) articulate, measured British pacing
+  pitch: 0.92, // Paul Bettany's warm, composed British baritone pitch
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '08:00',
@@ -70,6 +70,75 @@ if (isSpeechSupported()) {
     cachedVoices = window.speechSynthesis.getVoices();
   };
 }
+
+/**
+ * Find the most natural, human-like British voice matching J.A.R.V.I.S. (Paul Bettany)
+ */
+export const findBestJarvisVoice = (voices = [], userVoiceURI = '') => {
+  if (!voices || voices.length === 0) return null;
+
+  // 1. If user explicitly picked a voice from Settings, honor it
+  if (userVoiceURI) {
+    const custom = voices.find(v => v.voiceURI === userVoiceURI);
+    if (custom) return custom;
+  }
+
+  // 2. Microsoft Natural Neural British Male (Ryan, Oliver, George) - virtually identical to Paul Bettany
+  const britishNatural = voices.find(v => {
+    const name = (v.name || '').toLowerCase();
+    const lang = (v.lang || '').toLowerCase();
+    const isUK = lang.includes('en-gb') || lang.includes('en_gb') || name.includes('united kingdom') || name.includes('uk');
+    const isNatural = name.includes('natural') || name.includes('online') || name.includes('neural');
+    const isMale = name.includes('ryan') || name.includes('george') || name.includes('oliver') || name.includes('arthur');
+    return isUK && (isNatural || isMale);
+  });
+  if (britishNatural) return britishNatural;
+
+  // 3. Google UK English Male (Chrome's best British human voice)
+  const googleUKMale = voices.find(v => {
+    const name = (v.name || '').toLowerCase();
+    const lang = (v.lang || '').toLowerCase();
+    const isUK = lang.includes('en-gb') || lang.includes('en_gb') || name.includes('united kingdom');
+    return isUK && (name.includes('google') || name.includes('male') || name.includes('uk english male'));
+  });
+  if (googleUKMale) return googleUKMale;
+
+  // 4. Apple / macOS / iOS Daniel (Classic British Male Assistant)
+  const danielUK = voices.find(v => {
+    const name = (v.name || '').toLowerCase();
+    const lang = (v.lang || '').toLowerCase();
+    return (lang.includes('en-gb') || lang.includes('en_gb')) && name.includes('daniel');
+  });
+  if (danielUK) return danielUK;
+
+  // 5. Any English (United Kingdom / en-GB) voice
+  const anyBritish = voices.find(v => {
+    const lang = (v.lang || '').toLowerCase();
+    const name = (v.name || '').toLowerCase();
+    return lang.includes('en-gb') || lang.includes('en_gb') || name.includes('united kingdom') || name.includes('british');
+  });
+  if (anyBritish) return anyBritish;
+
+  // 6. High-quality Natural / Neural English male voices (e.g. Microsoft Guy, Davis)
+  const naturalEnglish = voices.find(v => {
+    const name = (v.name || '').toLowerCase();
+    const lang = (v.lang || '').toLowerCase();
+    const isNatural = name.includes('natural') || name.includes('online') || name.includes('neural');
+    return lang.startsWith('en') && isNatural && (name.includes('guy') || name.includes('davis') || name.includes('david'));
+  });
+  if (naturalEnglish) return naturalEnglish;
+
+  // 7. Any Natural / Online English voice
+  const anyNatural = voices.find(v => {
+    const name = (v.name || '').toLowerCase();
+    const lang = (v.lang || '').toLowerCase();
+    return lang.startsWith('en') && (name.includes('natural') || name.includes('online') || name.includes('neural'));
+  });
+  if (anyNatural) return anyNatural;
+
+  // Fallback to first available English voice
+  return voices.find(v => (v.lang || '').toLowerCase().startsWith('en')) || voices[0] || null;
+};
 
 /**
  * Get user-specific preferences
@@ -207,26 +276,16 @@ export const jarvisSpeak = (text, options = {}, userId = null) => {
       const utterance = new SpeechSynthesisUtterance(text);
       currentUtterance = utterance;
 
-      // Select voice: user preferred, or default natural English voice
+      // Select voice: user preferred, or authentic British J.A.R.V.I.S. voice
       const voices = getAvailableVoices();
-      if (voices.length > 0) {
-        let chosenVoice = null;
-        if (prefs.voiceURI) {
-          chosenVoice = voices.find(v => v.voiceURI === prefs.voiceURI);
-        }
-        if (!chosenVoice) {
-          // Prefer high-quality English voice (Google US English, Microsoft Natural, Samantha)
-          chosenVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Online') || v.name.includes('Google') || v.name.includes('David') || v.name.includes('Alex'))) ||
-                        voices.find(v => v.lang.startsWith('en'));
-        }
-        if (chosenVoice) {
-          utterance.voice = chosenVoice;
-        }
+      const chosenVoice = findBestJarvisVoice(voices, prefs.voiceURI);
+      if (chosenVoice) {
+        utterance.voice = chosenVoice;
       }
 
-      utterance.volume = typeof options.volume === 'number' ? options.volume : (prefs.volume ?? 0.9);
-      utterance.rate = typeof options.rate === 'number' ? options.rate : (prefs.rate ?? 1.0);
-      utterance.pitch = typeof options.pitch === 'number' ? options.pitch : (prefs.pitch ?? 1.0);
+      utterance.volume = typeof options.volume === 'number' ? options.volume : (prefs.volume ?? 1.0);
+      utterance.rate = typeof options.rate === 'number' ? options.rate : (prefs.rate ?? 0.96);
+      utterance.pitch = typeof options.pitch === 'number' ? options.pitch : (prefs.pitch ?? 0.92);
 
       utterance.onstart = () => {
         currentState = 'speaking';

@@ -178,11 +178,14 @@ export const JarvisAssistant = () => {
             bottom: '96px',
             right: '26px',
             width: '380px',
-            maxWidth: 'calc(100vw - 40px)',
-            background: 'linear-gradient(180deg, #0F172A 0%, #1E293B 100%)',
-            border: '1px solid rgba(99, 102, 241, 0.35)',
+            maxWidth: 'calc(100vw - 36px)',
+            maxHeight: 'calc(100vh - 115px)',
+            display: 'flex',
+            flexDirection: 'column',
+            background: 'linear-gradient(180deg, #0B1120 0%, #0F172A 50%, #1E293B 100%)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
             borderRadius: '24px',
-            boxShadow: '0 20px 45px rgba(0, 0, 0, 0.5), 0 0 35px rgba(99, 102, 241, 0.15)',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 35px rgba(56, 189, 248, 0.18)',
             zIndex: 9998,
             overflow: 'hidden',
             fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
@@ -190,14 +193,16 @@ export const JarvisAssistant = () => {
             animation: 'jarvisPopup 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
-          {/* Header */}
+          {/* Header (Pinned, Non-shrinking) */}
           <div style={{
-            padding: '16px 20px',
+            padding: '14px 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'rgba(15, 23, 42, 0.6)'
+            background: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(10px)',
+            flexShrink: 0
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
@@ -277,281 +282,295 @@ export const JarvisAssistant = () => {
             </div>
           </div>
 
-          {/* Subtitle / Live Transcript Display Area */}
-          <div style={{
-            padding: '16px 20px',
-            background: 'rgba(2, 6, 23, 0.4)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-            minHeight: '76px',
-            maxHeight: '120px',
-            overflowY: 'auto'
-          }}>
-            <div style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px', letterSpacing: '0.04em' }}>
-              {isSpeaking ? 'JARVIS Announcement' : 'Assistant Message'}
-            </div>
+          {/* Scrollable Body Content Wrapper */}
+          <div
+            className="jarvis-scroll"
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* Subtitle / Live Transcript Display Area */}
             <div style={{
-              fontSize: '13px',
-              lineHeight: 1.5,
-              color: subtitle ? '#E2E8F0' : '#64748B',
-              fontStyle: subtitle ? 'normal' : 'italic'
+              padding: '14px 18px',
+              background: 'rgba(2, 6, 23, 0.45)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+              minHeight: '70px',
+              maxHeight: '130px',
+              overflowY: 'auto'
             }}>
-              {subtitle || 'Click a quick action below to hear your daily update, task summary, or deadlines.'}
+              <div style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px', letterSpacing: '0.04em' }}>
+                {isSpeaking ? 'JARVIS Announcement' : 'Assistant Message'}
+              </div>
+              <div style={{
+                fontSize: '13px',
+                lineHeight: 1.5,
+                color: subtitle ? '#E2E8F0' : '#64748B',
+                fontStyle: subtitle ? 'normal' : 'italic'
+              }}>
+                {subtitle || 'Click a quick action below to hear your daily update, task summary, or deadlines.'}
+              </div>
             </div>
-          </div>
 
-          {/* Voice Controls: Play Greeting, Pause, Resume, Stop */}
-          <div style={{
-            padding: '12px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '8px',
-            background: 'rgba(15, 23, 42, 0.3)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
-          }}>
-            <button
-              type="button"
-              onClick={() => speakGreeting(false)}
-              style={{
-                flex: 1,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                padding: '8px 12px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)',
-                color: '#FFFFFF',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)'
-              }}
-            >
-              <Sparkles size={13} /> {isSpeaking ? 'Re-announce' : 'Play Greeting'}
-            </button>
-
-            {isSpeaking && (
+            {/* Voice Controls: Play Greeting, Pause, Resume, Stop */}
+            <div style={{
+              padding: '10px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              background: 'rgba(15, 23, 42, 0.35)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
+            }}>
               <button
                 type="button"
-                onClick={pause}
+                onClick={() => speakGreeting(false)}
                 style={{
+                  flex: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
                   padding: '8px 12px',
                   borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.08)',
+                  background: 'linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)',
                   color: '#FFFFFF',
                   border: 'none',
                   fontSize: '12px',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px'
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)'
                 }}
               >
-                <Pause size={13} /> Pause
+                <Sparkles size={13} /> {isSpeaking ? 'Re-announce' : 'Play Greeting'}
               </button>
-            )}
 
-            {isPaused && (
-              <button
-                type="button"
-                onClick={resume}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(74, 222, 128, 0.2)',
-                  color: '#4ADE80',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Play size={13} /> Resume
-              </button>
-            )}
+              {isSpeaking && (
+                <button
+                  type="button"
+                  onClick={pause}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Pause size={13} /> Pause
+                </button>
+              )}
 
-            {(isSpeaking || isPaused) && (
-              <button
-                type="button"
-                onClick={stop}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  color: '#EF4444',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Square size={12} /> Stop
-              </button>
-            )}
+              {isPaused && (
+                <button
+                  type="button"
+                  onClick={resume}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(74, 222, 128, 0.2)',
+                    color: '#4ADE80',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Play size={13} /> Resume
+                </button>
+              )}
+
+              {(isSpeaking || isPaused) && (
+                <button
+                  type="button"
+                  onClick={stop}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#EF4444',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Square size={12} /> Stop
+                </button>
+              )}
+            </div>
+
+            {/* Quick Announcement Actions */}
+            <div style={{ padding: '14px 18px' }}>
+              <div style={{ fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase', fontWeight: 700, marginBottom: '8px', letterSpacing: '0.04em' }}>
+                Quick Workmate Actions
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={speakTaskSummary}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '9px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    color: '#F1F5F9',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <MessageSquare size={14} color="#38BDF8" /> Read my task summary
+                  </span>
+                  <ChevronRight size={14} color="#64748B" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={speakDueToday}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '9px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    color: '#F1F5F9',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Clock size={14} color="#FBBF24" /> What is due today?
+                  </span>
+                  <ChevronRight size={14} color="#64748B" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={speakOverdue}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '9px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    color: '#F1F5F9',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertTriangle size={14} color="#F87171" /> What tasks are overdue?
+                  </span>
+                  <ChevronRight size={14} color="#64748B" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={speakFocus}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '9px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    color: '#F1F5F9',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Target size={14} color="#A78BFA" /> What should I focus on?
+                  </span>
+                  <ChevronRight size={14} color="#64748B" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={speakProgress}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '9px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    color: '#F1F5F9',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <BarChart2 size={14} color="#34D399" /> Give me my work progress
+                  </span>
+                  <ChevronRight size={14} color="#64748B" />
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Quick Announcement Actions (Phase 5 clickable queries) */}
-          <div style={{ padding: '16px 20px' }}>
-            <div style={{ fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase', fontWeight: 700, marginBottom: '10px', letterSpacing: '0.04em' }}>
-              Quick Workmate Actions
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={speakTaskSummary}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                  color: '#F1F5F9',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background 0.15s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <MessageSquare size={14} color="#38BDF8" /> Read my task summary
-                </span>
-                <ChevronRight size={14} color="#64748B" />
-              </button>
-
-              <button
-                type="button"
-                onClick={speakDueToday}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                  color: '#F1F5F9',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background 0.15s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Clock size={14} color="#FBBF24" /> What is due today?
-                </span>
-                <ChevronRight size={14} color="#64748B" />
-              </button>
-
-              <button
-                type="button"
-                onClick={speakOverdue}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                  color: '#F1F5F9',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background 0.15s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <AlertTriangle size={14} color="#F87171" /> What tasks are overdue?
-                </span>
-                <ChevronRight size={14} color="#64748B" />
-              </button>
-
-              <button
-                type="button"
-                onClick={speakFocus}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                  color: '#F1F5F9',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background 0.15s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Target size={14} color="#A78BFA" /> What should I focus on?
-                </span>
-                <ChevronRight size={14} color="#64748B" />
-              </button>
-
-              <button
-                type="button"
-                onClick={speakProgress}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                  color: '#F1F5F9',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background 0.15s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <BarChart2 size={14} color="#34D399" /> Give me my work progress
-                </span>
-                <ChevronRight size={14} color="#64748B" />
-              </button>
-            </div>
-          </div>
-
-          {/* Footer with Settings Shortcut */}
+          {/* Footer (Pinned, Non-shrinking) */}
           <div style={{
-            padding: '12px 20px',
+            padding: '11px 18px',
             borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-            background: 'rgba(15, 23, 42, 0.5)',
+            background: 'rgba(15, 23, 42, 0.85)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontSize: '12px',
-            color: '#94A3B8'
+            fontSize: '11.5px',
+            color: '#94A3B8',
+            flexShrink: 0
           }}>
             <span>Web Speech Engine Active</span>
             <button
@@ -566,10 +585,10 @@ export const JarvisAssistant = () => {
                 gap: '5px',
                 background: 'transparent',
                 border: 'none',
-                color: '#818CF8',
+                color: '#38BDF8',
                 fontWeight: 600,
                 cursor: 'pointer',
-                fontSize: '12px'
+                fontSize: '11.5px'
               }}
             >
               <Settings size={13} /> Voice Settings
@@ -578,7 +597,7 @@ export const JarvisAssistant = () => {
         </div>
       )}
 
-      {/* Global CSS for Keyframe Animations */}
+      {/* Global CSS for Keyframe Animations & Custom Scrollbar */}
       <style>{`
         @keyframes jarvisWave {
           0%, 100% { height: 6px; }
@@ -587,6 +606,19 @@ export const JarvisAssistant = () => {
         @keyframes jarvisPopup {
           0% { opacity: 0; transform: translateY(12px) scale(0.96); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .jarvis-scroll::-webkit-scrollbar {
+          width: 5px;
+        }
+        .jarvis-scroll::-webkit-scrollbar-track {
+          background: rgba(15, 23, 42, 0.4);
+        }
+        .jarvis-scroll::-webkit-scrollbar-thumb {
+          background: rgba(56, 189, 248, 0.35);
+          border-radius: 4px;
+        }
+        .jarvis-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(56, 189, 248, 0.6);
         }
       `}</style>
     </>

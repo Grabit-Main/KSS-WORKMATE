@@ -386,7 +386,7 @@ export const JarvisSettings = () => {
                     fontFamily: 'inherit'
                   }}
                 >
-                  <option value="">Default Recommended Natural Voice</option>
+                  <option value="">Default Recommended Voice (JARVIS - Paul Bettany British Voice)</option>
                   {voices.map((v, i) => (
                     <option key={v.voiceURI || i} value={v.voiceURI}>
                       {v.name} ({v.lang})
@@ -399,14 +399,14 @@ export const JarvisSettings = () => {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Volume</label>
-                  <span style={{ fontSize: '12px', color: '#64748B' }}>{Math.round((prefs.volume ?? 0.9) * 100)}%</span>
+                  <span style={{ fontSize: '12px', color: '#64748B' }}>{Math.round((prefs.volume ?? 1.0) * 100)}%</span>
                 </div>
                 <input
                   type="range"
                   min="0.1"
                   max="1.0"
                   step="0.05"
-                  value={prefs.volume ?? 0.9}
+                  value={prefs.volume ?? 1.0}
                   onChange={e => handleChange('volume', parseFloat(e.target.value))}
                   style={{ width: '100%', accentColor: '#4F46E5' }}
                 />
@@ -415,16 +415,33 @@ export const JarvisSettings = () => {
               {/* Speech Rate Slider */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Speech Rate</label>
-                  <span style={{ fontSize: '12px', color: '#64748B' }}>{(prefs.rate ?? 1.0).toFixed(2)}x</span>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Speech Rate (Pacing)</label>
+                  <span style={{ fontSize: '12px', color: '#64748B' }}>{(prefs.rate ?? 0.96).toFixed(2)}x</span>
                 </div>
                 <input
                   type="range"
-                  min="0.8"
-                  max="1.4"
-                  step="0.05"
-                  value={prefs.rate ?? 1.0}
+                  min="0.75"
+                  max="1.3"
+                  step="0.02"
+                  value={prefs.rate ?? 0.96}
                   onChange={e => handleChange('rate', parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: '#4F46E5' }}
+                />
+              </div>
+
+              {/* Pitch Slider (JARVIS Baritone Timbre) */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Voice Pitch (Timbre)</label>
+                  <span style={{ fontSize: '12px', color: '#64748B' }}>{(prefs.pitch ?? 0.92).toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.7"
+                  max="1.3"
+                  step="0.02"
+                  value={prefs.pitch ?? 0.92}
+                  onChange={e => handleChange('pitch', parseFloat(e.target.value))}
                   style={{ width: '100%', accentColor: '#4F46E5' }}
                 />
               </div>
