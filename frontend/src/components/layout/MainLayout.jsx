@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useDesktopNotifications } from '../../hooks/useDesktopNotifications';
 import { NotificationPermissionPrompt } from '../notifications/NotificationPermissionPrompt';
+import { JarvisAssistant } from '../jarvis/JarvisAssistant';
 
 export const MainLayout = () => {
   const location = useLocation();
@@ -73,6 +74,7 @@ export const MainLayout = () => {
           <NotificationPermissionPrompt />
           <Outlet />
         </main>
+        <JarvisAssistant />
       </div>
     </div>
   );

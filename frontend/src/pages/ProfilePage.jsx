@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { ImageCropModal } from '../components/profile/ImageCropModal';
 import { NotificationSettings } from '../components/notifications/NotificationSettings';
+import { JarvisSettings } from '../components/jarvis/JarvisSettings';
 import { useRealtime } from '../realtime/useRealtime';
 import {
   isGoogleDriveConnected,
@@ -1113,6 +1114,9 @@ const ProfilePage = () => {
 
           {/* Card 3: Desktop Push Notifications */}
           <NotificationSettings />
+
+          {/* Card 3b: JARVIS Voice Assistant Settings */}
+          <JarvisSettings />
 
           {/* Card 4: Google Drive Integration */}
           <div className="card" style={{
