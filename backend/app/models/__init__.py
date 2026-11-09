@@ -7,9 +7,11 @@ from app.models.notification import Notification
 from app.models.kpi import DailyKPILog
 from app.models.holiday import Holiday
 from app.models.goal import Goal
+from app.models.push_subscription import PushSubscription
 
 __all__ = [
     "User", "Project", "Team", "TeamMembership", "ProjectStatusLog",
     "Task", "TaskAttachment", "TaskStatusLog",
-    "ChatMessage", "Review", "Notification", "DailyKPILog", "Holiday", "Goal"
+    "ChatMessage", "Review", "Notification", "DailyKPILog", "Holiday", "Goal",
+    "PushSubscription"
 ]

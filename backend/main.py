@@ -50,7 +50,7 @@ try:
     from app.database import engine, Base
     from app.routers import (
         auth, users, projects, teams, tasks,
-        chat, upload, analytics, reviews, notifications, history, kpi, mywork, documentation, holidays, goals
+        chat, upload, analytics, reviews, notifications, history, kpi, mywork, documentation, holidays, goals, push_notifications
     )
     from app.websocket.router import router as websocket_router
 
@@ -112,6 +112,18 @@ try:
                 );
                 CREATE INDEX IF NOT EXISTS ix_goals_user_id ON goals(user_id);
                 ALTER TABLE goals ADD COLUMN IF NOT EXISTS progress_history JSON DEFAULT '[]'::json;
+
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+                    id UUID PRIMARY KEY,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    endpoint TEXT NOT NULL UNIQUE,
+                    p256dh VARCHAR(255) NOT NULL,
+                    auth VARCHAR(255) NOT NULL,
+                    user_agent VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS ix_push_subscriptions_user_id ON push_subscriptions(user_id);
             """))
     except Exception as db_err:
         print("Table creation warning:", db_err)
@@ -132,6 +144,7 @@ try:
     app.include_router(documentation.router)
     app.include_router(holidays.router)
     app.include_router(goals.router)
+    app.include_router(push_notifications.router)
     app.include_router(websocket_router)
 except Exception as e:
     init_error = traceback.format_exc()

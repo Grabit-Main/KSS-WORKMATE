@@ -92,6 +92,12 @@ export const initSupabaseRealtime = (user, dispatch) => {
       const newRow = payload.new;
       if (!newRow) return;
 
+      // Privacy filter for direct messages: only dispatch to participants
+      if (newRow.chat_type === 'direct' || newRow.receiver_id) {
+        const isParticipant = String(newRow.sender_id) === userId || String(newRow.receiver_id) === userId;
+        if (!isParticipant) return;
+      }
+
       console.log(`[Realtime] Event: INSERT | Table: chat_messages | Record ID: ${newRow.id}`);
       dispatch('chat.new_message', newRow);
     }

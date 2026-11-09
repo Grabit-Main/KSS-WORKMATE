@@ -64,6 +64,9 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of clientList) {
         if ('focus' in client) {
           client.focus();
+          if ('navigate' in client) {
+            client.navigate(targetUrl);
+          }
           client.postMessage({
             type: 'NOTIFICATION_NAVIGATE',
             url: targetUrl,
@@ -87,3 +90,4 @@ self.addEventListener('message', (event) => {
     self.registration.showNotification(title, options);
   }
 });
+

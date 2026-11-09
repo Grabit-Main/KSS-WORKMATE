@@ -10,7 +10,9 @@ import {
   getNotificationPreferences,
   saveNotificationPreferences,
   playNotificationSound,
-  showDesktopNotification
+  showDesktopNotification,
+  getPushSubscriptionStatus,
+  subscribeToPushNotifications
 } from '../../services/desktopNotificationService';
 
 export const NotificationSettings = () => {
@@ -18,14 +20,17 @@ export const NotificationSettings = () => {
   const [prefs, setPrefs] = useState(getNotificationPreferences());
   const [testSent, setTestSent] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [pushActive, setPushActive] = useState(false);
 
   useEffect(() => {
     if (isNotificationSupported()) {
       setPermission(getNotificationPermission());
+      getPushSubscriptionStatus().then(st => setPushActive(st));
     }
 
     const handlePermChange = (e) => {
       setPermission(e.detail || getNotificationPermission());
+      getPushSubscriptionStatus().then(st => setPushActive(st));
     };
 
     const handlePrefsChange = (e) => {
@@ -117,19 +122,36 @@ export const NotificationSettings = () => {
         {/* Permission Status Pill */}
         <div>
           {permission === 'granted' && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '20px',
-              background: '#ECFDF5',
-              color: '#059669',
-              fontSize: '12.5px',
-              fontWeight: 700
-            }}>
-              <CheckCircle2 size={14} /> Desktop Notifications Active
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                background: '#ECFDF5',
+                color: '#059669',
+                fontSize: '12.5px',
+                fontWeight: 700
+              }}>
+                <CheckCircle2 size={14} /> Desktop Notifications Active
+              </span>
+              {pushActive && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  background: '#EEF2FF',
+                  color: '#4338CA',
+                  fontSize: '12px',
+                  fontWeight: 600
+                }}>
+                  <Radio size={13} color="#4338CA" /> Closed-Tab Push Ready
+                </span>
+              )}
+            </div>
           )}
           {permission === 'denied' && (
             <span style={{
@@ -426,3 +448,4 @@ export const NotificationSettings = () => {
     </div>
   );
 };
+

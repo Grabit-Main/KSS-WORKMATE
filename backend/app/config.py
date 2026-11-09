@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "Kalpanaaa Software Solutions <no-reply@kalpanaaa.in>"
 
+    # Free Web Push (VAPID) Settings for closed-tab desktop notifications
+    VAPID_PUBLIC_KEY: str = "BIlh20QdK3AvRO5d250XcevybBq86KdqrOoYKG09u2VU1nORtykhLpLyQASK0y31D9-PCU5zp9N7bEqZF-poiD8"
+    VAPID_PRIVATE_KEY: str = "zT6Wso1bvy2WCxdxkwitXkQoFgYw8P7MkoXD9gpWpkw"
+    VAPID_CLAIM_EMAIL: str = "admin@kalpanaaa.in"
+
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 525600  # 1 year - no auto logout
     REFRESH_TOKEN_EXPIRE_DAYS: int = 365

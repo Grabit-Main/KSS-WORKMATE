@@ -14,6 +14,8 @@ from app.schemas.chat import ChatMessageCreate, ChatMessageResponse, MarkReadReq
 from app.dependencies import get_current_user
 from app.websocket.manager import manager
 from app.websocket.events import CHAT_NEW_MESSAGE, CHAT_MESSAGES_READ, CHAT_MESSAGE_DELETED
+import asyncio
+from app.utils.webpush_service import dispatch_push_to_users
 
 router = APIRouter(tags=["chat"])
 
@@ -139,6 +141,20 @@ async def send_message(task_id: UUID, req: ChatMessageCreate, db: Session = Depe
                 "event_type": "chat.message"
             }
         })
+        # Background Web Push for task chat
+        asyncio.create_task(
+            dispatch_push_to_users(
+                [recipient_id],
+                {
+                    "title": f"Task Chat: {task.title}",
+                    "body": f"{user.first_name} {user.last_name}: {msg.message or '📎 Sent an attachment'}",
+                    "icon": "/logo.webp",
+                    "badge": "/favicon.ico",
+                    "url": f"/tasks?taskId={task.id}",
+                    "tag": f"chat-task-{task.id}"
+                }
+            )
+        )
     await manager.send_to_user(str(user.id), event)
     return msg
 
@@ -228,6 +244,20 @@ async def send_direct_message(other_user_id: UUID, req: ChatMessageCreate, db: S
                 "event_type": "chat.direct"
             }
         })
+        # Background Web Push for closed tabs
+        asyncio.create_task(
+            dispatch_push_to_users(
+                [other_user_id],
+                {
+                    "title": f"New message from {user.first_name} {user.last_name}".strip(),
+                    "body": (msg.message[:110] + '...') if msg.message and len(msg.message) > 110 else (msg.message or "📎 Sent an attachment"),
+                    "icon": "/logo.webp",
+                    "badge": "/favicon.ico",
+                    "url": f"/collaboration?user={user.id}",
+                    "tag": f"chat-dm-{user.id}"
+                }
+            )
+        )
     await manager.send_to_user(str(user.id), event)
     return msg
 
@@ -287,6 +317,28 @@ async def send_channel_message(channel_name: str, req: ChatMessageCreate, db: Se
         }
     }
     await manager.broadcast("global:all", event)
+
+    # Background Web Push for channel members (excluding sender)
+    try:
+        target_users = db.query(User.id).filter(User.id != user.id).all()
+        target_ids = [u[0] for u in target_users]
+        if target_ids:
+            asyncio.create_task(
+                dispatch_push_to_users(
+                    target_ids,
+                    {
+                        "title": f"#{channel_name} · {user.first_name} {user.last_name}".strip(),
+                        "body": (msg.message[:110] + '...') if msg.message and len(msg.message) > 110 else (msg.message or "📎 Sent an attachment"),
+                        "icon": "/logo.webp",
+                        "badge": "/favicon.ico",
+                        "url": f"/collaboration?channel={channel_name}",
+                        "tag": f"chat-channel-{channel_name}"
+                    }
+                )
+            )
+    except Exception:
+        pass
+
     return msg
 
 
@@ -348,6 +400,28 @@ async def send_project_message(project_id: UUID, req: ChatMessageCreate, db: Ses
     }
     await manager.broadcast(f"project:{project_id}", event)
     await manager.broadcast("global:all", event)
+
+    # Background Web Push for project members (excluding sender)
+    try:
+        target_users = db.query(User.id).filter(User.id != user.id).all()
+        target_ids = [u[0] for u in target_users]
+        if target_ids:
+            asyncio.create_task(
+                dispatch_push_to_users(
+                    target_ids,
+                    {
+                        "title": f"Project: {proj.title} · {user.first_name} {user.last_name}".strip(),
+                        "body": (msg.message[:110] + '...') if msg.message and len(msg.message) > 110 else (msg.message or "📎 Sent an attachment"),
+                        "icon": "/logo.webp",
+                        "badge": "/favicon.ico",
+                        "url": f"/projects",
+                        "tag": f"chat-proj-{project_id}"
+                    }
+                )
+            )
+    except Exception:
+        pass
+
     return msg
 
 

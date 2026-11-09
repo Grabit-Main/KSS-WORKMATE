@@ -68,25 +68,6 @@ export const getNotificationPermission = () => {
   return Notification.permission; // 'granted' | 'denied' | 'default'
 };
 
-/**
- * Request notification permission from the user
- */
-export const requestNotificationPermission = async () => {
-  if (!isNotificationSupported()) return 'unsupported';
-  try {
-    const permission = await Notification.requestPermission();
-    // Dispatch custom event for reactive UI updates
-    window.dispatchEvent(new CustomEvent('workmate_notification_permission_changed', { detail: permission }));
-    if (permission === 'granted') {
-      await registerServiceWorker();
-    }
-    return permission;
-  } catch (e) {
-    console.error('[NotificationService] Permission request failed', e);
-    return Notification.permission;
-  }
-};
-
 let cachedSwRegistration = null;
 
 /**
@@ -108,11 +89,69 @@ export const registerServiceWorker = async () => {
 };
 
 /**
+ * Request notification permission from the user
+ */
+export const requestNotificationPermission = async () => {
+  if (!isNotificationSupported()) return 'unsupported';
+  try {
+    const permission = await Notification.requestPermission();
+    // Dispatch custom event for reactive UI updates
+    window.dispatchEvent(new CustomEvent('workmate_notification_permission_changed', { detail: permission }));
+    if (permission === 'granted') {
+      await registerServiceWorker();
+      // Auto-subscribe to Web Push for closed-tab notifications
+      try {
+        await subscribeToPushNotifications();
+      } catch (pushErr) {
+        console.warn('[NotificationService] Web Push auto-subscription notice:', pushErr);
+      }
+    }
+    return permission;
+  } catch (e) {
+    console.error('[NotificationService] Permission request failed', e);
+    return Notification.permission;
+  }
+};
+
+/**
  * Synthesize a pristine, modern Teams-style notification chime using Web Audio API.
  * Uses a harmonic two-tone chord with smooth exponential decay.
  * Zero asset downloads, instant playback, zero network latency, 100% reliable.
  */
 let audioCtx = null;
+let isAudioUnlocked = false;
+
+export const initAudioUnlock = () => {
+  if (typeof window === 'undefined' || isAudioUnlocked) return;
+
+  const unlock = () => {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        if (!audioCtx || audioCtx.state === 'closed') {
+          audioCtx = new AudioContextClass();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }
+      isAudioUnlocked = true;
+    } catch {
+      // Ignore user gesture unlock errors
+    }
+    ['pointerdown', 'keydown', 'click', 'touchstart'].forEach(evt => {
+      window.removeEventListener(evt, unlock, true);
+    });
+  };
+
+  ['pointerdown', 'keydown', 'click', 'touchstart'].forEach(evt => {
+    window.addEventListener(evt, unlock, { capture: true, once: true });
+  });
+};
+
+if (typeof window !== 'undefined') {
+  initAudioUnlock();
+}
 
 export const playNotificationSound = () => {
   const prefs = getNotificationPreferences();
@@ -137,20 +176,20 @@ export const playNotificationSound = () => {
     const gain1 = audioCtx.createGain();
     osc1.type = 'sine';
     osc1.frequency.setValueAtTime(523.25, now);
-    gain1.gain.setValueAtTime(0.18, now);
+    gain1.gain.setValueAtTime(0.2, now);
     gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
     osc1.connect(gain1);
     gain1.connect(audioCtx.destination);
     osc1.start(now);
     osc1.stop(now + 0.35);
 
-    // Tone 2: 783.99 Hz (G5) chime delay by 60ms for that signature cheerful chime
+    // Tone 2: 783.99 Hz (G5) chime delay by 60ms for that signature cheerful Teams chime
     const osc2 = audioCtx.createOscillator();
     const gain2 = audioCtx.createGain();
     osc2.type = 'sine';
     osc2.frequency.setValueAtTime(783.99, now + 0.06);
     gain2.gain.setValueAtTime(0.001, now);
-    gain2.gain.setValueAtTime(0.22, now + 0.06);
+    gain2.gain.setValueAtTime(0.24, now + 0.06);
     gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
     osc2.connect(gain2);
     gain2.connect(audioCtx.destination);
@@ -175,8 +214,6 @@ export const showDesktopNotification = async ({
   onClick
 }) => {
   const prefs = getNotificationPreferences();
-  if (!prefs.desktopEnabled) return null;
-  if (getNotificationPermission() !== 'granted') return null;
 
   // Deduplicate rapid identical notifications
   const dedupeKey = `${tag || title}-${body}`;
@@ -186,10 +223,14 @@ export const showDesktopNotification = async ({
   recentNotifCache.add(dedupeKey);
   setTimeout(() => recentNotifCache.delete(dedupeKey), 2500);
 
-  // Play audio chime if enabled
+  // 1. Play audio chime if enabled in preferences (independent of notification permission)
   if (playSound && prefs.soundEnabled) {
     playNotificationSound();
   }
+
+  // 2. Check if desktop banner notifications are enabled and granted
+  if (!prefs.desktopEnabled) return null;
+  if (getNotificationPermission() !== 'granted') return null;
 
   const notificationOptions = {
     body,
@@ -204,7 +245,7 @@ export const showDesktopNotification = async ({
     requireInteraction: false
   };
 
-  // 1. Try Service Worker showNotification first (Standard for desktop push)
+  // 3. Try Service Worker showNotification first (Standard for desktop push)
   try {
     let reg = cachedSwRegistration;
     if (!reg && isServiceWorkerSupported()) {
@@ -219,10 +260,10 @@ export const showDesktopNotification = async ({
       return true;
     }
   } catch (swErr) {
-    console.warn('[NotificationService] ServiceWorker showNotification failed, falling back to Notification API', swErr);
+    console.warn('[NotificationService] ServiceWorker showNotification fallback to Notification API', swErr);
   }
 
-  // 2. Fallback to window Notification API
+  // 4. Fallback to window Notification API
   try {
     const notif = new Notification(title, notificationOptions);
     notif.onclick = (event) => {
@@ -239,5 +280,144 @@ export const showDesktopNotification = async ({
   } catch (nErr) {
     console.error('[NotificationService] Native Notification construction failed:', nErr);
     return null;
+  }
+};
+
+/**
+ * Convert base64 url-safe string to Uint8Array for PushManager
+ */
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+/**
+ * Fetch VAPID public key from backend API
+ */
+export const fetchVapidPublicKey = async () => {
+  try {
+    const token = localStorage.getItem('access_token');
+    const res = await fetch('/api/push/vapid-public-key', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.publicKey;
+  } catch (err) {
+    console.warn('[NotificationService] Failed to fetch VAPID public key:', err);
+    return null;
+  }
+};
+
+/**
+ * Subscribe browser to Web Push for closed-tab notifications
+ */
+export const subscribeToPushNotifications = async () => {
+  if (!isServiceWorkerSupported() || !('PushManager' in window)) {
+    console.warn('[NotificationService] PushManager not supported');
+    return false;
+  }
+
+  try {
+    const reg = await registerServiceWorker();
+    if (!reg) return false;
+
+    // Wait until ServiceWorker is active
+    let serviceWorker = reg.active;
+    if (!serviceWorker) {
+      serviceWorker = await navigator.serviceWorker.ready.then(r => r.active);
+    }
+
+    let subscription = await reg.pushManager.getSubscription();
+
+    if (!subscription) {
+      const publicKey = await fetchVapidPublicKey();
+      if (!publicKey) {
+        console.warn('[NotificationService] No VAPID public key available');
+        return false;
+      }
+      const convertedKey = urlBase64ToUint8Array(publicKey);
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedKey
+      });
+    }
+
+    if (subscription) {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(subscription.toJSON())
+        });
+      }
+      return true;
+    }
+  } catch (err) {
+    console.error('[NotificationService] Push subscription failed:', err);
+  }
+  return false;
+};
+
+/**
+ * Unsubscribe browser from Web Push
+ */
+export const unsubscribeFromPushNotifications = async () => {
+  if (!isServiceWorkerSupported() || !('PushManager' in window)) return false;
+
+  try {
+    const reg = await registerServiceWorker();
+    if (!reg) return false;
+
+    const subscription = await reg.pushManager.getSubscription();
+    if (subscription) {
+      const endpoint = subscription.endpoint;
+      await subscription.unsubscribe();
+
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        await fetch('/api/push/unsubscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ endpoint })
+        });
+      }
+      return true;
+    }
+  } catch (err) {
+    console.warn('[NotificationService] Unsubscribe error:', err);
+  }
+  return false;
+};
+
+/**
+ * Check if the browser currently has an active Push subscription
+ */
+export const getPushSubscriptionStatus = async () => {
+  if (!isServiceWorkerSupported() || !('PushManager' in window)) return false;
+  try {
+    const reg = await registerServiceWorker();
+    if (!reg) return false;
+    const sub = await reg.pushManager.getSubscription();
+    return Boolean(sub);
+  } catch {
+    return false;
   }
 };

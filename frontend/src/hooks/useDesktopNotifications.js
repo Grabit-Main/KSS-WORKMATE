@@ -7,7 +7,8 @@ import {
   getNotificationPermission,
   getNotificationPreferences,
   registerServiceWorker,
-  showDesktopNotification
+  showDesktopNotification,
+  playNotificationSound
 } from '../services/desktopNotificationService';
 
 /**
@@ -18,6 +19,7 @@ export const useDesktopNotifications = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const locationRef = useRef(location);
+  const recentMessagesRef = useRef(new Set());
 
   useEffect(() => {
     locationRef.current = location;
@@ -59,29 +61,65 @@ export const useDesktopNotifications = () => {
       return;
     }
 
-    const prefs = getNotificationPreferences();
-    if (!prefs.desktopEnabled) return;
-
     const chatType = eventData.chat_type || 'direct';
     const isChannel = chatType.startsWith('channel:') || Boolean(eventData.channel_name);
     const isDirect = chatType === 'direct';
 
-    // 2. Check preference flags
+    // 2. Direct message privacy: only notify if the logged-in user is the intended recipient
+    if (isDirect || eventData.receiver_id) {
+      const receiverId = String(eventData.receiver_id || '');
+      if (receiverId && receiverId !== currentUserId) {
+        return;
+      }
+    }
+
+    // 3. Deduplicate message processing (in case both WebSocket and Supabase Realtime fire)
+    const messageId = eventData.id ? String(eventData.id) : null;
+    if (messageId) {
+      if (recentMessagesRef.current.has(messageId)) {
+        return;
+      }
+      recentMessagesRef.current.add(messageId);
+      setTimeout(() => recentMessagesRef.current.delete(messageId), 10000);
+    }
+
+    const prefs = getNotificationPreferences();
+    if (!prefs.desktopEnabled && !prefs.soundEnabled) return;
+
+    // 4. Check preference flags
     if (isDirect && !prefs.notifyDirect) return;
     if (isChannel && !prefs.notifyChannels) return;
 
-    // 3. Check if the user is actively viewing this exact conversation right now
+    // 5. Intelligent in-app suppression:
+    // Only suppress the desktop OS notification banner if:
+    // - The Workmate browser tab is active, focused and visible
+    // - AND the user is currently viewing this EXACT conversation target
+    const isDocFocused = typeof document !== 'undefined' && document.hasFocus ? document.hasFocus() : true;
     const isPageVisible = typeof document !== 'undefined' && document.visibilityState === 'visible';
-    const isAtCollaboration = locationRef.current.pathname.startsWith('/collaboration');
+    const activeTarget = window.__workmate_active_chat;
 
-    // If the browser tab is focused and the user is already on the Collaboration page,
-    // we suppress the intrusive desktop system banner
-    if (isPageVisible && isAtCollaboration) {
-      // In-app chat takes care of active display
+    let isActivelyViewingThisChat = false;
+    if (isDocFocused && isPageVisible && activeTarget) {
+      if (isChannel) {
+        const channelDisplayName = eventData.channel_name || chatType.replace('channel:', '');
+        isActivelyViewingThisChat = activeTarget.type === 'team' && (
+          String(activeTarget.id) === String(channelDisplayName) ||
+          activeTarget.name === channelDisplayName
+        );
+      } else if (isDirect) {
+        isActivelyViewingThisChat = activeTarget.type === 'dm' && (
+          String(activeTarget.id) === senderId ||
+          String(activeTarget.realUserId) === senderId
+        );
+      }
+    }
+
+    // If user is actively typing/viewing this exact chat in focused view, don't show OS banner
+    if (isActivelyViewingThisChat) {
       return;
     }
 
-    // 4. Construct Teams-like Notification Title and Message Preview
+    // 6. Construct Teams-like Notification Title and Message Preview
     const senderName = eventData.sender_name || 
       (eventData.sender ? `${eventData.sender.first_name || ''} ${eventData.sender.last_name || ''}`.trim() : 'Teammate');
 
@@ -107,7 +145,7 @@ export const useDesktopNotifications = () => {
       messagePreview = messagePreview.substring(0, 117) + '...';
     }
 
-    // 5. Trigger Native Desktop Notification + Audio Chime
+    // 7. Trigger Native Desktop Notification + Audio Chime
     showDesktopNotification({
       title: notificationTitle,
       body: messagePreview || 'You have received a new message.',

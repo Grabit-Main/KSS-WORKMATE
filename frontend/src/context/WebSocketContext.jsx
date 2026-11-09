@@ -127,7 +127,7 @@ export const WebSocketProvider = ({ children }) => {
           }
 
           if (msg.type) {
-            dispatch(msg.type, msg.data !== undefined ? msg.data : msg, { broadcast: false });
+            dispatch(msg.type, msg.data !== undefined ? msg.data : msg, { broadcast: true });
           }
         } catch (e) {
           console.error('[WS] Failed to parse message', e);

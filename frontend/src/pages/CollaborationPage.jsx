@@ -224,9 +224,20 @@ export default function CollaborationPage() {
   // Mark active conversation as read when active chat target changes
   useEffect(() => {
     if (activeChatTarget?.id) {
+      window.__workmate_active_chat = {
+        id: activeChatTarget.id,
+        type: activeChatTarget.type,
+        realUserId: activeChatTarget.realUserId,
+        name: activeChatTarget.name
+      };
       markConversationAsRead(activeChatTarget);
+    } else {
+      window.__workmate_active_chat = null;
     }
-  }, [activeChatTarget?.id, activeChatTarget?.type, activeChatTarget?.realUserId]);
+    return () => {
+      window.__workmate_active_chat = null;
+    };
+  }, [activeChatTarget?.id, activeChatTarget?.type, activeChatTarget?.realUserId, activeChatTarget?.name]);
 
   // Realtime notification sync
   useRealtime('notification.new', async () => {
