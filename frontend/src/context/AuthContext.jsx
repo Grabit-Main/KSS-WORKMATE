@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
+import {
+  recordUserActivity,
+  clearSessionActivity,
+  broadcastSessionEvent
+} from '../services/sessionInactivityService';
 
 const AuthContext = createContext(null);
 
@@ -38,6 +43,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('refresh_token', res.data.refresh_token);
     localStorage.setItem('user', JSON.stringify(res.data.user));
     setUser(res.data.user);
+    if (res.data.user?.id) {
+      recordUserActivity(res.data.user.id, { force: true });
+    }
   };
 
   const updateCurrentUser = (updatedUser) => {
@@ -50,6 +58,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    if (user?.id) {
+      clearSessionActivity(user.id);
+      broadcastSessionEvent({
+        type: 'SESSION_LOGOUT',
+        userId: String(user.id),
+        reason: 'manual_logout'
+      });
+    }
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');

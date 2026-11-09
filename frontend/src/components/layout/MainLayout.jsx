@@ -5,6 +5,8 @@ import { Header } from './Header';
 import { useDesktopNotifications } from '../../hooks/useDesktopNotifications';
 import { NotificationPermissionPrompt } from '../notifications/NotificationPermissionPrompt';
 import { JarvisAssistant } from '../jarvis/JarvisAssistant';
+import { useInactivityLogout } from '../../hooks/useInactivityLogout';
+import { SessionTimeoutWarningModal } from '../session/SessionTimeoutWarningModal';
 
 export const MainLayout = () => {
   const location = useLocation();
@@ -12,6 +14,14 @@ export const MainLayout = () => {
 
   // Initialize desktop notifications & audio chime listener
   useDesktopNotifications();
+
+  // Automatic 24-hour inactivity logout and 15-minute warning dialog
+  const {
+    showWarning,
+    remainingSeconds,
+    handleContinueSession,
+    handleLogoutNow
+  } = useInactivityLogout();
   
   // Close mobile drawer on route change
   useEffect(() => {
@@ -75,6 +85,12 @@ export const MainLayout = () => {
           <Outlet />
         </main>
         <JarvisAssistant />
+        <SessionTimeoutWarningModal
+          isOpen={showWarning}
+          remainingSeconds={remainingSeconds}
+          onContinueSession={handleContinueSession}
+          onLogoutNow={handleLogoutNow}
+        />
       </div>
     </div>
   );

@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Eye, EyeOff } from 'lucide-react';
+import { X, Eye, EyeOff, Clock } from 'lucide-react';
 import api from '../api/axios';
 import { SplashScreen } from '../components/layout/SplashScreen';
 
 const LoginPage = () => {
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showFpPass, setShowFpPass] = useState(false);
   const [error, setError] = useState('');
+  const [inactivityNotice, setInactivityNotice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const { login } = useAuth();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('reason') === 'inactivity') {
+      setInactivityNotice(true);
+    }
+  }, [location.search]);
 
   // Forgot Password State
   const [showForgot, setShowForgot] = useState(false);
@@ -310,6 +320,29 @@ const LoginPage = () => {
               Enter your email and password to access your account
             </p>
           </div>
+
+          {/* Inactivity Logout Notice */}
+          {inactivityNotice && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              padding: '12px 14px',
+              backgroundColor: '#FFFBEB',
+              color: '#92400E',
+              borderRadius: '10px',
+              marginBottom: '16px',
+              fontSize: '13px',
+              lineHeight: '1.45',
+              fontWeight: 500,
+              border: '1px solid #FDE68A'
+            }}>
+              <Clock size={18} style={{ flexShrink: 0, marginTop: '2px', color: '#D97706' }} />
+              <div>
+                <strong>Session Expired:</strong> Your session has expired due to 24 hours of inactivity. Please log in again to continue.
+              </div>
+            </div>
+          )}
 
           {/* Error notification banner */}
           {error && (
