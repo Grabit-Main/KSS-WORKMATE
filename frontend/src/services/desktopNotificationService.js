@@ -3,6 +3,8 @@
  * Teams-like desktop notifications with audio chime and permission management.
  */
 
+import api from '../api/axios';
+
 const PREFS_STORAGE_KEY = 'workmate_desktop_notification_prefs';
 
 const DEFAULT_PREFS = {
@@ -120,6 +122,11 @@ export const requestNotificationPermission = async () => {
  */
 let audioCtx = null;
 let isAudioUnlocked = false;
+
+export const getAudioContextState = () => {
+  if (!audioCtx) return 'uninitialized';
+  return audioCtx.state;
+};
 
 export const initAudioUnlock = () => {
   if (typeof window === 'undefined' || isAudioUnlocked) return;
@@ -302,17 +309,12 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 /**
- * Fetch VAPID public key from backend API
+ * Fetch VAPID public key from backend API via axios
  */
 export const fetchVapidPublicKey = async () => {
   try {
-    const token = localStorage.getItem('access_token');
-    const res = await fetch('/api/push/vapid-public-key', {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.publicKey;
+    const res = await api.get('/push/vapid-public-key');
+    return res.data?.publicKey || null;
   } catch (err) {
     console.warn('[NotificationService] Failed to fetch VAPID public key:', err);
     return null;
@@ -324,53 +326,37 @@ export const fetchVapidPublicKey = async () => {
  */
 export const subscribeToPushNotifications = async () => {
   if (!isServiceWorkerSupported() || !('PushManager' in window)) {
-    console.warn('[NotificationService] PushManager not supported');
-    return false;
+    throw new Error('PushManager is not supported by this browser');
   }
 
-  try {
-    const reg = await registerServiceWorker();
-    if (!reg) return false;
+  const reg = await registerServiceWorker();
+  if (!reg) throw new Error('Service Worker failed to register');
 
-    // Wait until ServiceWorker is active
-    let serviceWorker = reg.active;
-    if (!serviceWorker) {
-      serviceWorker = await navigator.serviceWorker.ready.then(r => r.active);
-    }
-
-    let subscription = await reg.pushManager.getSubscription();
-
-    if (!subscription) {
-      const publicKey = await fetchVapidPublicKey();
-      if (!publicKey) {
-        console.warn('[NotificationService] No VAPID public key available');
-        return false;
-      }
-      const convertedKey = urlBase64ToUint8Array(publicKey);
-      subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertedKey
-      });
-    }
-
-    if (subscription) {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        await fetch('/api/push/subscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify(subscription.toJSON())
-        });
-      }
-      return true;
-    }
-  } catch (err) {
-    console.error('[NotificationService] Push subscription failed:', err);
+  // Wait until ServiceWorker is active
+  let serviceWorker = reg.active;
+  if (!serviceWorker) {
+    serviceWorker = await navigator.serviceWorker.ready.then(r => r.active);
   }
-  return false;
+
+  let subscription = await reg.pushManager.getSubscription();
+
+  if (!subscription) {
+    const publicKey = await fetchVapidPublicKey();
+    if (!publicKey) {
+      throw new Error('No VAPID public key available from backend');
+    }
+    const convertedKey = urlBase64ToUint8Array(publicKey);
+    subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: convertedKey
+    });
+  }
+
+  if (subscription) {
+    const res = await api.post('/push/subscribe', subscription.toJSON());
+    return res.data;
+  }
+  throw new Error('Failed to create browser push subscription');
 };
 
 /**
@@ -387,18 +373,7 @@ export const unsubscribeFromPushNotifications = async () => {
     if (subscription) {
       const endpoint = subscription.endpoint;
       await subscription.unsubscribe();
-
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        await fetch('/api/push/unsubscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ endpoint })
-        });
-      }
+      await api.post('/push/unsubscribe', { endpoint });
       return true;
     }
   } catch (err) {
@@ -420,4 +395,12 @@ export const getPushSubscriptionStatus = async () => {
   } catch {
     return false;
   }
+};
+
+/**
+ * Trigger backend push notification test
+ */
+export const sendBackendTestPush = async () => {
+  const res = await api.post('/push/test');
+  return res.data;
 };

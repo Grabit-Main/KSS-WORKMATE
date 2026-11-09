@@ -5,16 +5,19 @@ import { initSupabaseRealtime } from '../realtime/supabaseRealtime';
 
 const WebSocketContext = createContext(null);
 
-const getWsUrl = () => {
+export const getWsUrl = () => {
   const envWsUrl = import.meta.env.VITE_WS_URL;
   if (envWsUrl) {
     return envWsUrl;
   }
   if (typeof window !== 'undefined') {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${proto}//${window.location.host}/ws`;
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${proto}//${window.location.host}/ws`;
+    }
   }
-  return '';
+  return 'wss://kss-workmate.onrender.com/ws';
 };
 
 export const WebSocketProvider = ({ children }) => {
