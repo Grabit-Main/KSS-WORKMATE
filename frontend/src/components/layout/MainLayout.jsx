@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { useDesktopNotifications } from '../../hooks/useDesktopNotifications';
+import { NotificationPermissionPrompt } from '../notifications/NotificationPermissionPrompt';
 
 export const MainLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Initialize desktop notifications & audio chime listener
+  useDesktopNotifications();
   
   // Close mobile drawer on route change
   useEffect(() => {
@@ -65,6 +70,7 @@ export const MainLayout = () => {
       }}>
         <Header title={getTitle()} onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
         <main className={`app-main-content ${location.pathname.startsWith('/collaboration') ? 'collaboration-mode' : ''}`}>
+          <NotificationPermissionPrompt />
           <Outlet />
         </main>
       </div>

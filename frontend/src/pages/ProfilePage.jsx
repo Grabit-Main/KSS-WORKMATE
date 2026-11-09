@@ -8,6 +8,7 @@ import {
   Link2, Unlink
 } from 'lucide-react';
 import { ImageCropModal } from '../components/profile/ImageCropModal';
+import { NotificationSettings } from '../components/notifications/NotificationSettings';
 import { useRealtime } from '../realtime/useRealtime';
 import {
   isGoogleDriveConnected,
@@ -1110,7 +1111,10 @@ const ProfilePage = () => {
             )}
           </div>
 
-          {/* Card 3: Google Drive Integration */}
+          {/* Card 3: Desktop Push Notifications */}
+          <NotificationSettings />
+
+          {/* Card 4: Google Drive Integration */}
           <div className="card" style={{
             padding: '28px',
             background: 'var(--surface-glass)',

@@ -164,9 +164,12 @@ export default function CollaborationPage() {
     loadInitialData();
   }, []);
 
-  // Handle direct conversation selection from navigation (e.g. Employee Profile Overview "Message" action)
+  // Handle direct conversation selection from navigation or desktop notification click
   useEffect(() => {
-    const targetUserId = location.state?.selectedUserId || new URLSearchParams(location.search).get('userId');
+    const params = new URLSearchParams(location.search);
+    const targetUserId = location.state?.selectedUserId || params.get('userId') || params.get('user');
+    const targetChannel = params.get('channel');
+
     if (targetUserId && teamUsers.length > 0) {
       const u = teamUsers.find(user => String(user.id) === String(targetUserId));
       if (u) {
@@ -181,6 +184,15 @@ export default function CollaborationPage() {
           avatarUrl: u.avatar_url
         });
       }
+    } else if (targetChannel) {
+      setConversationFilter('teams');
+      setActiveChatTarget({
+        id: targetChannel,
+        type: 'team',
+        name: targetChannel.charAt(0).toUpperCase() + targetChannel.slice(1),
+        subtitle: `${targetChannel} Channel`,
+        iconType: 'users'
+      });
     }
   }, [location.state, location.search, teamUsers]);
 
