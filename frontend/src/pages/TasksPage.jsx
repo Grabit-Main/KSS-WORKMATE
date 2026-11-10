@@ -277,6 +277,14 @@ const TasksPage = () => {
     setShowModal(true);
   };
 
+  const debounceTimerRef = useRef(null);
+  const debouncedLoadTasks = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      loadTasks();
+    }, 400);
+  }, []);
+
   // Real-time handlers with instant 0 ms state synchronization
   const handleTaskCreated = useCallback((payload) => {
     if (!payload) return;
@@ -289,8 +297,8 @@ const TasksPage = () => {
         return [taskData, ...prev];
       });
     }
-    loadTasks();
-  }, []);
+    debouncedLoadTasks();
+  }, [debouncedLoadTasks]);
 
   const handleTaskStatusChanged = useCallback((payload) => {
     if (!payload) return;
@@ -310,8 +318,8 @@ const TasksPage = () => {
       setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, ...taskData, assigned_to: taskData.assigned_to || t.assigned_to } : t));
       setSelectedTask(curr => (curr && String(curr.id) === String(taskId)) ? { ...curr, ...taskData, assigned_to: taskData.assigned_to || curr.assigned_to } : curr);
     }
-    loadTasks();
-  }, []);
+    debouncedLoadTasks();
+  }, [debouncedLoadTasks]);
 
   const handleTaskLocked = useCallback((payload) => {
     if (!payload) return;
@@ -338,6 +346,7 @@ const TasksPage = () => {
   useRealtime('task.reassigned', handleTaskReassigned);
   useRealtime('task.locked', handleTaskLocked);
   useRealtime('task.deleted', handleTaskDeleted);
+  useRealtime('tasks.refresh', debouncedLoadTasks);
 
   const handleCreateTask = async (e) => {
     e.preventDefault();

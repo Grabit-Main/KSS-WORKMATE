@@ -51,11 +51,22 @@ const DashboardPage = () => {
     loadData(period);
   }, [period]);
 
-  const handleRefresh = useCallback(() => {
-    loadData(period);
+  const periodRef = useRef(period);
+  useEffect(() => {
+    periodRef.current = period;
   }, [period]);
 
+  const debounceTimerRef = useRef(null);
+  const handleRefresh = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      loadData(periodRef.current);
+    }, 400);
+  }, []);
+
   useRealtime('analytics.refresh', handleRefresh);
+  useRealtime('tasks.refresh', handleRefresh);
+  useRealtime('projects.refresh', handleRefresh);
   useRealtime('task.created', handleRefresh);
   useRealtime('task.status_changed', handleRefresh);
   useRealtime('task.reassigned', handleRefresh);

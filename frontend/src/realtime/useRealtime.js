@@ -1,14 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useWebSocket } from '../context/WebSocketContext';
 
 export const useRealtime = (eventType, callback) => {
   const ws = useWebSocket();
+  const callbackRef = useRef(callback);
 
   useEffect(() => {
-    if (!ws || !ws.subscribe || !callback) return;
-    const unsubscribe = ws.subscribe(eventType, callback);
+    callbackRef.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    if (!ws || !ws.subscribe || !eventType) return;
+    const handler = (data) => {
+      if (callbackRef.current) {
+        callbackRef.current(data);
+      }
+    };
+    const unsubscribe = ws.subscribe(eventType, handler);
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [eventType, callback, ws]);
+  }, [eventType, ws]);
 };

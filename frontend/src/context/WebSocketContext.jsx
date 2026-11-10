@@ -1,9 +1,63 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { getNotifications } from '../api/notifications';
-import { initSupabaseRealtime } from '../realtime/supabaseRealtime';
+import { apiCache } from '../api/cache';
+import { initSupabaseRealtime, broadcastRealtimeEvent } from '../realtime/supabaseRealtime';
 
 const WebSocketContext = createContext(null);
+
+const processedEvents = new Map();
+export const isDuplicateEvent = (eventType, data) => {
+  if (!eventType) return false;
+  const id = data?.id || data?.task_id || data?.ref_id || '';
+  const state = data?.status || data?.updated_at || data?.created_at || '';
+  const key = `${eventType}:${id}:${state}`;
+  const now = Date.now();
+
+  if (processedEvents.has(key) && (now - processedEvents.get(key) < 4000)) {
+    return true;
+  }
+
+  processedEvents.set(key, now);
+  if (processedEvents.size > 200) {
+    for (const [k, time] of processedEvents.entries()) {
+      if (now - time > 10000) processedEvents.delete(k);
+    }
+  }
+
+  return false;
+};
+
+// Synchronize in-memory cache with incoming authenticated server socket events
+const syncCacheWithSocketEvent = (type, data) => {
+  if (!type) return;
+  if (type.startsWith('task.')) {
+    if (type === 'task.deleted' && (data?.id || data?.task_id)) {
+      apiCache.removeRecordFromLists('/tasks', data.id || data.task_id);
+    } else if (data && (data.id || data.task_id)) {
+      apiCache.updateRecordInLists('/tasks', data);
+    } else {
+      apiCache.invalidate('/tasks');
+    }
+    apiCache.invalidate('/analytics');
+    apiCache.invalidate('/history');
+  } else if (type.startsWith('project.')) {
+    apiCache.invalidate('/projects');
+    apiCache.invalidate('/analytics');
+  } else if (type.startsWith('team.')) {
+    apiCache.invalidate('/teams');
+    apiCache.invalidate('/analytics');
+  } else if (type.startsWith('chat.')) {
+    apiCache.invalidate('/chat');
+  } else if (type === 'notification.new') {
+    apiCache.invalidate('/notifications');
+  } else if (type === 'analytics.refresh') {
+    apiCache.invalidate('/analytics');
+  } else if (type === 'kpi.logged') {
+    apiCache.invalidate('/kpi');
+    apiCache.invalidate('/analytics');
+  }
+};
 
 export const getWsUrl = () => {
   const envWsUrl = import.meta.env.VITE_WS_URL;
@@ -24,6 +78,7 @@ export const WebSocketProvider = ({ children }) => {
   const { user } = useAuth();
   const ws = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
+  const isConnectedRef = useRef(false);
   const listeners = useRef(new Map()); // Map<eventType, Set<callback>>
   const activeRooms = useRef(new Set()); // Set<roomName>
   const reconnectTimeoutRef = useRef(null);
@@ -33,7 +88,12 @@ export const WebSocketProvider = ({ children }) => {
   const lastKnownNotifIdsRef = useRef(new Set());
   const broadcastChannelRef = useRef(null);
 
-  // Initialize cross-tab BroadcastChannel
+  // Keep isConnectedRef in sync with state for polling logic
+  useEffect(() => {
+    isConnectedRef.current = isConnected;
+  }, [isConnected]);
+
+  // Initialize cross-tab BroadcastChannel (Same-Origin isolated)
   useEffect(() => {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
@@ -41,7 +101,12 @@ export const WebSocketProvider = ({ children }) => {
         broadcastChannelRef.current = channel;
         channel.onmessage = (event) => {
           if (event.data && event.data.type) {
-            const { type, data } = event.data;
+            const { type, data, senderId } = event.data;
+            if (senderId && user?.id && String(senderId) === String(user.id)) return;
+            if (isDuplicateEvent(type, data)) return;
+
+            syncCacheWithSocketEvent(type, data);
+
             const typeListeners = listeners.current.get(type);
             if (typeListeners) {
               typeListeners.forEach(cb => {
@@ -60,11 +125,17 @@ export const WebSocketProvider = ({ children }) => {
         broadcastChannelRef.current = null;
       }
     };
-  }, []);
+  }, [user]);
 
   // Instant local event dispatch (0 ms latency)
   const dispatch = useCallback((eventType, data, { broadcast = true } = {}) => {
     if (!eventType) return;
+
+    // Deduplicate event processing
+    if (isDuplicateEvent(eventType, data)) {
+      return;
+    }
+
     const typeListeners = listeners.current.get(eventType);
     if (typeListeners) {
       typeListeners.forEach(cb => {
@@ -76,13 +147,9 @@ export const WebSocketProvider = ({ children }) => {
       });
     }
 
-    // Propagate to other tabs immediately
-    if (broadcast && broadcastChannelRef.current) {
-      try {
-        broadcastChannelRef.current.postMessage({ type: eventType, data });
-      } catch (err) {
-        console.warn('[EventBus] Broadcast post error:', err);
-      }
+    // Only broadcast thin advisory signals if broadcast is true
+    if (broadcast) {
+      broadcastRealtimeEvent(eventType, data);
     }
   }, []);
 
@@ -106,7 +173,7 @@ export const WebSocketProvider = ({ children }) => {
 
       socket.onopen = () => {
         setIsConnected(true);
-        // Authenticate immediately
+        // Authenticate immediately with user JWT
         socket.send(JSON.stringify({ type: 'auth', token }));
 
         // Start heartbeat
@@ -115,13 +182,22 @@ export const WebSocketProvider = ({ children }) => {
           if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: 'ping' }));
           }
-        }, 20000);
+        }, 25000);
       };
 
       socket.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'connected') {
+            // Auto join standard rooms
+            socket.send(JSON.stringify({ type: 'join', room: 'global:all' }));
+            if (user?.team_id) {
+              socket.send(JSON.stringify({ type: 'join', room: `team:${user.team_id}` }));
+            }
+            if (['CEO', 'CTO', 'PM', 'HR'].includes(user?.role)) {
+              socket.send(JSON.stringify({ type: 'join', room: 'global:admins' }));
+            }
+
             activeRooms.current.forEach(room => {
               if (socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'join', room }));
@@ -129,8 +205,10 @@ export const WebSocketProvider = ({ children }) => {
             });
           }
 
-          if (msg.type) {
-            dispatch(msg.type, msg.data !== undefined ? msg.data : msg, { broadcast: true });
+          if (msg.type && msg.type !== 'pong' && msg.type !== 'joined' && msg.type !== 'left') {
+            // Synchronize cache with authoritative incoming server event
+            syncCacheWithSocketEvent(msg.type, msg.data);
+            dispatch(msg.type, msg.data !== undefined ? msg.data : msg, { broadcast: false });
           }
         } catch (e) {
           console.error('[WS] Failed to parse message', e);
@@ -150,18 +228,18 @@ export const WebSocketProvider = ({ children }) => {
           if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
-          }, 3000);
+          }, 3500);
         }
       };
     } catch {
       setIsConnected(false);
       if (!isDestroyedRef.current && user) {
-        reconnectTimeoutRef.current = setTimeout(connect, 3000);
+        reconnectTimeoutRef.current = setTimeout(connect, 3500);
       }
     }
   }, [user, dispatch]);
 
-  // Adaptive High-Frequency Fallback Poller for instant updates when WS is disconnected
+  // Adaptive background sync: Light, smart fallback that avoids hammering backend
   useEffect(() => {
     if (!user) {
       if (fallbackPollIntervalRef.current) clearInterval(fallbackPollIntervalRef.current);
@@ -169,7 +247,7 @@ export const WebSocketProvider = ({ children }) => {
     }
 
     let isPolling = false;
-    const pollFast = async () => {
+    const pollNotifications = async () => {
       if (isPolling || isDestroyedRef.current || document.hidden) return;
       isPolling = true;
       try {
@@ -187,46 +265,57 @@ export const WebSocketProvider = ({ children }) => {
                 ref_id: n.ref_id,
                 task_id: n.ref_id,
                 event_type: n.event_type
-              });
+              }, { broadcast: false });
+
               if (n.event_type) {
                 dispatch(n.event_type, {
                   id: n.ref_id,
                   task_id: n.ref_id,
                   ref_id: n.ref_id
-                });
+                }, { broadcast: false });
               }
             });
           }
           lastKnownNotifIdsRef.current = currentIds;
         }
       } catch {
-        // Silently tolerate temporary network drops
+        // Silently tolerate network blips
       } finally {
         isPolling = false;
       }
     };
 
-    // Initial poll
-    pollFast();
+    // Initial check
+    pollNotifications();
 
-    // High frequency 1500ms sync
-    fallbackPollIntervalRef.current = setInterval(pollFast, 1500);
+    // Smart adaptive interval: 15s if WS disconnected, 45s if WS connected
+    const setupInterval = () => {
+      if (fallbackPollIntervalRef.current) clearInterval(fallbackPollIntervalRef.current);
+      const intervalMs = isConnectedRef.current ? 45000 : 15000;
+      fallbackPollIntervalRef.current = setInterval(pollNotifications, intervalMs);
+    };
+
+    setupInterval();
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        pollFast();
+        pollNotifications();
         if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
           connect();
         }
+        setupInterval();
       }
     };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleVisibilityChange);
 
     return () => {
       if (fallbackPollIntervalRef.current) clearInterval(fallbackPollIntervalRef.current);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleVisibilityChange);
     };
-  }, [user, dispatch, connect]);
+  }, [user, dispatch, connect, isConnected]);
 
   useEffect(() => {
     isDestroyedRef.current = false;

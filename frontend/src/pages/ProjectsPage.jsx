@@ -204,13 +204,19 @@ const ProjectsPage = () => {
     loadData();
   }, []);
 
+  const debounceTimerRef = useRef(null);
   const handleUpdate = useCallback(() => {
-    loadData();
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      loadData();
+    }, 350);
   }, []);
 
   useRealtime('project.created', handleUpdate);
   useRealtime('project.updated', handleUpdate);
   useRealtime('project.deleted', handleUpdate);
+  useRealtime('projects.refresh', handleUpdate);
+  useRealtime('teams.refresh', handleUpdate);
   useRealtime('team.created', handleUpdate);
   useRealtime('task.created', handleUpdate);
   useRealtime('task.status_changed', handleUpdate);

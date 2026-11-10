@@ -633,7 +633,11 @@ const DeveloperDashboardView = ({
   }, [fetchDeveloperKPI]);
 
   useRealtime('kpi.logged', fetchDeveloperKPI);
-  useRealtime('notification.new', fetchDeveloperKPI);
+  useRealtime('notification.new', useCallback((notif) => {
+    if (notif?.event_type?.startsWith('kpi') || notif?.title?.toLowerCase().includes('kpi')) {
+      fetchDeveloperKPI();
+    }
+  }, [fetchDeveloperKPI]));
 
   const handlePeriodTypeChange = (type) => {
     if (type !== periodType) {
@@ -2296,7 +2300,11 @@ const KpiPage = () => {
 
   // Real-time refresh on KPI events
   useRealtime('kpi.logged', loadData);
-  useRealtime('notification.new', loadData);
+  useRealtime('notification.new', useCallback((notif) => {
+    if (notif?.event_type?.startsWith('kpi') || notif?.title?.toLowerCase().includes('kpi')) {
+      loadData();
+    }
+  }, [loadData]));
 
   // Calculate Top Performers metrics based on all-time average KPI per unique eligible employee
   const topPerformersMetrics = useMemo(() => {

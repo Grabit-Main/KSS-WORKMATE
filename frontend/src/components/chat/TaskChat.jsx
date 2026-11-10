@@ -511,7 +511,7 @@ export const TaskChat = ({
     }
   });
 
-  // High-frequency smart fallback sync (every 800ms when chat is open)
+  // Adaptive fallback sync (every 4000ms when chat is open)
   useEffect(() => {
     if (mode === 'task' && (!task?.id || !isParticipant)) return;
     if (mode === 'direct' && !effectivePartnerUser?.id) return;
@@ -547,7 +547,7 @@ export const TaskChat = ({
         })
         .catch(() => {})
         .finally(() => { isFetching = false; });
-    }, 800);
+    }, 4000);
     return () => clearInterval(interval);
   }, [mode, task?.id, effectivePartnerUser?.id, channelId, project?.id, isParticipant]);
 

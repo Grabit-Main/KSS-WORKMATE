@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
+import { apiCache } from '../api/cache';
 import {
   recordUserActivity,
   clearSessionActivity,
@@ -29,7 +30,7 @@ export const AuthProvider = ({ children }) => {
           setUser(res.data);
           localStorage.setItem('user', JSON.stringify(res.data));
         } catch (err) {
-          // Token invalid/expired handled by interceptor
+          apiCache.clear();
         }
       }
       setLoading(false);
@@ -38,6 +39,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
+    // Purge any residual cache from previous sessions before authenticating
+    apiCache.clear();
+
     const res = await api.post('/auth/login', { email, password });
     localStorage.setItem('access_token', res.data.access_token);
     localStorage.setItem('refresh_token', res.data.refresh_token);
@@ -49,6 +53,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateCurrentUser = (updatedUser) => {
+    if (user && updatedUser && String(user.id) !== String(updatedUser.id)) {
+      apiCache.clear();
+    }
     setUser(updatedUser);
     try {
       localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -69,6 +76,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
+
+    // Strict account isolation: wipe all in-memory cache records immediately
+    apiCache.clear();
     setUser(null);
   };
 
