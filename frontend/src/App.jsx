@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WebSocketProvider } from './context/WebSocketContext';
 import { MainLayout } from './components/layout/MainLayout';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -65,7 +66,9 @@ const AppRoutes = () => {
 const AppContent = () => {
   return (
     <WebSocketProvider>
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
     </WebSocketProvider>
   );
 };

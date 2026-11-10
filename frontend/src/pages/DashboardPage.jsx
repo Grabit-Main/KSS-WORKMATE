@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { getDailyAnalytics, getWeeklyAnalytics, getMonthlyAnalytics } from '../api/analytics';
 import { getTasks } from '../api/tasks';
 import { useRealtime } from '../realtime/useRealtime';
