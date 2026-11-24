@@ -174,9 +174,24 @@ export default function CollaborationPage() {
           localStorage.setItem(`workmate_chat_meta_${user?.id}`, JSON.stringify(meta));
         } catch {}
 
-        // Parse global announcements from database channel messages
+        // Parse global announcements from database channel messages with persistent user acknowledgements
         const loadedAnnouncements = [];
         const seenIds = new Set();
+
+        const userAcks = new Set();
+        try {
+          const savedUserAcks = localStorage.getItem(`workmate_user_acks_${user?.id}`);
+          if (savedUserAcks) {
+            JSON.parse(savedUserAcks).forEach(id => userAcks.add(String(id)));
+          }
+        } catch {}
+
+        let persistentAckMap = {};
+        try {
+          const savedMap = localStorage.getItem('workmate_announcement_acks_map');
+          if (savedMap) persistentAckMap = JSON.parse(savedMap);
+        } catch {}
+
         if (Array.isArray(annMsgs)) {
           for (const msg of annMsgs) {
             try {
@@ -192,6 +207,19 @@ export default function CollaborationPage() {
                   }
                 }
                 const aId = parsed.id || msg.id;
+                const aIdStr = String(aId);
+                const isUserAcked = userAcks.has(aIdStr) || Boolean(msg.is_read);
+
+                // Build merged set of acknowledged user IDs
+                const ackSet = new Set(parsed.acknowledgedBy || []);
+                if (persistentAckMap[aIdStr] && Array.isArray(persistentAckMap[aIdStr])) {
+                  persistentAckMap[aIdStr].forEach(uid => ackSet.add(uid));
+                }
+                if (isUserAcked && user?.id) {
+                  ackSet.add(user.id);
+                  userAcks.add(aIdStr);
+                }
+
                 if (!seenIds.has(aId)) {
                   seenIds.add(aId);
                   loadedAnnouncements.push({
@@ -203,13 +231,19 @@ export default function CollaborationPage() {
                     authorRole: parsed.authorRole || msg.sender?.role || 'TL',
                     date: parsed.date || formatConversationTime(msg.created_at),
                     createdAt: parsed.createdAt || msg.created_at,
-                    acknowledgedBy: parsed.acknowledgedBy || []
+                    acknowledgedBy: Array.from(ackSet),
+                    is_read: isUserAcked
                   });
                 }
               }
             } catch {}
           }
         }
+
+        // Save back persistent user acks
+        try {
+          localStorage.setItem(`workmate_user_acks_${user?.id}`, JSON.stringify(Array.from(userAcks)));
+        } catch {}
 
         // Also merge with cached global announcements
         try {
@@ -371,11 +405,22 @@ export default function CollaborationPage() {
     }
   });
 
-  // Sync total unread count with Sidebar in real-time
+  // Sync total REAL unread count with Sidebar in real-time (strictly direct & channel collaboration chats)
   useEffect(() => {
-    const total = Object.values(unreadCountsMap).reduce((acc, curr) => acc + (Number(curr) || 0), 0);
-    window.dispatchEvent(new CustomEvent('workmate_unread_updated', { detail: { total, counts: unreadCountsMap } }));
-  }, [unreadCountsMap]);
+    const validUserIds = new Set(teamUsers.map(u => String(u.id)));
+    const validTeamIds = new Set(teamsList.map(t => String(t.id)));
+
+    let realTotal = 0;
+    Object.entries(unreadCountsMap).forEach(([k, count]) => {
+      if (validUserIds.has(k)) {
+        realTotal += Number(count) || 0;
+      } else if (['general', 'engineering', 'sprint', 'announcements'].includes(k) || validTeamIds.has(k)) {
+        realTotal += Number(count) || 0;
+      }
+    });
+
+    window.dispatchEvent(new CustomEvent('workmate_unread_updated', { detail: { total: realTotal, counts: unreadCountsMap } }));
+  }, [unreadCountsMap, teamUsers, teamsList]);
 
   // Realtime chat message sync to update conversation previews, times, unread counts & announcements
   useRealtime('chat.new_message', (eventData) => {
@@ -607,18 +652,64 @@ export default function CollaborationPage() {
     }
   };
 
-  // Acknowledge Announcement
-  const handleAcknowledgeAnnouncement = (id) => {
-    const updated = announcements.map(a => {
-      if (a.id === id) {
-        const alreadyAck = a.acknowledgedBy?.includes(user?.id);
-        const nextAck = alreadyAck ? a.acknowledgedBy : [...(a.acknowledgedBy || []), user?.id];
-        return { ...a, acknowledgedBy: nextAck };
+  // Acknowledge Announcement (Persists across browser refreshes and user sessions)
+  const handleAcknowledgeAnnouncement = async (ann) => {
+    if (!ann || !user?.id) return;
+    const annIdStr = String(ann.id || ann);
+
+    // 1. Persist in user-specific localStorage so it NEVER resets on refresh
+    try {
+      const key = `workmate_user_acks_${user?.id}`;
+      const saved = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!saved.includes(annIdStr)) {
+        saved.push(annIdStr);
+        localStorage.setItem(key, JSON.stringify(saved));
       }
-      return a;
+    } catch {}
+
+    // 2. Persist in global announcement acks map
+    try {
+      const mapKey = 'workmate_announcement_acks_map';
+      const map = JSON.parse(localStorage.getItem(mapKey) || '{}');
+      const existingList = map[annIdStr] || [];
+      if (!existingList.includes(user.id)) {
+        map[annIdStr] = [...existingList, user.id];
+        localStorage.setItem(mapKey, JSON.stringify(map));
+      }
+    } catch {}
+
+    // 3. Mark read in backend database
+    if (ann.chatMessageId) {
+      try {
+        await markChatRead({
+          chat_type: 'channel',
+          target_id: 'announcements',
+          message_ids: [ann.chatMessageId]
+        });
+      } catch (err) {
+        console.error('Failed to mark announcement as read in backend:', err);
+      }
+    }
+
+    // 4. Update announcements state immediately
+    setAnnouncements(prev => {
+      const updated = prev.map(item => {
+        if (String(item.id) === annIdStr || (item.chatMessageId && item.chatMessageId === ann.chatMessageId)) {
+          const currentAck = item.acknowledgedBy || [];
+          const nextAck = currentAck.includes(user.id) ? currentAck : [...currentAck, user.id];
+          return {
+            ...item,
+            acknowledgedBy: nextAck,
+            is_read: true
+          };
+        }
+        return item;
+      });
+      try {
+        localStorage.setItem('workmate_global_announcements', JSON.stringify(updated));
+      } catch {}
+      return updated;
     });
-    setAnnouncements(updated);
-    localStorage.setItem(`workos_announcements_${user?.id}`, JSON.stringify(updated));
   };
 
 
@@ -761,7 +852,8 @@ export default function CollaborationPage() {
           .filter(u => String(u.id) !== String(user?.id))
           .map(u => {
             const uIdStr = String(u.id);
-            const unreadCount = unreadCountsMap[uIdStr] || 0;
+            const notifUnread = notifications.filter(n => !n.is_read && n.event_type === 'chat.direct' && String(n.ref_id) === uIdStr).length;
+            const unreadCount = Math.max(unreadCountsMap[uIdStr] || 0, notifUnread);
             const latestNotif = notifications.find(n => n.event_type === 'chat.direct' && String(n.ref_id) === uIdStr);
             const metaObj = channelMeta[uIdStr];
 
@@ -940,6 +1032,9 @@ export default function CollaborationPage() {
                         }
                       }}
                       style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
                         padding: '6px 14px',
                         borderRadius: '20px',
                         border: 'none',
@@ -953,7 +1048,23 @@ export default function CollaborationPage() {
                         whiteSpace: 'nowrap'
                       }}
                     >
-                      {tab.label}
+                      <span>{tab.label}</span>
+                      {tab.key === 'unread' && conversationList.filter(item => item.unreadCount > 0).length > 0 && (
+                        <span style={{
+                          background: isActive ? '#FFFFFF' : '#5551FF',
+                          color: isActive ? '#5551FF' : '#FFFFFF',
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: '10px',
+                          lineHeight: 1,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {conversationList.filter(item => item.unreadCount > 0).length}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -1253,9 +1364,15 @@ export default function CollaborationPage() {
                         <p style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', margin: '0 0 4px 0' }}>No announcements published yet</p>
                         <p style={{ fontSize: '12.5px', color: '#64748B', margin: 0 }}>Official company notices and management announcements will appear here.</p>
                       </div>
-                    ) : (
-                      sortedAnnouncements.map(a => {
-                        const isAck = a.acknowledgedBy?.includes(user?.id);
+                    ) : (() => {
+                      const userAcksSet = (() => {
+                        try {
+                          return new Set(JSON.parse(localStorage.getItem(`workmate_user_acks_${user?.id}`) || '[]'));
+                        } catch { return new Set(); }
+                      })();
+
+                      return sortedAnnouncements.map(a => {
+                        const isAck = a.acknowledgedBy?.includes(user?.id) || Boolean(a.is_read) || userAcksSet.has(String(a.id));
                         const isCardSelected = selectedAnnouncementId === `notice_${a.id}`;
                         return (
                           <div
@@ -1351,7 +1468,8 @@ export default function CollaborationPage() {
                               </span>
 
                               <button
-                                onClick={() => handleAcknowledgeAnnouncement(a.id)}
+                                onClick={() => handleAcknowledgeAnnouncement(a)}
+                                disabled={isAck}
                                 style={{
                                   padding: '6px 14px',
                                   fontSize: '12px',
@@ -1363,7 +1481,7 @@ export default function CollaborationPage() {
                                   border: isAck ? '1px solid #10B981' : 'none',
                                   background: isAck ? 'rgba(16, 185, 129, 0.12)' : '#5551FF',
                                   color: isAck ? '#10B981' : '#FFFFFF',
-                                  cursor: 'pointer',
+                                  cursor: isAck ? 'default' : 'pointer',
                                   transition: 'all 0.15s ease'
                                 }}
                               >
@@ -1372,8 +1490,8 @@ export default function CollaborationPage() {
                             </div>
                           </div>
                         );
-                      })
-                    )}
+                      });
+                    })()}
                   </div>
                 </div>
               ) : activeChatTarget ? (() => {

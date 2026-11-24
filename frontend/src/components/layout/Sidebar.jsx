@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useRealtime } from '../../realtime/useRealtime';
+import api from '../../api/axios';
+import { getTeams } from '../../api/teams';
 import { getUnreadCounts } from '../../api/chat';
 import {
   LayoutDashboard, CheckSquare, Users, Folders, UserCheck,
@@ -12,16 +14,47 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
   const { user } = useAuth();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
-  // Sync initial unread count and listen for local updates
-  useEffect(() => {
-    let mounted = true;
-    getUnreadCounts()
-      .then(res => {
-        if (mounted && res && typeof res.total === 'number') {
-          setUnreadChatCount(res.total);
+  // Helper to fetch and calculate the REAL unread count strictly for Collaboration chats (excluding tasks/projects)
+  const syncCollaborationUnread = async (mountedRef) => {
+    try {
+      const [resUnread, resUsers, resTeams] = await Promise.all([
+        getUnreadCounts().catch(() => ({ counts: {} })),
+        api.get('/users').catch(() => ({ data: [] })),
+        getTeams().catch(() => [])
+      ]);
+
+      if (mountedRef && !mountedRef.current) return;
+
+      const counts = resUnread?.counts || {};
+      const validUserIds = new Set((resUsers?.data || []).map(u => String(u.id)));
+      const validTeamIds = new Set((resTeams || []).map(t => String(t.id)));
+
+      let collabTotal = 0;
+      // 1. Direct messages from team members
+      Object.entries(counts).forEach(([key, count]) => {
+        if (validUserIds.has(key)) {
+          collabTotal += Number(count) || 0;
         }
-      })
-      .catch(() => {});
+      });
+      // 2. Standard collaboration channels
+      ['general', 'engineering', 'sprint', 'announcements'].forEach(ch => {
+        if (counts[ch]) collabTotal += Number(counts[ch]) || 0;
+      });
+      // 3. Team channels
+      validTeamIds.forEach(tid => {
+        if (counts[tid]) collabTotal += Number(counts[tid]) || 0;
+      });
+
+      setUnreadChatCount(collabTotal);
+    } catch {
+      // Fallback
+    }
+  };
+
+  // Sync initial real unread count and listen for local updates from CollaborationPage
+  useEffect(() => {
+    const mountedRef = { current: true };
+    syncCollaborationUnread(mountedRef);
 
     const handleCustomSync = (e) => {
       if (e.detail && typeof e.detail.total === 'number') {
@@ -31,18 +64,20 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
     window.addEventListener('workmate_unread_updated', handleCustomSync);
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       window.removeEventListener('workmate_unread_updated', handleCustomSync);
     };
   }, [user?.id]);
 
-  // Realtime new message listener to increment badge
+  // Realtime new message listener to increment badge strictly for collaboration messages
   useRealtime('chat.new_message', (eventData) => {
     if (!eventData) return;
     if (String(eventData.sender_id) !== String(user?.id)) {
-      const activeChat = window.__workmate_active_chat;
       const isDirect = eventData.chat_type === 'direct';
-      const isChannel = eventData.chat_type?.startsWith('channel:') || eventData.channel_name;
+      const isChannel = eventData.chat_type?.startsWith('channel:') || Boolean(eventData.channel_name);
+      if (!isDirect && !isChannel) return; // Ignore tasks and projects
+
+      const activeChat = window.__workmate_active_chat;
       const isLookingAtThisChat = activeChat && !document.hidden && (
         (isDirect && String(activeChat.realUserId || activeChat.id) === String(eventData.sender_id)) ||
         (isChannel && (activeChat.id === eventData.channel_name || activeChat.name === eventData.channel_name))
@@ -58,13 +93,7 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
   useRealtime('chat.messages_read', (eventData) => {
     if (!eventData) return;
     if (String(eventData.reader_id) === String(user?.id)) {
-      getUnreadCounts()
-        .then(res => {
-          if (res && typeof res.total === 'number') {
-            setUnreadChatCount(res.total);
-          }
-        })
-        .catch(() => {});
+      syncCollaborationUnread({ current: true });
     }
   });
 
@@ -185,7 +214,7 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
               <span
                 style={{
                   marginLeft: 'auto',
-                  background: '#25D366',
+                  background: '#5551FF',
                   color: '#FFFFFF',
                   fontSize: '11px',
                   fontWeight: 700,
@@ -197,7 +226,7 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   lineHeight: 1,
-                  boxShadow: '0 2px 5px rgba(37, 211, 102, 0.4)',
+                  boxShadow: '0 2px 5px rgba(85, 81, 255, 0.35)',
                   flexShrink: 0
                 }}
                 title={`${unreadChatCount} unread message${unreadChatCount === 1 ? '' : 's'}`}
