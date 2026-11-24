@@ -17,24 +17,27 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
   // Helper to fetch and calculate the REAL unread count strictly for Collaboration chats (excluding tasks/projects)
   const syncCollaborationUnread = async (mountedRef) => {
     try {
-      const [resUnread, resUsers, resTeams] = await Promise.all([
+      const [resUnread, resUsers, resTeams, resNotifs] = await Promise.all([
         getUnreadCounts().catch(() => ({ counts: {} })),
         api.get('/users').catch(() => ({ data: [] })),
-        getTeams().catch(() => [])
+        getTeams().catch(() => []),
+        api.get('/notifications').catch(() => ({ data: [] }))
       ]);
 
       if (mountedRef && !mountedRef.current) return;
 
       const counts = resUnread?.counts || {};
-      const validUserIds = new Set((resUsers?.data || []).map(u => String(u.id)));
+      const usersList = resUsers?.data || [];
+      const notifsList = Array.isArray(resNotifs?.data) ? resNotifs.data : (Array.isArray(resNotifs) ? resNotifs : []);
       const validTeamIds = new Set((resTeams || []).map(t => String(t.id)));
 
       let collabTotal = 0;
       // 1. Direct messages from team members
-      Object.entries(counts).forEach(([key, count]) => {
-        if (validUserIds.has(key)) {
-          collabTotal += Number(count) || 0;
-        }
+      usersList.forEach(u => {
+        if (String(u.id) === String(user?.id)) return;
+        const uIdStr = String(u.id);
+        const notifUnread = notifsList.filter(n => !n.is_read && n.event_type === 'chat.direct' && String(n.ref_id) === uIdStr).length;
+        collabTotal += Math.max(Number(counts[uIdStr]) || 0, notifUnread);
       });
       // 2. Standard collaboration channels
       ['general', 'engineering', 'sprint', 'announcements'].forEach(ch => {
@@ -94,6 +97,18 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
     if (!eventData) return;
     if (String(eventData.reader_id) === String(user?.id)) {
       syncCollaborationUnread({ current: true });
+    }
+  });
+
+  // Realtime notification listener for direct chat notifications
+  useRealtime('notification.new', (eventData) => {
+    if (eventData?.event_type === 'chat.direct') {
+      const activeChat = window.__workmate_active_chat;
+      const isLookingAtThisChat = activeChat && !document.hidden && activeChat.type === 'dm' &&
+        (String(activeChat.realUserId || activeChat.id) === String(eventData.ref_id));
+      if (!isLookingAtThisChat) {
+        setUnreadChatCount(prev => prev + 1);
+      }
     }
   });
 

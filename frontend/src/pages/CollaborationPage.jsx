@@ -346,7 +346,7 @@ export default function CollaborationPage() {
     const chatType = target.type === 'team' ? 'channel' : target.type === 'dm' ? 'direct' : target.type;
     const targetId = String(target.realUserId || target.id);
 
-    // Optimistically clear the unread count in state immediately
+    // 1. Optimistically clear the unread count in state immediately
     setUnreadCountsMap(prev => {
       const copy = { ...prev };
       delete copy[targetId];
@@ -354,6 +354,15 @@ export default function CollaborationPage() {
       if (target.name) delete copy[target.name];
       return copy;
     });
+
+    // 2. Optimistically clear direct chat notifications in state so card badge & unread button update in 0ms
+    setNotifications(prev => prev.map(n => {
+      if ((n.event_type === 'chat.direct' || n.event_type?.startsWith('chat.')) &&
+          (String(n.ref_id) === targetId || String(n.ref_id) === String(target.id) || (target.name && n.ref_id === target.name))) {
+        return { ...n, is_read: true };
+      }
+      return n;
+    }));
 
     try {
       await markChatRead({
@@ -407,20 +416,29 @@ export default function CollaborationPage() {
 
   // Sync total REAL unread count with Sidebar in real-time (strictly direct & channel collaboration chats)
   useEffect(() => {
-    const validUserIds = new Set(teamUsers.map(u => String(u.id)));
-    const validTeamIds = new Set(teamsList.map(t => String(t.id)));
+    if (teamUsers.length === 0) return; // Prevent 0-wipeout before users finish loading
 
+    const validTeamIds = new Set(teamsList.map(t => String(t.id)));
     let realTotal = 0;
-    Object.entries(unreadCountsMap).forEach(([k, count]) => {
-      if (validUserIds.has(k)) {
-        realTotal += Number(count) || 0;
-      } else if (['general', 'engineering', 'sprint', 'announcements'].includes(k) || validTeamIds.has(k)) {
-        realTotal += Number(count) || 0;
-      }
+
+    // 1. Direct messages from team members (taking maximum of raw counts and notifications)
+    teamUsers.forEach(u => {
+      if (String(u.id) === String(user?.id)) return;
+      const uIdStr = String(u.id);
+      const notifUnread = notifications.filter(n => !n.is_read && n.event_type === 'chat.direct' && String(n.ref_id) === uIdStr).length;
+      realTotal += Math.max(Number(unreadCountsMap[uIdStr]) || 0, notifUnread);
+    });
+
+    // 2. Standard & team channels
+    ['general', 'engineering', 'sprint', 'announcements'].forEach(ch => {
+      if (unreadCountsMap[ch]) realTotal += Number(unreadCountsMap[ch]) || 0;
+    });
+    validTeamIds.forEach(tid => {
+      if (unreadCountsMap[tid]) realTotal += Number(unreadCountsMap[tid]) || 0;
     });
 
     window.dispatchEvent(new CustomEvent('workmate_unread_updated', { detail: { total: realTotal, counts: unreadCountsMap } }));
-  }, [unreadCountsMap, teamUsers, teamsList]);
+  }, [unreadCountsMap, notifications, teamUsers, teamsList, user?.id]);
 
   // Realtime chat message sync to update conversation previews, times, unread counts & announcements
   useRealtime('chat.new_message', (eventData) => {
