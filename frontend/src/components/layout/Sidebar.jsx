@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useRealtime } from '../../realtime/useRealtime';
+import { getUnreadCounts } from '../../api/chat';
 import {
   LayoutDashboard, CheckSquare, Users, Folders, UserCheck,
   Star, History, UserCog, TrendingUp, X, MessageSquare, Target, Calendar as CalendarIcon
@@ -8,6 +10,63 @@ import {
 
 export const Sidebar = ({ isOpen = false, onClose }) => {
   const { user } = useAuth();
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  // Sync initial unread count and listen for local updates
+  useEffect(() => {
+    let mounted = true;
+    getUnreadCounts()
+      .then(res => {
+        if (mounted && res && typeof res.total === 'number') {
+          setUnreadChatCount(res.total);
+        }
+      })
+      .catch(() => {});
+
+    const handleCustomSync = (e) => {
+      if (e.detail && typeof e.detail.total === 'number') {
+        setUnreadChatCount(e.detail.total);
+      }
+    };
+    window.addEventListener('workmate_unread_updated', handleCustomSync);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('workmate_unread_updated', handleCustomSync);
+    };
+  }, [user?.id]);
+
+  // Realtime new message listener to increment badge
+  useRealtime('chat.new_message', (eventData) => {
+    if (!eventData) return;
+    if (String(eventData.sender_id) !== String(user?.id)) {
+      const activeChat = window.__workmate_active_chat;
+      const isDirect = eventData.chat_type === 'direct';
+      const isChannel = eventData.chat_type?.startsWith('channel:') || eventData.channel_name;
+      const isLookingAtThisChat = activeChat && !document.hidden && (
+        (isDirect && String(activeChat.realUserId || activeChat.id) === String(eventData.sender_id)) ||
+        (isChannel && (activeChat.id === eventData.channel_name || activeChat.name === eventData.channel_name))
+      );
+
+      if (!isLookingAtThisChat) {
+        setUnreadChatCount(prev => prev + 1);
+      }
+    }
+  });
+
+  // Realtime read listener to refresh badge count
+  useRealtime('chat.messages_read', (eventData) => {
+    if (!eventData) return;
+    if (String(eventData.reader_id) === String(user?.id)) {
+      getUnreadCounts()
+        .then(res => {
+          if (res && typeof res.total === 'number') {
+            setUnreadChatCount(res.total);
+          }
+        })
+        .catch(() => {});
+    }
+  });
 
   if (!user) return null;
 
@@ -121,7 +180,31 @@ export const Sidebar = ({ isOpen = false, onClose }) => {
             className="nav-link-apple"
           >
             {link.icon}
-            <span>{link.label}</span>
+            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{link.label}</span>
+            {link.to === '/collaboration' && unreadChatCount > 0 && (
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  background: '#25D366',
+                  color: '#FFFFFF',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '12px',
+                  padding: '2px 7px',
+                  minWidth: '20px',
+                  height: '18px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1,
+                  boxShadow: '0 2px 5px rgba(37, 211, 102, 0.4)',
+                  flexShrink: 0
+                }}
+                title={`${unreadChatCount} unread message${unreadChatCount === 1 ? '' : 's'}`}
+              >
+                {unreadChatCount > 99 ? '99+' : unreadChatCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

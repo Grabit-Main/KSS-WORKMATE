@@ -5,12 +5,13 @@ import { useRealtime } from '../realtime/useRealtime';
 import api from '../api/axios';
 import { getNotifications } from '../api/notifications';
 import { getTeams } from '../api/teams';
-import { getChannelChat, getUnreadCounts, markChatRead } from '../api/chat';
+import { getChannelChat, getUnreadCounts, markChatRead, sendChannelMessage, deleteChatMessage } from '../api/chat';
 import {
   MessageSquare, Users,
   CheckCircle2, Megaphone,
   AlertCircle, X,
-  Maximize2, Minimize2, Search, Loader2, Lock
+  Maximize2, Minimize2, Search, Loader2, Lock,
+  Edit3, Trash2, Pencil
 } from 'lucide-react';
 import { DocumentationHub } from '../components/documentation/DocumentationHub';
 import { TaskChat } from '../components/chat/TaskChat';
@@ -43,11 +44,19 @@ export default function CollaborationPage() {
   const [showDocHub] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
+  // Admin TL & Management Permission Check for Announcements
+  const canManageAnnouncements = user?.role === 'TL' || ['CEO', 'CTO', 'PM'].includes(user?.role);
+
   // Real Data Lists
   const [teamUsers, setTeamUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [teamsList, setTeamsList] = useState([]);
-  const [channelMeta, setChannelMeta] = useState({});
+  const [channelMeta, setChannelMeta] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`workmate_chat_meta_${user?.id}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
   const [unreadCountsMap, setUnreadCountsMap] = useState({});
   const [loadingData, setLoadingData] = useState(true);
   const [dataError, setDataError] = useState(null);
@@ -58,11 +67,13 @@ export default function CollaborationPage() {
   const [conversationSearch, setConversationSearch] = useState('');
   const [selectedAnnouncementId, setSelectedAnnouncementId] = useState('company_announcements');
 
-  // Announcements State
+  // Announcements State (Synchronized across all roles and team members)
   const [announcements, setAnnouncements] = useState(() => {
     try {
-      const saved = localStorage.getItem(`workos_announcements_${user?.id}`);
-      return saved ? JSON.parse(saved) : [];
+      const globalSaved = localStorage.getItem('workmate_global_announcements');
+      if (globalSaved) return JSON.parse(globalSaved);
+      const userSaved = localStorage.getItem(`workos_announcements_${user?.id}`);
+      return userSaved ? JSON.parse(userSaved) : [];
     } catch { return []; }
   });
 
@@ -70,7 +81,13 @@ export default function CollaborationPage() {
   const [annTitle, setAnnTitle] = useState('');
   const [annContent, setAnnContent] = useState('');
 
-  // Fetch Core Data (Users, Projects, Tasks, Notifications, Teams, Channel metadata, Unread counts)
+  // Edit Announcement State (Only for TL admin & management)
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+  const [editAnnTitle, setEditAnnTitle] = useState('');
+  const [editAnnContent, setEditAnnContent] = useState('');
+  const [showEditAnnouncementModal, setShowEditAnnouncementModal] = useState(false);
+
+  // Fetch Core Data (Users, Projects, Tasks, Notifications, Teams, Channel metadata, Unread counts, Announcements)
   const loadInitialData = async () => {
     setLoadingData(true);
     setDataError(null);
@@ -95,38 +112,131 @@ export default function CollaborationPage() {
         setUnreadCountsMap(resUnread.counts);
       }
 
-      // Fetch real latest messages for standard channels
+      // Populate channelMeta with direct chat notifications and channel previews
+      const meta = {};
       try {
-        const [genMsgs, engMsgs, sprintMsgs] = await Promise.all([
+        const storedMeta = localStorage.getItem(`workmate_chat_meta_${user?.id}`);
+        if (storedMeta) {
+          Object.assign(meta, JSON.parse(storedMeta));
+        }
+      } catch {}
+
+      if (Array.isArray(resNotifs)) {
+        resNotifs.forEach(n => {
+          if (n.event_type === 'chat.direct' && n.ref_id) {
+            const nTime = new Date(n.created_at).getTime();
+            if (!meta[n.ref_id] || (meta[n.ref_id].timestamp || 0) < nTime) {
+              meta[n.ref_id] = {
+                lastMessage: n.message,
+                time: formatConversationTime(n.created_at),
+                timestamp: nTime
+              };
+            }
+          }
+        });
+      }
+
+      // Fetch real latest messages for standard channels & announcements channel
+      try {
+        const [genMsgs, engMsgs, sprintMsgs, annMsgs] = await Promise.all([
           getChannelChat('general').catch(() => []),
           getChannelChat('engineering').catch(() => []),
-          getChannelChat('sprint').catch(() => [])
+          getChannelChat('sprint').catch(() => []),
+          getChannelChat('announcements').catch(() => [])
         ]);
-        const meta = {};
+
         if (genMsgs?.length) {
           const last = genMsgs[genMsgs.length - 1];
           meta['general'] = {
             lastMessage: `${last.sender?.first_name || last.sender_name || 'Member'}: ${last.message || 'Shared attachment'}`,
-            time: formatConversationTime(last.created_at)
+            time: formatConversationTime(last.created_at),
+            timestamp: new Date(last.created_at).getTime()
           };
         }
         if (engMsgs?.length) {
           const last = engMsgs[engMsgs.length - 1];
           meta['engineering'] = {
             lastMessage: `${last.sender?.first_name || last.sender_name || 'Member'}: ${last.message || 'Shared attachment'}`,
-            time: formatConversationTime(last.created_at)
+            time: formatConversationTime(last.created_at),
+            timestamp: new Date(last.created_at).getTime()
           };
         }
         if (sprintMsgs?.length) {
           const last = sprintMsgs[sprintMsgs.length - 1];
           meta['sprint'] = {
             lastMessage: `${last.sender?.first_name || last.sender_name || 'Member'}: ${last.message || 'Shared attachment'}`,
-            time: formatConversationTime(last.created_at)
+            time: formatConversationTime(last.created_at),
+            timestamp: new Date(last.created_at).getTime()
           };
         }
         setChannelMeta(meta);
+        try {
+          localStorage.setItem(`workmate_chat_meta_${user?.id}`, JSON.stringify(meta));
+        } catch {}
+
+        // Parse global announcements from database channel messages
+        const loadedAnnouncements = [];
+        const seenIds = new Set();
+        if (Array.isArray(annMsgs)) {
+          for (const msg of annMsgs) {
+            try {
+              const parsed = typeof msg.message === 'string' && msg.message.startsWith('{') ? JSON.parse(msg.message) : null;
+              if (parsed && (parsed.isAnnouncement || parsed.title)) {
+                if (parsed.isEdit && parsed.announcementId) {
+                  const ex = loadedAnnouncements.find(x => x.id === parsed.announcementId);
+                  if (ex) {
+                    ex.title = parsed.title;
+                    ex.content = parsed.content;
+                    ex.updatedAt = parsed.updatedAt;
+                    continue;
+                  }
+                }
+                const aId = parsed.id || msg.id;
+                if (!seenIds.has(aId)) {
+                  seenIds.add(aId);
+                  loadedAnnouncements.push({
+                    id: aId,
+                    chatMessageId: msg.id,
+                    title: parsed.title,
+                    content: parsed.content,
+                    author: parsed.author || `${msg.sender?.first_name || ''} ${msg.sender?.last_name || ''}`.trim() || 'TL / Management',
+                    authorRole: parsed.authorRole || msg.sender?.role || 'TL',
+                    date: parsed.date || formatConversationTime(msg.created_at),
+                    createdAt: parsed.createdAt || msg.created_at,
+                    acknowledgedBy: parsed.acknowledgedBy || []
+                  });
+                }
+              }
+            } catch {}
+          }
+        }
+
+        // Also merge with cached global announcements
+        try {
+          const cachedGlobal = localStorage.getItem('workmate_global_announcements');
+          if (cachedGlobal) {
+            const parsed = JSON.parse(cachedGlobal);
+            if (Array.isArray(parsed)) {
+              parsed.forEach(p => {
+                if (!seenIds.has(p.id)) {
+                  seenIds.add(p.id);
+                  loadedAnnouncements.push(p);
+                }
+              });
+            }
+          }
+        } catch {}
+
+        // Sort descending by date/createdAt: latest announcements ALWAYS at top!
+        loadedAnnouncements.sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+        if (loadedAnnouncements.length > 0) {
+          setAnnouncements(loadedAnnouncements);
+          try {
+            localStorage.setItem('workmate_global_announcements', JSON.stringify(loadedAnnouncements));
+          } catch {}
+        }
       } catch (e) {
-        console.error('Failed to load channel chat previews:', e);
+        console.error('Failed to load channel chat previews or announcements:', e);
       }
     } catch (err) {
       console.error('Failed to load collaboration data:', err);
@@ -261,22 +371,75 @@ export default function CollaborationPage() {
     }
   });
 
-  // Realtime chat message sync to update conversation previews, times & unread counts
+  // Sync total unread count with Sidebar in real-time
+  useEffect(() => {
+    const total = Object.values(unreadCountsMap).reduce((acc, curr) => acc + (Number(curr) || 0), 0);
+    window.dispatchEvent(new CustomEvent('workmate_unread_updated', { detail: { total, counts: unreadCountsMap } }));
+  }, [unreadCountsMap]);
+
+  // Realtime chat message sync to update conversation previews, times, unread counts & announcements
   useRealtime('chat.new_message', (eventData) => {
     if (eventData) {
       const cId = eventData.channel_name || (eventData.chat_type?.startsWith('channel:') ? eventData.chat_type.replace('channel:', '') : null);
       const isSenderMe = String(eventData.sender_id) === String(user?.id);
+      const msgTime = new Date(eventData.created_at || Date.now()).getTime();
 
       if (cId) {
-        setChannelMeta(prev => ({
-          ...prev,
-          [cId]: {
-            lastMessage: `${eventData.sender?.first_name || eventData.sender_name || 'Member'}: ${eventData.message || 'Shared attachment'}`,
-            time: formatConversationTime(eventData.created_at)
-          }
-        }));
+        setChannelMeta(prev => {
+          const next = {
+            ...prev,
+            [cId]: {
+              lastMessage: `${eventData.sender?.first_name || eventData.sender_name || 'Member'}: ${eventData.message || 'Shared attachment'}`,
+              time: formatConversationTime(eventData.created_at || new Date().toISOString()),
+              timestamp: msgTime
+            }
+          };
+          try {
+            localStorage.setItem(`workmate_chat_meta_${user?.id}`, JSON.stringify(next));
+          } catch {}
+          return next;
+        });
 
-        if (!isSenderMe) {
+        // Realtime announcement synchronization across all user sessions
+        if (cId === 'announcements') {
+          try {
+            const parsed = typeof eventData.message === 'string' && eventData.message.startsWith('{') ? JSON.parse(eventData.message) : null;
+            if (parsed && (parsed.isAnnouncement || parsed.title)) {
+              if (parsed.isEdit && parsed.announcementId) {
+                setAnnouncements(prev => {
+                  const updated = prev.map(a => a.id === parsed.announcementId ? { ...a, title: parsed.title, content: parsed.content, updatedAt: parsed.updatedAt } : a);
+                  try {
+                    localStorage.setItem('workmate_global_announcements', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              } else {
+                const newAnn = {
+                  id: parsed.id || eventData.id,
+                  chatMessageId: eventData.id,
+                  title: parsed.title,
+                  content: parsed.content,
+                  author: parsed.author || eventData.sender_name || 'TL / Management',
+                  authorRole: parsed.authorRole || eventData.sender?.role || 'TL',
+                  date: parsed.date || formatConversationTime(eventData.created_at),
+                  createdAt: parsed.createdAt || eventData.created_at,
+                  acknowledgedBy: []
+                };
+                setAnnouncements(prev => {
+                  const updated = [newAnn, ...prev.filter(a => a.id !== newAnn.id && a.chatMessageId !== newAnn.chatMessageId)];
+                  try {
+                    localStorage.setItem('workmate_global_announcements', JSON.stringify(updated));
+                  } catch {}
+                  return updated;
+                });
+              }
+            }
+          } catch (e) {
+            console.error('Failed to parse incoming announcement event:', e);
+          }
+        }
+
+        if (!isSenderMe && cId !== 'announcements') {
           const isCurrentOpen = conversationFilter !== 'announcements' && activeChatTarget?.type === 'team' && (String(activeChatTarget?.id) === String(cId) || activeChatTarget?.name === cId) && !document.hidden;
           if (isCurrentOpen) {
             markConversationAsRead(activeChatTarget);
@@ -289,13 +452,20 @@ export default function CollaborationPage() {
         }
       } else if (eventData.chat_type === 'direct') {
         const partnerId = isSenderMe ? String(eventData.receiver_id) : String(eventData.sender_id);
-        setChannelMeta(prev => ({
-          ...prev,
-          [partnerId]: {
-            lastMessage: eventData.message || 'Shared attachment',
-            time: formatConversationTime(eventData.created_at)
-          }
-        }));
+        setChannelMeta(prev => {
+          const next = {
+            ...prev,
+            [partnerId]: {
+              lastMessage: eventData.message || 'Shared attachment',
+              time: formatConversationTime(eventData.created_at || new Date().toISOString()),
+              timestamp: msgTime
+            }
+          };
+          try {
+            localStorage.setItem(`workmate_chat_meta_${user?.id}`, JSON.stringify(next));
+          } catch {}
+          return next;
+        });
 
         if (!isSenderMe) {
           const isCurrentOpen = conversationFilter !== 'announcements' && activeChatTarget?.type === 'dm' && (String(activeChatTarget?.id) === partnerId || String(activeChatTarget?.realUserId) === partnerId) && !document.hidden;
@@ -312,27 +482,129 @@ export default function CollaborationPage() {
     }
   });
 
-  // Publish Announcement
-  const handlePublishAnnouncement = (e) => {
+  // Realtime message deletion listener (removes deleted announcement in real-time)
+  useRealtime('chat.message_deleted', (eventData) => {
+    if (!eventData?.id) return;
+    setAnnouncements(prev => {
+      const updated = prev.filter(a => String(a.chatMessageId) !== String(eventData.id) && String(a.id) !== String(eventData.id));
+      try {
+        localStorage.setItem('workmate_global_announcements', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  });
+
+  // Publish Announcement (Posts to backend channel so all roles see it, and updates local state)
+  const handlePublishAnnouncement = async (e) => {
     e.preventDefault();
     if (!annTitle.trim() || !annContent.trim()) return;
 
     const newAnn = {
-      id: Date.now(),
+      isAnnouncement: true,
+      id: `ann_${Date.now()}`,
       title: annTitle.trim(),
-      author: `${user?.first_name || 'Management'} ${user?.last_name || ''} (${role})`,
-      date: new Date().toLocaleDateString(),
+      author: `${user?.first_name || 'Management'} ${user?.last_name || ''}`.trim() || user?.email,
+      authorRole: role,
+      date: new Date().toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' }),
+      createdAt: new Date().toISOString(),
       content: annContent.trim(),
       acknowledgedBy: []
     };
 
-    const updated = [newAnn, ...announcements];
+    try {
+      const res = await sendChannelMessage('announcements', {
+        message: JSON.stringify(newAnn)
+      });
+      if (res?.id) {
+        newAnn.chatMessageId = res.id;
+      }
+    } catch (err) {
+      console.error('Failed to broadcast announcement to server channel:', err);
+    }
+
+    const updated = [newAnn, ...announcements.filter(a => a.id !== newAnn.id)];
     setAnnouncements(updated);
-    localStorage.setItem(`workos_announcements_${user?.id}`, JSON.stringify(updated));
+    try {
+      localStorage.setItem('workmate_global_announcements', JSON.stringify(updated));
+    } catch {}
 
     setAnnTitle('');
     setAnnContent('');
     setShowNewAnnouncementModal(false);
+  };
+
+  // Start Editing Announcement (Only for TL admin & management)
+  const handleStartEditAnnouncement = (ann) => {
+    setEditingAnnouncement(ann);
+    setEditAnnTitle(ann.title || '');
+    setEditAnnContent(ann.content || '');
+    setShowEditAnnouncementModal(true);
+  };
+
+  // Save Edited Announcement (Broadcasts edit to all roles)
+  const handleSaveEditAnnouncement = async (e) => {
+    e.preventDefault();
+    if (!editingAnnouncement || !editAnnTitle.trim() || !editAnnContent.trim()) return;
+
+    const updatedTitle = editAnnTitle.trim();
+    const updatedContent = editAnnContent.trim();
+    const updatedAt = new Date().toISOString();
+
+    const updatedList = announcements.map(a => {
+      if (a.id === editingAnnouncement.id || (a.chatMessageId && a.chatMessageId === editingAnnouncement.chatMessageId)) {
+        return {
+          ...a,
+          title: updatedTitle,
+          content: updatedContent,
+          updatedAt
+        };
+      }
+      return a;
+    });
+
+    setAnnouncements(updatedList);
+    try {
+      localStorage.setItem('workmate_global_announcements', JSON.stringify(updatedList));
+    } catch {}
+
+    try {
+      await sendChannelMessage('announcements', {
+        message: JSON.stringify({
+          isAnnouncement: true,
+          isEdit: true,
+          announcementId: editingAnnouncement.id,
+          title: updatedTitle,
+          content: updatedContent,
+          author: editingAnnouncement.author,
+          authorRole: editingAnnouncement.authorRole,
+          updatedAt
+        })
+      });
+    } catch (err) {
+      console.error('Failed to broadcast edited announcement:', err);
+    }
+
+    setShowEditAnnouncementModal(false);
+    setEditingAnnouncement(null);
+  };
+
+  // Delete Announcement (Deletes from backend & shared state)
+  const handleDeleteAnnouncement = async (ann) => {
+    if (!window.confirm(`Are you sure you want to delete the announcement "${ann.title}"?`)) return;
+
+    const updatedList = announcements.filter(a => a.id !== ann.id && a.chatMessageId !== ann.chatMessageId);
+    setAnnouncements(updatedList);
+    try {
+      localStorage.setItem('workmate_global_announcements', JSON.stringify(updatedList));
+    } catch {}
+
+    if (ann.chatMessageId) {
+      try {
+        await deleteChatMessage(ann.chatMessageId);
+      } catch (err) {
+        console.error('Failed to delete announcement message from server:', err);
+      }
+    }
   };
 
   // Acknowledge Announcement
@@ -398,18 +670,21 @@ export default function CollaborationPage() {
 
       {/* MAIN COLLABORATION SPLIT VIEW */}
       {(() => {
+        // Sort announcements newest first so they always appear at the top in the left profile box
+        const sortedAnnouncements = [...announcements].sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+
         // 1. Announcements (Notice board, General Announcements channel, and published notices)
         const announcementChannels = [
           {
             id: 'company_announcements',
             type: 'announcement',
             name: 'Company Announcements & Notices',
-            subtitle: `${announcements.length} official ${announcements.length === 1 ? 'notice' : 'notices'} · Management updates`,
+            subtitle: `${sortedAnnouncements.length} official ${sortedAnnouncements.length === 1 ? 'notice' : 'notices'} · Management updates`,
             iconType: 'megaphone',
             memberCount: `${teamUsers.length || 1} members`,
-            lastMessage: announcements.length > 0 ? `${announcements[0].title}: ${announcements[0].content}` : 'Official company notices and updates',
-            time: announcements.length > 0 ? (announcements[0].date || formatConversationTime(announcements[0].createdAt)) : '',
-            unreadCount: announcements.filter(a => !a.acknowledgedBy?.includes(user?.id)).length
+            lastMessage: sortedAnnouncements.length > 0 ? `${sortedAnnouncements[0].title}: ${sortedAnnouncements[0].content}` : 'Official company notices and updates',
+            time: sortedAnnouncements.length > 0 ? (sortedAnnouncements[0].date || formatConversationTime(sortedAnnouncements[0].createdAt)) : '',
+            unreadCount: sortedAnnouncements.filter(a => !a.acknowledgedBy?.includes(user?.id)).length
           },
           {
             id: 'general',
@@ -422,7 +697,7 @@ export default function CollaborationPage() {
             time: channelMeta['general']?.time || '',
             unreadCount: unreadCountsMap['general'] ?? unreadCountsMap['General Announcements'] ?? 0
           },
-          ...announcements.map(a => {
+          ...sortedAnnouncements.map(a => {
             const isAck = a.acknowledgedBy?.includes(user?.id);
             return {
               id: `notice_${a.id}`,
@@ -481,14 +756,28 @@ export default function CollaborationPage() {
           })
         ];
 
-        // 3. Direct Messages (Team Members)
+        // 3. Direct Messages (Team Members) — WhatsApp Style: latest message profile always at the top!
         const directMessages = teamUsers
           .filter(u => String(u.id) !== String(user?.id))
           .map(u => {
-            const unreadCount = unreadCountsMap[String(u.id)] || 0;
-            const latestNotif = notifications.find(n => n.event_type === 'chat.direct' && String(n.ref_id) === String(u.id));
-            const lastMsg = channelMeta[String(u.id)]?.lastMessage || (latestNotif ? latestNotif.message : `Start direct message with ${u.first_name || 'member'}`);
-            const timeVal = channelMeta[String(u.id)]?.time || (latestNotif ? formatConversationTime(latestNotif.created_at) : '');
+            const uIdStr = String(u.id);
+            const unreadCount = unreadCountsMap[uIdStr] || 0;
+            const latestNotif = notifications.find(n => n.event_type === 'chat.direct' && String(n.ref_id) === uIdStr);
+            const metaObj = channelMeta[uIdStr];
+
+            let lastMsg = `Start direct message with ${u.first_name || 'member'}`;
+            let timeVal = '';
+            let timestamp = 0;
+
+            if (metaObj && (metaObj.timestamp || metaObj.lastMessage)) {
+              timestamp = metaObj.timestamp || 0;
+              lastMsg = metaObj.lastMessage || lastMsg;
+              timeVal = metaObj.time || (metaObj.timestamp ? formatConversationTime(new Date(metaObj.timestamp).toISOString()) : '');
+            } else if (latestNotif?.created_at) {
+              timestamp = new Date(latestNotif.created_at).getTime();
+              lastMsg = latestNotif.message || lastMsg;
+              timeVal = formatConversationTime(latestNotif.created_at);
+            }
 
             return {
               id: u.id,
@@ -501,10 +790,22 @@ export default function CollaborationPage() {
               memberCount: '2 members',
               lastMessage: lastMsg,
               time: timeVal,
+              timestamp,
               unreadCount,
               realUser: u
             };
           });
+
+        // WhatsApp-Style: Conversations with the most recent messages are ALWAYS at the top!
+        directMessages.sort((a, b) => {
+          if ((b.timestamp || 0) !== (a.timestamp || 0)) {
+            return (b.timestamp || 0) - (a.timestamp || 0);
+          }
+          if ((b.unreadCount || 0) !== (a.unreadCount || 0)) {
+            return (b.unreadCount || 0) - (a.unreadCount || 0);
+          }
+          return a.name.localeCompare(b.name);
+        });
 
         const conversationList = [...announcementChannels, ...teamChannels, ...directMessages];
 
@@ -946,14 +1247,14 @@ export default function CollaborationPage() {
                     flexDirection: 'column',
                     gap: '16px'
                   }}>
-                    {announcements.length === 0 ? (
+                    {sortedAnnouncements.length === 0 ? (
                       <div style={{ padding: '48px 24px', textAlign: 'center', color: '#94A3B8', background: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
                         <Megaphone size={36} style={{ margin: '0 auto 12px auto', opacity: 0.4, color: '#5551FF' }} />
                         <p style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', margin: '0 0 4px 0' }}>No announcements published yet</p>
                         <p style={{ fontSize: '12.5px', color: '#64748B', margin: 0 }}>Official company notices and management announcements will appear here.</p>
                       </div>
                     ) : (
-                      announcements.map(a => {
+                      sortedAnnouncements.map(a => {
                         const isAck = a.acknowledgedBy?.includes(user?.id);
                         const isCardSelected = selectedAnnouncementId === `notice_${a.id}`;
                         return (
@@ -970,7 +1271,7 @@ export default function CollaborationPage() {
                               transition: 'all 0.2s ease'
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
                               <span style={{
                                 fontSize: '11px',
                                 fontWeight: 700,
@@ -983,7 +1284,62 @@ export default function CollaborationPage() {
                               }}>
                                 Official Notice
                               </span>
-                              <span style={{ fontSize: '12px', color: '#94A3B8' }}>{a.date} • by {a.author}</span>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '12px', color: '#94A3B8' }}>{a.date} • by {a.author}</span>
+
+                                {/* Edit & Delete buttons strictly for admin TL & management */}
+                                {canManageAnnouncements && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEditAnnouncement(a)}
+                                      title="Edit announcement"
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '4px 9px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #CBD5E1',
+                                        background: '#F8FAFC',
+                                        color: '#334155',
+                                        fontSize: '11.5px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#5551FF'; e.currentTarget.style.color = '#5551FF'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#334155'; }}
+                                    >
+                                      <Pencil size={12} /> Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteAnnouncement(a)}
+                                      title="Delete announcement"
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '4px 9px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #FECACA',
+                                        background: '#FEF2F2',
+                                        color: '#EF4444',
+                                        fontSize: '11.5px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = '#FEE2E2'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = '#FEF2F2'; }}
+                                    >
+                                      <Trash2 size={12} /> Delete
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: '0 0 8px 0' }}>{a.title}</h3>
@@ -1176,6 +1532,61 @@ export default function CollaborationPage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button type="button" onClick={() => setShowNewAnnouncementModal(false)} className="btn btn-secondary">Cancel</button>
               <button type="submit" className="btn btn-primary">Publish Notice</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL: EDIT ANNOUNCEMENT (TL ADMIN & MANAGEMENT ONLY) */}
+      {showEditAnnouncementModal && editingAnnouncement && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <form onSubmit={handleSaveEditAnnouncement} className="card" style={{ width: '500px', padding: '28px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Pencil size={20} color="var(--brand-600)" /> Edit Announcement
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setShowEditAnnouncementModal(false); setEditingAnnouncement(null); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Headline</label>
+              <input
+                type="text"
+                value={editAnnTitle}
+                onChange={(e) => setEditAnnTitle(e.target.value)}
+                placeholder="Announcement headline..."
+                required
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Notice Details</label>
+              <textarea
+                value={editAnnContent}
+                onChange={(e) => setEditAnnContent(e.target.value)}
+                rows={4}
+                placeholder="Full notice text for team..."
+                required
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => { setShowEditAnnouncementModal(false); setEditingAnnouncement(null); }}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">Save Changes</button>
             </div>
           </form>
         </div>
