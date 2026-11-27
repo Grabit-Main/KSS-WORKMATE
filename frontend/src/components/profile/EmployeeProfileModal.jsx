@@ -148,9 +148,9 @@ export default function EmployeeProfileModal({
 
   // Company Projects where this person participates (strictly manual TL assignments)
   const assignedProjects = useMemo(() => {
-    if (!empId && !empEmail) return [];
-    return getAllAssignedProjectsForEmployee(empId, empEmail);
-  }, [empId, empEmail, syncVersion]);
+    if (!empId && !empEmail && !empName) return [];
+    return getAllAssignedProjectsForEmployee(empId, empEmail, projects, tasks, employee, empName);
+  }, [projects, tasks, empId, empEmail, empName, syncVersion, employee]);
 
   // Format date helper
   const formatDate = (dateStr) => {

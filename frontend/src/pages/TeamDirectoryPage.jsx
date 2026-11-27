@@ -67,10 +67,10 @@ class DirectoryErrorBoundary extends Component {
 
 // Default reference employees to supplement if API returns partial data
 const DEFAULT_DIRECTORY_EMPLOYEES = [
-  { id: 'ref-cto-1', full_name: 'Akshit Ujjain', role: 'CTO', department: 'Executive Management', avatar_url: '', projects_count: 0, kpi: 96, online: true },
-  { id: 'ref-cto-2', full_name: 'Gaurav Kumar Tripathi', role: 'CTO', department: 'Executive Management', avatar_url: '', projects_count: 0, kpi: 95, online: true },
-  { id: 'ref-pm', full_name: 'D. Koushik', role: 'PM', department: 'Engineering', avatar_url: '', projects_count: 0, kpi: 94, online: true },
-  { id: '4', full_name: 'Kuruva Mahesh', role: 'UI/UX Designer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', projects_count: 0, kpi: 92, online: true }
+  { id: '63ba17f6-e642-4982-b33e-cf30d39286f5', full_name: 'Akshit Ujjain', role: 'CTO', department: 'Executive Management', email: 'akshitujjain@kalpanaaasoftwaresolutions.in', avatar_url: '', projects_count: 0, kpi: 96, online: true },
+  { id: '7c7d0fe7-b3bd-4c15-9ed5-a4b4eb33f6d5', full_name: 'Gaurav Kumar Tripathi', role: 'CTO', department: 'Executive Management', email: 'founder@kalpanaaasoftwaresolutions.in', avatar_url: '', projects_count: 0, kpi: 95, online: true },
+  { id: 'd12c1202-b30a-4a9e-8a80-9c76faa282af', full_name: 'D. Koushik', role: 'PM', department: 'Engineering', email: 'd.koushik@kalpanaaasoftwaresolutions.in', avatar_url: '', projects_count: 0, kpi: 94, online: true },
+  { id: '9fb05266-ca13-4235-bd40-36daff26ede7', full_name: 'Kuruva Mahesh', role: 'UI/UX Designer', department: 'Design', email: 'kuruva.mahesh@kalpanaaa.in', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', projects_count: 0, kpi: 92, online: true }
 ];
 
 // Demo profile cards specifically removed as per user requirements
@@ -278,7 +278,8 @@ const TeamDirectoryPage = () => {
     if (!emp) return 0;
     const empId = String(emp.id || emp.user_id || '');
     const empEmail = (emp.email || '').toLowerCase();
-    const assigned = getAllAssignedProjectsForEmployee(empId, empEmail);
+    const empName = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.name || '';
+    const assigned = getAllAssignedProjectsForEmployee(empId, empEmail, allProjects, allTasks, emp, empName);
     return assigned.length;
   };
 

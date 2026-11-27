@@ -172,9 +172,9 @@ export default function EmployeeProfileOverview({
 
   // Single source of truth for assigned projects (strictly manual TL assignments)
   const employeeProjects = useMemo(() => {
-    if (!targetEmpId) return [];
-    return getAllAssignedProjectsForEmployee(targetEmpId, userObj?.email);
-  }, [targetEmpId, userObj?.email, manualProjectsVersion]);
+    if (!targetEmpId && !userObj?.email && !empName) return [];
+    return getAllAssignedProjectsForEmployee(targetEmpId, userObj?.email, allProjects, employeeTasks, userObj, empName);
+  }, [allProjects, targetEmpId, userObj, employeeTasks, manualProjectsVersion, empName]);
 
   // Active Projects Count (strictly derived from assigned projects, excluding completed/archived)
   const activeProjectsCount = useMemo(() => {
@@ -1597,15 +1597,21 @@ export default function EmployeeProfileOverview({
                 setEditingProject(null);
               }}
               onSave={async (projectData) => {
-                if (editingProject) {
-                  updateProjectAssignment(targetEmpId, userObj?.email, editingProject.id, projectData, currentUser);
-                  setProjectToast('Project updated successfully.');
-                } else {
-                  addProjectAssignment(targetEmpId, userObj?.email, projectData, currentUser);
-                  setProjectToast('Project assigned successfully.');
+                try {
+                  if (editingProject) {
+                    updateProjectAssignment(targetEmpId, userObj?.email, editingProject.id, projectData, currentUser, empName);
+                    setProjectToast('Project updated successfully.');
+                  } else {
+                    addProjectAssignment(targetEmpId, userObj?.email, projectData, currentUser, empName);
+                    setProjectToast('Project assigned successfully.');
+                  }
+                  setManualProjectsVersion(v => v + 1);
+                  setTimeout(() => setProjectToast(null), 3500);
+                } catch (err) {
+                  console.error('Failed to save project:', err);
+                  setProjectToast(err?.message || 'Failed to save project.');
+                  setTimeout(() => setProjectToast(null), 4000);
                 }
-                setManualProjectsVersion(v => v + 1);
-                setTimeout(() => setProjectToast(null), 3500);
               }}
               projectToEdit={editingProject}
               developerName={empName}
