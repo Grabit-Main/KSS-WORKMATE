@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, Folders, CheckSquare, TrendingUp, Calendar, Mail, MapPin, Phone,
-  Plus, MessageSquare, MoreHorizontal, ArrowRight, Eye, Check, Clock, AlertTriangle, CheckCircle2, ChevronRight, Copy, Filter
+  Plus, MessageSquare, MoreHorizontal, ArrowRight, Eye, Check, Clock, AlertTriangle, CheckCircle2, ChevronRight, Copy, Filter,
+  Pencil, Trash2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTasks } from '../../api/tasks';
@@ -11,6 +12,13 @@ import { getKPIs } from '../../api/kpi';
 import { getUsers } from '../../api/users';
 import { formatDeadlineWithTime, isDeadlineOverdue } from '../projects/DayWiseTaskPlanner';
 import AddTaskModal from '../quickadd/AddTaskModal';
+import AddEditProjectModal from './AddEditProjectModal';
+import {
+  getAllAssignedProjectsForEmployee,
+  addProjectAssignment,
+  updateProjectAssignment,
+  deleteProjectAssignment
+} from '../../services/projectAssignmentsService';
 
 export default function EmployeeProfileOverview({
   employee,
@@ -22,6 +30,8 @@ export default function EmployeeProfileOverview({
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
 
+  const isTL = String(currentUser?.role || '').trim().toUpperCase() === 'TL';
+
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'projects' | 'tasks' | 'kpi'
   const [kpiPeriodFilter, setKpiPeriodFilter] = useState('daily'); // 'daily' | 'weekly' | 'monthly' | 'yearly'
   const [taskFilterTab, setTaskFilterTab] = useState('today'); // 'today' | 'in_progress' | 'upcoming' | 'completed'
@@ -32,6 +42,21 @@ export default function EmployeeProfileOverview({
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [copiedNotification, setCopiedNotification] = useState(false);
   const actionMenuRef = useRef(null);
+
+  // TL Project Assignment modals & notifications
+  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const [projectToast, setProjectToast] = useState(null);
+  const [manualProjectsVersion, setManualProjectsVersion] = useState(0);
+
+  // Sync projects when external updates occur
+  useEffect(() => {
+    const handleProjectsUpdated = () => {
+      setManualProjectsVersion(v => v + 1);
+    };
+    window.addEventListener('workmate_projects_updated', handleProjectsUpdated);
+    return () => window.removeEventListener('workmate_projects_updated', handleProjectsUpdated);
+  }, []);
 
   const [userObj, setUserObj] = useState(employee || null);
   const [allUsersList, setAllUsersList] = useState([]);
@@ -145,24 +170,18 @@ export default function EmployeeProfileOverview({
     });
   }, [allTasks, targetEmpId, userObj?.email]);
 
-  // Filter Projects assigned to employee
+  // Single source of truth for assigned projects (backend API + manual TL assignments)
   const employeeProjects = useMemo(() => {
     if (!targetEmpId) return [];
-    const empEmailAddr = (userObj?.email || '').toLowerCase();
+    return getAllAssignedProjectsForEmployee(targetEmpId, userObj?.email, allProjects, employeeTasks);
+  }, [allProjects, targetEmpId, userObj?.email, employeeTasks, manualProjectsVersion]);
 
-    return (allProjects || []).filter(p => {
-      if (!p) return false;
-      const membersArr = Array.isArray(p.members) ? p.members : [];
-      const hasMember = membersArr.some(m => m && (String(m.id || m.user_id) === targetEmpId || (m.email && m.email.toLowerCase() === empEmailAddr)));
-      const hasLead = String(p.lead_id || p.lead?.id || '') === targetEmpId;
-      const hasTaskInProject = employeeTasks.some(t => t && String(t.project_id || t.project?.id || '') === String(p.id));
-      return hasMember || hasLead || hasTaskInProject;
-    });
-  }, [allProjects, targetEmpId, userObj?.email, employeeTasks]);
-
-  // Active Projects Count
+  // Active Projects Count (strictly derived from assigned projects, excluding completed/archived)
   const activeProjectsCount = useMemo(() => {
-    return (employeeProjects || []).filter(p => p && p.status !== 'completed').length || (employeeProjects ? employeeProjects.length : 0);
+    return (employeeProjects || []).filter(p => {
+      const s = String(p?.status || '').toLowerCase();
+      return s !== 'completed' && s !== 'done' && s !== 'archived';
+    }).length;
   }, [employeeProjects]);
 
   // Total Tasks Count
@@ -1318,93 +1337,268 @@ export default function EmployeeProfileOverview({
           padding: '24px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
         }}>
+          {projectToast && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '10px 16px',
+              borderRadius: '10px',
+              background: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              color: '#065F46',
+              fontSize: '13px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <CheckCircle2 size={16} color="#059669" />
+              <span>{projectToast}</span>
+            </div>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Folders size={20} color="#4F46E5" />
               <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
-                Assigned Projects ({employeeProjects.length > 0 ? employeeProjects.length : 3})
+                Assigned Projects ({employeeProjects.length})
               </h3>
             </div>
+
+            {/* TL ONLY: Add Project Button */}
+            {isTL && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingProject(null);
+                  setShowAddProjectModal(true);
+                }}
+                style={{
+                  background: '#4F46E5',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '8px 16px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)'
+                }}
+              >
+                <Plus size={16} />
+                <span>Add Project</span>
+              </button>
+            )}
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #E2E8F0', color: '#64748B', fontSize: '12px', fontWeight: 600 }}>
-                  <th style={{ padding: '12px 16px' }}>Project Name</th>
-                  <th style={{ padding: '12px 16px' }}>Role</th>
-                  <th style={{ padding: '12px 16px' }}>Status</th>
-                  <th style={{ padding: '12px 16px', minWidth: '180px' }}>Progress</th>
-                  <th style={{ padding: '12px 16px' }}>Start Date</th>
-                  <th style={{ padding: '12px 16px' }}>Due Date</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(employeeProjects.length > 0 ? employeeProjects : [
-                  { id: '1', name: 'Company Management System (CMS)', role: empDesignation, status: 'In Progress', progress: 70, start_date: '01 Oct 2026', due_date: '20 Nov 2026' },
-                  { id: '2', name: 'WorkMate – Task Manager', role: empDesignation, status: 'Active', progress: 90, start_date: '15 Sep 2026', due_date: '30 Oct 2026' },
-                  { id: '3', name: 'Kalpanaaa Website Revamp', role: empDesignation, status: 'Planning', progress: 40, start_date: '05 Nov 2026', due_date: '20 Dec 2026' },
-                ]).map((proj) => {
-                  const getStatusBadge = (st) => {
-                    const str = String(st || 'In Progress').toLowerCase();
-                    if (str.includes('active') || str.includes('completed')) return { bg: '#ECFDF5', text: '#059669', label: 'Active' };
-                    if (str.includes('plan')) return { bg: '#EFF6FF', text: '#2563EB', label: 'Planning' };
-                    return { bg: '#FFFBEB', text: '#D97706', label: 'In Progress' };
-                  };
-                  const badge = getStatusBadge(proj.status);
-                  const progressPct = proj.progress !== undefined ? proj.progress : 70;
+          {employeeProjects.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '48px 20px',
+              background: '#F8FAFC',
+              borderRadius: '16px',
+              border: '1px dashed #CBD5E1',
+              color: '#64748B'
+            }}>
+              <Folders size={36} color="#94A3B8" style={{ marginBottom: '10px' }} />
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#334155', margin: '0 0 4px 0' }}>
+                No projects assigned yet
+              </p>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 16px 0' }}>
+                {isTL
+                  ? 'This employee currently has no assigned projects. Assign their first project below.'
+                  : 'Projects assigned to this employee will automatically appear here.'}
+              </p>
+              {isTL && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingProject(null);
+                    setShowAddProjectModal(true);
+                  }}
+                  style={{
+                    background: '#4F46E5',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 18px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)'
+                  }}
+                >
+                  <Plus size={15} />
+                  <span>Assign a Project</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #E2E8F0', color: '#64748B', fontSize: '12px', fontWeight: 600 }}>
+                    <th style={{ padding: '12px 16px' }}>Project Name</th>
+                    <th style={{ padding: '12px 16px' }}>Role</th>
+                    <th style={{ padding: '12px 16px' }}>Status</th>
+                    <th style={{ padding: '12px 16px', minWidth: '180px' }}>Progress</th>
+                    <th style={{ padding: '12px 16px' }}>Start Date</th>
+                    <th style={{ padding: '12px 16px' }}>Due Date</th>
+                    {isTL && <th style={{ padding: '12px 16px', textAlign: 'center' }}>Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {employeeProjects.map((proj) => {
+                    const getStatusBadge = (st) => {
+                      const str = String(st || 'In Progress').toLowerCase();
+                      if (str.includes('active') || str.includes('completed')) return { bg: '#ECFDF5', text: '#059669', label: 'Active' };
+                      if (str.includes('plan')) return { bg: '#EFF6FF', text: '#2563EB', label: 'Planning' };
+                      if (str.includes('hold') || str.includes('block')) return { bg: '#FEF2F2', text: '#DC2626', label: 'On Hold' };
+                      return { bg: '#FFFBEB', text: '#D97706', label: 'In Progress' };
+                    };
+                    const badge = getStatusBadge(proj.status);
+                    const progressPct = proj.progress !== undefined ? proj.progress : 70;
 
-                  return (
-                    <tr key={proj.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '14px 16px', fontWeight: 600, color: '#0F172A' }}>
-                        {proj.name}
-                      </td>
-                      <td style={{ padding: '14px 16px', color: '#64748B' }}>
-                        {proj.role || empDesignation}
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <span style={{
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          padding: '3px 10px',
-                          borderRadius: '9999px',
-                          background: badge.bg,
-                          color: badge.text,
-                          display: 'inline-block'
-                        }}>
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontWeight: 600, color: '#0F172A', minWidth: '32px', fontSize: '12.5px' }}>{progressPct}%</span>
-                          <div style={{ flex: 1, height: '6px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
-                            <div style={{ width: `${progressPct}%`, height: '100%', background: 'linear-gradient(90deg, #6366F1 0%, #4F46E5 100%)', borderRadius: '999px' }} />
+                    return (
+                      <tr key={proj.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '14px 16px', fontWeight: 600, color: '#0F172A' }}>
+                          {proj.name}
+                        </td>
+                        <td style={{ padding: '14px 16px', color: '#64748B' }}>
+                          {proj.role || empDesignation}
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            background: badge.bg,
+                            color: badge.text,
+                            display: 'inline-block'
+                          }}>
+                            {badge.label}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontWeight: 600, color: '#0F172A', minWidth: '32px', fontSize: '12.5px' }}>{progressPct}%</span>
+                            <div style={{ flex: 1, height: '6px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
+                              <div style={{
+                                width: `${progressPct}%`,
+                                height: '100%',
+                                background: progressPct >= 100 ? '#10B981' : 'linear-gradient(90deg, #6366F1 0%, #4F46E5 100%)',
+                                borderRadius: '999px'
+                              }} />
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 16px', color: '#64748B', fontSize: '12.5px' }}>
-                        {proj.start_date || '01 Oct 2026'}
-                      </td>
-                      <td style={{ padding: '14px 16px', color: '#64748B', fontSize: '12.5px' }}>
-                        {proj.due_date || proj.target_completion_date || '20 Nov 2026'}
-                      </td>
-                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => navigate('/projects')}
-                          style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
-                        >
-                          <MoreHorizontal size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td style={{ padding: '14px 16px', color: '#64748B', fontSize: '12.5px' }}>
+                          {proj.start_date || '—'}
+                        </td>
+                        <td style={{ padding: '14px 16px', color: '#64748B', fontSize: '12.5px' }}>
+                          {proj.due_date || '—'}
+                        </td>
+
+                        {/* TL ONLY Actions Column */}
+                        {isTL && (
+                          <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingProject(proj);
+                                  setShowAddProjectModal(true);
+                                }}
+                                title="Edit Project"
+                                style={{
+                                  background: '#EEF2FF',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  color: '#4F46E5',
+                                  cursor: 'pointer',
+                                  padding: '5px 8px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '11.5px',
+                                  fontWeight: 600
+                                }}
+                              >
+                                <Pencil size={12} />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`Are you sure you want to remove project "${proj.name}" from this employee?`)) {
+                                    try {
+                                      deleteProjectAssignment(targetEmpId, userObj?.email, proj.id, currentUser);
+                                      setProjectToast('Project removed successfully.');
+                                      setManualProjectsVersion(v => v + 1);
+                                      setTimeout(() => setProjectToast(null), 3500);
+                                    } catch (err) {
+                                      alert(err.message || 'Failed to remove project');
+                                    }
+                                  }
+                                }}
+                                title="Delete Project"
+                                style={{
+                                  background: '#FEF2F2',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  color: '#EF4444',
+                                  cursor: 'pointer',
+                                  padding: '5px 8px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '11.5px',
+                                  fontWeight: 600
+                                }}
+                              >
+                                <Trash2 size={12} />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Add / Edit Project Modal (TL ONLY) */}
+          {isTL && showAddProjectModal && (
+            <AddEditProjectModal
+              isOpen={showAddProjectModal}
+              onClose={() => {
+                setShowAddProjectModal(false);
+                setEditingProject(null);
+              }}
+              onSave={async (projectData) => {
+                if (editingProject) {
+                  updateProjectAssignment(targetEmpId, userObj?.email, editingProject.id, projectData, currentUser);
+                  setProjectToast('Project updated successfully.');
+                } else {
+                  addProjectAssignment(targetEmpId, userObj?.email, projectData, currentUser);
+                  setProjectToast('Project assigned successfully.');
+                }
+                setManualProjectsVersion(v => v + 1);
+                setTimeout(() => setProjectToast(null), 3500);
+              }}
+              projectToEdit={editingProject}
+              developerName={empName}
+            />
+          )}
         </div>
       )}
 
