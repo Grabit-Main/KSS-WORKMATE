@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, Folders, CheckSquare, TrendingUp, Calendar, Mail, MapPin, Phone,
-  Plus, MessageSquare, MoreHorizontal, ArrowRight, Eye, Check, Clock, AlertTriangle, CheckCircle2, ChevronRight, Copy, Filter,
+  Plus, MessageSquare, MoreHorizontal, ArrowRight, ArrowLeft, Eye, Check, Clock, AlertTriangle, CheckCircle2, ChevronRight, Copy, Filter,
   Pencil, Trash2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -392,56 +392,31 @@ export default function EmployeeProfileOverview({
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '60px' }}>
-      {/* 1. Page Header (Without breadcrumb, keeping title and Back to Team Directory button) */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              style={{
-                background: '#EEF2FF',
-                border: '1px solid #C7D2FE',
-                color: '#4F46E5',
-                borderRadius: '8px',
-                padding: '6px 12px',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              ← Back to Team Directory
-            </button>
-          )}
-          <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: '#0F172A', margin: 0, fontFamily: 'serif, Georgia, Inter, sans-serif' }}>
-            Team Directory
-          </h1>
+      {/* Toast Notification when Email is Copied */}
+      {copiedNotification && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          zIndex: 9999,
+          background: '#ECFDF5',
+          border: '1px solid #A7F3D0',
+          color: '#065F46',
+          fontSize: '12.5px',
+          fontWeight: 600,
+          padding: '8px 16px',
+          borderRadius: '10px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 16px rgba(16, 185, 129, 0.2)'
+        }}>
+          <Check size={16} color="#10B981" />
+          Email copied to clipboard!
         </div>
+      )}
 
-        {copiedNotification && (
-          <div style={{
-            background: '#ECFDF5',
-            border: '1px solid #A7F3D0',
-            color: '#065F46',
-            fontSize: '12px',
-            fontWeight: 600,
-            padding: '5px 12px',
-            borderRadius: '8px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <Check size={14} color="#10B981" />
-            Email copied to clipboard!
-          </div>
-        )}
-      </div>
-
-      {/* 2. Employee Profile Banner Header */}
+      {/* Employee Profile Banner Header */}
       <div style={{
         background: 'linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%)',
         borderRadius: '20px',
@@ -455,8 +430,45 @@ export default function EmployeeProfileOverview({
         justifyContent: 'space-between',
         gap: '24px'
       }}>
-        {/* Left: Avatar + Details */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: '1 1 400px' }}>
+        {/* Left: Back Button + Avatar + Details */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flex: '1 1 400px' }}>
+          {/* Back Icon Button */}
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              title="Back to Team Directory"
+              aria-label="Back to Team Directory"
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: '#FFFFFF',
+                border: '1px solid #C7D2FE',
+                color: '#4F46E5',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(79, 70, 229, 0.08)',
+                transition: 'all 0.15s ease',
+                flexShrink: 0
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#EEF2FF';
+                e.currentTarget.style.borderColor = '#818CF8';
+                e.currentTarget.style.transform = 'translateX(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#FFFFFF';
+                e.currentTarget.style.borderColor = '#C7D2FE';
+                e.currentTarget.style.transform = 'translateX(0)';
+              }}
+            >
+              <ArrowLeft size={19} />
+            </button>
+          )}
+
           {/* Avatar with Status Indicator */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             {userObj?.avatar_url ? (
