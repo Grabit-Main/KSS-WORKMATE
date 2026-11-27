@@ -67,19 +67,49 @@ class DirectoryErrorBoundary extends Component {
 
 // Default reference employees to supplement if API returns partial data
 const DEFAULT_DIRECTORY_EMPLOYEES = [
-  { id: 'ref-ceo', full_name: 'Founder CEO', role: 'CEO', department: 'Executive Management', avatar_url: '', projects_count: 8, kpi: 98, online: true },
   { id: 'ref-cto-1', full_name: 'Akshit Ujjain', role: 'CTO', department: 'Executive Management', avatar_url: '', projects_count: 7, kpi: 96, online: true },
   { id: 'ref-cto-2', full_name: 'Gaurav Kumar Tripathi', role: 'CTO', department: 'Executive Management', avatar_url: '', projects_count: 6, kpi: 95, online: true },
   { id: 'ref-pm', full_name: 'D. Koushik', role: 'PM', department: 'Engineering', avatar_url: '', projects_count: 5, kpi: 94, online: true },
-  { id: '4', full_name: 'Kuruva Mahesh', role: 'UI/UX Designer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', projects_count: 3, kpi: 92, online: true },
-  { id: '6', full_name: 'Rahul Sharma', role: 'Backend Developer', department: 'Engineering', avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', projects_count: 2, kpi: 91, online: true },
-  { id: '7', full_name: 'Priya Nair', role: 'QA Engineer', department: 'Quality Assurance', avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150', projects_count: 3, kpi: 86, online: true },
-  { id: '8', full_name: 'Arjun Kumar', role: 'Project Manager', department: 'Operations', avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150', projects_count: 5, kpi: 95, online: true },
-  { id: '9', full_name: 'Sneha Rao', role: 'HR Specialist', department: 'Human Resources', avatar_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150', projects_count: 1, kpi: 90, online: true },
-  { id: '10', full_name: 'Vikram Iyer', role: 'DevOps Engineer', department: 'Infrastructure', avatar_url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150', projects_count: 2, kpi: 87, online: true },
-  { id: '11', full_name: 'Neha Gupta', role: 'Business Analyst', department: 'Product', avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150', projects_count: 4, kpi: 92, online: false },
-  { id: '12', full_name: 'Karthik R', role: 'UI Developer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150', projects_count: 3, kpi: 89, online: true }
+  { id: '4', full_name: 'Kuruva Mahesh', role: 'UI/UX Designer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', projects_count: 3, kpi: 92, online: true }
 ];
+
+// Demo profile cards specifically removed as per user requirements
+const isRemovedDemoEmployee = (emp) => {
+  if (!emp) return false;
+  const fullName = String(emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`).trim().toLowerCase();
+  const email = String(emp.email || '').trim().toLowerCase();
+
+  // 1. Founder CEO
+  if (
+    fullName === 'founder ceo' ||
+    (fullName.includes('founder') && fullName.includes('ceo')) ||
+    email.startsWith('founder@') ||
+    String(emp.id) === 'ref-ceo'
+  ) {
+    return true;
+  }
+
+  // 2. The 7 specific demo employee profiles to remove
+  const demoNames = [
+    'rahul sharma',
+    'priya nair',
+    'arjun kumar',
+    'sneha rao',
+    'vikram iyer',
+    'neha gupta',
+    'karthik r'
+  ];
+  if (demoNames.includes(fullName)) {
+    return true;
+  }
+
+  const demoIds = ['6', '7', '8', '9', '10', '11', '12'];
+  if (demoIds.includes(String(emp.id))) {
+    return true;
+  }
+
+  return false;
+};
 
 // Helper to determine if a user role belongs to Executive / Admins
 const isAdminRole = (role) => {
@@ -134,31 +164,31 @@ const TeamDirectoryPage = () => {
 
         if (!isMounted) return;
 
-        const fetchedUsers = Array.isArray(usersData) ? usersData : [];
+        const fetchedUsers = Array.isArray(usersData) ? usersData.filter(u => !isRemovedDemoEmployee(u)) : [];
         setAllProjects(Array.isArray(projectsData) ? projectsData : []);
         setAllTasks(Array.isArray(tasksData) ? tasksData : []);
         setAllKpiLogs(Array.isArray(kpiData) ? kpiData : []);
 
         const combined = [...fetchedUsers];
         DEFAULT_DIRECTORY_EMPLOYEES.forEach(def => {
-          if (!combined.some(u => String(u.id) === String(def.id) || (u.email && u.email.toLowerCase() === def.email?.toLowerCase()) || (u.full_name && u.full_name.toLowerCase() === def.full_name.toLowerCase()))) {
+          if (!isRemovedDemoEmployee(def) && !combined.some(u => String(u.id) === String(def.id) || (u.email && u.email.toLowerCase() === def.email?.toLowerCase()) || (u.full_name && u.full_name.toLowerCase() === def.full_name.toLowerCase()))) {
             combined.push(def);
           }
         });
-        setUsersList(combined);
+        setUsersList(combined.filter(u => !isRemovedDemoEmployee(u)));
 
         // Check query param (?empId=... or ?userId=...) for deep-link selection ONLY if user role is authorized
         if (canViewDetailedProfile) {
           const params = new URLSearchParams(location.search);
           const empId = params.get('empId') || params.get('userId');
           if (empId) {
-            const found = combined.find(u => (String(u.id) === String(empId) || String(u.user_id) === String(empId) || u.email === empId));
+            const found = combined.find(u => !isRemovedDemoEmployee(u) && (String(u.id) === String(empId) || String(u.user_id) === String(empId) || u.email === empId));
             if (found) setSelectedEmp(found);
           }
         }
       } catch (err) {
         console.error('Failed to load team directory data:', err);
-        setUsersList(DEFAULT_DIRECTORY_EMPLOYEES);
+        setUsersList(DEFAULT_DIRECTORY_EMPLOYEES.filter(u => !isRemovedDemoEmployee(u)));
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -171,7 +201,7 @@ const TeamDirectoryPage = () => {
   // Derived filter options
   const departmentOptions = useMemo(() => {
     const depts = new Set(['All Departments']);
-    usersList.forEach(u => {
+    usersList.filter(u => !isRemovedDemoEmployee(u)).forEach(u => {
       if (u.department) depts.add(u.department);
       if (u.role) depts.add(u.role);
     });
@@ -180,7 +210,7 @@ const TeamDirectoryPage = () => {
 
   const specOptions = useMemo(() => {
     const specs = new Set(['All Specialisations']);
-    usersList.forEach(u => {
+    usersList.filter(u => !isRemovedDemoEmployee(u)).forEach(u => {
       if (u.department) specs.add(u.department);
       if (u.role) specs.add(u.role);
     });
@@ -190,6 +220,7 @@ const TeamDirectoryPage = () => {
   // Filter & Sort Employees across both sections
   const filteredEmployees = useMemo(() => {
     const list = usersList.filter(u => {
+      if (isRemovedDemoEmployee(u)) return false;
       const name = (u.full_name || `${u.first_name || ''} ${u.last_name || ''}`).toLowerCase();
       const email = (u.email || '').toLowerCase();
       const role = (u.role || u.department || '').toLowerCase();
