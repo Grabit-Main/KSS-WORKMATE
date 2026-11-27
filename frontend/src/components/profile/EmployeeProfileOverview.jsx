@@ -173,8 +173,8 @@ export default function EmployeeProfileOverview({
   // Single source of truth for assigned projects (backend API + manual TL assignments)
   const employeeProjects = useMemo(() => {
     if (!targetEmpId) return [];
-    return getAllAssignedProjectsForEmployee(targetEmpId, userObj?.email, allProjects, employeeTasks);
-  }, [allProjects, targetEmpId, userObj?.email, employeeTasks, manualProjectsVersion]);
+    return getAllAssignedProjectsForEmployee(targetEmpId, userObj?.email, allProjects, employeeTasks, userObj);
+  }, [allProjects, targetEmpId, userObj, employeeTasks, manualProjectsVersion]);
 
   // Active Projects Count (strictly derived from assigned projects, excluding completed/archived)
   const activeProjectsCount = useMemo(() => {

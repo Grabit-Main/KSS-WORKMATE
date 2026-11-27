@@ -184,6 +184,12 @@ const ProjectsPage = () => {
       setTasks(safeTasks);
       try {
         if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(safeProjects));
+        localStorage.setItem('cache_projects', JSON.stringify(safeProjects));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('workmate_projects_updated', {
+            detail: { action: 'refresh', projects: safeProjects }
+          }));
+        }
       } catch (e) {
         console.warn('Could not cache projects to localStorage:', e);
       }

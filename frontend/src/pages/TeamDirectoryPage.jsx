@@ -144,7 +144,14 @@ const TeamDirectoryPage = () => {
 
   // Listen to project assignments changes to keep directory card counts synced
   useEffect(() => {
-    const handleProjectsSync = () => setProjectsSyncVersion(v => v + 1);
+    const handleProjectsSync = () => {
+      setProjectsSyncVersion(v => v + 1);
+      getProjects().then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setAllProjects(data);
+        }
+      }).catch(() => {});
+    };
     window.addEventListener('workmate_projects_updated', handleProjectsSync);
     return () => window.removeEventListener('workmate_projects_updated', handleProjectsSync);
   }, []);
@@ -164,8 +171,19 @@ const TeamDirectoryPage = () => {
 
         if (!isMounted) return;
 
+        let fetchedProjects = Array.isArray(projectsData) ? projectsData : [];
+        if (fetchedProjects.length === 0 && typeof window !== 'undefined') {
+          try {
+            const cached = localStorage.getItem('cache_projects');
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (Array.isArray(parsed) && parsed.length > 0) fetchedProjects = parsed;
+            }
+          } catch (e) {}
+        }
+
         const fetchedUsers = Array.isArray(usersData) ? usersData.filter(u => !isRemovedDemoEmployee(u)) : [];
-        setAllProjects(Array.isArray(projectsData) ? projectsData : []);
+        setAllProjects(fetchedProjects);
         setAllTasks(Array.isArray(tasksData) ? tasksData : []);
         setAllKpiLogs(Array.isArray(kpiData) ? kpiData : []);
 
@@ -259,7 +277,7 @@ const TeamDirectoryPage = () => {
   const getEmpProjectsCount = (emp) => {
     const empId = String(emp.id || emp.user_id || '');
     const empEmail = (emp.email || '').toLowerCase();
-    const assigned = getAllAssignedProjectsForEmployee(empId, empEmail, allProjects, allTasks);
+    const assigned = getAllAssignedProjectsForEmployee(empId, empEmail, allProjects, allTasks, emp);
     if (assigned.length > 0) return assigned.length;
     if (emp.projects_count !== undefined) return emp.projects_count;
     return 0;

@@ -149,8 +149,8 @@ export default function EmployeeProfileModal({
   // Company Projects where this person participates (single source of truth)
   const assignedProjects = useMemo(() => {
     if (!empId && !empEmail) return [];
-    return getAllAssignedProjectsForEmployee(empId, empEmail, projects, tasks);
-  }, [projects, tasks, empId, empEmail, syncVersion]);
+    return getAllAssignedProjectsForEmployee(empId, empEmail, projects, tasks, employee);
+  }, [projects, tasks, empId, empEmail, syncVersion, employee]);
 
   // Format date helper
   const formatDate = (dateStr) => {
@@ -664,7 +664,7 @@ export default function EmployeeProfileModal({
                       No projects assigned yet.
                     </p>
                     <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>
-                      Assigned projects from Team Leads will automatically appear here.
+                      Projects created in the Project section or assigned by Team Leads will appear here.
                     </p>
                   </div>
                 ) : (
