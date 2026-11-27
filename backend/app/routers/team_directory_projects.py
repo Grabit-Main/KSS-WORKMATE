@@ -12,7 +12,7 @@ from app.schemas.team_directory_project import (
     TeamDirectoryProjectResponse
 )
 
-router = APIRouter(prefix="/team-directory-projects", tags=["Team Directory Projects"])
+router = APIRouter(tags=["Team Directory Projects"])
 
 @router.get("", response_model=List[TeamDirectoryProjectResponse])
 def list_team_directory_projects(

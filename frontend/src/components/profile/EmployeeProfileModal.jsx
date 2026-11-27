@@ -175,6 +175,7 @@ export default function EmployeeProfileModal({
 
   // Project role helper
   const getProjectMemberRole = (p) => {
+    if (p.role) return p.role;
     if (String(p.lead_id || p.lead?.id || '') === empId) {
       return 'Project Lead';
     }

@@ -165,7 +165,8 @@ try:
     app.include_router(holidays.router)
     app.include_router(goals.router)
     app.include_router(push_notifications.router)
-    app.include_router(team_directory_projects.router)
+    app.include_router(team_directory_projects.router, prefix="/api/team-directory-projects")
+    app.include_router(team_directory_projects.router, prefix="/team-directory-projects")
     app.include_router(websocket_router)
 except Exception as e:
     init_error = traceback.format_exc()

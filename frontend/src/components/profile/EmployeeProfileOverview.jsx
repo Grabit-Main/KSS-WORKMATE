@@ -1552,7 +1552,8 @@ export default function EmployeeProfileOverview({
                                 onClick={async () => {
                                   if (window.confirm(`Are you sure you want to remove project "${proj.name}" from this employee?`)) {
                                     try {
-                                      await deleteProjectAssignment(targetEmpId, userObj?.email, proj.id, currentUser);
+                                      const targetEmail = (userObj?.email || employee?.email || '').toLowerCase();
+                                      await deleteProjectAssignment(targetEmpId, targetEmail, proj.id, currentUser);
                                       setProjectToast('Project removed successfully.');
                                       setManualProjectsVersion(v => v + 1);
                                       setTimeout(() => setProjectToast(null), 3500);
@@ -1599,12 +1600,13 @@ export default function EmployeeProfileOverview({
                 setEditingProject(null);
               }}
               onSave={async (projectData) => {
+                const targetEmail = (userObj?.email || employee?.email || '').toLowerCase();
                 try {
                   if (editingProject) {
-                    await updateProjectAssignment(targetEmpId, userObj?.email, editingProject.id, projectData, currentUser, empName);
+                    await updateProjectAssignment(targetEmpId, targetEmail, editingProject.id, projectData, currentUser, empName);
                     setProjectToast('Project updated successfully.');
                   } else {
-                    await addProjectAssignment(targetEmpId, userObj?.email, projectData, currentUser, empName);
+                    await addProjectAssignment(targetEmpId, targetEmail, projectData, currentUser, empName);
                     setProjectToast('Project assigned successfully.');
                   }
                   setManualProjectsVersion(v => v + 1);
