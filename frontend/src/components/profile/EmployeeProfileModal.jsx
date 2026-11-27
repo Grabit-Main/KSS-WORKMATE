@@ -146,11 +146,11 @@ export default function EmployeeProfileModal({
     return () => window.removeEventListener('workmate_projects_updated', handleSync);
   }, []);
 
-  // Company Projects where this person participates (single source of truth)
+  // Company Projects where this person participates (strictly manual TL assignments)
   const assignedProjects = useMemo(() => {
     if (!empId && !empEmail) return [];
-    return getAllAssignedProjectsForEmployee(empId, empEmail, projects, tasks, employee);
-  }, [projects, tasks, empId, empEmail, syncVersion, employee]);
+    return getAllAssignedProjectsForEmployee(empId, empEmail);
+  }, [empId, empEmail, syncVersion]);
 
   // Format date helper
   const formatDate = (dateStr) => {
@@ -664,7 +664,7 @@ export default function EmployeeProfileModal({
                       No projects assigned yet.
                     </p>
                     <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>
-                      Projects created in the Project section or assigned by Team Leads will appear here.
+                      Assigned projects from Team Leads will automatically appear here.
                     </p>
                   </div>
                 ) : (

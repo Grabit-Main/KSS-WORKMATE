@@ -67,10 +67,10 @@ class DirectoryErrorBoundary extends Component {
 
 // Default reference employees to supplement if API returns partial data
 const DEFAULT_DIRECTORY_EMPLOYEES = [
-  { id: 'ref-cto-1', full_name: 'Akshit Ujjain', role: 'CTO', department: 'Executive Management', avatar_url: '', projects_count: 7, kpi: 96, online: true },
-  { id: 'ref-cto-2', full_name: 'Gaurav Kumar Tripathi', role: 'CTO', department: 'Executive Management', avatar_url: '', projects_count: 6, kpi: 95, online: true },
-  { id: 'ref-pm', full_name: 'D. Koushik', role: 'PM', department: 'Engineering', avatar_url: '', projects_count: 5, kpi: 94, online: true },
-  { id: '4', full_name: 'Kuruva Mahesh', role: 'UI/UX Designer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', projects_count: 3, kpi: 92, online: true }
+  { id: 'ref-cto-1', full_name: 'Akshit Ujjain', role: 'CTO', department: 'Executive Management', avatar_url: '', projects_count: 0, kpi: 96, online: true },
+  { id: 'ref-cto-2', full_name: 'Gaurav Kumar Tripathi', role: 'CTO', department: 'Executive Management', avatar_url: '', projects_count: 0, kpi: 95, online: true },
+  { id: 'ref-pm', full_name: 'D. Koushik', role: 'PM', department: 'Engineering', avatar_url: '', projects_count: 0, kpi: 94, online: true },
+  { id: '4', full_name: 'Kuruva Mahesh', role: 'UI/UX Designer', department: 'Design', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', projects_count: 0, kpi: 92, online: true }
 ];
 
 // Demo profile cards specifically removed as per user requirements
@@ -273,14 +273,13 @@ const TeamDirectoryPage = () => {
     return filteredEmployees.filter(emp => isAdminRole(emp.role));
   }, [filteredEmployees]);
 
-  // Helper to get employee active project count from single source of truth
+  // Helper to get employee active project count from single source of truth (strictly manual TL assignments)
   const getEmpProjectsCount = (emp) => {
+    if (!emp) return 0;
     const empId = String(emp.id || emp.user_id || '');
     const empEmail = (emp.email || '').toLowerCase();
-    const assigned = getAllAssignedProjectsForEmployee(empId, empEmail, allProjects, allTasks, emp);
-    if (assigned.length > 0) return assigned.length;
-    if (emp.projects_count !== undefined) return emp.projects_count;
-    return 0;
+    const assigned = getAllAssignedProjectsForEmployee(empId, empEmail);
+    return assigned.length;
   };
 
   // Helper to get employee KPI score

@@ -170,11 +170,11 @@ export default function EmployeeProfileOverview({
     });
   }, [allTasks, targetEmpId, userObj?.email]);
 
-  // Single source of truth for assigned projects (backend API + manual TL assignments)
+  // Single source of truth for assigned projects (strictly manual TL assignments)
   const employeeProjects = useMemo(() => {
     if (!targetEmpId) return [];
-    return getAllAssignedProjectsForEmployee(targetEmpId, userObj?.email, allProjects, employeeTasks, userObj);
-  }, [allProjects, targetEmpId, userObj, employeeTasks, manualProjectsVersion]);
+    return getAllAssignedProjectsForEmployee(targetEmpId, userObj?.email);
+  }, [targetEmpId, userObj?.email, manualProjectsVersion]);
 
   // Active Projects Count (strictly derived from assigned projects, excluding completed/archived)
   const activeProjectsCount = useMemo(() => {

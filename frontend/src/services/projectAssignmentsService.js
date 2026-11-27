@@ -41,140 +41,27 @@ export const getManualAssignmentsForEmployee = (empId, empEmail = '') => {
   return Array.from(map.values());
 };
 
-export const getAllAssignedProjectsForEmployee = (empId, empEmail = '', apiProjects = [], tasks = [], employee = null) => {
+export const getAllAssignedProjectsForEmployee = (empId, empEmail = '') => {
   const idStr = empId ? String(empId) : '';
   const emailStr = empEmail ? String(empEmail).toLowerCase() : '';
 
-  // Get any cached API projects from localStorage if apiProjects is empty
-  let effectiveApiProjects = Array.isArray(apiProjects) ? [...apiProjects] : [];
-  if (effectiveApiProjects.length === 0 && typeof window !== 'undefined') {
-    try {
-      const cached = localStorage.getItem('cache_projects');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          effectiveApiProjects = parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('Could not read cached projects:', e);
-    }
-  }
+  if (!idStr && !emailStr) return [];
 
-  // Helper: check if a project specifically matches this employee
-  const hasSpecificMatch = (p) => {
-    if (!p) return false;
-    // 1. Direct members
-    if (Array.isArray(p.members) && p.members.some(m => String(m.id || m.user_id) === idStr || (m.email && m.email.toLowerCase() === emailStr))) return true;
-    if (Array.isArray(p.users) && p.users.some(u => String(u.id) === idStr || (u.email && u.email.toLowerCase() === emailStr))) return true;
-    
-    // 2. Teams allocated to this project
-    if (Array.isArray(p.teams) && p.teams.some(team => {
-      const mems = Array.isArray(team.memberships) ? team.memberships : (Array.isArray(team.members) ? team.members : []);
-      return mems.some(m => String(m?.user_id || m?.user?.id || m?.id) === idStr || (m?.user?.email && m.user.email.toLowerCase() === emailStr));
-    })) return true;
-
-    // 3. Lead or Creator
-    if (String(p.lead_id || p.lead?.id || '') === idStr) return true;
-    if (String(p.created_by || '') === idStr && (employee?.role === 'PM' || employee?.role === 'TL')) return true;
-
-    // 4. Tasks assigned to this employee in this project
-    if ((tasks || []).some(t => t && String(t.assigned_to || t.assignee?.id) === idStr && String(t.project_id) === String(p.id))) return true;
-
-    // 5. Department / Squad match
-    const empDept = (employee?.department || employee?.role || '').toLowerCase();
-    if (empDept && Array.isArray(p.teams) && p.teams.some(t => {
-      const tName = (t.name || '').toLowerCase();
-      return tName.includes(empDept) || empDept.includes(tName);
-    })) return true;
-
-    return false;
-  };
-
-  // If specific matches exist for this employee, use them.
-  // Otherwise, real projects created in the Project section represent Company Projects for the employee
-  // (so real projects created by PM / Management in the Project section appear in the developer popup box).
-  const matchedProjects = effectiveApiProjects.filter(p => hasSpecificMatch(p));
-  const finalApiProjects = matchedProjects.length > 0 ? matchedProjects : effectiveApiProjects;
-
-  // Format real projects created in the project section
-  const apiMatches = finalApiProjects.filter(Boolean).map(p => {
-    let role = p.role || '';
-    if (!role) {
-      if (String(p.lead_id || p.lead?.id || '') === idStr) {
-        role = 'Project Lead';
-      } else if (Array.isArray(p.teams)) {
-        for (const t of p.teams) {
-          const mems = Array.isArray(t.memberships) ? t.memberships : (Array.isArray(t.members) ? t.members : []);
-          const foundMem = mems.find(m => String(m?.user_id || m?.user?.id || m?.id) === idStr || (m?.user?.email && m.user.email.toLowerCase() === emailStr));
-          if (foundMem) {
-            role = foundMem.is_lead ? 'Team Lead' : (foundMem.role || '');
-            break;
-          }
-        }
-      }
-    }
-    if (!role) {
-      const empRole = employee?.role || '';
-      const empDept = employee?.department || '';
-      if (empRole === 'PM') role = 'Project Manager';
-      else if (empRole === 'TL') role = 'Technical Lead';
-      else if (empDept && empDept !== 'Management') role = empDept;
-      else role = employee?.role || 'Contributor';
-    }
-
-    const rawStatus = String(p.status || 'Active').trim();
-    let normalizedStatus = 'Active';
-    const sLow = rawStatus.toLowerCase();
-    if (sLow.includes('complete') || sLow === 'done') normalizedStatus = 'Completed';
-    else if (sLow.includes('progress') || sLow === 'active') normalizedStatus = 'In Progress';
-    else if (sLow.includes('hold') || sLow.includes('block')) normalizedStatus = 'On Hold';
-    else if (sLow.includes('review')) normalizedStatus = 'Review';
-
-    let progress = 0;
-    const projectTasks = (tasks || []).filter(t => t && String(t.project_id) === String(p.id));
-    if (p.progress !== undefined && p.progress !== null && !isNaN(Number(p.progress))) {
-      progress = Number(p.progress);
-    } else if (projectTasks.length > 0) {
-      const completedCount = projectTasks.filter(t => t.status === 'completed' || t.status === 'done').length;
-      progress = Math.round((completedCount / projectTasks.length) * 100);
-    } else {
-      progress = normalizedStatus === 'Completed' ? 100 : (normalizedStatus === 'In Progress' ? 65 : 40);
-    }
-
-    return {
-      ...p,
-      id: String(p.id),
-      name: p.name || p.title || 'Untitled Project',
-      role: role,
-      status: normalizedStatus,
-      progress: Math.max(0, Math.min(100, isNaN(progress) ? 65 : progress)),
-      start_date: p.start_date || p.startDate || p.created_at || null,
-      due_date: p.due_date || p.dueDate || p.target_completion_date || p.deadline || null,
-      aim: p.aim || '',
-      isManual: false
-    };
-  });
-
-  // 2. Manual Projects assigned by TL
+  // Strictly return only projects manually assigned by the TL to this specific employee.
+  // Until a TL manually assigns a project, every employee's projects count remains strictly 0.
   const manualMatches = getManualAssignmentsForEmployee(idStr, emailStr).map(p => ({
     ...p,
     id: String(p.id),
+    name: p.name || 'Untitled Project',
+    role: p.role || 'Contributor',
+    status: p.status || 'Active',
+    progress: Math.max(0, Math.min(100, Number(p.progress) || 0)),
+    start_date: p.start_date || null,
+    due_date: p.due_date || null,
     isManual: true
   }));
 
-  // Combine and deduplicate by project name
-  const combinedMap = new Map();
-  apiMatches.forEach(p => {
-    const key = (p.name || '').toLowerCase().trim();
-    if (key) combinedMap.set(key, p);
-  });
-  manualMatches.forEach(p => {
-    const key = (p.name || '').toLowerCase().trim();
-    if (key) combinedMap.set(key, p);
-  });
-
-  return Array.from(combinedMap.values());
+  return manualMatches;
 };
 
 export const addProjectAssignment = (empId, empEmail, projectData, currentUser) => {
