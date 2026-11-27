@@ -8,10 +8,11 @@ from app.models.kpi import DailyKPILog
 from app.models.holiday import Holiday
 from app.models.goal import Goal
 from app.models.push_subscription import PushSubscription
+from app.models.team_directory_project import TeamDirectoryProject
 
 __all__ = [
     "User", "Project", "Team", "TeamMembership", "ProjectStatusLog",
     "Task", "TaskAttachment", "TaskStatusLog",
     "ChatMessage", "Review", "Notification", "DailyKPILog", "Holiday", "Goal",
-    "PushSubscription"
+    "PushSubscription", "TeamDirectoryProject"
 ]

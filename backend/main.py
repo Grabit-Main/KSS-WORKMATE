@@ -50,7 +50,8 @@ try:
     from app.database import engine, Base
     from app.routers import (
         auth, users, projects, teams, tasks,
-        chat, upload, analytics, reviews, notifications, history, kpi, mywork, documentation, holidays, goals, push_notifications
+        chat, upload, analytics, reviews, notifications, history, kpi, mywork, documentation, holidays, goals, push_notifications,
+        team_directory_projects
     )
     from app.websocket.router import router as websocket_router
 
@@ -124,6 +125,25 @@ try:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
                 CREATE INDEX IF NOT EXISTS ix_push_subscriptions_user_id ON push_subscriptions(user_id);
+
+                CREATE TABLE IF NOT EXISTS team_directory_projects (
+                    id UUID PRIMARY KEY,
+                    developer_id VARCHAR NOT NULL,
+                    developer_email VARCHAR,
+                    developer_name VARCHAR,
+                    name VARCHAR NOT NULL,
+                    role VARCHAR NOT NULL,
+                    status VARCHAR DEFAULT 'Active',
+                    progress INTEGER DEFAULT 0,
+                    start_date TIMESTAMP,
+                    due_date TIMESTAMP,
+                    assigned_by UUID REFERENCES users(id) ON DELETE SET NULL,
+                    assigned_by_name VARCHAR,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS ix_team_dir_proj_dev_id ON team_directory_projects(developer_id);
+                CREATE INDEX IF NOT EXISTS ix_team_dir_proj_dev_email ON team_directory_projects(developer_email);
             """))
     except Exception as db_err:
         print("Table creation warning:", db_err)
@@ -145,6 +165,7 @@ try:
     app.include_router(holidays.router)
     app.include_router(goals.router)
     app.include_router(push_notifications.router)
+    app.include_router(team_directory_projects.router)
     app.include_router(websocket_router)
 except Exception as e:
     init_error = traceback.format_exc()

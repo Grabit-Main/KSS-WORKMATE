@@ -3,7 +3,7 @@ import {
   X, Mail, Phone, MapPin, Calendar, Briefcase, CheckCircle2,
   Clock, AlertCircle, Layers, FolderGit2, Sparkles, ExternalLink
 } from 'lucide-react';
-import { getAllAssignedProjectsForEmployee } from '../../services/projectAssignmentsService';
+import { getAllAssignedProjectsForEmployee, loadBackendProjects } from '../../services/projectAssignmentsService';
 
 export default function EmployeeProfileModal({
   isOpen,
@@ -141,16 +141,25 @@ export default function EmployeeProfileModal({
   const [syncVersion, setSyncVersion] = useState(0);
 
   useEffect(() => {
-    const handleSync = () => setSyncVersion(v => v + 1);
+    if (isOpen) {
+      loadBackendProjects().then(() => setSyncVersion(v => v + 1)).catch(() => {});
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleSync = () => {
+      setSyncVersion(v => v + 1);
+      loadBackendProjects().then(() => setSyncVersion(v => v + 1)).catch(() => {});
+    };
     window.addEventListener('workmate_projects_updated', handleSync);
     return () => window.removeEventListener('workmate_projects_updated', handleSync);
   }, []);
 
-  // Company Projects where this person participates (strictly manual TL assignments)
+  // Company Projects where this person participates (strictly manual TL assignments from team_directory_projects table)
   const assignedProjects = useMemo(() => {
     if (!empId && !empEmail && !empName) return [];
-    return getAllAssignedProjectsForEmployee(empId, empEmail, projects, tasks, employee, empName);
-  }, [projects, tasks, empId, empEmail, empName, syncVersion, employee]);
+    return getAllAssignedProjectsForEmployee(empId, empEmail, employee, empName);
+  }, [empId, empEmail, empName, syncVersion, employee]);
 
   // Format date helper
   const formatDate = (dateStr) => {

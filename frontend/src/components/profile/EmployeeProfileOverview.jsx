@@ -17,7 +17,8 @@ import {
   getAllAssignedProjectsForEmployee,
   addProjectAssignment,
   updateProjectAssignment,
-  deleteProjectAssignment
+  deleteProjectAssignment,
+  loadBackendProjects
 } from '../../services/projectAssignmentsService';
 
 export default function EmployeeProfileOverview({
@@ -99,7 +100,8 @@ export default function EmployeeProfileOverview({
           getUsers().catch(() => []),
           getProjects().catch(() => []),
           getTasks().catch(() => []),
-          getKPIs().catch(() => [])
+          getKPIs().catch(() => []),
+          loadBackendProjects().catch(() => [])
         ]);
 
         if (!isMounted) return;
@@ -170,11 +172,11 @@ export default function EmployeeProfileOverview({
     });
   }, [allTasks, targetEmpId, userObj?.email]);
 
-  // Single source of truth for assigned projects (strictly manual TL assignments)
+  // Single source of truth for assigned projects (strictly manual TL assignments from team_directory_projects table)
   const employeeProjects = useMemo(() => {
     if (!targetEmpId && !userObj?.email && !empName) return [];
-    return getAllAssignedProjectsForEmployee(targetEmpId, userObj?.email, allProjects, employeeTasks, userObj, empName);
-  }, [allProjects, targetEmpId, userObj, employeeTasks, manualProjectsVersion, empName]);
+    return getAllAssignedProjectsForEmployee(targetEmpId, userObj?.email, userObj, empName);
+  }, [targetEmpId, userObj, manualProjectsVersion, empName]);
 
   // Active Projects Count (strictly derived from assigned projects, excluding completed/archived)
   const activeProjectsCount = useMemo(() => {
@@ -1547,10 +1549,10 @@ export default function EmployeeProfileOverview({
                               </button>
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
                                   if (window.confirm(`Are you sure you want to remove project "${proj.name}" from this employee?`)) {
                                     try {
-                                      deleteProjectAssignment(targetEmpId, userObj?.email, proj.id, currentUser);
+                                      await deleteProjectAssignment(targetEmpId, userObj?.email, proj.id, currentUser);
                                       setProjectToast('Project removed successfully.');
                                       setManualProjectsVersion(v => v + 1);
                                       setTimeout(() => setProjectToast(null), 3500);
@@ -1599,10 +1601,10 @@ export default function EmployeeProfileOverview({
               onSave={async (projectData) => {
                 try {
                   if (editingProject) {
-                    updateProjectAssignment(targetEmpId, userObj?.email, editingProject.id, projectData, currentUser, empName);
+                    await updateProjectAssignment(targetEmpId, userObj?.email, editingProject.id, projectData, currentUser, empName);
                     setProjectToast('Project updated successfully.');
                   } else {
-                    addProjectAssignment(targetEmpId, userObj?.email, projectData, currentUser, empName);
+                    await addProjectAssignment(targetEmpId, userObj?.email, projectData, currentUser, empName);
                     setProjectToast('Project assigned successfully.');
                   }
                   setManualProjectsVersion(v => v + 1);

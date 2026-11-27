@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import EmployeeProfileOverview from '../components/profile/EmployeeProfileOverview';
 import EmployeeProfileModal from '../components/profile/EmployeeProfileModal';
-import { getAllAssignedProjectsForEmployee } from '../services/projectAssignmentsService';
+import { getAllAssignedProjectsForEmployee, loadBackendProjects } from '../services/projectAssignmentsService';
 
 class DirectoryErrorBoundary extends Component {
   constructor(props) {
@@ -146,10 +146,8 @@ const TeamDirectoryPage = () => {
   useEffect(() => {
     const handleProjectsSync = () => {
       setProjectsSyncVersion(v => v + 1);
-      getProjects().then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setAllProjects(data);
-        }
+      loadBackendProjects().then(() => {
+        setProjectsSyncVersion(v => v + 1);
       }).catch(() => {});
     };
     window.addEventListener('workmate_projects_updated', handleProjectsSync);
@@ -166,7 +164,8 @@ const TeamDirectoryPage = () => {
           getUsers().catch(() => []),
           getProjects().catch(() => []),
           getTasks().catch(() => []),
-          getKPIs().catch(() => [])
+          getKPIs().catch(() => []),
+          loadBackendProjects().catch(() => [])
         ]);
 
         if (!isMounted) return;
@@ -279,7 +278,7 @@ const TeamDirectoryPage = () => {
     const empId = String(emp.id || emp.user_id || '');
     const empEmail = (emp.email || '').toLowerCase();
     const empName = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.name || '';
-    const assigned = getAllAssignedProjectsForEmployee(empId, empEmail, allProjects, allTasks, emp, empName);
+    const assigned = getAllAssignedProjectsForEmployee(empId, empEmail, emp, empName);
     return assigned.length;
   };
 
