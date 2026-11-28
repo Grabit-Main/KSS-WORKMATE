@@ -7,7 +7,7 @@ import { getKPIs } from '../api/kpi';
 import { useAuth } from '../context/AuthContext';
 import {
   Users, Search, Building2, Layers, UserPlus, Filter, X,
-  Calendar, CheckSquare, TrendingUp, Grid, List, ChevronDown, ShieldCheck
+  Calendar, CheckSquare, TrendingUp, Grid, List, ChevronDown
 } from 'lucide-react';
 import EmployeeProfileOverview from '../components/profile/EmployeeProfileOverview';
 import EmployeeProfileModal from '../components/profile/EmployeeProfileModal';
@@ -1019,50 +1019,8 @@ const TeamDirectoryPage = () => {
           <p style={{ fontSize: '12.5px', color: '#94A3B8', margin: 0 }}>No team members match your current search or filter criteria.</p>
         </div>
       ) : (
-        <div className={`team-directory-grid-layout ${viewMode === 'list' ? 'list-view-mode' : ''}`} style={{ marginBottom: '40px' }}>
-          {employeeMembers.map((emp) => renderEmployeeCard(emp, false))}
-        </div>
-      )}
-
-      {/* 5. Section 2: Admins (CTO and CEO profile cards) */}
-      <div style={{
-        marginTop: '16px',
-        paddingTop: '28px',
-        borderTop: '1px solid #E2E8F0',
-        marginBottom: '20px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', margin: 0, fontFamily: 'serif, Georgia, Inter, sans-serif' }}>
-                Admins
-              </h3>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#7E22CE', background: '#F3E8FF', padding: '3px 10px', borderRadius: '9999px' }}>
-                {adminMembers.length} {adminMembers.length === 1 ? 'admin' : 'admins'}
-              </span>
-            </div>
-            <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0 0' }}>
-              Executive leadership, CTO, and CEO administrative profiles.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {adminMembers.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '36px 20px',
-          background: '#FFFFFF',
-          borderRadius: '16px',
-          border: '1px dashed #CBD5E1'
-        }}>
-          <ShieldCheck size={32} color="#94A3B8" style={{ marginBottom: '8px' }} />
-          <p style={{ fontSize: '14px', fontWeight: 600, color: '#475569', margin: '0 0 4px 0' }}>No admins found</p>
-          <p style={{ fontSize: '12.5px', color: '#94A3B8', margin: 0 }}>No executive administrators match your current search or filter criteria.</p>
-        </div>
-      ) : (
         <div className={`team-directory-grid-layout ${viewMode === 'list' ? 'list-view-mode' : ''}`}>
-          {adminMembers.map((emp) => renderEmployeeCard(emp, true))}
+          {employeeMembers.map((emp) => renderEmployeeCard(emp, false))}
         </div>
       )}
 
